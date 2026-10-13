@@ -463,14 +463,17 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
     # defaults» -- НЕ дублирует tuning_trial_completed (тот пишется
     # только реальным тюнингом /tune); skip-pending несёт список
     # затронутых моделей и статус (skipped/unchanged).
+    # AUDIT-7A (план §15 «skipped имеет обоснование»): reason -- эхо
+    # запроса в ответе маршрута (routers/modeling_session.py) -- попадает
+    # в факт трассы: решение без обоснования -- не аудитируемый факт.
     TraceRouteSpec(
         "POST", "/v1/session/modeling/tuning/skip", "modeling", "tuning",
-        "tuning_skipped", payload_keys=("model_id",),
+        "tuning_skipped", payload_keys=("model_id", "reason"),
     ),
     TraceRouteSpec(
         "POST", "/v1/session/modeling/tuning/skip-pending", "modeling",
         "tuning", "tuning_skipped",
-        payload_keys=("model_ids", "status"),
+        payload_keys=("model_ids", "status", "reason"),
     ),
     # P2 (решение тимлида): до расширения job-контур не оставлял факта
     # в трассе вовсе (tuning_trial_completed на job-пути не возникает) --
@@ -479,15 +482,22 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
     # jobs/{job_id}/step СОЗНАТЕЛЬНО НЕ трассируется: механические
     # единицы работы -- прогресс-лог, не журнал решений (§1, §4.2);
     # исключение зафиксировано тестом test_progr20_conscious_exclusions.
+    # AUDIT-7A (план §15 «Job started/completed/failed/cancelled
+    # связывать одним operation/job id»): job_id -- связность фактов
+    # запуска и отмены (до задачи job_id не попадал в payload ни одного
+    # из них).
     TraceRouteSpec(
         "POST", "/v1/session/modeling/jobs/start", "modeling", "tuning",
         "tuning_job_started",
-        payload_keys=("operation", "model_id", "status", "progress.total_steps"),
+        payload_keys=(
+            "operation", "model_id", "job_id", "status",
+            "progress.total_steps",
+        ),
     ),
     TraceRouteSpec(
         "POST", "/v1/session/modeling/jobs/{job_id}/cancel", "modeling",
         "tuning", "tuning_job_cancelled",
-        payload_keys=("model_id", "status", "cancellation.reason"),
+        payload_keys=("model_id", "job_id", "status", "cancellation.reason"),
     ),
 )
 

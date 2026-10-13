@@ -78,6 +78,33 @@ EVENT_NODE_STATUS: dict[str, str] = {
     "tuning_trial_completed": "done",
     "model_selected": "done",
     "model_card_generated": "done",
+    # AUDIT-7A (план §15): семь типов P13 получают ЯВНУЮ семантику
+    # проекции (F09: «событие есть, его последствия нигде не
+    # определены» -- больше нет). Словарь ПРОЦЕССНОЙ стадии Modeling
+    # (pending/in_progress/done, §3 pipeline_graph): всем done НЕ
+    # назначается -- семантика различает операцию и её результат:
+    #   candidates_generated -- пул сформирован (завершённое системное
+    #     действие applicability-движка);
+    #   selection_evaluated -- оценка ВЫПОЛНЕНА, выбор НЕ зафиксирован
+    #     (done узла selection несёт только model_selected);
+    #   models_compared -- сравнение выполнено (решение аналитика);
+    #   diagnostics_run -- диагностика рассчитана либо переиспользована
+    #     (один тип на /diagnostics и /diagnostics/ensure);
+    #   tuning_skipped -- осознанное решение «оставить defaults»:
+    #     вопрос тюнинга ЗАКРЫТ решением аналитика (та же семантика,
+    #     что session.modeling_pipeline["tuning"]="done" после skip;
+    #     обоснование -- payload.reason, честный текст reason);
+    #   tuning_job_started -- работа НАЧАТА, не завершена;
+    #   tuning_job_cancelled -- работа ОСТАНОВЛЕНА до завершения
+    #     (cancel до completion не даёт done: честный pending с
+    #     причиной; ретракт последнего in_progress того же контекста).
+    "candidates_generated": "done",
+    "selection_evaluated": "in_progress",
+    "models_compared": "done",
+    "diagnostics_run": "done",
+    "tuning_skipped": "done",
+    "tuning_job_started": "in_progress",
+    "tuning_job_cancelled": "pending",
     "forecast_generated": "done",
     "forecast_compared": "done",
     "forecast_sensitivity_computed": "done",
@@ -127,6 +154,16 @@ EVENT_NODE_REASON: dict[str, str] = {
     "tuning_trial_completed": "Подбор параметров выполнен",
     "model_selected": "Модель выбрана",
     "model_card_generated": "Model Card сформирована",
+    # AUDIT-7A (план §15): честные факты семи типов P13 (ключи ==
+    # EVENT_NODE_STATUS, инвариант reason-карты сохранён); тексты --
+    # факты, не советы (советы -- зона Наставника §7).
+    "candidates_generated": "Пул кандидатов сформирован applicability-движком",
+    "selection_evaluated": "Оценка выбора выполнена: модель ещё не выбрана",
+    "models_compared": "Сравнение моделей выполнено",
+    "diagnostics_run": "Диагностика моделей выполнена или переиспользована",
+    "tuning_skipped": "Тюнинг пропущен аналитиком: оставлены параметры по умолчанию",
+    "tuning_job_started": "Запущен job тюнинга: работа в процессе",
+    "tuning_job_cancelled": "Тюнинг отменён аналитиком до завершения",
     "forecast_generated": "Прогноз построен",
     "forecast_compared": "Сравнение прогнозов выполнено",
     "forecast_sensitivity_computed": "Анализ чувствительности выполнен",
@@ -190,6 +227,12 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
     "duplicate_rows",
     "rows_changed",
     "rows_dropped",
+    # AUDIT-7A (план §15): факт пула кандидатов (payload
+    # candidates_generated -- statistics.runnable_candidates хука) --
+    # бейдж узла candidate_generation: «то же число, что в правом
+    # бейдже» (§3) -- размер исполнимого пула; ключ последний --
+    # относительный порядок прежних приоритетов не меняется.
+    "runnable_candidates",
 )
 
 # ── PROGR-13-A4: статус события из payload (факты, отчитанные клиентом) ──
@@ -261,6 +304,59 @@ PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
 PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES: frozenset[str] = frozenset(
     {"correction_applied"}
 )
+
+# ── AUDIT-7A (план §15): payload-условный носитель факта baseline ─────
+#
+# План §15: «Для problem_definition/data_structure/constraint_mapping/
+# baseline_estimation установить реальные носители фактов либо честно
+# пометить отсутствие решения». Для baseline_estimation реальный
+# носитель СУЩЕСТВУЕТ: backtest_run с payload.family_id=="baselines" --
+# РОВНО тот факт, которым session.modeling_pipeline["baseline_estimation"]
+# уже утверждает done (routers/modeling_session.py: has_baseline ==
+# любой backtest с family_id=="baselines"; «Baseline рассчитывается
+# автоматически на точном OOF cohort» -- capability-контракт
+# model_readiness). До задачи факт был в трассе, а его последствие для
+# узла не определено -- тот самый анти-паттерн «событие есть, последствия
+# нигде не определены», который GREEN §15 запрещает.
+#
+# Механизм (по духу STAGE_LEVEL_REASON -- payload-атрибуция, не новый
+# движок): событие backtest_run(family_id=baselines) ДОПОЛНИТЕЛЬНО
+# атрибутируется узлу ("modeling", "baseline_estimation") со СВОИМ
+# честным reason; главная атрибуция узла события (modeling/backtest)
+# не меняется. Легаси-корпус без family_id / не-baseline семейства --
+# носитель не срабатывает (честное отсутствие, done не фабрикуется).
+# Для problem_definition/data_structure/constraint_mapping реальных
+# продюсеров НЕТ -- матрица §23 фиксирует честное отсутствие, узлы
+# остаются pending (никакого done по открытию вкладки).
+BASELINE_CARRIER_EVENT_TYPE = "backtest_run"
+BASELINE_CARRIER_FAMILY_ID = "baselines"
+BASELINE_CARRIER_NODE: tuple[str, str] = ("modeling", "baseline_estimation")
+
+# Честный reason носителя (отличается от «Бэктест выполнен» главного
+# узла: клетка матрицы §23 -- собственный факт baseline-оценки).
+PAYLOAD_CARRIER_REASON: dict[tuple[str, str], str] = {
+    ("backtest_run", "baseline_estimation"): (
+        "Baseline рассчитан на OOF-когорте (backtest baseline-модели)"
+    ),
+}
+
+
+def payload_carrier_node(data: Mapping[str, Any]) -> tuple[str, str] | None:
+    """Payload-условный носитель факта (AUDIT-7A, план §15): узел,
+    ДОПОЛНИТЕЛЬНО атрибутируемый событию по фактам payload, или None.
+    Единственный носитель текущей матрицы: backtest_run с
+    payload.family_id=="baselines" -> modeling/baseline_estimation.
+    Функция чистая; мусор payload -- None (трасса -- журнал, R3:
+    фантомных атрибуций нет)."""
+    event_type = str(data.get("event_type") or "")
+    if event_type != BASELINE_CARRIER_EVENT_TYPE:
+        return None
+    payload = data.get("payload")
+    if not isinstance(payload, Mapping):
+        return None
+    if payload.get("family_id") != BASELINE_CARRIER_FAMILY_ID:
+        return None
+    return BASELINE_CARRIER_NODE
 
 # ── AUDIT-4 (план §10): исход коррекции -- ЕДИНАЯ проекция фактов ────
 #
@@ -869,6 +965,17 @@ class NodeStateFold:
                     detail["_reason_src"] = None
             return
 
+        # ── AUDIT-7A (план §15): payload-носитель факта baseline-оценки
+        # backtest_run(family_id=baselines) ДОПОЛНИТЕЛЬНО атрибутируется
+        # узлу baseline_estimation (реальный носитель -- та же семантика,
+        # что уже утверждает session.modeling_pipeline). Главная
+        # атрибуция узла события обрабатывается прежним путём ниже;
+        # двойной записи нет: carrier != узел события проверяется в
+        # методе (тот же узел -- носитель не дублирует запись).
+        carrier = payload_carrier_node(data)
+        if carrier is not None:
+            self._apply_baseline_carrier(carrier, data)
+
         if not node_id or not is_known_node(stage, node_id):
             return
         key = f"{stage}/{node_id}"
@@ -985,6 +1092,24 @@ class NodeStateFold:
                     status = None
         if status is None:
             return
+        # Единая фиксация статусного факта (гейты контекста AUDIT-3 +
+        # происхождение I10) -- одна точка записи для узла события и
+        # payload-носителя (AUDIT-7A).
+        self._commit_status(key, data, status)
+
+    def _commit_status(
+        self, key: str, data: Mapping[str, Any], status: str
+    ) -> None:
+        """ЕДИНАЯ фиксация статусного факта узла (телосложение прежнего
+        хвоста apply() без изменений семантики): гейты контекста
+        (AUDIT-3, P25/F17/H27/H28 -- сохранены дословно) + запись
+        статуса и происхождения I10. Главная точка записи
+        self._statuses -- одна для узла события и payload-носителя
+        (AUDIT-7A): второй реализации семантики нет.
+        Контракт ключей гейтов: event_type -- тип события данных.
+        """
+        detail = self._details.setdefault(key, _empty_detail())
+        event_type = str(data.get("event_type") or "")
         # ── AUDIT-3 (план §13, P25/F17/H27/H28): контекст-ключевая
         # монотонность -- замена interim-монотонности H1 (та была
         # ГЛОБАЛЬНОЙ и запланирована к замене Донастройкой плана
@@ -1045,6 +1170,63 @@ class NodeStateFold:
         detail["_status_level"] = (
             evidence if isinstance(evidence, str) and evidence else None
         )
+
+    def _apply_baseline_carrier(
+        self, carrier: tuple[str, str], data: Mapping[str, Any]
+    ) -> None:
+        """AUDIT-7A (план §15): запись payload-носителя факта
+        baseline-оценки. backtest_run(family_id=baselines) -- тот же
+        факт, которым session.modeling_pipeline утверждает done узла
+        baseline_estimation; проекция отражает его на узле (реальный
+        носитель, не фабрикация: событие уже в реестре типов, узел
+        известен графу). Своя книжка деталей: честный reason носителя,
+        счётчик следует за reason-событием (P16), происхождение I10,
+        статус -- через ЕДИНУЮ _commit_status (гейты контекста те же).
+        Событие БЕЗ узла (stage-level backtest_run, контракт E6) узел
+        носителя получает -- факт payload существует; узел события
+        (фантом/None) прежние гейты не пропускают.
+        """
+        carrier_stage, carrier_node = carrier
+        if not is_known_node(carrier_stage, carrier_node):
+            return
+        key = f"{carrier_stage}/{carrier_node}"
+        event_type = str(data.get("event_type") or "")
+        # главная атрибуция -- тот же узел: носитель не дублирует запись
+        # (штатно не возникает: узел backtest_run -- backtest)
+        own_stage = str(data.get("stage") or "")
+        own_node = resolve_node_id(data)
+        if own_node and own_stage == carrier_stage and key == (
+            f"{own_stage}/{own_node}"
+        ):
+            return
+        detail = self._details.setdefault(key, _empty_detail())
+        event_ref = _event_ref(data)
+        # касание -- факт журнала (то же правило, что у главного узла)
+        ts = data.get("ts")
+        if isinstance(ts, str) and ts:
+            detail["last_touched_at"] = ts
+        reason = PAYLOAD_CARRIER_REASON.get((event_type, carrier_node))
+        if reason is not None:
+            detail["status_reason"] = reason
+            detail["_reason_tag"] = None
+            detail["_reason_src"] = event_ref
+            detail["_outcome"] = None
+            # счётчик следует за reason-событием (P16, единое правило):
+            # без фактов счётчика бейдж честно очищается
+            detail["summary_count"] = None
+            detail["_count_src"] = None
+            payload = data.get("payload")
+            if isinstance(payload, Mapping):
+                for count_key in NODE_SUMMARY_COUNT_KEYS:
+                    cleaned = _clean_summary_count(payload.get(count_key))
+                    if cleaned is not None:
+                        detail["summary_count"] = cleaned
+                        detail["_count_src"] = event_ref
+                        break
+        status = EVENT_NODE_STATUS.get(event_type)
+        if status is None:
+            return
+        self._commit_status(key, data, status)
 
     # -- сборка полных состояний узла §3 --
 

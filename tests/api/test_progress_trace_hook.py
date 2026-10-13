@@ -862,6 +862,10 @@ _PROGR20_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     # §4.1: payload -- факты результата (форма ответа), не сырой ответ;
     # dotted-ключ -- ДОТ-путь во вложенный объект, хранится под последним
     # сегментом (паттерн metrics.mape PROGR-8).
+    # Versioned AUDIT-7A (план §15): + reason (tuning/skip,
+    # tuning/skip-pending -- «skipped имеет обоснование»: эхо ответа
+    # маршрута в факте трассы) и + job_id (jobs/start, jobs/{id}/cancel
+    # -- «связывать одним operation/job id»).
     "/v1/session/modeling/candidates": (
         "spec_version",
         "statistics.runnable_candidates",
@@ -877,13 +881,16 @@ _PROGR20_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     "/v1/session/modeling/diagnostics/ensure": (
         "calculated_model_ids", "reused_model_ids",
     ),
-    "/v1/session/modeling/tuning/skip": ("model_id",),
-    "/v1/session/modeling/tuning/skip-pending": ("model_ids", "status"),
+    "/v1/session/modeling/tuning/skip": ("model_id", "reason"),
+    "/v1/session/modeling/tuning/skip-pending": (
+        "model_ids", "status", "reason",
+    ),
     "/v1/session/modeling/jobs/start": (
-        "operation", "model_id", "status", "progress.total_steps",
+        "operation", "model_id", "job_id", "status",
+        "progress.total_steps",
     ),
     "/v1/session/modeling/jobs/{job_id}/cancel": (
-        "model_id", "status", "cancellation.reason",
+        "model_id", "job_id", "status", "cancellation.reason",
     ),
 }
 
@@ -1038,8 +1045,10 @@ def test_progr20_payload_dotted_keys_flatten():
     payload = _extract_payload(
         spec_for("/v1/session/modeling/jobs/start"), job_start_body
     )
+    # Versioned AUDIT-7A: + job_id -- связность фактов запуска/отмены
+    # одним operation/job id (план §15).
     assert payload == {
-        "operation": "tuning", "model_id": "ets",
+        "operation": "tuning", "model_id": "ets", "job_id": "J1",
         "status": "in_progress", "total_steps": 2,
     }
 
@@ -1051,8 +1060,10 @@ def test_progr20_payload_dotted_keys_flatten():
     payload = _extract_payload(
         spec_for("/v1/session/modeling/jobs/{job_id}/cancel"), cancel_body
     )
+    # Versioned AUDIT-7A: + job_id (тот же идентификатор, что у факта
+    # запуска).
     assert payload == {
-        "model_id": "ets", "status": "cancelled",
+        "model_id": "ets", "job_id": "J1", "status": "cancelled",
         "reason": "Остановлено аналитиком",
     }
 

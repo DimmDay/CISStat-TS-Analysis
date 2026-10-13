@@ -1654,7 +1654,16 @@ def skip_modeling_tuning(
     refreshed = _refresh_execution_readiness(session)
     session.touch()
     store.save(session)
-    return {"model_id": payload.model_id, "status": "skipped", "execution_scope": refreshed}
+    # AUDIT-7A (план §15 «skipped имеет обоснование»): reason -- ЭХО
+    # запроса в ответе: хук трассы читает payload из ТЕЛА ОТВЕТА --
+    # обоснование решения попадает в факт трассы (до задачи ответ reason
+    # не возвращал -- в факте оставался только model_id).
+    return {
+        "model_id": payload.model_id,
+        "status": "skipped",
+        "reason": payload.reason,
+        "execution_scope": refreshed,
+    }
 
 
 @router.post("/tuning/skip-pending")
@@ -1707,6 +1716,7 @@ def skip_all_pending_modeling_tuning(
         return {
             "model_ids": [],
             "status": "unchanged",
+            "reason": payload.reason,
             "execution_scope": scope,
         }
 
@@ -1721,9 +1731,13 @@ def skip_all_pending_modeling_tuning(
     refreshed = _refresh_execution_readiness(session)
     session.touch()
     store.save(session)
+    # AUDIT-7A (план §15 «skipped имеет обоснование»): reason -- ЭХО
+    # запроса в ответе (тот же класс, что /tuning/skip): обоснование
+    # атомарного решения попадает в факт трассы.
     return {
         "model_ids": pending_tuning,
         "status": "skipped",
+        "reason": payload.reason,
         "execution_scope": refreshed,
     }
 

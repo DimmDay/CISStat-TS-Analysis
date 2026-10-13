@@ -1356,3 +1356,139 @@ metadata) на живом PostgreSQL (pgserver, 19/19).
 состоянию восстановленной сессии); P24 old-write — решение тимлида о
 release-marker; сертификация AUDIT-8 — независимым раундом; документ отчёта
 (историческая применимость в MD/HTML) — AUDIT-7B.
+
+## 23. Аддендум v1.3-7A — матрица Modeling и происхождение методов (PROGR-AUDIT-7A) — **УТВЕРЖДЕНО-7A**
+
+Задача AUDIT-7A (plan_progress_audit.md §15) реализована на базе `main@2353e65`
+(HEAD = коммит PROGR-AUDIT-8). Настоящий аддендум фиксирует семантику проекции
+семи типов P13, реальный носитель факта baseline-оценки, честное отсутствие
+решений для узлов без продюсеров и связность job-фактов одним operation/job id.
+Закрываются F09/P13 («наличие события в журнале не равно покрытию панели»);
+F13/P19 сохранён совместной с AUDIT-4 реализацией параметров результата в
+ключе дедупа. Фаза/Наставник: узловые факты P13 двигают фазу на modeling
+(тот же гейт resolve_event_status); правила Наставника потребляют статусы
+ЕДИНОГО редьюсера без собственных копий.
+
+### 23.1. Принцип семантики: операция ≠ результат — УТВЕРЖДЕНО
+
+Семь типов P13 получают ЯВНУЮ проекцию ЕДИНОГО редьюсера
+(app/core/node_status.py: EVENT_NODE_STATUS + EVENT_NODE_REASON, инвариант
+ключей сохранён). Словарь статусов — ПРОЦЕССНОЙ стадии Modeling
+(pending/in_progress/done, §3 pipeline_graph): «warning/running/skipped»
+проверочных стадий на узлы Modeling не назначаются. Всем done НЕ назначается:
+тип события — операция, статус — её следствие для узла.
+
+| Событие (producer → маршрут) | result/outcome (факты payload) | node/status | reason (факт узла) | фаза/Наставник | human report |
+|---|---|---|---|---|---|
+| candidates_generated ← POST `/v1/session/modeling/candidates` | пул сформирован applicability-движком: spec_version (версия методики), statistics.runnable/catalog_only/blocked | candidate_generation → **done** (бейдж — runnable_candidates) | «Пул кандидатов сформирован applicability-движком» | фаза modeling; после backtest правило `modeling_candidates_without_selection` | общий fallback с исходным типом/ids; шаблон — AUDIT-7B |
+| selection_evaluated ← POST `/v1/session/modeling/selection/evaluate` | оценка выполнена: selection_analysis_id, cohort_id, recommended_single.model_id, ensemble.status | selection → **in_progress** (оценка ≠ выбор; done несёт только model_selected) | «Оценка выбора выполнена: модель ещё не выбрана» | фаза modeling; Наставник видит «выбор не зафиксирован» через статус | fallback; шаблон — AUDIT-7B |
+| models_compared ← POST `/v1/session/modeling/compare` | сравнение выполнено аналитиком: comparison_id, cohort_id, objective | comparison → **done** | «Сравнение моделей выполнено» | фаза modeling | fallback; шаблон — AUDIT-7B |
+| diagnostics_run ← POST `/v1/session/modeling/diagnostics` и `/diagnostics/ensure` | диагностика рассчитана или переиспользована: model_id, params_source, backtest_run_id / calculated_model_ids, reused_model_ids | diagnostics → **done** | «Диагностика моделей выполнена или переиспользована» | фаза modeling | fallback; шаблон — AUDIT-7B |
+| tuning_skipped ← POST `/v1/session/modeling/tuning/skip` и `/tuning/skip-pending` | осознанный пропуск С ОБОСНОВАНИЕМ: model_id/model_ids, status, **reason** (эхо ответа маршрута — до задачи обоснование терялось) | tuning → **done** (вопрос тюнинга закрыт решением; та же семантика, что session.modeling_pipeline[«tuning»]=«done» после skip) | «Тюнинг пропущен аналитиком: оставлены параметры по умолчанию» | фаза modeling | fallback; шаблон — AUDIT-7B |
+| tuning_job_started ← POST `/v1/session/modeling/jobs/start` | запуск job: operation, model_id, **job_id**, status, progress.total_steps | tuning → **in_progress** (работа начата, не завершена) | «Запущен job тюнинга: работа в процессе» | фаза modeling | fallback; шаблон — AUDIT-7B |
+| tuning_job_cancelled ← POST `/v1/session/modeling/jobs/{job_id}/cancel` | отмена: model_id, **job_id**, status, cancellation.reason | tuning → **pending** (cancel до completion НЕ даёт done; ретракт последнего in_progress того же контекста) | «Тюнинг отменён аналитиком до завершения» | фаза modeling | fallback; шаблон — AUDIT-7B |
+| backtest_run ← POST `/v1/session/modeling/backtest` | бэктест: model_id, family_id, n_train/n_test, metrics.mape | backtest → **done**; при family_id=«baselines» ДОПОЛНИТЕЛЬНО baseline_estimation → **done** (§23.3) | «Бэктест выполнен»; у Baseline — свой reason §23.3 | фаза modeling; `modeling_selected_without_backtest`/`modeling_candidates_without_selection` потребляют статус | fallback (канон §4.1) |
+| tuning_trial_completed ← POST `/v1/session/modeling/tune` | подбор выполнен: n_trials, best_trial, grid_size | tuning → **done** | «Подбор параметров выполнен» (прежний канон) | фаза modeling | канон §4.1 |
+| model_selected ← POST `/v1/session/modeling/select` | выбор: selected_model_id/model_name | selection → **done** | «Модель выбрана» (прежний канон) | фаза modeling | канон §4.1 |
+| model_card_generated ← POST `/v1/session/modeling/card` | card_id/model_id | model_card → **done** | «Model Card сформирована» (прежний канон) | фаза modeling | канон §4.1 |
+| passport_captured ← POST `/v1/session/dataset/passport/modeling_entry` | фиксация снимка входа в Modeling | stage-level: узловых статусов не создаёт (N-2) | — | фазу НЕ двигает (паспорт — снимок, не переход) | честная строка отчёта |
+| — (продюсера НЕТ) | — | problem_definition / data_structure / constraint_mapping → **pending всегда** | отсутствует (честно) | узлы не подсвечиваются | нет факта — нет строки |
+
+Сознательно ВНЕ таблицы трассы (пины PROGR-20,
+`test_progr20_conscious_exclusions_stay_untraced` — не пересматриваются):
+`jobs/{id}/step` (механические единицы работы — прогресс-лог, не журнал
+решений §1/§4.2), `/modeling/baselines`, `/modeling/backtest/exclude`,
+`/modeling/feature-regressors`, `/modeling/tuning/start`,
+`/modeling/tuning/step`. Завершение job-контура фактом трассы не является:
+результат удостоверяется артефактной системой (result_ref/tuning_id,
+BacktestPlan-контракт) — клетки матрицы honest-by-absence.
+
+### 23.2. Контекст и фаза — УТВЕРЖДЕНО
+
+Каждый факт P13 несёт серверный context_id сеяния (stamp_envelope, AUDIT-C);
+гейты контекст-ключевой монотонности AUDIT-3 применяются без изменений
+(in_progress запуска job после смены контекста — validity=stale: «старый job
+не повышает current-context»; pending отмены того же контекста честно
+ретрактит in_progress). Фазу двигают только узловые факты решения — все семь
+типов теперь проходят гейт resolve_event_status; stage-level паспорт фазу не
+двигает (правило §13 «фазу двигают только узловые факты» дословно).
+
+### 23.3. Реальный носитель baseline_estimation; честное отсутствие остальных — УТВЕРЖДЕНО
+
+План §15: «установить реальные носители фактов либо честно пометить
+отсутствие решения; не создавать done по открытию вкладки».
+
+* **baseline_estimation** — носитель ЕСТЬ: backtest_run с
+  payload.family_id=«baselines» — ровно тот факт, которым
+  session.modeling_pipeline[«baseline_estimation»] уже утверждает done
+  (has_baseline == backtest family_id=baselines, routers/modeling_session.py;
+  capability-контракт model_readiness: «Baseline рассчитывается автоматически
+  на точном OOF cohort»). Механизм — payload-условная ДОПОЛНИТЕЛЬНАЯ
+  атрибуция узла (payload_carrier_node; по духу STAGE_LEVEL_REASON — не новый
+  движок): узел события (backtest) не меняется, узел Baseline получает done со
+  СВОИМ честным reason («Baseline рассчитан на OOF-когорте (backtest
+  baseline-модели)»), счётчик следует за reason-событием (P16), происхождение
+  I10 и гейты контекста — те же (единая _commit_status). Легаси без family_id
+  и не-baseline семейства носитель не срабатывает — done не фабрикуется.
+  Примечание: `/modeling/baselines` (автоматический bootstrap когорты)
+  сознательно вне таблицы трассы (пин PROGR-20) — фактом контура является
+  backtest baseline-модели через `/modeling/backtest`.
+* **problem_definition / data_structure / constraint_mapping** — реальных
+  продюсеров НЕТ: матрица фиксирует ЧЕСТНОЕ ОТСУТСТВИЕ решения (узлы pending,
+  reason отсутствует). Никакой маршрут/открытие вкладки не создаёт для них
+  done; носители не изобретаются (оракул:
+  test_missing_producers_never_fabricate_done на полном реалистичном контуре).
+
+### 23.4. Связность job одним operation/job id; поздний старый job — УТВЕРЖДЕНО
+
+Payload фактов tuning_job_started и tuning_job_cancelled несёт job_id
+(аддитивно; до задачи связность не удостоверялась трассой вовсе). Обоснование
+пропуска tuning_skipped: reason эхом возвращается ответами
+/tuning/skip и /tuning/skip-pending (хук читает payload из ТЕЛА ОТВЕТА) —
+решение без обоснования не аудитируемый факт. Поздний факт старого job:
+после смены цели (новый контекст) факт запуска — validity=stale против
+контекста запуска; записи job инвалидированы вместе с моделирующими
+артефактами контекста (отмена — честный 404, нового факта не пишет);
+завершение job-контура фактом трассы не является (пин PROGR-20) — ни один
+старый факт не может выдать себя за текущую работу.
+
+### 23.5. Происхождение метода; P19 — УТВЕРЖДЕНО (совместно с AUDIT-4)
+
+Метод/параметры и result reference сохраняются в payload фактов независимо
+от одинаковой картинки узла: spec_version (версия методики пула),
+selection_analysis_id/comparison_id/backtest_run_id/tuning_id (ссылки
+результатов), params_source, job_id (связность контура). Дедуп живого
+GET-пересчёта «Выбросов» сравнивает параметры результата
+(DEDUPE_PARAM_KEYS=method/mode, AUDIT-4): иной метод при той же
+status/count-картине — ДРУГОЙ факт (iqr → zscore сохраняется в истории);
+фокус-рефетч того же результата не журналируется новым методом. Клетка
+матрицы «node/status» — картина панели; происхождение — payload+envelope,
+не картинка.
+
+### 23.6. Приёмка и границы — УТВЕРЖДЕНО
+
+Приёмка (план §15 GREEN): каждая клетка матрицы §23.1 содержит реализацию
+либо явно non-projecting/informational тип с причиной; «событие есть, его
+последствия нигде не определены» — не осталось (7/7 типов P13 в едином
+редьюсере + носитель baseline + честное отсутствие трёх узлов). Оракулы:
+`tests/api/test_progress_audit_7a.py` (19 тестов: RED 15 / контролы 4 —
+протокол `scripts/prograudit7a_red_protocol.txt` на базе 2353e65), full-API
+readiness-прогон Modeling-контура (candidates/baselines/backtest/skip/jobs/
+diagnostics/compare/evaluate в TestClient-окружении). Versioned-обновления
+пинов: `test_node_status_engine.py` (карта 13 → 21 узловой тип; терминальные
+done 11 → 15 с явным инвариантом «не всем done»), `test_progress_trace_hook.py`
+(payload_keys + reason/job_id; flatten-ожидания). Регресс: полный tests/api —
+1802 passed / 19 failed, все 19 воспроизведены на чистой базе 2353e65
+(документированный средовой модельный класс: forecasting_session ×16,
+modeling_workflow, models_candidates, models_backtest_neural_capacity;
+ДЕЛЬТА К БАЗЛАЙНУ 0); tests/integration+unit — 1563 passed / 10 failed +
+3 errors, идентично чистой базе (ДЕЛЬТА 0); Jest — 167 сюит / 1992 теста /
+0 failed; py_compile + import apps.api.main + tsc standalone — OK.
+
+Границы (вне задачи): human report-шаблоны семи типов P13 и методические
+версии объяснений — AUDIT-7B (план §16; в отчёте действует честный общий
+fallback с исходным типом/ids); сознательные исключения таблицы трассы
+(PROGR-20) не пересматриваются; session.modeling_pipeline (степперы модуля)
+и артефактные контракты BacktestPlan/EDA-fold не менялись; готовность
+production-моделей сохранена; полная транзакционность доставки фактов —
+AUDIT-6B; сертификация AUDIT-7A — независимым раундом.

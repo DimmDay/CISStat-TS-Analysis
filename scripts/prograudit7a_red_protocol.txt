@@ -1,0 +1,67 @@
+PROGR-AUDIT-7A — RED-протокол (честный прогон на чистой базе)
+===============================================================
+База:       main@2353e65 (origin/main; HEAD = коммит PROGR-AUDIT-8)
+Дата:       2026-10-13
+Оракул:     tests/api/test_progress_audit_7a.py (новый, задачи AUDIT-7A,
+            план_progress_audit.md §15; спека F09/F13, P13/P19)
+Окружение:  Python 3.12.15; env -u DATABASE_URL (в контейнере
+            DATABASE_URL=file:… ломает psycopg-парсер — документированный
+            средовой класс, одинаково на чистой базе; AUDIT-8 worklog)
+
+Команда:
+  cd /home/z/my-project/CISStat-TS-Analysis
+  env -u DATABASE_URL python -m pytest tests/api/test_progress_audit_7a.py \
+      -q --disable-warnings
+
+Фактический результат RED-прогона (до реализации):
+
+  15 failed / 4 passed (контролы) — см. список ниже; полный вывод
+  pytest -q tests/api/test_progress_audit_7a.py на базе 2353e65.
+
+  FAILED TestP13ReducerSemantics::test_p13_seven_types_have_explicit_status_semantics
+  FAILED TestP13ReducerSemantics::test_p13_nodes_and_reasons_are_facts
+  FAILED TestP13ReducerSemantics::test_job_lifecycle_last_wins_on_tuning_node
+  FAILED TestP13ReducerSemantics::test_cancel_before_completion_is_never_done
+  FAILED TestP13ReducerSemantics::test_evaluation_is_in_progress_and_does_not_close_selection
+  FAILED TestP13ReducerSemantics::test_p13_types_advance_phase_to_modeling
+  FAILED TestBaselineCarrier::test_backtest_run_baseline_family_attributes_baseline_node
+  FAILED TestBaselineCarrier::test_carrier_fact_keeps_provenance_and_validity
+  FAILED TestModelingProducersE2E::test_candidates_event_carries_pool_facts_and_marks_node_done
+  FAILED TestModelingProducersE2E::test_selection_evaluation_leaves_selection_open
+  FAILED TestModelingProducersE2E::test_skip_reason_is_echoed_and_journaled
+  FAILED TestModelingProducersE2E::test_skip_pending_reason_is_echoed
+  FAILED TestModelingProducersE2E::test_job_start_and_cancel_are_linked_by_job_id
+  FAILED TestModelingProducersE2E::test_late_old_job_facts_do_not_raise_current_context
+  FAILED TestModelingProducersE2E::test_missing_producers_never_fabricate_done
+
+Контролы (GREEN на чистой базе — пины прежних задач, сохраняются):
+  PASSED TestP13ReducerSemantics::test_p13_registered_types_control
+      (PROGR-20: 7 типов в STAGE_EVENT_TYPES["modeling"])
+  PASSED TestBaselineCarrier::test_backtest_run_non_baseline_does_not_touch_baseline_node
+  PASSED TestBaselineCarrier::test_backtest_run_legacy_without_family_id_honest_absence
+  PASSED TestModelingProducersE2E::test_p19_method_change_same_count_is_new_fact_control
+      (AUDIT-4: DEDUPE_PARAM_KEYS, P19/F13)
+
+Классы отказов RED (F09/P13 — «событие есть, его последствия нигде
+не определены»):
+  R1  resolve_event_status возвращает None для 7 типов P13 — статуса и
+      фазы нет (F09: «Наличие события в журнале не равно покрытию
+      панели/наставника»).
+  R2  payload-носитель baseline отсутствует: backtest_run(family_id=
+      baselines) не атрибутирует узел baseline_estimation (узел остаётся
+      pending даже после реального расчёта /modeling/baselines).
+  R3  обоснование skip теряется: ответ /tuning/skip(/skip-pending) не
+      эхом возвращает reason — в факте трассы только model_id/model_ids.
+  R4  связность job отсутствует: payload фактов tuning_job_started/
+      tuning_job_cancelled не несёт job_id.
+  R5  validity старого факта job против нового контекста (частично
+      закрыто AUDIT-5B — после GREEN проверяется адресно вместе с
+      отменой и честным pending).
+
+Границы пинов, затронутых RED (versioned-обновления при GREEN):
+  tests/api/test_node_status_engine.py::TestEventNodeStatusMap::
+      test_map_covers_exactly_13_canonical_types — карта расширена 7
+      типами P13 (13 → 21 узловой тип);
+  tests/api/test_progress_trace_hook.py::_PROGR20_PAYLOAD_KEYS —
+      payload_keys: +job_id (jobs/start, jobs/{id}/cancel), +reason
+      (tuning/skip, tuning/skip-pending).

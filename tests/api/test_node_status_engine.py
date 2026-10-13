@@ -78,10 +78,15 @@ def _event(
 
 class TestEventNodeStatusMap:
     def test_map_covers_exactly_13_canonical_types(self):
-        """Карта -- ровно 14 узловых типов §4.1 (PROGR-13-A3:
+        """Карта -- узловые типы §4.1 (PROGR-13-A3:
         + structure_confirmed -- факт подтверждения структуры аналитиком;
         Versioned AUDIT-3: + profile_requested -- GET-запрос профиля
         (запрос/вычисление, не просмотр); profile_viewed -- легаси-чтение.
+        Versioned AUDIT-7A (план §15): + семь типов P13 -- ЯВНАЯ семантика
+        проекции Modeling (F09: «событие есть, последствия нигде не
+        определены» закрыто): done для завершённых фактов/решений,
+        in_progress для оценки и запуска job, pending для отмены job --
+        словарь процессной стадии Modeling.
         Отчёты остановок upload_stop_status -- ОТДЕЛЬНЫЙ реестр
         payload-статусов PAYLOAD_STATUS_EVENT_TYPES, статус из payload,
         карте «тип -> один статус» не подвластен)."""
@@ -96,6 +101,13 @@ class TestEventNodeStatusMap:
             "tuning_trial_completed",
             "model_selected",
             "model_card_generated",
+            "candidates_generated",
+            "selection_evaluated",
+            "models_compared",
+            "diagnostics_run",
+            "tuning_skipped",
+            "tuning_job_started",
+            "tuning_job_cancelled",
             "forecast_generated",
             "forecast_compared",
             "forecast_sensitivity_computed",
@@ -126,14 +138,29 @@ class TestEventNodeStatusMap:
     def test_terminal_decision_events_map_to_done(self):
         # Versioned AUDIT-3: + profile_requested (running, как
         # profile_viewed -- оба не терминальные решения).
+        # Versioned AUDIT-7A (план §15): семь типов P13 -- семантика
+        # различает операцию и результат: done только у ЗАВЕРШЁННЫХ
+        # фактов/решений (candidates_generated, models_compared,
+        # diagnostics_run, tuning_skipped); selection_evaluated (оценка
+        # без выбора) и tuning_job_started (работа начата) --
+        # in_progress; tuning_job_cancelled (отмена до завершения) --
+        # pending. Инвариант «не всем done» страхуется явно.
+        in_progress_or_pending = {
+            "selection_evaluated", "tuning_job_started",
+            "tuning_job_cancelled",
+        }
         terminal = [
             event_type
             for event_type, status in EVENT_NODE_STATUS.items()
             if event_type != "correction_previewed"
             and event_type not in ("profile_viewed", "profile_requested")
+            and event_type not in in_progress_or_pending
         ]
-        assert len(terminal) == 11
+        assert len(terminal) == 15
         assert all(EVENT_NODE_STATUS[event_type] == "done" for event_type in terminal)
+        assert EVENT_NODE_STATUS["selection_evaluated"] == "in_progress"
+        assert EVENT_NODE_STATUS["tuning_job_started"] == "in_progress"
+        assert EVENT_NODE_STATUS["tuning_job_cancelled"] == "pending"
 
     def test_correction_previewed_maps_to_warning(self):
         """preview показывается ТОЛЬКО при найденных нарушениях --
