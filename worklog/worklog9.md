@@ -1755,3 +1755,41 @@ Deliverable: ZIP cisstat-prograudit7a-modeling-matrix-method-provenance.zip → 
 Статус: AUDIT-7B ЗАВЕРШЕНА (acceptance §16 закрыт: MD и HTML рассказывают одну историю с доказательными ссылками — factual ids и watermark совпадают с панелью и Наставником; происхождение цели/сброс честны на всех формах; Modeling-типы имеют human-шаблоны; fallback сохраняет тип/ids; формат/версия/watermark самодостаточны в экспорте; методология помечена текущей версией; подписи admin не называют span активным временем и наблюдения решениями; сырые ряды/секреты в текстовые логи не попадают — контроль). Ограничения (осознанные): UI-отображение новых полей (proof-ссылки, маркеры, мета) — текст отчёта, экранный рендер не менялся; per-article версии реестра не вводятся (выбрана ветка «явно разделить» карточки §16); PDF вне контракта; H29/H30 (эксплуатация) — вне задачи. Следующие по нарезке плана — AUDIT-6B (восстановимая доставка и операции, крупнейшая архитектурная задача) и/или AUDIT-6C (backend, health, операционные логи), затем AUDIT-CERT; перенос пинов F-* (repo-слепые классы сертификаций) в repo-сюиты — решение тимлида.
 
 Deliverable: ZIP cisstat-prograudit7b-research-document.zip → открытый контейнер сессии (download + upload): перечисленные файлы задачи. Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-AUDIT-7A-CERT (2026-10-13) — Независимая сертификация задачи AUDIT-7A (матрица Modeling и происхождение методов) — мутанты на своих мутантах, оракулы на своих данных
+
+База: main@b43e2eb (origin/main; HEAD = коммит PROGR-AUDIT-7A; синхронизация по прямому указанию тимлида; commit/push НЕ выполнялись — правила AGENTS.md соблюдены). Постановка: «Синхронизируйся до b43e2eb. Изучи spec_progress_audit.md и plan_progress_audit.md, а также текущий код по основным файлам контура "Прогресс", записи в журнале worklog9.md. Следующая задача: честно сертифицируй PROGR-AUDIT-7A — матрица Modeling и происхождение методов. Спроектируй и реализуй данную Сертификацию. Используй мутантов на своих мутантах, оракулов на своих данных. Следуй правилам AGENTS.md. По завершении работы ВЫЗОВИ открытый контейнер сессии DOWNLOAD/UPLOAD и выложи туда zip новых/обновленных файлов для скачивания». Акт: docs/cert_prograudit7a_2026-10-13.md. Вердикт: PASSED.
+
+### Сверка реализации с кодовой базой
+
+Все точки аддендума v1.3-7A §23 на месте: семь типов P13 в ЕДИНОМ редьюсере (EVENT_NODE_STATUS/EVENT_NODE_REASON, словарь процессной стадии Modeling, инвариант «не всем done»: in_progress×2 + pending×1 выписаны), ключ пула runnable_candidates последним в NODE_SUMMARY_COUNT_KEYS; payload-носитель baseline (payload_carrier_node — чистая функция, свой честный reason, P16-гигиена бейджа, guard двойной записи, stage-level E6, легаси/чужая семья не срабатывают) через ЕДИНУЮ _commit_status (гейты AUDIT-3 дословно); честное отсутствие трёх узлов; хук +job_id/+reason без пересмотра пинов PROGR-20; эхо reason в обоих skip-маршрутах (включая unchanged); UI не менялся; Наставник потребляет редьюсер. Граница наблюдаемости: аддендум и код в одном коммите b43e2eb.
+
+### Независимая верификация базлайнов (1:1 со средой песочницы)
+
+Полный tests/api: HEAD b43e2eb — 1824 passed / 3 failed / 18 skipped; база 2353e65 (worktree, те же 5 батчей) — 1805 / 3 / 18; дельта passed ровно 19 = новый test_progress_audit_7a.py; множества отказов идентичны 1:1 (3 средовых: modeling_workflow catalog-only, models_backtest_neural_capacity LSTM-503, models_candidates naive-penalty; forecasting_session ×16 в этой среде зелёные — средовое расхождение с журналом 19 failed, как в 8-CERT) — ДЕЛЬТА К БАЗЛАЙНУ 0. Repo-канал 139/0 (7a+engine+hook). Jest полный: 167 сюит / 1997 тестов / 0 failed (сюиты 1:1 с журналом; 1992 в журнале = passed при 5 skipped среды исполнителя). typecheck:all EXIT=0; py_compile OK; import apps.api.main OK.
+
+### RED-протокол (база 2353e65, worktree; scripts/prograudit7acert_red_repro.txt)
+
+СВОИ оракулы на базе — 22 FAIL / 5 PASS-контролов (R1: 7 типов без семантики — статус/фаза/Наставник; R2: носитель отсутствует; R3: эхо reason потеряно, вкл. unchanged; R4: job_id не в payload; P16: бейдж пула; ORG: расчёты пула неразличимы). Контролы GREEN на базе: G-ENV-1/2, G-CAR-5 (guard), G-ORG-2 (честно переклассифицирован в контроль: modeling-фаза достигается каноническим backtest_run и на базе), G-ORG-3 (fallback отчёта до 7A). Дельта HEAD−база: ровно 22 RED→GREEN.
+
+### Оракулы на СВОИХ данных — scripts/prograudit7acert_oracles.py: 27/27 PASS (+группы ENV/SEM/CAR/JOB/E2E/ORG)
+
+Корпус дизъюнктен исполнителю: поденный CSV «dt,sales,promo,price» 57 суток 2023 (vs помесячный «date,value,driver»), цели sales→price, свои параметры контуров и метки Cert-7A. Свои наблюдательные методы: жизненный цикл start→cancel→start→cancel (last-wins, различимость job_id); переоткрытие selection повторной оценкой после model_selected; честное отсутствие done ДО baseline-family backtest на живом контуре (носитель требует РЕАЛЬНЫЙ факт); неизменность Baseline после не-baseline backtest; P16-гигиена бейджа носителя; stage-level носитель E6; guard двойной записи; Наставник через живой next-step; fallback отчёта; сквозная сверка бейджа /trace с payload.
+
+### Мутационная кампания СВОИХ мутантов — scripts/prograudit7acert_mutations.py: 15/15 KILLED, 0 SURVIVED (волна 2)
+
+Классы дизъюнктны прежним кампаниям: флипы карты стадии (CM-1..4), перепутанные reason-тексты (CM-5), потеря бейджа (CM-6), смерть носителя/семья (CM-7)/P16 (CM-8), job_id (CM-9), reason-факт (CM-10), эхо маршрута штат/unchanged (CM-11/12), механический done всех 7 (CM-13), смерть фиксации статуса носителя (CM-14), потеря _status_ctx (CM-15). Каналы: O (свои 27) + R (repo 139). КОНТРОЛЬ кампании: оба канала зелёные. Волна 1→2 (открыто, продукт не менялся): CM-5 SURVIVED — оба канала сравнивали reason с САМОЙ картой (самореференция) → литеральные пины текстов §23.1 в G-SEM-2 (прецедент 2B-CERT D5/D6) → CM-5 убит. Финал: KILLED-BOTH=9, KILLED-ORACLE-ONLY=6, SURVIVED=0. Дисциплина: якорь sha256, побайтовое восстановление после каждого мутанта и в finally, RESTORE-CHECK в батчах; инцидент — таймаут песочницы прервал кампанию (оставленный мутант CM-4 найден git status, восстановлен немедленно до продолжения; записи результата не исказил).
+
+### Находки (акт §7)
+
+F-7AC1 (РЕКОМЕНДАЦИЯ): repo-канал слеп к 4 классам — литеральные reason-тексты (карта-относительные пины), бейдж пула, P16-гигиена носителя, unchanged-эхо — перенос пинов в repo-сюиты (прецеденты F-6A1/F-1A1/F-4C1/F-2A1/F-2B1/F-8C1). R-7AC-1: strategy не в whitelist payload_keys (контракт §23.1 выполняется как утверждено; полнота origin методики — решение тимлида, human-шаблоны — AUDIT-7B). R-7AC-2: факт tuning_skipped сеётся и на unchanged-пути (contract-consistent; узел стабилен — фабрикации нет). R-7AC-3: смена цели сбрасывает passport-историю — реалистичный контур требует ре-подтверждения modeling_entry; current→stale→current удостоверено. R4: границы §23.6 (AUDIT-7B/6B, пины PROGR-20).
+
+### Полный регресс (сверка с базами)
+
+tests/api 1824/3/18 vs база 1805/3/18 (дельта ровно 19, отказы идентичны — ДЕЛЬТА 0); repo-канал 139/0; Jest 167/1997/0; typecheck:all EXIT=0; py_compile + import OK. Продуктовые файлы md5 == HEAD (git diff пуст); артефакты untracked (5 файлов + настоящая запись).
+
+### Результат (вердикт акта §10)
+
+PASSED: противоречий «код vs контракт v1.3-7A §23» нет; операция ≠ результат удостоверена (механический done убит CM-13); носитель baseline реален, точечен и честен; трёхузловое отсутствие честно; job-связность и обоснования в фактах; late-old-job не повышает current; происхождение методов сохраняется. Deliverable: ZIP cisstat-prograudit7a-certification.zip → открытый контейнер сессии (download + upload): docs/cert_prograudit7a_2026-10-13.md, scripts/prograudit7acert_oracles.py (+_oracles_results.txt), scripts/prograudit7acert_red_repro.txt, scripts/prograudit7acert_mutations.py (+_mutation_results.txt), worklog/worklog9.md. Без commit/push (AGENTS.md). Следующие по нарезке плана — AUDIT-7B (документ исследования) и/или AUDIT-6B (гарантированная доставка), перенос пинов F-7AC1 в repo-сюиты — решение тимлида.

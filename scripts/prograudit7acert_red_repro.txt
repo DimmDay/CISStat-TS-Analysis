@@ -1,0 +1,88 @@
+PROGR-AUDIT-7A-CERT — RED-протокол (честный прогон СВОИХ оракулов на чистой базе)
+==================================================================================
+Сертификатор: независимый раунд (мутанты на своих мутантах, оракулы на
+своих данных). Объект сертификации: b43e2eb (PROGR-AUDIT-7A).
+База RED:     main@2353e65 (origin/main; HEAD = коммит PROGR-AUDIT-8,
+              предшественник 7A по нарезке плана)
+Дата:         2026-10-13
+Оракул:       scripts/prograudit7acert_oracles.py (СВОЙ корпус сертификатора,
+              дизъюнктен tests/api/test_progress_audit_7a.py исполнителя)
+Окружение:    Python 3.12.15; env -u DATABASE_URL (документированный
+              средовой класс песочницы: DATABASE_URL=file:… ломает
+              psycopg-парсер — одинаково на базе и HEAD; worktree
+              /home/z/my-project/wt-2353e65, git worktree add 2353e65)
+
+Команда:
+  cd /home/z/my-project/wt-2353e65
+  cp /home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7acert_oracles.py scripts/
+  env -u DATABASE_URL python3 scripts/prograudit7acert_oracles.py \
+      --protocol scripts/prograudit7acert_red_raw.txt
+
+Фактический результат RED-прогона (до реализации 7A): 22 FAIL / 5 PASS.
+
+  FAIL G-CAR-1  носитель не сработал: baseline_estimation=None (R2)
+  FAIL G-CAR-2  payload-носитель не реализован, база до AUDIT-7A (R2)
+  FAIL G-CAR-3  stage-level носитель не атрибутировал Baseline (R2)
+  FAIL G-CAR-4  бейдж носителя None != 3 (R2)
+  ok   G-CAR-5  guard двойной записи (пин конструкции, PASS обе стороны)
+  FAIL G-E2E-1  пул сформирован, узел 'pending' (R1)
+  FAIL G-E2E-2  оценка закрыла выбор: 'pending' -- in_progress нет (R1)
+  FAIL G-E2E-3  ответ /tuning/skip не эхом вернул обоснование: None (R3)
+  FAIL G-E2E-4  эхо обоснования /tuning/skip-pending потеряно: None (R3)
+  FAIL G-E2E-5  unchanged-путь не возвращает обоснование (R3)
+  FAIL G-E2E-6  baseline 'pending' после реального расчёта (R2)
+  FAIL G-E2E-7  носитель не сработал на живом контуре: 'pending' (R2)
+  FAIL G-E2E-8  повторная оценка не переоткрыла selection: 'done' (R1)
+  ok   G-ENV-1  свой корпус/сессия (санитария, PASS обе стороны)
+  ok   G-ENV-2  инвариант reason-карты на карте из 13 типов (PASS обе)
+  FAIL G-JOB-1  job_id отсутствует в payload запуска/отмены (R4);
+                узел 'pending' вместо in_progress (R1)
+  FAIL G-JOB-2  жизненный цикл last-wins: шаг 1 'pending' (R1)
+  FAIL G-JOB-3  узел не in_progress после запуска (R1) + validity-цепочка
+  FAIL G-ORG-1  два расчёта пула неразличимы в истории (происхождение)
+  ok   G-ORG-2  Наставник/фаза modeling -- контроль: modeling достигается
+                каноническим backtest_run и на базе (классификация
+                скорректирована честно: не RED-оракул, контроль
+                потребления единого редьюсера; убивает мутантов
+                редьюсера через repo-канал)
+  ok   G-ORG-3  отчёт: честный fallback с исходным типом existed до 7A
+                (контроль; на HEAD страхует сохранение типа для новых
+                фактов)
+  FAIL G-ORG-4  бейдж панели != размеру пула (P16, ключа нет в базе)
+  FAIL G-SEM-1  resolve_event_status=None для 7 типов (R1)
+  FAIL G-SEM-2  EVENT_NODE_REASON: KeyError candidates_generated (R1)
+  FAIL G-SEM-3  карта даёт None вместо контрактного не-done (R1)
+  FAIL G-SEM-4  узловые факты P13 не двигают фазу Наставника (R1)
+  FAIL G-SEM-5  ключ пула отсутствует в NODE_SUMMARY_COUNT_KEYS (P16)
+
+Классы отказов RED (F09/P13 -- «событие есть, его последствия нигде
+не определены»; спека spec_progress_audit.md F09/P13, F13/P19):
+  R1  семь типов P13 без семантики ЕДИНОГО редьюсера: статусы узлов
+      не выводятся (None/pending), фаза Наставника не двигается --
+      карта EVENT_NODE_STATUS/EVENT_NODE_REASON до 7A не содержит
+      ни один из 7 типов.
+  R2  payload-носитель baseline_estimation отсутствует: узел остаётся
+      pending даже после РЕАЛЬНОГО расчёта baseline (backtest
+      family_id=baselines) -- «реальный носитель факта» не отражён.
+  R3  обоснование skip теряется: /tuning/skip и /tuning/skip-pending
+      не эхом возвращают reason -- в факте трассы обоснования нет.
+  R4  связность job-фактов не удостоверяется трассой: payload
+      started/cancelled не несёт job_id.
+  P16 бейдж пула (runnable_candidates) не доезжает до узла: ключа нет
+      в NODE_SUMMARY_COUNT_KEYS.
+  ORG происхождение: два разных расчёта пула неразличимы в фактах.
+
+Контролы GREEN на базе (пины прежних задач -- сохраняются, PASS и на
+HEAD): G-ENV-1/2 (окружение + инвариант карты), G-CAR-5 (guard
+двойной записи), G-ORG-2 (Наставник от единого редьюсера), G-ORG-3
+(честный fallback отчёта).
+
+GREEN на HEAD (b43e2eb): 27/27 PASS
+(протокол scripts/prograudit7acert_oracles_results.txt) -- дельта
+HEAD−база ровно 22 RED→GREEN при 5 стабильных контролах; продуктовые
+файлы в ходе RED не менялись (worktree чистой базы).
+
+Повторная верификация: RED перезапущен ФИНАЛЬНОЙ версией оракула (после
+волны 2 -- литеральные пины G-SEM-2) на той же базе -- результат
+идентичен: 22 FAIL / 5 PASS (протокол wt-2353e65/scripts/
+prograudit7acert_red_raw2.txt). Числа протокола соответствуют поставке.

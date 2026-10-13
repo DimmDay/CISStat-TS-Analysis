@@ -1,0 +1,33 @@
+PROGR-AUDIT-7A-CERT -- СВОИ оракулы (данные сертификатора)
+Объект: HEAD=CISStat-TS-Analysis; оракулов: 27
+  ok   G-CAR-1 носитель: backtest baselines атрибутирует Baseline
+  ok   G-CAR-2 чистота: не-baseline/легаси/мусор носитель не срабатывает
+  ok   G-CAR-3 stage-level носитель: событие без узла несёт Baseline
+  ok   G-CAR-4 P16-гигиена бейджа через носитель
+  ok   G-CAR-5 guard двойной записи: свой узел == носитель
+  ok   G-E2E-1 candidates: факт пула, узел done, бейдж-число
+  ok   G-E2E-2 оценка ≠ выбор; сравнение и диагностика -- done
+  ok   G-E2E-3 skip: reason эхом в ответе и в факте
+  ok   G-E2E-4 skip-pending: reason эхом (атомарное решение)
+  ok   G-E2E-5 skip-pending unchanged: честный payload, узел стабилен
+  ok   G-E2E-6 честное отсутствие: три узла без продюсеров pending
+  ok   G-E2E-7 носитель точечен: ets-бэктест не трогает Baseline
+  ok   G-E2E-8 переоткрытие selection повторной оценкой (last-wins)
+  ok   G-ENV-1 свой корпус и реалистичная сессия
+  ok   G-ENV-2 инвариант reason-карты и граф
+  ok   G-JOB-1 связность: started/cancelled одним job_id
+  ok   G-JOB-2 жизненный цикл last-wins: четыре факта подряд
+  ok   G-JOB-3 поздний старый job не повышает current-context
+  ok   G-ORG-1 происхождение метода: иная стратегия -- иной факт
+  ok   G-ORG-2 Наставник потребляет ЕДИНЫЙ редьюсер (фаза modeling)
+  ok   G-ORG-3 отчёт: честный fallback с исходным типом/ids
+  ok   G-ORG-4 bейдж узла по живому /trace согласован с фактом
+  ok   G-SEM-1 семь типов: явный статус единого редьюсера
+  FAIL G-SEM-2 семь типов: честные reason-тексты (литеральные пины §23.1): UNEXPECTED AssertionError('tuning_job_started: карта reason != литералу контракта §23.1')
+  ok   G-SEM-3 запрет механического done: не- done статусы существуют
+  ok   G-SEM-4 фаза: узловые факты P13 двигают last_active_stage
+  ok   G-SEM-5 бейдж P16: runnable_candidates на candidate_generation
+
+ИТОГ: PASS=26 FAIL=1
+Отказы:
+  - G-SEM-2 семь типов: честные reason-тексты (литеральные пины §23.1): UNEXPECTED AssertionError('tuning_job_started: карта reason != литералу контракта §23.1')

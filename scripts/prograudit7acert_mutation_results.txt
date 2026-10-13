@@ -1,0 +1,143 @@
+ANCHOR app/core/node_status.py: sha256=8563679c558f8290 bytes=99535
+ANCHOR apps/api/routers/modeling_session.py: sha256=856e48aba135433c bytes=153461
+ANCHOR apps/api/trace_hook.py: sha256=0cd6e417fd58994a bytes=49710
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=27 FAIL=0)
+CONTROL (no mutation): repo    EXIT=0 (====================== 139 passed, 530 warnings in 19.45s ======================)
+CONTROL OK -- каналы пригодны
+CM-1 [KILLED-BOTH] selection_evaluated: in_progress -> done (оценка=выбор)
+    O EXIT=1: ИТОГ: PASS=23 FAIL=4 |   FAIL G-E2E-2 оценка ≠ выбор; сравнение и диагностика -- done: UNEXPECTED AssertionError("оценка закрыла выбор: 'done' (механический done)") |   FAIL G-E2E-8 переоткрытие selection повторной оценк
+    R EXIT=1: ================= 5 failed, 134 passed, 530 warnings in 19.47s =================
+CM-2 [KILLED-BOTH] tuning_job_cancelled: pending -> done (cancel=результат)
+    O EXIT=1: ИТОГ: PASS=23 FAIL=4 |   FAIL G-JOB-1 связность: started/cancelled одним job_id: UNEXPECTED AssertionError("cancel до completion дал 'done' -- НЕ done") |   FAIL G-JOB-2 жизненный цикл last-wins: четыре факта подряд: UNE
+    R EXIT=1: ================= 6 failed, 133 passed, 530 warnings in 19.85s =================
+CM-3 [KILLED-BOTH] tuning_skipped: done -> in_progress (skip не закрывает)
+    O EXIT=1: ИТОГ: PASS=24 FAIL=3 |   FAIL G-E2E-3 skip: reason эхом в ответе и в факте: UNEXPECTED AssertionError("осознанный пропуск закрыл вопрос: 'in_progress'") |   FAIL G-E2E-5 skip-pending unchanged: честный payload, узел стаб
+    R EXIT=1: ================= 5 failed, 134 passed, 530 warnings in 19.60s =================
+CM-4 [KILLED-BOTH] candidates_generated: done -> pending (пул не результат)
+    O EXIT=1: ИТОГ: PASS=24 FAIL=3 |   FAIL G-E2E-1 candidates: факт пула, узел done, бейдж-число: UNEXPECTED AssertionError("пул сформирован, узел 'pending' (RED-класс R1)") |   FAIL G-ORG-1 происхождение метода: иная стратегия -- ин
+    R EXIT=1: ================= 4 failed, 135 passed, 530 warnings in 19.75s =================
+CM-5 [SURVIVED] reason-тексты job_started/job_cancelled перепутаны
+    O EXIT=0: ИТОГ: PASS=27 FAIL=0
+    R EXIT=0: ====================== 139 passed, 530 warnings in 20.08s ======================
+CM-6 [KILLED-ORACLE-ONLY] NODE_SUMMARY_COUNT_KEYS без runnable_candidates (бейдж пула)
+    O EXIT=1: ИТОГ: PASS=23 FAIL=4 |   FAIL G-CAR-4 P16-гигиена бейджа через носитель: UNEXPECTED AssertionError('бейдж носителя None != 3') |   FAIL G-E2E-1 candidates: факт пула, узел done, бейдж-число: UNEXPECTED AssertionError('бе
+    R EXIT=0: ====================== 139 passed, 530 warnings in 19.27s ======================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 6 мутантов: KILLED-BOTH=4 KILLED-ORACLE-ONLY=1 KILLED-REPO-ONLY=0 SURVIVED=1
+  CM-1 [KILLED-BOTH] selection_evaluated: in_progress -> done (оценка=выбор)
+  CM-2 [KILLED-BOTH] tuning_job_cancelled: pending -> done (cancel=результат)
+  CM-3 [KILLED-BOTH] tuning_skipped: done -> in_progress (skip не закрывает)
+  CM-4 [KILLED-BOTH] candidates_generated: done -> pending (пул не результат)
+  CM-5 [SURVIVED] reason-тексты job_started/job_cancelled перепутаны
+  CM-6 [KILLED-ORACLE-ONLY] NODE_SUMMARY_COUNT_KEYS без runnable_candidates (бейдж пула)
+ANCHOR app/core/node_status.py: sha256=8563679c558f8290 bytes=99535
+ANCHOR apps/api/routers/modeling_session.py: sha256=856e48aba135433c bytes=153461
+ANCHOR apps/api/trace_hook.py: sha256=0cd6e417fd58994a bytes=49710
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=27 FAIL=0)
+CONTROL (no mutation): repo    EXIT=0 (====================== 139 passed, 530 warnings in 19.54s ======================)
+CONTROL OK -- каналы пригодны
+CM-7 [KILLED-BOTH] BASELINE_CARRIER_FAMILY_ID "baselines" -> "baseline" (носитель мёртв)
+    O EXIT=1: ИТОГ: PASS=22 FAIL=5 |   FAIL G-CAR-1 носитель: backtest baselines атрибутирует Baseline: UNEXPECTED AssertionError('носитель не сработал: baseline_estimation=None (RED-класс R2)') |   FAIL G-CAR-3 stage-level носитель: 
+    R EXIT=1: ================= 3 failed, 136 passed, 530 warnings in 19.59s =================
+CM-8 [KILLED-ORACLE-ONLY] носитель: убрана P16-очистка бейджа (наследование цифры)
+    O EXIT=1: ИТОГ: PASS=26 FAIL=1 |   FAIL G-CAR-4 P16-гигиена бейджа через носитель: UNEXPECTED AssertionError('бейдж унаследовал цифру прежнего расчёта -- P16 нарушен')
+    R EXIT=0: ====================== 139 passed, 530 warnings in 19.48s ======================
+CM-9 [KILLED-BOTH] jobs/start payload_keys без job_id (связность потеряна)
+    O EXIT=1: ИТОГ: PASS=25 FAIL=2 |   FAIL G-JOB-1 связность: started/cancelled одним job_id: UNEXPECTED AssertionError('факт запуска не несёт job_id') |   FAIL G-JOB-2 жизненный цикл last-wins: четыре факта подряд: UNEXPECTED Assert
+    R EXIT=1: ================= 3 failed, 136 passed, 530 warnings in 19.48s =================
+CM-10 [KILLED-BOTH] tuning/skip payload_keys без reason (обоснование потеряно)
+    O EXIT=1: ИТОГ: PASS=26 FAIL=1 |   FAIL G-E2E-3 skip: reason эхом в ответе и в факте: UNEXPECTED AssertionError('обоснование не попало в факт трассы: None')
+    R EXIT=1: ================= 2 failed, 137 passed, 530 warnings in 19.11s =================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 4 мутантов: KILLED-BOTH=3 KILLED-ORACLE-ONLY=1 KILLED-REPO-ONLY=0 SURVIVED=0
+  CM-7 [KILLED-BOTH] BASELINE_CARRIER_FAMILY_ID "baselines" -> "baseline" (носитель мёртв)
+  CM-8 [KILLED-ORACLE-ONLY] носитель: убрана P16-очистка бейджа (наследование цифры)
+  CM-9 [KILLED-BOTH] jobs/start payload_keys без job_id (связность потеряна)
+  CM-10 [KILLED-BOTH] tuning/skip payload_keys без reason (обоснование потеряно)
+ANCHOR app/core/node_status.py: sha256=8563679c558f8290 bytes=99535
+ANCHOR apps/api/routers/modeling_session.py: sha256=856e48aba135433c bytes=153461
+ANCHOR apps/api/trace_hook.py: sha256=0cd6e417fd58994a bytes=49710
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=27 FAIL=0)
+CONTROL (no mutation): repo    EXIT=0 (====================== 139 passed, 530 warnings in 20.07s ======================)
+CONTROL OK -- каналы пригодны
+CM-11 [KILLED-BOTH] /tuning/skip: эхо reason убрано из ответа
+    O EXIT=1: ИТОГ: PASS=26 FAIL=1 |   FAIL G-E2E-3 skip: reason эхом в ответе и в факте: UNEXPECTED AssertionError('ответ не эхом вернул обоснование: None')
+    R EXIT=1: ================= 1 failed, 138 passed, 530 warnings in 19.55s =================
+CM-12 [KILLED-ORACLE-ONLY] /tuning/skip-pending: эхо reason убрано на unchanged-пути
+    O EXIT=1: ИТОГ: PASS=26 FAIL=1 |   FAIL G-E2E-5 skip-pending unchanged: честный payload, узел стабилен: UNEXPECTED AssertionError('не-skipped путь тоже обязан возвращать обоснование')
+    R EXIT=0: ====================== 139 passed, 530 warnings in 19.33s ======================
+CM-13 [KILLED-BOTH] resolve_event_status: механический done всем 7 типам P13
+    O EXIT=1: ИТОГ: PASS=20 FAIL=7 |   FAIL G-E2E-2 оценка ≠ выбор; сравнение и диагностика -- done: UNEXPECTED AssertionError("оценка закрыла выбор: 'done' (механический done)") |   FAIL G-E2E-8 переоткрытие selection повторной оценк
+    R EXIT=1: ================= 9 failed, 130 passed, 530 warnings in 19.45s =================
+CM-14 [KILLED-BOTH] носитель без _commit_status (статус носителя мёртв, reason жив)
+    O EXIT=1: ИТОГ: PASS=23 FAIL=4 |   FAIL G-CAR-1 носитель: backtest baselines атрибутирует Baseline: UNEXPECTED AssertionError('носитель не сработал: baseline_estimation=None (RED-класс R2)') |   FAIL G-CAR-3 stage-level носитель: 
+    R EXIT=1: ================= 3 failed, 136 passed, 530 warnings in 19.42s =================
+CM-15 [KILLED-BOTH] _commit_status без записи _status_ctx (происхождение контекста)
+    O EXIT=1: ИТОГ: PASS=24 FAIL=3 |   FAIL G-CAR-1 носитель: backtest baselines атрибутирует Baseline: UNEXPECTED AssertionError('носитель потерял контекст происхождения (I10)') |   FAIL G-CAR-3 stage-level носитель: событие без узла
+    R EXIT=1: ================= 2 failed, 137 passed, 530 warnings in 18.98s =================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 5 мутантов: KILLED-BOTH=4 KILLED-ORACLE-ONLY=1 KILLED-REPO-ONLY=0 SURVIVED=0
+  CM-11 [KILLED-BOTH] /tuning/skip: эхо reason убрано из ответа
+  CM-12 [KILLED-ORACLE-ONLY] /tuning/skip-pending: эхо reason убрано на unchanged-пути
+  CM-13 [KILLED-BOTH] resolve_event_status: механический done всем 7 типам P13
+  CM-14 [KILLED-BOTH] носитель без _commit_status (статус носителя мёртв, reason жив)
+  CM-15 [KILLED-BOTH] _commit_status без записи _status_ctx (происхождение контекста)
+ANCHOR app/core/node_status.py: sha256=8563679c558f8290 bytes=99535
+ANCHOR apps/api/routers/modeling_session.py: sha256=856e48aba135433c bytes=153461
+ANCHOR apps/api/trace_hook.py: sha256=0cd6e417fd58994a bytes=49710
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=27 FAIL=0)
+CONTROL (no mutation): repo    EXIT=0 (====================== 139 passed, 530 warnings in 19.40s ======================)
+CONTROL OK -- каналы пригодны
+CM-5 [KILLED-ORACLE-ONLY] reason-тексты job_started/job_cancelled перепутаны
+    O EXIT=1: ИТОГ: PASS=26 FAIL=1 |   FAIL G-SEM-2 семь типов: честные reason-тексты (литеральные пины §23.1): UNEXPECTED AssertionError('tuning_job_started: карта reason != литералу контракта §23.1')
+    R EXIT=0: ====================== 139 passed, 530 warnings in 19.18s ======================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 1 мутантов: KILLED-BOTH=0 KILLED-ORACLE-ONLY=1 KILLED-REPO-ONLY=0 SURVIVED=0
+  CM-5 [KILLED-ORACLE-ONLY] reason-тексты job_started/job_cancelled перепутаны
+
+================================================================================
+КОНСОЛИДИРОВАННЫЙ ИТОГ КАМПАНИИ (после волны 2 усиления оракулов)
+================================================================================
+Волна 1: CM-5 SURVIVED -- ОБА канала сравнивали reason-тексты с САМОЙ картой
+(самореференциальная проверка): подмена текстов внутри карты невидима.
+Усиление оракула сертификатора (прецедент 2B-CERT D5/D6, 8-CERT волна 2,
+продукт НЕ менялся): G-SEM-2 получил ЛИТЕРАЛЬНЫЕ пины текстов §23.1
+контракта (сверка с контрактом, не с картой). Волна 2: CM-5 убит.
+
+Волна 2 (батчи): B2 CM-11..15, затем повтор CM-5 -- все убиты.
+Контроль кампании перед каждым батчем: оба канала зелёные (27/27 и 139 passed).
+
+ФИНАЛЬНАЯ ГРАНУЛАЦИЯ ПО 15 МУТАНТАМ (лучший результат на мутант):
+  CM-1  [KILLED-BOTH]        selection_evaluated: in_progress -> done
+  CM-2  [KILLED-BOTH]        tuning_job_cancelled: pending -> done
+  CM-3  [KILLED-BOTH]        tuning_skipped: done -> in_progress
+  CM-4  [KILLED-BOTH]        candidates_generated: done -> pending
+  CM-5  [KILLED-ORACLE-ONLY] перепутанные reason-тексты job_started/cancelled
+                             (repo-канал слеп: карта-относительные пины --
+                             рекомендация F-7AC1: перенос литеральных пинов
+                             в repo-сюиты)
+  CM-6  [KILLED-ORACLE-ONLY] NODE_SUMMARY_COUNT_KEYS без runnable_candidates
+                             (бейдж-пина в repo-сюите нет -- F-7AC1)
+  CM-7  [KILLED-BOTH]        носитель мёртв (чужая семья "baseline")
+  CM-8  [KILLED-ORACLE-ONLY] носитель без P16-очистки бейджа (гигиена
+                             счётчика носителя не запинена в repo -- F-7AC1)
+  CM-9  [KILLED-BOTH]        jobs/start без job_id
+  CM-10 [KILLED-BOTH]        tuning/skip без reason
+  CM-11 [KILLED-BOTH]        /tuning/skip без эха reason
+  CM-12 [KILLED-ORACLE-ONLY] /tuning/skip-pending unchanged-путь без эха
+                             (unchanged-эхо не покрыто repo-сюитой -- F-7AC1)
+  CM-13 [KILLED-BOTH]        механический done всем 7 типам
+  CM-14 [KILLED-BOTH]        носитель без _commit_status
+  CM-15 [KILLED-BOTH]        _commit_status без _status_ctx (происхождение)
+
+ИТОГ: 15/15 KILLED, 0 SURVIVED (KILLED-BOTH=9, KILLED-ORACLE-ONLY=6,
+KILLED-REPO-ONLY=0). Каналы: O -- 27 оракулов сертификатора (после волны 2
+-- с литеральными пинами §23.1); R -- repo-канал исполнителя
+(test_progress_audit_7a.py 19 + test_node_status_engine.py +
+test_progress_trace_hook.py = 139). Дисциплина: единый якорь (sha256),
+побайтовое восстановление после КАЖДОГО мутанта и в finally,
+RESTORE-CHECK в каждом батче, git diff пуст; продукт не менялся.
