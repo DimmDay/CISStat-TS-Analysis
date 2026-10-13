@@ -1,0 +1,63 @@
+# PROGR-AUDIT-7B CERT -- протокол СВОИХ оракулов на HEAD 318e3a8 (2026-10-13)
+# Команда: env -u DATABASE_URL PYTHONPATH=. python scripts/prograudit7bcert_oracles.py
+# Ожидание: все оракулы GREEN, кроме G-VAL-4 -- задокументированная находка F-7BC1
+# Волна 2: оракул G-METH-2 усилен литеральным stage-пином (продукт не менялся)
+
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-E2E/report "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-XR/report "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-XR/report?format=html "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-XR/mentor/next-step "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-EXP/report "HTTP/1.1 200 OK"
+========================================================================
+PROGR-AUDIT-7B CERT: own oracles -- 41/42 PASS
+========================================================================
+[PASS] G-ORG-1 auto-origin-fact-line -- line='Установлен исследуемый признак автоматически: load_kw.'
+[PASS] G-ORG-2 user-origin-fact-line -- line='Установлен исследуемый признак вручную: temp_c.'
+[PASS] G-ORG-3 legacy-absent-source-reads-user -- line='Установлен исследуемый признак вручную: temp_c.'
+[PASS] G-ORG-4 corrupted-source-honest-unknown -- line='Установлен исследуемый признак (происхождение выбора неизвестно): temp_c.'
+[PASS] G-ORG-5 meta-origin-labels-md-html -- meta origin auto in md+html
+[PASS] G-ORG-6 meta-legacy-source-honest -- legacy origin honest
+[PASS] G-ORG-7 auto-clear-user-sequence -- auto/cleared/user distinguishable
+[PASS] G-CLR-1 cleared-with-payload -- line='Исследуемый признак сброшен (был «load_kw», причина: target_type_converted).'
+[PASS] G-CLR-2 cleared-empty-payload-no-fabrication -- line='Исследуемый признак сброшен.'
+[PASS] G-TPL-1 candidates-generated -- line='Сформирован пул кандидатов (годных к запуску: 12, только каталог: 3, заблокировано: 4, спека 2.5).'
+[PASS] G-TPL-2 selection-evaluated-no-choice-fabrication -- line='Выполнена оценка выбора модели (рекомендация: «theta», ансамбль: not_eligible, когорта cohort-cert-A).'
+[PASS] G-TPL-3 models-compared -- line='Сравнение моделей выполнено (цель: smape_min, сравнение cmp-cert-9).'
+[PASS] G-TPL-4 diagnostics-direct -- line='Диагностика моделей выполнена (модель «tbats_lite», источник параметров: defaults, бэктест bt-cert-31).'
+[PASS] G-TPL-5 diagnostics-ensure-reuse-visible -- line='Диагностика моделей выполнена (рассчитана для 3, переиспользована для 2).'
+[PASS] G-TPL-6 tuning-skipped-reason-and-models-list -- line='Тюнинг пропущен аналитиком: оставлены параметры по умолчанию (модели: theta, naive_seasonal, причина: окно истории ниже мягкого порога).'
+[PASS] G-TPL-7 tuning-job-started -- line='Запущен job тюнинга (job job-cert-114, модель «theta», шагов: 64).'
+[PASS] G-TPL-8 tuning-job-cancelled -- line='Тюнинг отменён аналитиком до завершения (job job-cert-114, причина: решение аналитика).'
+[PASS] G-FB-1 fallback-keeps-type-id-and-unknown -- line='Событие трассы: future_audit_probe (интерпретация отчётом не определена; событие evt-cert-u1).'
+[PASS] G-META-1 model-carries-watermark-version-context -- watermark=5 version=2
+[PASS] G-META-2 md-meta-lines -- md meta complete
+[PASS] G-META-3 html-meta-lines -- html meta complete
+[PASS] G-PROOF-1 model-facts-carry-disjoint-ids -- ids=['00c7d9fe-cb26-4639-af37-6e10bac7fb78', '4bf112f8-9ac5-4a58-9dec-e4f659b8dc96', '91618a68-eac1-49b0-b093-58b3a21c786d', '9e16ccc2-721d-4771-9ac0-3bc4bbdfcca6', 'e82fd099-1bea-4a60-977f-457074277393']
+[PASS] G-PROOF-2 renders-contain-all-proof-links -- 5 proof-links in md+html
+[PASS] G-PROOF-3 e2e-proof-links-match-ledger -- ledger==report: 5 ids
+[PASS] G-VAL-1 stale-marked-md-html -- stale marker in md+html
+[PASS] G-VAL-2 unknown-legacy-fact-marked -- unknown marker in md
+[PASS] G-VAL-3 current-fact-no-noise -- current clean, proof kept
+[FAIL] G-VAL-4 run-without-context-single-meta-line -- ASSERT: F-7BC1: per-fact unknown-суффикс при запуске без контекста (§24.2: шум не фабрикуется)
+[PASS] G-METH-1 node-methodology-labeled-current -- label + verbatim registry text
+[PASS] G-METH-2 stage-methodology-and-note-separation -- stage literal pin + note separation
+[PASS] G-ADM-1 stage-span-out-label -- StageSpanStatOut honest label
+[PASS] G-ADM-2 rule-frequency-out-label -- RuleFrequencyOut honest label
+[PASS] G-ADM-3 sanity-node-frequency-out-label -- SanityNodeFrequencyOut honest label
+[PASS] G-ADM-4 engine-stage-span-docstring -- engine docstring honest
+[PASS] G-ESC-1 cleared-reason-escaped-in-html -- html escape of new template payload
+[PASS] G-ESC-2 templates-read-only-own-keys -- no secret/raw leak
+[PASS] G-XRED-1 four-readers-one-history -- 4 readers == watermark 6
+[PASS] G-XRED-2 export-self-sufficient-endpoint -- endpoint export self-sufficient
+[PASS] C-1 upload-line-no-secret-leak (base control) -- control: old pin intact
+[PASS] C-2 html-escape-dataset-name (base control) -- control: escape pin intact
+[PASS] C-3 none-target-honest-meta (base control) -- control: None target honest
+[PASS] C-4 unknown-stage-tail-section (base control) -- control: tail section intact
+========================================================================

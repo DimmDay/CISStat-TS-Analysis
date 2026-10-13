@@ -1,0 +1,132 @@
+# PROGR-AUDIT-7B CERT -- RED-протокол на базе b43e2eb (worktree, до реализации AUDIT-7B)
+# Команда: cd worktree-b43e2eb && env -u DATABASE_URL PYTHONPATH=worktree python CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py
+# Ожидание: контролы GREEN (C-1..C-4, G-ESC-2), контрактные оракулы AUDIT-7B RED
+# Финальная версия оракулов (с литеральным stage-пином G-METH-2)
+
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 451, in _
+    assert model.watermark == len(events), model.watermark
+           ^^^^^^^^^^^^^^^
+AttributeError: 'RunReportModel' object has no attribute 'watermark'
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 505, in _
+    ids = _fact_ids(model)
+          ^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 110, in _fact_ids
+    f.event_id
+AttributeError: 'ReportFact' object has no attribute 'event_id'
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 525, in _
+    ids = _fact_ids(model)
+          ^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 110, in _fact_ids
+    f.event_id
+AttributeError: 'ReportFact' object has no attribute 'event_id'
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-E2E/report "HTTP/1.1 200 OK"
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 625, in _
+    assert fact.validity == "stale", fact.validity
+           ^^^^^^^^^^^^^
+AttributeError: 'ReportFact' object has no attribute 'validity'
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 646, in _
+    assert fact.validity == "unknown", fact.validity
+           ^^^^^^^^^^^^^
+AttributeError: 'ReportFact' object has no attribute 'validity'
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 41, in _run
+    detail = fn()
+             ^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit7bcert_oracles.py", line 664, in _
+    assert model.stages[0].nodes[0].facts[0].validity == "current"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ReportFact' object has no attribute 'validity'
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-XR/report "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-XR/report?format=html "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-CERT7B-EXP/report "HTTP/1.1 200 OK"
+========================================================================
+PROGR-AUDIT-7B CERT: own oracles -- 5/42 PASS
+========================================================================
+[FAIL] G-ORG-1 auto-origin-fact-line -- ASSERT: Установлен исследуемый признак: load_kw.
+[FAIL] G-ORG-2 user-origin-fact-line -- ASSERT: Установлен исследуемый признак: temp_c.
+[FAIL] G-ORG-3 legacy-absent-source-reads-user -- ASSERT: Установлен исследуемый признак: temp_c.
+[FAIL] G-ORG-4 corrupted-source-honest-unknown -- ASSERT: Установлен исследуемый признак: temp_c.
+[FAIL] G-ORG-5 meta-origin-labels-md-html -- ASSERT: # Отчёт об исследовании RUN-CERT7B-M
+
+- Датасет: kotel_electric_hourly.csv
+- Исследуемый признак: load_kw
+- Статус запуска: в работе
+- Начат: 2026-10-12 08:00:00 UTC
+- Последняя активность: 2026-10-12 08:09:00 UTC
+- Событий в трассе: 5
+
+Линейная хронология по этапам пайплайна; методология остановок — тексты «Метрики и алгоритм» интерфейса платформы. Полные данные прогноза отдаются по ссылке на export.json (сериализация не дублируется).
+
+## Загрузка
+
+### Структура
+
+- 2026-10-12 08:01:00 UTC — Загружен датасет «kotel_electric_hourly.csv»: строк: 48, колонок: 3.
+
+## Валидация
+
+### Решения уровня 
+[FAIL] G-ORG-6 meta-legacy-source-honest -- ASSERT: мета легаси отсутствует
+[FAIL] G-ORG-7 auto-clear-user-sequence -- ASSERT: Установлен исследуемый признак: load_kw.
+[FAIL] G-CLR-1 cleared-with-payload -- ASSERT: Событие трассы: target_column_cleared.
+[FAIL] G-CLR-2 cleared-empty-payload-no-fabrication -- ASSERT: Событие трассы: target_column_cleared.
+[FAIL] G-TPL-1 candidates-generated -- ASSERT: Событие трассы: candidates_generated.
+[FAIL] G-TPL-2 selection-evaluated-no-choice-fabrication -- ASSERT: Событие трассы: selection_evaluated.
+[FAIL] G-TPL-3 models-compared -- ASSERT: Событие трассы: models_compared.
+[FAIL] G-TPL-4 diagnostics-direct -- ASSERT: Событие трассы: diagnostics_run.
+[FAIL] G-TPL-5 diagnostics-ensure-reuse-visible -- ASSERT: Событие трассы: diagnostics_run.
+[FAIL] G-TPL-6 tuning-skipped-reason-and-models-list -- ASSERT: Событие трассы: tuning_skipped.
+[FAIL] G-TPL-7 tuning-job-started -- ASSERT: Событие трассы: tuning_job_started.
+[FAIL] G-TPL-8 tuning-job-cancelled -- ASSERT: Событие трассы: tuning_job_cancelled.
+[FAIL] G-FB-1 fallback-keeps-type-id-and-unknown -- ASSERT: Событие трассы: future_audit_probe.
+[FAIL] G-META-1 model-carries-watermark-version-context -- ERROR AttributeError: 'RunReportModel' object has no attribute 'watermark'
+[FAIL] G-META-2 md-meta-lines -- ASSERT: формат отсутствует
+[FAIL] G-META-3 html-meta-lines -- ASSERT: формат (html)
+[FAIL] G-PROOF-1 model-facts-carry-disjoint-ids -- ERROR AttributeError: 'ReportFact' object has no attribute 'event_id'
+[FAIL] G-PROOF-2 renders-contain-all-proof-links -- ERROR AttributeError: 'ReportFact' object has no attribute 'event_id'
+[FAIL] G-PROOF-3 e2e-proof-links-match-ledger -- ASSERT: {'29cf6208-07d1-4df1-844c-c8e89a23e5a1', 'dfbed5f4-d847-4033-9cad-d90e007f1918', 'f5d9f2f3-d3a9-4637-a921-0480031f53ec', '77f5d1f5-9627-4534-9514-d667d29db3ff', '0514970e-7898-4f5f-a759-9cc997ea5a64'}
+[FAIL] G-VAL-1 stale-marked-md-html -- ERROR AttributeError: 'ReportFact' object has no attribute 'validity'
+[FAIL] G-VAL-2 unknown-legacy-fact-marked -- ERROR AttributeError: 'ReportFact' object has no attribute 'validity'
+[FAIL] G-VAL-3 current-fact-no-noise -- ERROR AttributeError: 'ReportFact' object has no attribute 'validity'
+[FAIL] G-VAL-4 run-without-context-single-meta-line -- ASSERT: честная строка меты отсутствует
+[FAIL] G-METH-1 node-methodology-labeled-current -- ASSERT: метка справочной методологии отсутствует
+[FAIL] G-METH-2 stage-methodology-and-note-separation -- ASSERT: метка справочной методологии отсутствует
+[FAIL] G-ADM-1 stage-span-out-label -- ASSERT: время по стадии (агрегат по запускам, минуты).
+[FAIL] G-ADM-2 rule-frequency-out-label -- ASSERT: частота правила (§7.1 next_step / §7.2 по правилу).
+[FAIL] G-ADM-3 sanity-node-frequency-out-label -- ASSERT: частота sanity-предупреждений §7.2 по узлу.
+[FAIL] G-ADM-4 engine-stage-span-docstring -- ASSERT: время по стадии (агрегат по запускам, минуты).
+[FAIL] G-ESC-1 cleared-reason-escaped-in-html -- ASSERT: нет экранирования
+[PASS] G-ESC-2 templates-read-only-own-keys -- no secret/raw leak
+[FAIL] G-XRED-1 four-readers-one-history -- ASSERT: {'4dad8931-087e-43c2-aaee-07fb44cca4d7', 'ef062a5b-e231-4e87-9bc3-88be4fb1696d', '851a6adc-2384-4d36-846f-db0d174c8637', 'f0e941af-adb9-4688-b234-4c10fbb4e215', '26d316c2-3094-4587-b013-e7fa673a54ba', 'fb92a2c7-6f98-4e37-bb83-95e30eed8ddc'}
+[FAIL] G-XRED-2 export-self-sufficient-endpoint -- ASSERT: 
+[PASS] C-1 upload-line-no-secret-leak (base control) -- control: old pin intact
+[PASS] C-2 html-escape-dataset-name (base control) -- control: escape pin intact
+[PASS] C-3 none-target-honest-meta (base control) -- control: None target honest
+[PASS] C-4 unknown-stage-tail-section (base control) -- control: tail section intact
+========================================================================

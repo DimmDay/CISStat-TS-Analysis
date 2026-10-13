@@ -1,0 +1,90 @@
+# PROGR-AUDIT-7B CERT -- протокол мутационной кампании СВОИХ мутантов
+# Волна 1: полный прогон 24 мутантов (классы дизъюнктны 7A-CERT CM-1..15)
+# Волна 2: перепрогон выживших после усиления оракула G-METH-2 (литеральный stage-пин)
+# Дисциплина: якорь sha256, побайтовое восстановление, RESTORE-CHECK, контроль каналов
+
+===== ВОЛНА 1 (полный прогон) =====
+==============================================================================
+PROGR-AUDIT-7B CERT: mutation campaign -- own mutants
+targets: ['app/core/admin_analytics.py', 'app/core/run_report.py', 'apps/api/routers/progress.py']
+anchor sha256 app/core/admin_analytics.py: f454d33a41c2f0c0…
+anchor sha256 app/core/run_report.py: 2a6767fa17f97285…
+anchor sha256 apps/api/routers/progress.py: 5e46eefdf0732f86…
+CONTROL no-mutant: oracles 41/42 (baseline-green 41), repo GREEN
+[01/24] CM7B-1 report-version-2-to-1: KILLED-BOTH (oracles green 37/41, repo FAIL)
+[02/24] CM7B-2 watermark-zeroed: KILLED-BOTH (oracles green 36/41, repo FAIL)
+[03/24] CM7B-3 origin-map-auto-flip: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+[04/24] CM7B-4 auto-origin-head-masked-as-manual: KILLED-BOTH (oracles green 39/41, repo FAIL)
+[05/24] CM7B-5 corrupted-source-masked-as-manual: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[06/24] CM7B-6 cleared-drops-before-target: KILLED-BOTH (oracles green 39/41, repo FAIL)
+[07/24] CM7B-7 cleared-drops-reset-reason: KILLED-BOTH (oracles green 38/41, repo FAIL)
+[08/24] CM7B-8 candidates-drops-runnable-count: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[09/24] CM7B-9 selection-drops-ensemble-verdict: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[10/24] CM7B-10 diagnostics-drops-reuse: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[11/24] CM7B-11 tuning-skipped-drops-reason: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[12/24] CM7B-12 tuning-cancelled-drops-job-id: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[13/24] CM7B-13 fallback-drops-unknown-interpretation: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[14/24] CM7B-14 fallback-drops-event-id: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[15/24] CM7B-15 validity-markers-disabled: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[16/24] CM7B-16 md-proof-links-dropped: KILLED-BOTH (oracles green 37/41, repo FAIL)
+[17/24] CM7B-17 no-context-meta-statement-dropped: SURVIVED (oracles green 41/41, repo GREEN)
+[18/24] CM7B-18 methodology-label-dropped-md-stage: SURVIVED (oracles green 41/41, repo GREEN)
+[19/24] CM7B-19 note-drops-reference-status: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+[20/24] CM7B-20 legacy-origin-masked-as-user: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+[21/24] CM7B-21 html-watermark-line-dropped: KILLED-BOTH (oracles green 39/41, repo FAIL)
+[22/24] CM7B-22 html-fact-escape-removed: KILLED-BOTH (oracles green 40/41, repo FAIL)
+[23/24] CM7B-23 span-out-label-flips-to-active-time: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+[24/24] CM7B-24 engine-doc-flips-to-active-time: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+==============================================================================
+ФИНАЛ: всего 24 | KILLED 22 | SURVIVED 2 | APPLY-FAIL 0
+  KILLED-BOTH          CM7B-1 report-version-2-to-1 37/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-2 watermark-zeroed 36/41 green-failed FAIL 
+  KILLED-ORACLE-ONLY   CM7B-3 origin-map-auto-flip 40/41 green-failed GREEN 
+  KILLED-BOTH          CM7B-4 auto-origin-head-masked-as-manual 39/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-5 corrupted-source-masked-as-manual 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-6 cleared-drops-before-target 39/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-7 cleared-drops-reset-reason 38/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-8 candidates-drops-runnable-count 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-9 selection-drops-ensemble-verdict 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-10 diagnostics-drops-reuse 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-11 tuning-skipped-drops-reason 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-12 tuning-cancelled-drops-job-id 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-13 fallback-drops-unknown-interpretation 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-14 fallback-drops-event-id 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-15 validity-markers-disabled 40/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-16 md-proof-links-dropped 37/41 green-failed FAIL 
+  SURVIVED             CM7B-17 no-context-meta-statement-dropped 41/41 green-failed GREEN 
+  SURVIVED             CM7B-18 methodology-label-dropped-md-stage 41/41 green-failed GREEN 
+  KILLED-ORACLE-ONLY   CM7B-19 note-drops-reference-status 40/41 green-failed GREEN 
+  KILLED-ORACLE-ONLY   CM7B-20 legacy-origin-masked-as-user 40/41 green-failed GREEN 
+  KILLED-BOTH          CM7B-21 html-watermark-line-dropped 39/41 green-failed FAIL 
+  KILLED-BOTH          CM7B-22 html-fact-escape-removed 40/41 green-failed FAIL 
+  KILLED-ORACLE-ONLY   CM7B-23 span-out-label-flips-to-active-time 40/41 green-failed GREEN 
+  KILLED-ORACLE-ONLY   CM7B-24 engine-doc-flips-to-active-time 40/41 green-failed GREEN 
+RESTORE-CHECK финальный: все файлы побайтово исходны
+
+===== ВОЛНА 2a: CM7B-18 (усиленный оракул) =====
+==============================================================================
+PROGR-AUDIT-7B CERT: mutation campaign -- own mutants
+wave-2 filter: 'methodology-label' -> 1 mutants
+targets: ['app/core/run_report.py']
+anchor sha256 app/core/run_report.py: 2a6767fa17f97285…
+CONTROL no-mutant: oracles 41/42 (baseline-green 41), repo GREEN
+[01/24] CM7B-18 methodology-label-dropped-md-stage: KILLED-ORACLE-ONLY (oracles green 40/41, repo GREEN)
+==============================================================================
+ФИНАЛ: всего 1 | KILLED 1 | SURVIVED 0 | APPLY-FAIL 0
+  KILLED-ORACLE-ONLY   CM7B-18 methodology-label-dropped-md-stage 40/41 green-failed GREEN 
+RESTORE-CHECK финальный: все файлы побайтово исходны
+
+===== ВОЛНА 2b: CM7B-17 (перепрогон) =====
+==============================================================================
+PROGR-AUDIT-7B CERT: mutation campaign -- own mutants
+wave-2 filter: 'no-context-meta-statement' -> 1 mutants
+targets: ['app/core/run_report.py']
+anchor sha256 app/core/run_report.py: 2a6767fa17f97285…
+CONTROL no-mutant: oracles 41/42 (baseline-green 41), repo GREEN
+[01/24] CM7B-17 no-context-meta-statement-dropped: SURVIVED (oracles green 41/41, repo GREEN)
+==============================================================================
+ФИНАЛ: всего 1 | KILLED 0 | SURVIVED 1 | APPLY-FAIL 0
+  SURVIVED             CM7B-17 no-context-meta-statement-dropped 41/41 green-failed GREEN 
+RESTORE-CHECK финальный: все файлы побайтово исходны
