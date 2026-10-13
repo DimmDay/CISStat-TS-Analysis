@@ -1,0 +1,95 @@
+# PROGR-AUDIT-6B-CERT — Мутационная кампания СВОИХ мутантов (13)
+# Объект: 8b309eb; кампания выполнялась последовательными батчами MD-1..4, MD-5..9, MD-10..13;
+# в КАЖДОМ батче: CONTROL (оба канала зелёные без мутации) + побайтовый RESTORE-CHECK.
+# Волна 1→2 (открыто, продукт не менялся): исходная сюита без O-REC-2 оставляла MD-6 SURVIVED
+# (оба канала проверяли idемпотентность на уровне списка due, а не доставки); усиление оракула
+# O-REC-2 (двойная доставка того же pending-обязательства) — MD-6 убит.
+
+ANCHOR apps/api/delivery_outbox.py: sha256=93b7571d66a5cb40 bytes=33365
+ANCHOR apps/api/progress_maps.py: sha256=a9ef3cc4d5822f75 bytes=27539
+ANCHOR apps/api/research_runs.py: sha256=b83c00e79f4251a4 bytes=117352
+ANCHOR apps/api/routers/progress.py: sha256=28010da4a12263ba bytes=120810
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=28 FAIL=0 SKIP=0)
+CONTROL (no mutation): repo    EXIT=0 (======================== 96 passed, 15 skipped in 3.76s ========================)
+CONTROL OK -- каналы пригодны
+MD-1 [KILLED-ORACLE-ONLY] смерть first-wins дедупа register (перезапись)
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-OUT-2 изоляция копий + first-wins дедуп register: дедуп register НЕ first-wins (перезапись)
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.62s ========================
+MD-2 [KILLED-BOTH] регистрация в транзакции без bind ключа commit'а
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-ATOM-2 полный батч: receipt + обязательство + чекпоинт + события ОДНОЙ транзакцией, привязка ключа, watermark (§25.2/§25.3): ключ commit'а не привязан: ''
+    R EXIT=1: =================== 1 failed, 95 passed, 15 skipped in 3.73s ===================
+MD-3 [KILLED-BOTH] receipt старше delivered/failed (оптимизм против бюджета)
+    O EXIT=1: ИТОГ: PASS=26 FAIL=2 SKIP=0 |   FAIL O-EP-2 таблица предшествования classify_operation: delivered/failed старше receipt; defensive-ветка честна (6 строк, свои формы): delivered-обязательство с receipt: committed_projecti
+    R EXIT=1: =================== 3 failed, 93 passed, 15 skipped in 3.78s ===================
+MD-4 [KILLED-BOTH] бюджет никогда не исчерпывается (mark_failed без failed)
+    O EXIT=1: ИТОГ: PASS=26 FAIL=2 SKIP=0 |   FAIL O-EP-1 эндпоинты: неизвестная операция 200 not_executed, неизвестный запуск 404, исчерпанный бюджет failed + last_error, payload НЕ публичен, counts_by_state: бюджет 5 != 2 попыток не
+    R EXIT=1: =================== 4 failed, 92 passed, 15 skipped in 3.95s ===================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 4 мутантов: KILLED-BOTH=3 KILLED-ORACLE-ONLY=1 KILLED-REPO-ONLY=0 SURVIVED=0
+  MD-1 [KILLED-ORACLE-ONLY] смерть first-wins дедупа register (перезапись)
+  MD-2 [KILLED-BOTH] регистрация в транзакции без bind ключа commit'а
+  MD-3 [KILLED-BOTH] receipt старше delivered/failed (оптимизм против бюджета)
+  MD-4 [KILLED-BOTH] бюджет никогда не исчерпывается (mark_failed без failed)
+
+═══════════ батч 2 ═══════════
+
+ANCHOR apps/api/delivery_outbox.py: sha256=93b7571d66a5cb40 bytes=33365
+ANCHOR apps/api/progress_maps.py: sha256=a9ef3cc4d5822f75 bytes=27539
+ANCHOR apps/api/research_runs.py: sha256=b83c00e79f4251a4 bytes=117352
+ANCHOR apps/api/routers/progress.py: sha256=28010da4a12263ba bytes=120810
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=28 FAIL=0 SKIP=0)
+CONTROL (no mutation): repo    EXIT=0 (======================== 96 passed, 15 skipped in 3.59s ========================)
+CONTROL OK -- каналы пригодны
+MD-5 [KILLED-ORACLE-ONLY] база backoff 30 -> 31 (математика без repo-пина)
+    O EXIT=1: ИТОГ: PASS=26 FAIL=2 SKIP=0 |   FAIL O-ENV-2 математика backoff: полная серия 1..12, кэп 3600, defensive attempts=0 (§25.4): backoff(1) == 31, ожидалось 30 |   FAIL O-ENV-3 словарь состояний: 3 состояния outbox, 5 состоя
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.77s ========================
+MD-6 [KILLED-ORACLE-ONLY] смерть дедупа доставки по event_id (worker дважды)
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-REC-2 crash между доставкой и закрытием обязательства: тот же task доставлен дважды -- ровно одна копия в слое 1 (дедуп по event_id, RED-карточка §17 «worker дважды»): двойная доста
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.65s ========================
+MD-7 [KILLED-BOTH] неизвестный kind доставляется как проекция (изобретение)
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-REC-1 неизвестный kind: worker отказывает без изобретения операции (failed, причина названа, попытка учтена, события целы): неизвестный kind обязан дать failed: {'due': 1, 'delivere
+    R EXIT=1: =================== 1 failed, 95 passed, 15 skipped in 4.02s ===================
+MD-8 [KILLED-ORACLE-ONLY] sweep удаляет ССЫЛАЕМЫЕ снимки (потеря данных)
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-SWEEP-1 sweep: сирот удалён, ССЫЛАЕМЫЙ снимок выжил, повтор no-op (свой сирот через file_store): sweep удалил не только сирота: ['45a12d5e-10ce-48de-92dc-54e68d5faffc', 'cp-cert6b-o
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.83s ========================
+MD-9 [KILLED-BOTH] run-level батч без обязательства доставки
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-RUN-2 пауза/резюме: обязательства event:{{run}}:{{event}} закрыты синхронным зеркалом, read-after-write с watermark: run_paused без обязательства доставки (required-путь потерян)
+    R EXIT=1: =================== 3 failed, 93 passed, 15 skipped in 3.77s ===================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 5 мутантов: KILLED-BOTH=2 KILLED-ORACLE-ONLY=3 KILLED-REPO-ONLY=0 SURVIVED=0
+  MD-5 [KILLED-ORACLE-ONLY] база backoff 30 -> 31 (математика без repo-пина)
+  MD-6 [KILLED-ORACLE-ONLY] смерть дедупа доставки по event_id (worker дважды)
+  MD-7 [KILLED-BOTH] неизвестный kind доставляется как проекция (изобретение)
+  MD-8 [KILLED-ORACLE-ONLY] sweep удаляет ССЫЛАЕМЫЕ снимки (потеря данных)
+  MD-9 [KILLED-BOTH] run-level батч без обязательства доставки
+
+═══════════ батч 3 ═══════════
+
+ANCHOR apps/api/delivery_outbox.py: sha256=93b7571d66a5cb40 bytes=33365
+ANCHOR apps/api/progress_maps.py: sha256=a9ef3cc4d5822f75 bytes=27539
+ANCHOR apps/api/research_runs.py: sha256=b83c00e79f4251a4 bytes=117352
+ANCHOR apps/api/routers/progress.py: sha256=28010da4a12263ba bytes=120810
+CONTROL (no mutation): oracle EXIT=0 (ИТОГ: PASS=28 FAIL=0 SKIP=0)
+CONTROL (no mutation): repo    EXIT=0 (======================== 96 passed, 15 skipped in 3.64s ========================)
+CONTROL OK -- каналы пригодны
+MD-10 [KILLED-BOTH] закрытие обязательства ДО сохранения проекции
+    O EXIT=1: ИТОГ: PASS=25 FAIL=3 SKIP=0 |   FAIL O-MAP-1 свой контур: здоровая поставка 200 -> отказ cache: 500 честно называет committed_projection_pending/operation_id/watermark -> worker доставляет -> повтор дедуплицирован: обяза
+    R EXIT=1: =================== 3 failed, 93 passed, 15 skipped in 3.85s ===================
+MD-11 [KILLED-REPO-ONLY] дрейф каталога файлов-дублей миграций (0005 выпал)
+    O EXIT=0: ИТОГ: PASS=28 FAIL=0 SKIP=0
+    R EXIT=1: =================== 1 failed, 95 passed, 15 skipped in 3.87s ===================
+MD-12 [KILLED-ORACLE-ONLY] сводка worker'а: session_absent считается delivered
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-PG-3 due-фильтр worker'а на живом PG: будущее не доставляется, due доставляется; паритет list_due с Memory: PG прогон недостоверен: {'due': 1, 'delivered': 1, 'session_absent': 0, '
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.76s ========================
+MD-13 [KILLED-ORACLE-ONLY] смерть due-фильтра PostgresDeliveryOutbox.list_due
+    O EXIT=1: ИТОГ: PASS=27 FAIL=1 SKIP=0 |   FAIL O-PG-3 due-фильтр worker'а на живом PG: будущее не доставляется, due доставляется; паритет list_due с Memory: UNEXPECTED ProgrammingError('the query has 2 placeholders but 3 parameter
+    R EXIT=0: ======================== 96 passed, 15 skipped in 3.88s ========================
+RESTORE-CHECK: все продуктовые файлы побайтово восстановлены
+
+ИТОГ кампании: 4 мутантов: KILLED-BOTH=1 KILLED-ORACLE-ONLY=2 KILLED-REPO-ONLY=1 SURVIVED=0
+  MD-10 [KILLED-BOTH] закрытие обязательства ДО сохранения проекции
+  MD-11 [KILLED-REPO-ONLY] дрейф каталога файлов-дублей миграций (0005 выпал)
+  MD-12 [KILLED-ORACLE-ONLY] сводка worker'а: session_absent считается delivered
+  MD-13 [KILLED-ORACLE-ONLY] смерть due-фильтра PostgresDeliveryOutbox.list_due
