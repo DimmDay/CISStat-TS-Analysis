@@ -81,7 +81,13 @@ def _parse_ts(raw: Any) -> Optional[datetime]:
 
 @dataclass(frozen=True)
 class StageSpanStat:
-    """Время по стадии (агрегат по запускам, минуты)."""
+    """Календарный span стадии (агрегат по запускам, минуты).
+
+    AUDIT-7B (план §16 п.6, спека §4.2.5): интервал между ПЕРВЫМ и
+    ПОСЛЕДНИМ событием стадии внутри запуска (по читаемым ts) -- это
+    календарный span между событиями, НЕ время активной работы аналитика
+    и не длительность расчёта (паузы, перерывы и фоновые промежутки
+    внутрь не различаются)."""
 
     stage: str
     runs_with_stage: int
@@ -220,8 +226,10 @@ def _runs_by_status(
 def _stage_time(
     runs: list[dict[str, Any]], events_by_run: Mapping[str, list[dict[str, Any]]]
 ) -> list[StageSpanStat]:
-    """Span стадии внутри запуска: last_ts - first_ts по ЧИТАЕМЫМ ts;
-    измеримо при >= 2 читаемых событиях. minutes -- float."""
+    """Календарный span стадии внутри запуска: last_ts - first_ts по
+    ЧИТАЕМЫМ ts; измеримо при >= 2 читаемых событиях. minutes -- float.
+    AUDIT-7B: НЕ «время активной работы» -- календарный интервал между
+    событиями (спека §4.2.5)."""
     spans: dict[str, list[float]] = {}
     for run in runs:
         run_id = str(run.get("run_id") or "")

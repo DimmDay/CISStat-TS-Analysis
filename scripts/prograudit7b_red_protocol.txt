@@ -1,0 +1,97 @@
+# PROGR-AUDIT-7B — RED-протокол (план §16, задача AUDIT-7B: документ исследования)
+
+База: main@b43e2eb (HEAD = коммит PROGR-AUDIT-7A; рабочее дерево чистое до задачи).
+Дата: 2026-10-13. Файл оракулов: tests/api/test_progress_audit_7b.py (НОВЫЙ, 33 теста).
+
+## Команда
+
+```bash
+cd /home/z/my-project/CISStat-TS-Analysis
+/home/z/.venv/bin/python -m pytest tests/api/test_progress_audit_7b.py -q
+# Результат на базе b43e2eb: 31 failed / 2 passed / 0 errors (4.23s)
+```
+
+## Среда
+
+Python 3.12.15 (venv /home/z/.venv); на базе задачи установлен modeling-runtime
+(R6-среда, паттерн AUDIT-3-CERT/8-CERT): pywt 1.8.0, pandera, pgserver,
+psycopg2-binary, prophet, statsforecast, arch, ruptures — импорт apps.api.main OK
+(до установки — ModuleNotFoundError: pywt → pandera → RuntimeError готовности
+моделей; requirements-neural НЕ устанавливались — средовой класс «без
+neural-группы», README среды песочницы).
+
+## Классы отказов (пооракульно, причина RED подтверждена)
+
+R1 происхождение цели (P18/F12, spec §9 «автоматически выбрано ≠ выбрано
+   аналитиком») — 4 FAIL:
+  - test_auto_origin_visible: assert 'авто' in 'Установлен исследуемый признак: rain.'
+  - test_user_origin_visible / test_legacy_absent_source_reads_as_user:
+    'вручную'/'аналитик' отсутствуют в строке (source и его отсутствие
+    неразличимы читателю отчёта)
+  - test_unknown_source_is_honest: мусорный source читается как обычный выбор
+R2 сброс цели — 3 FAIL:
+  - test_cleared_line_with_reason_and_before: assert 'сброшен' in
+    'Событие трассы: target_column_cleared.' (нет своего шаблона — общий
+    fallback, before_target/reset_reason теряются)
+  - test_cleared_minimal_payload_no_fabrication: та же причина
+  - test_auto_clear_user_sequence: модель не различает auto→сброс→user;
+    model.target_column_source не существует
+R3 семь Modeling-типов AUDIT-7A — human-шаблоны отсутствуют — 8 FAIL:
+  каждый из test_candidates_generated/selection_evaluated/models_compared/
+  diagnostics_direct/diagnostics_ensure_reuse_is_visible/tuning_skipped_
+  with_reason/tuning_job_started/tuning_job_cancelled — строка
+  'Событие трассы: {event_type}.'; параметры/исходы payload теряются
+  (spec §9: «Новые Modeling-типы получают шаблоны и сохраняют параметры/
+  исходы»)
+R4 fallback без идентичности — 1 FAIL:
+  - test_fallback_keeps_type_and_id_and_reports_unknown: event_id
+    'evt-unknown-42' и слово «интерпретация» отсутствуют (план §16:
+    «Общий fallback сохраняет исходный тип/ids»)
+R5 watermark/версия формата — 6 FAIL + 2 E2E FAIL:
+  - test_model_carries_watermark_and_version: model.watermark /
+    model.report_version не существуют
+  - test_md_carries_format_version_watermark / test_html_...: строк мета
+    «Версия формата отчёта»/«Формат отчёта»/watermark нет
+  - test_facts_carry_event_id: ReportFact.event_id не существует
+  - test_endpoint_document_contract_headers_honest: документ без
+    версии/формата/watermark
+  - test_md_html_panel_mentor_same_facts_and_watermark: сравнение
+    невозможно — в MD/HTML нет proof-ссылок «(событие id)» и watermark
+    (spec §9: панель/Наставник/отчёт — читатели ОДНОЙ версии истории)
+R6 историческая применимость — 6 FAIL:
+  - test_stale_fact_marked_after_restore: fact.validity не существует
+    (после raw restore факт ctx-old неотличим от current)
+  - test_stale_marker_visible_in_md_and_html: маркера «историческ» нет
+  - test_unknown_validity_fact_marked: легаси-факт без context_id не
+    unknown
+  - test_current_fact_not_marked: (обратная сторона — при реализации
+    обязан остаться зелёным: свой контекст без суффикса)
+  - test_run_without_context_meta_statement_no_fact_noise: строки
+    «Контекст расчёта» в мете нет
+  - test_meta_carries_target_origin_and_context: «Происхождение цели» /
+    «Контекст расчёта» в мете нет; model.context_id не существует
+R7 методология без маркировки текущей версии — 1 FAIL:
+  - test_methodology_labeled_current_version: в MD нет слов
+    «текущ»+«реестр» (§4.2.6: «пояснения следует помечать как справочный
+    текст текущей версии»); сам вербатим-текст реестра в MD присутствует
+    (пин §5.4 не нарушен)
+R8 подписи admin-аналитики (план §16 п.6) — 2 FAIL:
+  - test_stage_span_label_is_calendar_span_not_active_time: docstring
+    StageSpanStatOut «Время по стадии» — календарный span назван временем
+  - test_observation_frequency_not_unique_decisions: docstring
+    RuleFrequencyOut не отражает «наблюдение/вызов» (частота записей
+    журнала, не число уникальных решений)
+
+## Контролы (GREEN на базе — пины прежних контрактов, 2 PASS)
+
+  - test_fact_line_reads_only_template_keys: шаблоны читают только свои
+    ключи payload — посторонние ключи (api_key/raw_series) не рендерятся
+  - test_html_escape_of_user_data_preserved: экранирование HTML §5.4
+    (PROGR-7) сохраняется
+
+## Вывод
+
+31/33 оракула красны на неизменённом HEAD по ожидаемым классам R1–R8
+(состав карточки §16); 2 контрола зелены. Реализация стартует после этого
+протокола; GREEN — повторный прогон + адресный регресс
+(test_run_report.py целиком — существующие пины) + полный tests/api.

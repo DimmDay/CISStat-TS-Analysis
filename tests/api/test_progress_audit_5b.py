@@ -640,8 +640,12 @@ class TestConsumerConsistency:
         resp = client.get(f"/v1/progress/runs/{run_id}/report")
         assert resp.status_code == 200
         body = resp.text
-        pos_rain = body.find("Установлен исследуемый признак: rain.")
-        pos_snow = body.find("Установлен исследуемый признак: snow.")
+        # Versioned-обновление (AUDIT-7B, формат отчёта v2): строка факта
+        # выбора цели несёт происхождение (P18/F12 -- payload без source --
+        # legacy user, «вручную»; контракт PROGR-25-A). Суть пина --
+        # канонический порядок фактов (P12), не формулировка строки.
+        pos_rain = body.find("Установлен исследуемый признак вручную: rain.")
+        pos_snow = body.find("Установлен исследуемый признак вручную: snow.")
         assert pos_rain != -1 and pos_snow != -1
         # канонический порядок: sequence 1 (rain) раньше sequence 2 (snow)
         assert pos_rain < pos_snow
