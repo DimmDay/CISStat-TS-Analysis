@@ -15,7 +15,14 @@
 //   - паритет: текст каждой записи реестра === текст мигрированной константы
 //     (help-parity.fixture.json — оракул, снятый с кода до миграции);
 //   - покрытие двунаправленное: реестр покрывает РОВНО ключи фиксстуры
-//     (ни одной утерянной и ни одной лишней записи);
+//     (ни одной утерянной и ни одной лишней записи; нативные записи —
+//     созданные прямо в реестре без константы-предшественника — входят в
+//     фиксстуру с superseded_constant: null и пинятся отдельным тестом);
+//   - UI-UPLOAD-HELP-1 (2026-10-14, постановка тимлида): кнопка «Справка»
+//     заголовка колонки «Загрузка» рендерит развёрнутое описание модуля из
+//     реестра (upload.module.module_help, нативная запись) — описание
+//     написано В РЕЕСТРЕ (единый источник методологий/описаний), константы
+//     в TsAnalysisUpload.tsx нет и быть не должно (греп-инвариант ниже).
 //   - ключ (stage_id, node_id, facet) уникален, entry_id уникален;
 //   - честный промах: несуществующий ключ → null (no fabricated results);
 //   - superseded_constant — аудит происхождения («файл::КОНСТАНТА»);
@@ -33,7 +40,7 @@ interface FixtureEntry {
   stage_id: string;
   node_id: string | null;
   facet: string;
-  superseded_constant: string;
+  superseded_constant: string | null; // null — нативная запись реестра (§1.1 spec_education.md: str | None)
   text: string;
 }
 
@@ -45,8 +52,8 @@ const registryKey = (e: { stage_id: string; node_id: string | null; facet: strin
   `${e.stage_id}|${e.node_id ?? "module"}|${e.facet}`;
 
 describe("EDU-HELP-1: реестр контекстной справки — источник истины (Шаг 3)", () => {
-  test("фикстура-оракул снята с кода до миграции: 77 констант пяти модулей", () => {
-    expect(fixture).toHaveLength(77);
+  test("фикстура-оракул: 77 мигрированных констант пяти модулей + нативная запись модуля «Загрузка» (UI-UPLOAD-HELP-1)", () => {
+    expect(fixture).toHaveLength(78);
     const byStage: Record<string, number> = {};
     for (const f of fixture) byStage[f.stage_id] = (byStage[f.stage_id] ?? 0) + 1;
     expect(byStage).toEqual({
@@ -55,10 +62,11 @@ describe("EDU-HELP-1: реестр контекстной справки — и�
       eda: 21,
       modeling: 12,
       forecasting: 2,
+      upload: 1, // нативная запись upload.module.module_help — создана в реестре
     });
   });
 
-  test("паритет байт-в-байт: каждый текст реестра === текст мигрированной константы", () => {
+  test("паритет байт-в-байт: каждый текст реестра === текст фиксстуры (мигрированной константы / нативной записи)", () => {
     for (const f of fixture) {
       const entry = describeNode(
         f.stage_id as never,
@@ -101,10 +109,26 @@ describe("EDU-HELP-1: реестр контекстной справки — и�
     }
   });
 
-  test("модульная справка (module_help) есть у всех пяти реализованных этапов", () => {
-    for (const stage of ["validation", "preprocessing", "eda", "modeling", "forecasting"] as const) {
+  test("модульная справка (module_help) есть у всех шести реализованных этапов, включая «Загрузку»", () => {
+    for (const stage of ["upload", "validation", "preprocessing", "eda", "modeling", "forecasting"] as const) {
       expect(describeNode(stage, null, "module_help")).not.toBeNull();
     }
+  });
+
+  test("нативная запись upload.module.module_help содержательно наполнена (остановки, выходы, анонс Валидации)", () => {
+    const entry = describeNode("upload", null, "module_help");
+    expect(entry).not.toBeNull();
+    const text = (entry as KnowledgeHelpEntry).text;
+    // Структура следует паттерну module_help остальных модулей (Цели → выходы → пайплайн).
+    expect(text).toContain("Цели модуля");
+    // Все 5 остановок степпера названы (реестр upload_stops.json).
+    for (const stop of ["Обзор", "График", "Распределение", "Структура", "Качество"]) {
+      expect(text).toContain(stop);
+    }
+    // Развёрнутое описание: выходы модуля + честный анонс следующего этапа.
+    expect(text).toContain("Исследуемый признак");
+    expect(text).toContain("Валидация");
+    expect(text.length).toBeGreaterThan(1200);
   });
 
   test("stage_overview: Моделирование покрывает 11 стадий графа, Прогнозирование — этап целиком", () => {
@@ -120,17 +144,27 @@ describe("EDU-HELP-1: реестр контекстной справки — и�
     expect(describeNode("validation", "nonexistent_check", "metrics")).toBeNull();
     expect(describeNode("eda", "descriptive", "module_help")).toBeNull();
     expect(describeNode("upload", "anything", "metrics" as KnowledgeHelpFacet)).toBeNull();
+    // module_help — модульная грань (node_id=null): узлового ключа у «Загрузки» нет.
+    expect(describeNode("upload", "overview", "module_help")).toBeNull();
   });
 
-  test("superseded_constant — аудит происхождения в формате «Файл::КОНСТАНТА»", () => {
+  test("superseded_constant — аудит происхождения: мигрированные «Файл::КОНСТАНТА», нативные — null (набор запинен)", () => {
+    // Нативные записи (созданы прямо в реестре, константы-предшественника
+    // не существовало) — честный null, а не вымышленная ссылка (§1.1:
+    // str | None). Набор нативных записей запинен явно.
+    const native = KNOWLEDGE_HELP_ENTRIES.filter((e) => e.superseded_constant === null).map((e) => e.entry_id);
+    expect(native).toEqual(["upload.module.module_help"]);
     for (const e of KNOWLEDGE_HELP_ENTRIES) {
-      expect(e.superseded_constant).toMatch(/^TsAnalysis[A-Za-z]+\.tsx::[A-Za-z_0-9.]+$/);
+      if (e.superseded_constant !== null) {
+        expect(e.superseded_constant).toMatch(/^TsAnalysis[A-Za-z]+\.tsx::[A-Za-z_0-9.]+$/);
+      }
     }
   });
 
   test("греп-инвариант: в TsAnalysis*.tsx больше нет строковых констант справки (один источник — реестр)", () => {
     const componentsDir = join(__dirname, "..", "..", "components");
     const files = [
+      "TsAnalysisUpload.tsx",
       "TsAnalysisValidation.tsx",
       "TsAnalysisPreprocessing.tsx",
       "TsAnalysisEDA.tsx",
@@ -154,7 +188,8 @@ describe("EDU-HELP-1: реестр контекстной справки — и�
   // всех остановок EDA; справка обязана описывать фактическую механику —
   // автопересчёт при смене цели/параметров, фокус-рефетч при возврате во
   // вкладку и «Повторить» в состоянии ошибки. Никакая запись EDA больше не
-  // описывает удалённый UI.
+  // описывает удалённый UI. (Оракул сохранён из 89b366e при восстановлении
+  // нативной записи upload.module.module_help — FIX-KNOWLEDGE-PROMOTE-2.)
   test("EDA: pipeline-справка не описывает удалённые кнопки «Пересчитать…» и упоминает «Повторить» при сбое", () => {
     const edaPipeline = KNOWLEDGE_HELP_ENTRIES.filter(
       (e) => e.stage_id === "eda" && e.facet === "pipeline" && e.node_id !== null,
