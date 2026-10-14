@@ -203,6 +203,7 @@ from apps.api.schemas import (
     ValidationCheckItem,
     ValidationCheckResult,
     ValidationTypeProfileOut,
+    DatasetRowsResponse,
 )
 from app.core.passport import (
     _compare_ts_props,
@@ -659,6 +660,57 @@ def get_session_dataset(request: Request, response: Response):
         size_label=session.dataset.size_label,
         parse_warnings=_compute_parse_warnings(df),
         error=None,
+    )
+
+
+# Капа размера страницы GET /dataset/rows (UI-UPLOAD-FULL-1): защита
+# бэкенда от запросов-мегапейджей; фронт ходит страницами по 200.
+FULL_ROWS_MAX_LIMIT = 1000
+
+
+@router.get("/dataset/rows", response_model=DatasetRowsResponse)
+def get_dataset_rows(
+    request: Request,
+    response: Response,
+    offset: int = Query(0, ge=0, description="Смещение окна от начала датасета"),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=FULL_ROWS_MAX_LIMIT,
+        description=f"Размер окна (1..{FULL_ROWS_MAX_LIMIT})",
+    ),
+):
+    """
+    Окно строк ПОЛНОГО датасета -- вкладка «Весь датасет» остановки
+    «Превью датасета» (UI-UPLOAD-FULL-1, 2026-10-14, постановка тимлида).
+    Дополняет остановку «Обзор» контракта: раньше аналитик видел только
+    head/tail превью, теперь может прокрутить весь датасет от начала до
+    конца (фронт -- виртуализация по позиции ползунка, окна строк
+    догружаются отсюда по мере прокрутки).
+
+    Данные -- session.dataframe (ТОТ ЖЕ DataFrame, что видел upload, не
+    перечитываем файл). Представление ячеек -- str(cell), ровно как в
+    превью /dataset: значения вкладок «Превью» и «Весь датасет» совпадают
+    посимвольно (пинится тестом tests/api/test_dataset_rows.py).
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataset is None or session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    total_rows = int(len(df))
+    window = df.iloc[offset : offset + limit]
+    rows = [[str(cell) for cell in row] for row in window.values.tolist()]
+    returned = len(rows)
+    return DatasetRowsResponse(
+        columns=[str(col) for col in df.columns.tolist()],
+        rows=rows,
+        offset=offset,
+        limit=limit,
+        total_rows=total_rows,
+        returned=returned,
+        has_more=(offset + returned) < total_rows,
     )
 
 

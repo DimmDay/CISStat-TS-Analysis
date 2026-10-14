@@ -108,6 +108,28 @@ class UploadResponse(BaseModel):
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
 
 
+class DatasetRowsResponse(BaseModel):
+    """Окно строк ПОЛНОГО датасета -- вкладка «Весь датасет» остановки
+    «Превью датасета» (UI-UPLOAD-FULL-1, 2026-10-14, постановка тимлида).
+
+    Пагинация поверх session.dataframe: фронт запрашивает окна строк по
+    мере прокрутки (виртуализация), поэтому ответ НЕ содержит весь
+    датасет целиком -- только окно [offset, offset+limit) и честные
+    счётчики, по которым фронт размечает ползунок на все total_rows.
+
+    Представление ячеек -- ТОТ ЖЕ str(cell), что и в превью UploadResponse
+    (паритет значений вкладок «Превью» и «Весь датасет», включая NaN --
+    'nan' -- и None -- 'None')."""
+
+    columns: List[str] = Field(..., description="Названия колонок в порядке датафрейма")
+    rows: List[List[str]] = Field(..., description="Строки окна, строковое представление ячеек (как в превью)")
+    offset: int = Field(..., ge=0, description="Смещение первого ряда окна от начала датасета")
+    limit: int = Field(..., ge=1, description="Запрошенный размер окна")
+    total_rows: int = Field(..., description="Всего строк в датасете (разметка ползунка)")
+    returned: int = Field(..., description="Фактическое число строк в окне")
+    has_more: bool = Field(..., description="Есть ли строки датасета после окна")
+
+
 class ColumnStatsValues(BaseModel):
     mean: float
     median: float

@@ -28,7 +28,12 @@
 //
 // Контракт вкладки «Загрузка» (по решению тимлида) -- 8 пунктов,
 // распределены по 4 "остановкам" степпера:
-//   Обзор:         1. Превью датасета
+//   Обзор:         1. Превью датасета -- три вкладки (UI-UPLOAD-FULL-1,
+//                     2026-10-14): «Превью» (head/tail), «Типы колонок»,
+//                     «Весь датасет» -- виртуализированный просмотр ВСЕХ
+//                     строк (ползунок размечен на весь датасет, окна строк
+//                     догружаются с GET /dataset/rows?offset=&limit=,
+//                     apps/api/routers/session.py::get_dataset_rows)
 //                  2. Техническая информация (строки/колонки/память/типы)
 //                  7. Флаг проблем парсинга (кодировка/заголовок) -- РЕАЛЬНЫЙ,
 //                     apps/api/upload_common.py::_compute_parse_warnings
@@ -72,6 +77,7 @@ import {
   ChevronDown,
   Database,
   Eye,
+  Table,
   BarChart3,
   ScatterChart,
   Activity,
@@ -183,6 +189,18 @@ interface StructureDetection {
   freq: { selected: string; confidence: number; options: string[] };
 }
 
+/** Окно строк полного датасета -- GET /dataset/rows (UI-UPLOAD-FULL-1).
+ *  Зеркало apps/api/schemas.py::DatasetRowsResponse. */
+interface DatasetRowsResponse {
+  columns: string[];
+  rows: string[][];
+  offset: number;
+  limit: number;
+  total_rows: number;
+  returned: number;
+  has_more: boolean;
+}
+
 type StopId = "overview" | "chart" | "distribution" | "structure" | "quality";
 
 interface Stop {
@@ -215,6 +233,25 @@ const FREQ_OPTIONS = [
   "Y — годовая",
   "(авто, не получилось)",
 ];
+
+// ── Вкладка «Весь датасет» (UI-UPLOAD-FULL-1, 2026-10-14) ────────────
+// Виртуализированный просмотр ВСЕГО датасета: spacer контейнера имеет
+// высоту FULL_HEADER_H + total_rows * FULL_ROW_H -- native ползунок
+// справа размечен на ВЕСЬ датасет сразу (аналитик может прокрутить от
+// первой до последней строки). По позиции прокрутки вычисляется видимое
+// окно строк; недостающие страницы (по FULL_PAGE_LIMIT строк) догружаются
+// с GET /dataset/rows?offset=&limit= (бэкенд-капа -- 1000/страницу).
+// Вне окна DOM не содержит строк -- браузер держит любой размер датасета.
+const FULL_PAGE_LIMIT = 200; // строк на страницу запроса (<= капы бэкенда)
+const FULL_ROW_H = 32; // px, фиксированная высота строки (виртуализация)
+const FULL_HEADER_H = 36; // px, высота закреплённой шапки колонок
+const FULL_VIEWPORT_H = 480; // px, высота контейнера прокрутки
+const FULL_OVERSCAN_ROWS = 10; // запас строк выше/ниже видимого окна
+
+/** Сетка строки/шапки «Весь датасет»: ведущая колонка № + колонки датасета. */
+function fullGridTemplate(nCols: number): string {
+  return `44px repeat(${nCols}, minmax(150px, 1fr))`;
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // ВСПОМОГАТЕЛЬНЫЕ
@@ -392,7 +429,19 @@ export function TsAnalysisUpload() {
   const [decompositionSeries, setDecompositionSeries] = useState<DecompositionSeriesData | null>(null);
   const [decompositionLoading, setDecompositionLoading] = useState(false);
   const [decompositionRequested, setDecompositionRequested] = useState(false);
-  const [overviewTab, setOverviewTab] = useState<"preview" | "columns">("preview");
+  const [overviewTab, setOverviewTab] = useState<"preview" | "columns" | "full">("preview");
+
+  // ── Вкладка «Весь датасет» (UI-UPLOAD-FULL-1) ──
+  // Мета (колонки + total_rows) приходит с ЛЮБОЙ страницей /dataset/rows;
+  // страницы кэшируются (обратное переключение вкладок не перезапрашивает),
+  // смена датасета сбрасывает всё (гонка «старый датасет -> новый»).
+  const [fullMeta, setFullMeta] = useState<{ columns: string[]; totalRows: number } | null>(null);
+  const [fullPages, setFullPages] = useState<Map<number, string[][]>>(new Map());
+  const [fullPending, setFullPending] = useState(0); // число запросов в полёте
+  const [fullError, setFullError] = useState<string | null>(null);
+  const [fullScrollTop, setFullScrollTop] = useState(0);
+  const fullInFlightRef = useRef<Set<number>>(new Set());
+  const fullDatasetKeyRef = useRef<string | null>(null);
 
   // ── Единый "исследуемый признак" (target_column) для всей платформы
   // (2026-08-14) -- заменяет прежний локальный useState<string|null>,
@@ -538,6 +587,103 @@ export function TsAnalysisUpload() {
     setDecompositionSeries(null);
     setDecompositionRequested(false);
   }, [selectedFeature, confidentDateCol]);
+
+  // ── «Весь датасет»: сброс кэша страниц при смене датасета ──
+  // Гонка «страницы старого датасета под новым» невозможна: ключ
+  // (dataset_id) меняется -- кэш, мета и позиция ползунка обнуляются ДО
+  // первого запроса нового окна (fetchFullPage читает ключ из ref).
+  useEffect(() => {
+    const key = uploadData?.dataset_id ?? null;
+    if (fullDatasetKeyRef.current !== key) {
+      fullDatasetKeyRef.current = key;
+      setFullMeta(null);
+      setFullPages(new Map());
+      setFullError(null);
+      setFullScrollTop(0);
+      fullInFlightRef.current = new Set();
+    }
+  }, [uploadData?.dataset_id]);
+
+  // ── «Весь датасет»: загрузка одной страницы строк ──
+  // GET /dataset/rows?offset=&limit= (apps/api/routers/session.py::
+  // get_dataset_rows). Мета берётся из первого ответа (колонки +
+  // total_rows); страницы складываются в кэш; ошибка -- честный
+  // инлайн-статус с «Повторить» (не тихий пропуск).
+  const fetchFullPage = useCallback(async (page: number) => {
+    if (fullInFlightRef.current.has(page)) return;
+    fullInFlightRef.current.add(page);
+    setFullPending((n) => n + 1);
+    try {
+      const offset = page * FULL_PAGE_LIMIT;
+      const res = await fetch(
+        sessionApiUrl(`/dataset/rows?offset=${offset}&limit=${FULL_PAGE_LIMIT}`),
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: DatasetRowsResponse = await res.json();
+      setFullMeta((prev) => prev ?? { columns: data.columns, totalRows: data.total_rows });
+      setFullPages((prev) => {
+        const next = new Map(prev);
+        next.set(page, data.rows);
+        return next;
+      });
+      setFullError(null);
+    } catch {
+      setFullError("Не удалось загрузить строки датасета — проверьте соединение с API");
+    } finally {
+      fullInFlightRef.current.delete(page);
+      setFullPending((n) => n - 1);
+    }
+  }, []);
+
+  // ── «Весь датасет»: видимое окно строк по позиции ползунка ──
+  // Ползунок размечен на весь датасет (spacer = header + total*ROW_H),
+  // поэтому прокрутка от начала до конца работает нативно; здесь из
+  // scrollTop вычисляется окно [fullStart, fullEnd) с запасом overscan.
+  const fullTotal = fullMeta?.totalRows ?? 0;
+  const fullStart = Math.max(0, Math.floor(fullScrollTop / FULL_ROW_H) - FULL_OVERSCAN_ROWS);
+  const fullEnd = Math.min(
+    fullTotal,
+    Math.ceil((fullScrollTop + FULL_VIEWPORT_H) / FULL_ROW_H) + FULL_OVERSCAN_ROWS
+  );
+
+  // Догрузка страниц, пересекающихся с видимым окном (и первое открытие
+  // вкладки -- страница 0 одной строкой логики). При ошибке ждём
+  // «Повторить» (fullError -> null перезапускает эффект).
+  useEffect(() => {
+    if (overviewTab !== "full" || fullError) return;
+    if (!fullMeta) {
+      fetchFullPage(0);
+      return;
+    }
+    if (fullTotal <= 0) return;
+    const firstPage = Math.floor(fullStart / FULL_PAGE_LIMIT);
+    const lastPage = Math.floor(Math.max(fullEnd - 1, fullStart) / FULL_PAGE_LIMIT);
+    for (let p = firstPage; p <= lastPage; p++) {
+      if (!fullPages.has(p)) fetchFullPage(p);
+    }
+    // fullPages сознательно вне зависимостей: проверка актуальна на момент
+    // изменения окна; успешно загруженная страница не должна перезапускать
+    // цикл (fetchFullPage сам защищён от повторов in-flight).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overviewTab, fullMeta, fullStart, fullEnd, fullError, fullTotal, fetchFullPage]);
+
+  // Видимые строки из кэша страниц (страницы вне кэша честно отсутствуют
+  // в DOM -- место под них уже зарезервировано spacer'ом, догрузка видна
+  // как «догружаем…» в статусной строке).
+  const fullVisibleRows: Array<{ rowIndex: number; values: string[] }> = [];
+  if (fullMeta && fullTotal > 0) {
+    for (let i = fullStart; i < fullEnd; i++) {
+      const page = Math.floor(i / FULL_PAGE_LIMIT);
+      const rows = fullPages.get(page);
+      const row = rows ? rows[i - page * FULL_PAGE_LIMIT] : undefined;
+      if (row) fullVisibleRows.push({ rowIndex: i, values: row });
+    }
+  }
+
+  const handleFullScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setFullScrollTop(e.currentTarget.scrollTop);
+  };
 
   // ── Декомпозиция (остановка «График», ПО КНОПКЕ -- STL на statsmodels
   // не мгновенная, см. согласование с тимлидом 2026-08-14) ──
@@ -1017,10 +1163,18 @@ export function TsAnalysisUpload() {
             <div className="mb-1">
               {/* Кнопка «Справка» (UI-UPLOAD-HELP-1, паттерн «Валидации»):
                   в строке заголовка колонки, shrink-0 -- геометрия единого
-                  вида заголовков не меняется (line box задаёт text-lg). */}
+                  вида заголовков не меняется (line box задаёт text-lg).
+                  Выравнивание (UI-UPLOAD-FULL-1, постановка тимлида):
+                  кнопка -- У ПРАВОГО КРАЯ колонки, как в «Валидации»
+                  (Data Quality -> Справка, строка justify-between). В
+                  строке из трёх элементов [иконка, h2, кнопка] прямой
+                  justify-between раскидал бы все три по ширине, поэтому
+                  правый край достигается растяжением h2 (flex-1, min-w-0
+                  -- защита узкой колонки сохранена): кнопка остаётся
+                  последним элементом строки, прижатым вправо. */}
               <div className="flex items-center gap-2">
                 <Upload size={16} className="text-brand" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">Загрузка</h2>
+                <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">Загрузка</h2>
                 <button
                   onClick={handleHelpClick}
                   data-testid="upload-help-btn"
@@ -1191,6 +1345,19 @@ export function TsAnalysisUpload() {
                       <Database size={12} className="inline mr-1" aria-hidden="true" />
                       Типы колонок
                     </button>
+                    {/* «Весь датасет» (UI-UPLOAD-FULL-1, постановка тимлида):
+                        прокрутка ВСЕГО датасета от начала до конца, ползунок
+                        справа размечен на все total_rows (виртуализация по
+                        позиции прокрутки, страницы строк -- GET /dataset/rows). */}
+                    <button
+                      onClick={() => setOverviewTab("full")}
+                      className={`text-xs px-3 py-1.5 rounded-t border-b-2 transition-colors ${
+                        overviewTab === "full" ? "border-brand text-brand font-medium" : "border-transparent text-neutral-500 hover:text-neutral-800"
+                      }`}
+                    >
+                      <Table size={12} className="inline mr-1" aria-hidden="true" />
+                      Весь датасет
+                    </button>
                   </div>
 
                   {overviewTab === "preview" ? (
@@ -1232,7 +1399,7 @@ export function TsAnalysisUpload() {
                         </tbody>
                       </table>
                     </div>
-                  ) : (
+                  ) : overviewTab === "columns" ? (
                     <div className="overflow-x-auto border border-neutral-200 rounded-lg">
                       <table className="w-full text-sm">
                         <thead className="bg-neutral-50 text-xs text-neutral-500 uppercase">
@@ -1256,6 +1423,129 @@ export function TsAnalysisUpload() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  ) : (
+                    /* ── «Весь датасет» (UI-UPLOAD-FULL-1) ──
+                       Виртуализированная сетка: ползунок контейнера
+                       размечен на ВСЕ строки (spacer = шапка +
+                       total*ROW_H), по позиции прокрутки рендерится
+                       только видимое окно (± overscan), страницы строк
+                       догружаются с /dataset/rows. Шапка закреплена
+                       (sticky), ячейки однострочные (truncate + title),
+                       строки одной высоты -- геометрия окна детерминирована. */
+                    <div data-testid="full-dataset-panel">
+                      {!fullMeta && fullPending > 0 && !fullError && (
+                        <div className="h-48 flex flex-col items-center justify-center gap-2 text-neutral-500">
+                          <Loader2 size={20} className="animate-spin text-brand" aria-hidden="true" />
+                          <p className="text-xs">Загружаем строки датасета…</p>
+                        </div>
+                      )}
+
+                      {fullError && (
+                        <div
+                          data-testid="full-rows-error"
+                          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between gap-3"
+                        >
+                          <p className="text-sm text-red-700">{fullError}</p>
+                          <button
+                            data-testid="full-rows-retry"
+                            onClick={() => setFullError(null)}
+                            className="shrink-0 text-xs px-2 py-1 rounded bg-white border border-red-300 text-red-700 hover:bg-red-100 transition-colors"
+                          >
+                            Повторить
+                          </button>
+                        </div>
+                      )}
+
+                      {fullMeta && fullMeta.totalRows === 0 && (
+                        <p className="text-sm text-neutral-500 bg-neutral-50 rounded-lg p-4">
+                          Датасет не содержит строк.
+                        </p>
+                      )}
+
+                      {fullMeta && fullMeta.totalRows > 0 && (
+                        <>
+                          <div
+                            data-testid="full-scroll-container"
+                            onScroll={handleFullScroll}
+                            className="overflow-auto border border-neutral-200 rounded-lg"
+                            style={{ height: FULL_VIEWPORT_H }}
+                          >
+                            {/* Spacer: высота = шапка + ВСЕ строки -- ползунок
+                                размечен на весь датасет от начала до конца. */}
+                            <div
+                              data-testid="full-rows-spacer"
+                              className="relative"
+                              style={{
+                                height: FULL_HEADER_H + fullTotal * FULL_ROW_H,
+                                width: "max-content",
+                                minWidth: "100%",
+                              }}
+                            >
+                              {/* Закреплённая шапка колонок */}
+                              <div
+                                data-testid="full-rows-header"
+                                className="sticky top-0 z-10 grid bg-neutral-50 border-b border-neutral-200 text-[11px] text-neutral-500 uppercase"
+                                style={{
+                                  height: FULL_HEADER_H,
+                                  gridTemplateColumns: fullGridTemplate(fullMeta.columns.length),
+                                  width: "max-content",
+                                  minWidth: "100%",
+                                }}
+                              >
+                                <div className="flex items-center justify-end px-2 font-medium">№</div>
+                                {fullMeta.columns.map((colName) => (
+                                  <div key={colName} className="flex items-center px-3 font-medium truncate" title={colName}>
+                                    {colName}
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Видимое окно строк (абсолютное позиционирование
+                                  по ползунку; страницы вне кэша честно пусты --
+                                  место зарезервировано, статус -- в строке ниже) */}
+                              <div
+                                data-testid="full-rows-window"
+                                className="absolute left-0"
+                                style={{
+                                  top: FULL_HEADER_H + fullStart * FULL_ROW_H,
+                                  width: "max-content",
+                                  minWidth: "100%",
+                                }}
+                              >
+                                {fullVisibleRows.map(({ rowIndex, values }) => (
+                                  <div
+                                    key={rowIndex}
+                                    data-row-index={rowIndex}
+                                    className={`grid border-b border-neutral-100 ${
+                                      rowIndex % 2 === 1 ? "bg-neutral-50/60" : "bg-white"
+                                    }`}
+                                    style={{
+                                      height: FULL_ROW_H,
+                                      gridTemplateColumns: fullGridTemplate(values.length),
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end px-2 text-[11px] text-neutral-400 tabular-nums">
+                                      {rowIndex + 1}
+                                    </div>
+                                    {values.map((cellValue, j) => (
+                                      <div key={j} className="flex items-center px-3 text-xs truncate" title={cellValue}>
+                                        {cellValue}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Честный статус окна прокрутки */}
+                          <p data-testid="full-rows-footer" className="text-[11px] text-neutral-500 mt-1.5">
+                            Строки {fullStart + 1}–{fullEnd} из {formatNum(fullTotal)}
+                            {fullPending > 0 ? " · догружаем…" : ""}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                 </>
