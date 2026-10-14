@@ -198,8 +198,14 @@ export interface KnowledgeHelpEntry {
   node_id: string | null;
   /** какая секция окна «Описание» потребляет запись */
   facet: KnowledgeHelpFacet;
-  /** аудит происхождения: "TsAnalysisEDA.tsx::DESCRIPTIVE_METRICS_DESCRIPTION" */
-  superseded_constant: string;
+  /**
+   * Аудит происхождения: "TsAnalysisEDA.tsx::DESCRIPTIVE_METRICS_DESCRIPTION".
+   * null — НАТИВНАЯ запись: текст создан прямо в реестре (единый источник
+   * методологий/описаний), константы-предшественника не существовало
+   * (spec_education.md §1.1: superseded_constant: str | None). Набор
+   * нативных записей пинится инвариант-тестом help.test.ts.
+   */
+  superseded_constant: string | null;
   /** текст справки — байт-в-байт перенесён из константы (паритет §13) */
   text: string;
 }

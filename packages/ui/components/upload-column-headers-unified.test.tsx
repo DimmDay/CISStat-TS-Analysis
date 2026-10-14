@@ -17,6 +17,15 @@
 //      flex items-center gap-2 + lucide-иконка (size 16, text-brand,
 //      aria-hidden) + заголовок font-semibold text-neutral-800.
 //
+// UI-UPLOAD-HELP-1 (2026-10-14, постановка тимлида): в строку заголовка
+// колонки «Загрузка» добавлена кнопка «Справка» (паттерн «Валидации»):
+// строка левой колонки теперь [иконка, h2, кнопка]. Геометрия выравнивания
+// не страдает: кнопка text-xs px-2 py-1 (line box 24px < 28px заголовка)
+// с shrink-0 -- высота строки детерминирована line box заголовка text-lg
+// (28px), низы заголовков трёх колонок остаются на одной горизонтали.
+// Контракт кнопки пинится здесь (структурно) и поведенчески -- в
+// upload-module-help.test.tsx.
+//
 // Оракулы построены на СВОИХ данных (дизъюнкт с TsAnalysisUpload.test.tsx):
 // свой файл headers-unified-check.csv, свои колонки ts_idx/signal_num,
 // свой dataset_id. Контракт пинится на уровне структурных классов --
@@ -230,9 +239,12 @@ async function renderUploaded() {
 //   (a) типографика «Загрузка»: text-lg (18px) + font-semibold + neutral-800;
 //   (b) строка-паттерн «Примеров прикладных задач»: flex items-center gap-2;
 //   (c) иконка паттерна: aria-hidden svg с фирменным индиго (text-brand);
-//   (d) в строке ровно два элемента -- иконка и заголовок (высота строки
-//       детерминирована line box заголовка: text-lg = 28px, иконка 16px).
-function expectUnifiedHeaderContract(header: HTMLElement) {
+//   (d) состав строки: у колонок «Описание»/«Файл» и переменных заголовков
+//       правой колонки -- ровно [иконка, заголовок]; у колонки «Загрузка»
+//       (UI-UPLOAD-HELP-1) -- [иконка, заголовок, кнопка «Справка»]
+//       (shrink-0, вне потока выравнивания: высота строки определяется
+//       line box заголовка text-lg = 28px).
+function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean } = {}) {
   // (a) Единый размер шрифта -- как у заголовка «Загрузка».
   expect(header.className).toContain("text-lg");
   expect(header.className).toContain("font-semibold");
@@ -253,8 +265,18 @@ function expectUnifiedHeaderContract(header: HTMLElement) {
   expect(icon).toHaveAttribute("aria-hidden", "true");
   expect(icon!.getAttribute("class")).toContain("text-brand");
 
-  // (d) Строка = иконка + заголовок, ничего лишнего (геометрия).
-  expect(row!.children).toHaveLength(2);
+  // (d) Состав строки: иконка + заголовок (+ кнопка «Справка» только у
+  // левой колонки -- UI-UPLOAD-HELP-1, паттерн «Валидации»).
+  if (opts.withHelpButton) {
+    expect(row!.children).toHaveLength(3);
+    const helpButton = row!.children[2] as HTMLElement;
+    expect(helpButton.tagName).toBe("BUTTON");
+    expect(helpButton.textContent).toBe("Справка");
+    // shrink-0: кнопка не сжимает заголовок и не меняет высоту строки.
+    expect(helpButton.className).toContain("shrink-0");
+  } else {
+    expect(row!.children).toHaveLength(2);
+  }
 }
 
 // Инвариант «низ заголовков на одной горизонтали» в структурной форме:
@@ -288,7 +310,9 @@ describe("Заголовки колонок «Загрузки» -- единый
     const hDesc = screen.getByRole("heading", { name: "Описание", level: 3 });
     const hFile = screen.getByRole("heading", { name: "Файл", level: 3 });
 
-    for (const h of [hUpload, hDesc, hFile]) {
+    expectUnifiedHeaderContract(hUpload, { withHelpButton: true });
+    expectHeaderRowAtColumnTop(hUpload);
+    for (const h of [hDesc, hFile]) {
       expectUnifiedHeaderContract(h);
       expectHeaderRowAtColumnTop(h);
     }

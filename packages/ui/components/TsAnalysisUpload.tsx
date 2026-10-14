@@ -9,13 +9,18 @@
 // лобовое стекло":
 //
 //   [Левая ~240px]        [Центр flex-1]              [Правая ~320px]
-//   Загрузка              Описание                    Обзор / Управление
+//   Загрузка [Справка]    Описание                    Обзор / Управление
 //   Признак: ▾price       [текстовое поле]             (меняется по
 //   2/4 ██░░               Обзор: {label}                активной
 //   ┌─Обзор──────✓─┐      [таблица/график/карточки]      остановке)
 //   ├─Распределение✓┤      [Metric-карточки]
 //   ├─Структура───⚠┤
 //   └─Качество────⚠┘
+//
+// Кнопка «Справка» в заголовке колонки «Загрузка» (UI-UPLOAD-HELP-1,
+// паттерн «Валидации») раскрывает в окне «Описание» развёрнутое описание
+// модуля из единого реестра справки (describeNode("upload", null,
+// "module_help"), нативная запись upload.module.module_help).
 //
 // Верхняя полоса "Источник данных" (dropzone) -- ВНЕ 3-колоночного
 // блока, на всю ширину: она не принадлежит ни одной "остановке", нужна
@@ -100,6 +105,10 @@ import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+// UI-UPLOAD-HELP-1 (2026-10-14): развёрнутое описание модуля для кнопки
+// «Справка» берётся из ЕДИНОГО реестра методологий/описаний платформы
+// (packages/ui/lib/knowledge) -- никаких текстовых констант в компоненте.
+import { describeNode } from "../lib/knowledge/knowledge";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { DEMO_DATASETS, demoDatasetToFile } from "../lib/demoDatasets";
 
@@ -360,6 +369,17 @@ export function TsAnalysisUpload() {
 
   // ── Степпер / 3-колоночный блок ──
   const [activeStop, setActiveStop] = useState<StopId>("overview");
+  // ── Секция окна «Описание» (UI-UPLOAD-HELP-1, паттерн «Валидации»):
+  // "stop" -- описание активной остановки (дефолт), "help" -- развёрнутое
+  // описание модуля из единого реестра справки (кнопка «Справка»).
+  // Toggle-закрытие и переключение остановки возвращают "stop"
+  // (инвариант информативности -- см. TsAnalysisValidation).
+  const [descriptionSection, setDescriptionSection] = useState<"stop" | "help">("stop");
+  // Toggle «Справки» (паттерн «Валидации»): закрытие возвращает описание
+  // активной остановки -- инвариант информативности, не placeholder.
+  const handleHelpClick = () => {
+    setDescriptionSection((prev) => (prev === "help" ? "stop" : "help"));
+  };
   const [detection, setDetection] = useState<StructureDetection | null>(null);
   const [stats, setStats] = useState<ColumnStatsOut[] | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -995,9 +1015,23 @@ export function TsAnalysisUpload() {
               Пин контракта: upload-column-headers-unified.test.tsx. */}
           <aside className="w-60 shrink-0 flex flex-col gap-3">
             <div className="mb-1">
+              {/* Кнопка «Справка» (UI-UPLOAD-HELP-1, паттерн «Валидации»):
+                  в строке заголовка колонки, shrink-0 -- геометрия единого
+                  вида заголовков не меняется (line box задаёт text-lg). */}
               <div className="flex items-center gap-2">
                 <Upload size={16} className="text-brand" aria-hidden="true" />
                 <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">Загрузка</h2>
+                <button
+                  onClick={handleHelpClick}
+                  data-testid="upload-help-btn"
+                  className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
+                    descriptionSection === "help"
+                      ? "bg-brand text-white"
+                      : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+                  }`}
+                >
+                  Справка
+                </button>
               </div>
               <p className="text-[11px] text-neutral-500 mt-0.5">Проверка и структура датасета</p>
             </div>
@@ -1048,7 +1082,16 @@ export function TsAnalysisUpload() {
               {STOPS.map((stop) => (
                 <button
                   key={stop.id}
-                  onClick={() => setActiveStop(stop.id)}
+                  onClick={() => {
+                    // Инвариант информативности (UI-UPLOAD-HELP-1, паттерн
+                    // «Валидации»): переключение остановки закрывает Справку
+                    // и показывает описание НОВОЙ остановки; клик по УЖЕ
+                    // активной остановке открытую Справку сохраняет.
+                    if (stop.id !== activeStop) {
+                      setActiveStop(stop.id);
+                      setDescriptionSection("stop");
+                    }
+                  }}
                   className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                     stop.id === activeStop
                       ? "bg-brand text-white border-brand"
@@ -1074,13 +1117,38 @@ export function TsAnalysisUpload() {
                 <Info size={16} className="text-brand" aria-hidden="true" />
                 <h3 className="text-lg font-semibold text-neutral-800">Описание</h3>
               </div>
-              <div className="min-h-[90px] rounded-lg border border-neutral-200 bg-brand-light/50 px-4 py-3 text-sm text-neutral-600">
-                {activeStopDef.description}
+              {/* Режим «Справка» (UI-UPLOAD-HELP-1): подзаголовок режима +
+                  развёрнутое описание модуля из единого реестра справки;
+                  многострочный текст сохраняет переводы строк (whitespace-pre-wrap)
+                  и скроллится -- паттерн окна «Описание» «Валидации». */}
+              {descriptionSection === "help" && (
+                <p className="text-xs text-neutral-500 mb-2" data-testid="upload-help-subtitle">
+                  Справка по модулю «Загрузка»
+                </p>
+              )}
+              <div
+                className={`rounded-lg border border-neutral-200 bg-brand-light/50 px-4 py-3 text-sm text-neutral-600 whitespace-pre-wrap overflow-y-auto max-h-[280px] ${
+                  descriptionSection === "help" ? "" : "min-h-[90px]"
+                }`}
+              >
+                {descriptionSection === "help"
+                  ? describeNode("upload", null, "module_help")?.text ?? (
+                      <span className="text-neutral-400 italic">
+                        Справка по модулю готовится
+                      </span>
+                    )
+                  : activeStopDef.description}
               </div>
             </div>
 
             <div>
-              <h3 className="font-semibold mb-1">Обзор: {activeStopDef.label}</h3>
+              {/* Заголовок окна «Обзор» -- единый паттерн заголовков layout
+                  страницы (UI-UPLOAD-HDR-1): flex items-center gap-2 + иконка
+                  16 text-brand aria-hidden + text-lg font-semibold neutral-800. */}
+              <div className="flex items-center gap-2 mb-1">
+                <Eye size={16} className="text-brand" aria-hidden="true" />
+                <h3 className="text-lg font-semibold text-neutral-800">Обзор: {activeStopDef.label}</h3>
+              </div>
               <p className="text-xs text-neutral-500 mb-3">Меняется автоматически под активную остановку слева.</p>
 
               {/* ── Обзор ── */}
