@@ -414,7 +414,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Разведочный EDA")).toBeInTheDocument();
   });
 
-  it("renders the right control-panel title with the validation/preprocessing layout", () => {
+  it("renders the right control-panel title with the unified layout-header pattern (UI-EDA-HDR-1)", () => {
     render(<TsAnalysisEDA />);
 
     const controlPanelTitle = screen.getByRole("heading", {
@@ -422,8 +422,22 @@ describe("TsAnalysisEDA", () => {
       name: "Панель управления",
     });
 
+    // Единый вид заголовков layout (UI-EDA-HDR-1, паттерн UI-PREPR-HDR-1
+    // «Предобработки» / UI-VALIDATION-HDR-1 «Валидации»): типографика
+    // text-lg font-semibold text-neutral-800 + строка flex items-center
+    // gap-2 с иконкой aria-hidden text-brand; вертикальный офсет pt-1
+    // правой aside УБРАН (низ заголовков колонок на одной горизонтали).
+    // Легаси-пин СТАРОГО дизайна (className-равенство + pt-1) переписан
+    // на новый контракт, как в TsAnalysisValidation.test.tsx при
+    // UI-VALIDATION-HDR-1. Полный пин контракта:
+    // eda-column-headers-unified.test.tsx.
     expect(controlPanelTitle).toHaveClass("text-lg", "font-semibold", "text-neutral-800");
-    expect(controlPanelTitle.closest("aside")).toHaveClass("pt-1");
+    const headerRow = controlPanelTitle.parentElement!;
+    expect(headerRow).toHaveClass("flex", "items-center", "gap-2");
+    const icon = headerRow.querySelector("svg");
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon!.getAttribute("class")).toContain("text-brand");
+    expect(controlPanelTitle.closest("aside")).not.toHaveClass("pt-1");
   });
 
   it("renders 10 EDA investigations and keeps the final passport outside the stepper", async () => {

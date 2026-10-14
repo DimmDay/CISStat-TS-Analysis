@@ -31,9 +31,32 @@
 //   ④ revision-бастер графика «Обзора» (RCH-3) получил mount-scoped
 //     префикс — свежее пространство URL на каждое монтирование
 //     (EdaDescriptiveOverview).
+//
+// UI-EDA-HDR-1 (2026-10-14): заголовки колонок 3-колоночного layout
+// («Разведочный EDA», «Описание», «Панель управления») и заголовок
+// окна «Обзор: …» приведены к единому виду по паттерну UI-PREPR-HDR-1
+// «Предобработки» (UI-VALIDATION-HDR-1 «Валидации» / UI-UPLOAD-HDR-1
+// «Загрузки»): строка flex items-center gap-2 + lucide-иконка
+// (Telescope/Info/Eye/Settings, size 16, text-brand, aria-hidden) +
+// заголовок text-lg font-semibold text-neutral-800; низы заголовков
+// колонок на одной горизонтали (pt-1 обеих aside убран). EDA не имеет
+// мастер-режима окна — центральное окно ВСЕГДА «Обзор: {label}»,
+// поэтому иконка окна — Eye, без режимного Wrench. Пин контракта:
+// eda-column-headers-unified.test.tsx.
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+// Иконки заголовков layout (UI-EDA-HDR-1, паттерн UI-PREPR-HDR-1
+// «Предобработки» / UI-VALIDATION-HDR-1 «Валидации» / UI-UPLOAD-HDR-1
+// «Загрузки»): Telescope -- левая колонка («разведочный» анализ --
+// наблюдение/обзор данных; семантически отличима от FileText
+// «Загрузки», ShieldCheck «Валидации», SlidersHorizontal
+// «Предобработки»), Info -- окно «Описание» (как во всех вкладках),
+// Eye -- окно «Обзор: …» (как во всех вкладках), Settings -- «Панель
+// управления» (тот же значок, что в «Валидации»/«Предобработке»). Плюс
+// ChevronDown/ChevronUp -- шевроны expandable description box (раньше
+// здесь). Telescope/Info/Eye/Settings присутствуют в lucide-react
+// 0.427.0 (проверено node-пробой).
+import { ChevronDown, ChevronUp, Telescope, Info, Eye, Settings } from "lucide-react";
 import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
@@ -1358,16 +1381,31 @@ export function TsAnalysisEDA() {
     <div className="space-y-5">
       <div className="flex gap-6">
       {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
-      <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+      {/* Офсет pt-1 УБРАН (UI-EDA-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной
+          горизонтали (как в «Загрузке» UI-UPLOAD-HDR-1, «Валидации»
+          UI-VALIDATION-HDR-1 и «Предобработке» UI-PREPR-HDR-1). */}
+      <aside className="w-60 shrink-0 flex flex-col gap-3">
         {/* Заголовок модуля + справка */}
+        {/* Единый вид заголовков (UI-EDA-HDR-1, паттерн UI-PREPR-HDR-1
+            «Предобработки» / UI-VALIDATION-HDR-1 «Валидации» /
+            UI-UPLOAD-HDR-1 «Загрузки»): строка flex items-center gap-2 +
+            иконка (Telescope -- «разведочный» анализ, наблюдение/обзор
+            данных, size 16, text-brand, aria-hidden) + h2 text-lg
+            font-semibold text-neutral-800 (растяжение flex-1 min-w-0
+            прижимает кнопку «Справка» к правому краю узкой колонки --
+            раньше здесь был justify-between без иконки; truncate --
+            защита узкой колонки, кнопка -- shrink-0). Пин контракта:
+            eda-column-headers-unified.test.tsx. */}
         <div className="mb-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">
+          <div className="flex items-center gap-2">
+            <Telescope size={16} className="text-brand" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
               Разведочный EDA
             </h2>
             <button
               onClick={handleHelpClick}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
+              className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
                 descriptionSection === "help"
                   ? "bg-brand text-white"
                   : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
@@ -1468,10 +1506,20 @@ export function TsAnalysisEDA() {
       {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: описание + график + метрики ── */}
       <section className="flex-1 min-w-0">
         {/* Блок «Описание» — текстовое поле над графиком */}
+        {/* Заголовок окна «Описание» -- единый паттерн заголовков layout
+            страницы (UI-EDA-HDR-1, паттерн «Предобработки»/«Валидации»/
+            «Загрузки»): строка flex items-center gap-2 + иконка Info (как
+            у «Описаний» «Загрузки»/«Валидации»/«Предобработки») + text-lg
+            font-semibold text-neutral-800 (был дефолтный text-base без
+            иконки). mb-1 строки сохраняет исходный ритм «заголовок →
+            подзаголовок» (под строкой -- {descriptionSubtitle}). */}
         <div className="mb-5">
-          <h3 className="font-semibold mb-1">
-            Описание
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Info size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Описание
+            </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-2">
             {descriptionSubtitle}
           </p>
@@ -1523,8 +1571,21 @@ export function TsAnalysisEDA() {
         </div>
 
         {/* График */}
+        {/* Заголовок окна «Обзор: {label}» -- единый паттерн заголовков
+            layout страницы (UI-EDA-HDR-1, паттерн «Предобработки»/
+            «Валидации»/«Загрузки»): строка flex items-center gap-2 +
+            иконка size 16 text-brand aria-hidden + text-lg font-semibold
+            text-neutral-800 (был дефолтный text-base без иконки). EDA не
+            имеет мастер-режима окна (EDA-RECALC-COMPENSATION: пересчёт
+            только автопересчётом/ретраем), поэтому иконка ВСЕГДА Eye --
+            как у окон «Обзор» других вкладок, без режимного Wrench. */}
         <div>
-          <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Eye size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Обзор: {activeCheck.label}
+            </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-3">
             Визуализация результатов исследования.
           </p>
@@ -1744,8 +1805,14 @@ export function TsAnalysisEDA() {
       </section>
 
       {/* ── ПРАВАЯ КОЛОНКА: панель управления + список исследований ── */}
-      <aside className="w-80 shrink-0 pt-1">
-        <div className="mb-4">
+      {/* Офсет pt-1 УБРАН (UI-EDA-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной
+          горизонтали. Иконка Settings -- семантика «руль и педали» (тот
+          же значок, что у «Панелей управления» «Валидации»/
+          «Предобработки»). */}
+      <aside className="w-80 shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} className="text-brand" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-neutral-800">
             Панель управления
           </h2>
