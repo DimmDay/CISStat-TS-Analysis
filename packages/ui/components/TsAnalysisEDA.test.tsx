@@ -504,13 +504,18 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText(/GET \/v1\/session\/dataset\/stats/i)).toBeInTheDocument();
   });
 
-  it("recalculates the descriptive profile on demand", async () => {
+  // EDA-RECALC-COMPENSATION ①: постоянная кнопка «Пересчитать статистики»
+  // удалена (автопересчёт дублировал её в одновкладочном потоке);
+  // компенсирующий механизм — useWindowFocusRefetch: возврат во вкладку/окно
+  // после внешних мутаций (мульти-таб, смонтированный EDA) перезапрашивает
+  // профиль. Первый focus после монтирования легитимен (контракт хука).
+  it("refetches the descriptive profile when the window regains focus", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
     const statsCallsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
 
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать статистики" }));
+    fireEvent(window, new Event("focus"));
 
     await waitFor(() => {
       const statsCallsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
@@ -538,7 +543,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Ljung–Box p", { selector: "div" }).nextElementSibling).toHaveTextContent("0,002");
   });
 
-  it("shows the correlation-specific methodology and recalculates it", async () => {
+  it("shows the correlation-specific methodology", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -551,13 +556,6 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText(/ACF\(k\) = corr/i)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
     expect(screen.getByText(/dataset\/eda-correlation/i)).toBeInTheDocument();
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать корреляцию" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("loads IH analysis for the shared target and exposes the visual overview", async () => {
@@ -577,7 +575,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Топ R adj.", { selector: "div" }).nextElementSibling).toHaveTextContent("0,64");
   });
 
-  it("uses IH-specific methodology, reacts to sharpness and supports refresh", async () => {
+  it("uses IH-specific methodology and reacts to sharpness", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -596,14 +594,6 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("sharpness=0.5"),
       { credentials: "include" },
     ));
-    await screen.findByRole("button", { name: "Пересчитать IH-анализ" });
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-ih")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать IH-анализ" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-ih")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("loads seasonality for the shared target and exposes four overview views", async () => {
@@ -628,7 +618,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Топ-период", { selector: "div" }).nextElementSibling).toHaveTextContent("12");
   });
 
-  it("uses seasonality-specific methodology, reacts to parameters and supports refresh", async () => {
+  it("uses seasonality-specific methodology and reacts to parameters", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -645,14 +635,6 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("min_cycles=4"),
       { credentials: "include" },
     ));
-    await screen.findByRole("button", { name: "Пересчитать сезонность" });
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-seasonality")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать сезонность" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-seasonality")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("loads stationarity for the shared target and exposes four overview views", async () => {
@@ -677,7 +659,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Сводный вывод", { selector: "div" }).nextElementSibling).toHaveTextContent("Стационарен");
   });
 
-  it("uses stationarity-specific methodology, reacts to alpha and supports refresh", async () => {
+  it("uses stationarity-specific methodology and reacts to alpha", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -694,14 +676,6 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("alpha=0.01"),
       { credentials: "include" },
     ));
-    await screen.findByRole("button", { name: "Пересчитать стационарность" });
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-stationarity")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать стационарность" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-stationarity")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("loads distribution for the shared target and exposes five overview views", async () => {
@@ -728,7 +702,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Q–Q: r", { selector: "div" }).nextElementSibling).toHaveTextContent("0,997");
   });
 
-  it("uses distribution-specific methodology, reacts to alpha and supports refresh", async () => {
+  it("uses distribution-specific methodology and reacts to alpha", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -745,14 +719,6 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("alpha=0.01"),
       { credentials: "include" },
     ));
-    await screen.findByRole("button", { name: "Пересчитать распределение" });
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-distribution")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать распределение" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-distribution")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("loads structural breaks for the shared target and exposes five overview views", async () => {
@@ -779,7 +745,7 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Поддержано", { selector: "div" }).nextElementSibling).toHaveTextContent("1");
   });
 
-  it("uses structural-break methodology, reacts to penalty and supports refresh", async () => {
+  it("uses structural-break methodology and reacts to penalty", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
@@ -796,13 +762,6 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("penalty_multiplier=3"),
       { credentials: "include" },
     ));
-
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-structural-breaks")).length;
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать сдвиги" }));
-    await waitFor(() => {
-      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-structural-breaks")).length;
-      expect(callsAfter).toBe(callsBefore + 1);
-    });
   });
 
   it("does not mask an unknown structural-breaks 404 as a missing dataset", async () => {
@@ -1505,5 +1464,172 @@ describe("TsAnalysisEDA — PROGR-18: URL-контракт отчёта прос
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(postCalls).toHaveLength(1);
     expect(postCalls[0].body?.checks?.correlation).toBe("pending");
+  });
+});
+
+// ── EDA-RECALC-COMPENSATION (2026-10-14): компенсация удаления постоянных
+// кнопок «Пересчитать…» (10 остановок). Уникальные сценарии кнопок, которые
+// обязаны остаться покрытыми (EDA-RECALC-RESEARCH):
+//   ① мульти-таб / внешние мутации при смонтированном модуле →
+//     useWindowFocusRefetch (бамп всех остановок при возврате фокуса);
+//   ② внутри-EDA мутация датой (POST /date-column в панели паспорта,
+//     колбэк onDateColumnConfirmed, который фокус не ловит) → бамп остановок;
+//   ③ ретрай после сбоя GET → кнопка «Повторить» ТОЛЬКО в error-ветке
+//     остановки (вместо 10 постоянных кнопок);
+//   ④ RCH-3: revision-бастер графика распределения получает mount-scoped
+//     префикс (свежее пространство URL на каждое монтирование), бампы внутри
+//     монтирования сохраняются;
+//   ⑤ справка help.ts не описывает удалённые кнопки (оракул в help.test.ts).
+describe("TsAnalysisEDA — EDA-RECALC-COMPENSATION", () => {
+  it("does not render the ten permanent recalculate buttons nor the dead fallback", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    const removedLabels = [
+      "Пересчитать статистики", "Пересчитать корреляцию", "Пересчитать IH-анализ",
+      "Пересчитать сезонность", "Пересчитать стационарность", "Пересчитать распределение",
+      "Пересчитать сдвиги", "Пересчитать отбор", "Пересчитать стратегию", "Пересчитать матрицу",
+    ];
+    removedLabels.forEach((label) => {
+      expect(screen.queryByRole("button", { name: label })).not.toBeInTheDocument();
+    });
+    // Мёртвая ветка под будущие узлы без проводки тоже снята.
+    expect(screen.queryByRole("button", { name: /Запустить анализ/ })).not.toBeInTheDocument();
+    // Информационные переключатели остановки остаются.
+    expect(screen.getAllByRole("button", { name: "Метрики и алгоритм" })).toHaveLength(10);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(10);
+  });
+
+  it("refetches the active stop when the window regains focus (correlation vehicle)", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ }));
+    await screen.findByRole("img", { name: "График ACF для Price" });
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
+
+    fireEvent(window, new Event("focus"));
+
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
+    });
+  });
+
+  it("offers «Повторить» only in the error state and retries the failed request", async () => {
+    let structuralCalls = 0;
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/dataset/eda-structural-breaks")) {
+        structuralCalls += 1;
+        if (structuralCalls === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: () => Promise.resolve({ detail: "Сбой расчёта структурных сдвигов" }),
+          });
+        }
+      }
+      return routeFetch(input, init);
+    }) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    // До сбоя кнопки «Повторить» нет ни на одной остановке.
+    expect(screen.queryByRole("button", { name: "Повторить" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Структурные сдвиги/ }));
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((item) => item.textContent?.includes("Сбой расчёта структурных сдвигов"))).toBe(true);
+
+    const retry = screen.getByRole("button", { name: "Повторить" });
+    fireEvent.click(retry);
+
+    await screen.findByRole("img", { name: "Режимы и структурные сдвиги для Price" });
+    expect(structuralCalls).toBe(2);
+    expect(screen.queryByRole("button", { name: "Повторить" })).not.toBeInTheDocument();
+  });
+
+  it("bumps the stop profiles after a date-column confirmation in the passport panel", async () => {
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/date-column")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            date_column: "Date",
+            suggested_column: "Date",
+            candidates: [
+              { name: "Date", score: 1 },
+              { name: "Timestamp", score: 0.8 },
+            ],
+            has_dataset: true,
+            passport_history_reset: false,
+          }),
+        });
+      }
+      return routeFetch(input, init);
+    }) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const statsCallsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
+
+    // Внутри-EDA мутация: смена временной колонки в панели паспорта.
+    fireEvent.change(screen.getByRole("combobox", { name: "Временная колонка паспорта" }), {
+      target: { value: "Timestamp" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить паспорт для моделирования" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/v1/session/date-column"),
+        expect.objectContaining({ method: "POST", body: JSON.stringify({ column: "Timestamp" }) }),
+      );
+    });
+    // ②: бамп остановок после подтверждения даты — descriptive перечитан.
+    await waitFor(() => {
+      const statsCallsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
+      expect(statsCallsAfter).toBe(statsCallsBefore + 1);
+    });
+  });
+
+  it("mount-scopes the distribution chart revision (RCH-3): fresh per mount, bumped within mount", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    const distributionUrls = () =>
+      (global.fetch as jest.Mock).mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes("/dataset/distribution?"))
+        .map((url) => new URL(url).searchParams.get("revision") ?? "");
+
+    const first = render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(await screen.findByRole("tab", { name: "Гистограмма" }));
+    await waitFor(() => expect(distributionUrls()).toHaveLength(1));
+    const [revisionA0] = distributionUrls();
+
+    // ① в рамках того же монтирования: фокус-бамп меняет revision (та же mount-область).
+    fireEvent(window, new Event("focus"));
+    await waitFor(() => {
+      expect(distributionUrls().some((revision) => revision !== revisionA0 && revision.endsWith(":Price"))).toBe(true);
+    });
+    const [revisionA1] = distributionUrls().filter((revision) => revision !== revisionA0);
+    expect(revisionA1.split(":")[0]).toBe(revisionA0.split(":")[0]);
+    expect(revisionA1.split(":")[1]).not.toBe(revisionA0.split(":")[1]);
+
+    // ④ новое монтирование: mount-scoped префикс обязан смениться.
+    first.unmount();
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(await screen.findByRole("tab", { name: "Гистограмма" }));
+    await waitFor(() => {
+      const revisions = distributionUrls();
+      expect(revisions.length).toBeGreaterThan(0);
+      expect(revisions.every((revision) => revision.split(":")[0] !== revisionA0.split(":")[0])).toBe(true);
+      // Контракт RCH-3: revision = <mount-scope>:<refreshKey>:<feature>.
+      expect(revisions[0].split(":")).toHaveLength(3);
+      expect(revisions[0].endsWith(":Price")).toBe(true);
+    });
   });
 });

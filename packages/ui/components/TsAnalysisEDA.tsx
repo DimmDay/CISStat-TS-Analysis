@@ -13,13 +13,31 @@
 //   0/10 ░░░░░░         Обзор: ...             [бейдж]
 //   ┌─Описательные──○─┐  [график]              [Метрики и алгоритм]
 //   ├─ACF/PACF────○─┤   [карточки]            [Полный пайплайн]
-//   └────────────────┘                         [Запустить анализ]
+//   └────────────────┘                         [Повторить — только при ошибке]
+//
+// EDA-RECALC-COMPENSATION (2026-10-14): постоянные кнопки «Пересчитать…»
+// удалены со всех 10 остановок — в одновкладочном потоке они дублировали
+// автопересчёт (открытие остановки/смена признака/параметров/датасета —
+// ровно аргумент PROGR-9-FIX «Предобработки»). Уникальные сценарии кнопок
+// сохранены компенсирующим набором:
+//   ① useWindowFocusRefetch: возврат во вкладку/окно после внешних мутаций
+//     (мульти-таб, смонтированный EDA) бампит все 10 остановок — трасса
+//     «Прогресса» защищена троттлингом profile_requested (§4.2, 300 c);
+//   ② подтверждение временной колонки в панели паспорта (POST /date-column
+//     прямо на /eda — фокус при этом не меняется) бампит остановки через
+//     onDateColumnConfirmed;
+//   ③ ретрай после сбоя GET — кнопка «Повторить» ТОЛЬКО в error-ветке
+//     остановки;
+//   ④ revision-бастер графика «Обзора» (RCH-3) получил mount-scoped
+//     префикс — свежее пространство URL на каждое монтирование
+//     (EdaDescriptiveOverview).
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
+import { useWindowFocusRefetch } from "../hooks/useWindowFocusRefetch";
 import { useAppShell } from "../context/AppShellContext";
 import { Button } from "./Button";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
@@ -905,6 +923,51 @@ export function TsAnalysisEDA() {
     : modelMatrixProfile?.applicable === false ? "warning"
     : (modelMatrixProfile?.summary.blocked ?? 0) > 0 || (modelMatrixProfile?.warnings.length ?? 0) > 0 ? "warning"
     : modelMatrixProfile?.applicable ? "done" : "pending";
+
+  // ── EDA-RECALC-COMPENSATION ①②③: бамп остановок без постоянных кнопок ──
+  // bumpAllStops — единый бамп всех 10 refreshKey. Потребители:
+  //   ① useWindowFocusRefetch (возврат фокуса/видимости после внешних
+  //     мутаций при смонтированном модуле — datasetKey от коррекций не
+  //     меняется, см. EDA-RECALC-RESEARCH П5);
+  //   ② onDateColumnConfirmed панели паспорта (подтверждение временной
+  //     колонки прямо на /eda — внутри-EDA мутация, фокус не меняется).
+  // Механика пересчёта прежняя: descriptive перечитывается сразу (deps его
+  // эффекта), активная остановка — сразу (её эффект гейтится activeCheckId),
+  // неактивные — при первом же визите (смена activeCheckId перевызывает их
+  // эффект с уже бампнутым ключом).
+  const bumpAllStops = useCallback(() => {
+    setDescriptiveRefreshKey((key) => key + 1);
+    setCorrelationRefreshKey((key) => key + 1);
+    setIhRefreshKey((key) => key + 1);
+    setSeasonalityRefreshKey((key) => key + 1);
+    setStationarityRefreshKey((key) => key + 1);
+    setDistributionRefreshKey((key) => key + 1);
+    setStructuralRefreshKey((key) => key + 1);
+    setFeatureSelectionRefreshKey((key) => key + 1);
+    setValidationStrategyRefreshKey((key) => key + 1);
+    setModelMatrixRefreshKey((key) => key + 1);
+  }, []);
+  useWindowFocusRefetch(bumpAllStops);
+
+  // ③ Ретрай после сбоя GET. Единственный явный путь восстановления после
+  // удаления постоянных кнопок (скрытый — «уйти на другую остановку и
+  // вернуться» — UI не подсказывает). Кнопка «Повторить» рендерится только
+  // в error-ветке остановки: после клика эффект перезапускается, статус
+  // становится running и кнопка исчезает сама (busy-гейт не нужен).
+  const retryStop = useCallback((checkId: Check["id"]) => {
+    switch (checkId) {
+      case "descriptive": setDescriptiveRefreshKey((key) => key + 1); break;
+      case "correlation": setCorrelationRefreshKey((key) => key + 1); break;
+      case "ih_analysis": setIhRefreshKey((key) => key + 1); break;
+      case "seasonality": setSeasonalityRefreshKey((key) => key + 1); break;
+      case "stationarity": setStationarityRefreshKey((key) => key + 1); break;
+      case "distribution": setDistributionRefreshKey((key) => key + 1); break;
+      case "structural": setStructuralRefreshKey((key) => key + 1); break;
+      case "feature_select": setFeatureSelectionRefreshKey((key) => key + 1); break;
+      case "validation_strategy": setValidationStrategyRefreshKey((key) => key + 1); break;
+      case "model_matrix": setModelMatrixRefreshKey((key) => key + 1); break;
+    }
+  }, []);
 
   // Результаты принадлежат конкретному датасету. При его смене убираем
   // старые красные/жёлтые статусы; активная остановка ниже пересчитается
@@ -1927,6 +1990,18 @@ export function TsAnalysisEDA() {
                 </>
               )}
 
+              {/* EDA-RECALC-COMPENSATION ③: ретрай только в error-ветке.
+                  Единственная кнопка остановки вместо 10 постоянных
+                  «Пересчитать…»: в успешных сценариях автопересчёт (открытие
+                  остановки/смена признака/параметров/датасета/фокус) делает
+                  ручной запрос избыточным, а после сбоя GET явный путь
+                  восстановления обязан существовать. */}
+              {check.status === "error" && (
+                <Button type="button" onClick={() => retryStop(check.id)} className="w-full mb-2">
+                  Повторить
+                </Button>
+              )}
+
               {/* Кнопка «Метрики и алгоритм» */}
               <button
                 onClick={() => handleDescriptionClick(check, "metrics")}
@@ -1950,72 +2025,6 @@ export function TsAnalysisEDA() {
               >
                 Полный пайплайн
               </button>
-
-              {check.id === "descriptive" ? (
-                <Button
-                  type="button"
-                  onClick={() => setDescriptiveRefreshKey((key) => key + 1)}
-                  disabled={descriptiveBusy}
-                >
-                  {descriptiveBusy ? "Рассчитываем…" : "Пересчитать статистики"}
-                </Button>
-              ) : check.id === "correlation" ? (
-                <Button
-                  type="button"
-                  onClick={() => setCorrelationRefreshKey((key) => key + 1)}
-                  disabled={correlationBusy || !activeFeature}
-                >
-                  {correlationBusy ? "Рассчитываем…" : "Пересчитать корреляцию"}
-                </Button>
-              ) : check.id === "ih_analysis" ? (
-                <Button
-                  type="button"
-                  onClick={() => setIhRefreshKey((key) => key + 1)}
-                  disabled={ihBusy || !activeFeature}
-                >
-                  {ihBusy ? "Рассчитываем…" : "Пересчитать IH-анализ"}
-                </Button>
-              ) : check.id === "seasonality" ? (
-                <Button
-                  type="button"
-                  onClick={() => setSeasonalityRefreshKey((key) => key + 1)}
-                  disabled={seasonalityBusy || !activeFeature}
-                >
-                  {seasonalityBusy ? "Рассчитываем…" : "Пересчитать сезонность"}
-                </Button>
-              ) : check.id === "stationarity" ? (
-                <Button
-                  type="button"
-                  onClick={() => setStationarityRefreshKey((key) => key + 1)}
-                  disabled={stationarityBusy || !activeFeature}
-                >
-                  {stationarityBusy ? "Рассчитываем…" : "Пересчитать стационарность"}
-                </Button>
-              ) : check.id === "distribution" ? (
-                <Button
-                  type="button"
-                  onClick={() => setDistributionRefreshKey((key) => key + 1)}
-                  disabled={distributionBusy || !activeFeature}
-                >
-                  {distributionBusy ? "Рассчитываем…" : "Пересчитать распределение"}
-                </Button>
-              ) : check.id === "structural" ? (
-                <Button
-                  type="button"
-                  onClick={() => setStructuralRefreshKey((key) => key + 1)}
-                  disabled={!activeFeature}
-                >
-                  Пересчитать сдвиги
-                </Button>
-              ) : check.id === "feature_select" ? (
-                <Button type="button" onClick={()=>setFeatureSelectionRefreshKey(key=>key+1)} disabled={featureSelectionBusy||!activeFeature}>{featureSelectionBusy?"Рассчитываем…":"Пересчитать отбор"}</Button>
-              ) : check.id === "validation_strategy" ? (
-                <Button type="button" onClick={() => setValidationStrategyRefreshKey((key) => key + 1)} disabled={validationStrategyBusy || !activeFeature}>{validationStrategyBusy ? "Строим…" : "Пересчитать стратегию"}</Button>
-              ) : check.id === "model_matrix" ? (
-                <Button type="button" onClick={() => setModelMatrixRefreshKey((key) => key + 1)} disabled={modelMatrixBusy || !activeFeature}>{modelMatrixBusy ? "Проверяем…" : "Пересчитать матрицу"}</Button>
-              ) : (
-                <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
-              )}
             </article>
           ))}
         </div>
@@ -2024,6 +2033,13 @@ export function TsAnalysisEDA() {
       <DatasetPassportPanel
         stage="modeling_entry"
         targetColumn={activeFeature}
+        // EDA-RECALC-COMPENSATION ②: подтверждение временной колонки —
+        // единственная мутация, доступная ПРЯМО на /eda (POST /date-column
+        // в панели паспорта). Фокус окна при этом не меняется, поэтому
+        // фокус-рефетч ① её не ловит: подписка на колбэк панели бампит
+        // остановки сразу после успешного POST (PROGR-13-A5: вызов после
+        // успеха даты, до паспорта — порядок фактов трассы честный).
+        onDateColumnConfirmed={bumpAllStops}
         historyResetNotice={passportResetNotice
           ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
           : null}

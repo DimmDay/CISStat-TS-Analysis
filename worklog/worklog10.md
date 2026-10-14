@@ -71,3 +71,46 @@ RED (на базе c892f27, до правок; корпуса оракулов �
 ### Результат
 
 (1) Кнопка «Справка» заголовка колонки «Загрузка» — у правого края колонки, вертикально отцентрована (эквивалент justify-between «Валидации» для строки из трёх элементов), активные состояния и инварианты UI-UPLOAD-HELP-1 сохранены. (2) Остановка «Превью датасета» окна «Обзор»: под 4 бейджами три вкладки — «Превью» и «Типы колонок» без изменений, новая «Весь датасет»: виртуализированная сетка с закреплённой шапкой, ползунок справа размечен на все total_rows, прокрутка от начала до конца, окна строк догружаются с нового GET /v1/session/dataset/rows (пагинация offset/limit, капа 1000, честные счётчики), значения ячеек байт-в-байт совпадают с превью. Deliverable: ZIP cisstat-upload-full-dataset.zip → открытый контейнер сессии (download + upload): apps/api/schemas.py, apps/api/routers/session.py, packages/ui/components/TsAnalysisUpload.tsx, packages/ui/components/upload-help-button-alignment.test.tsx (новый), packages/ui/components/upload-full-dataset-tab.test.tsx (новый), tests/api/test_dataset_rows.py (новый), worklog/worklog10.md. Без commit/push (AGENTS.md). Примечание тимлиду: бэкенд-эндпоинт добавляет маршрут в тот же apps/api — после мерджа redeploy Render обновит API, автодеплой Vercel обновит фронт; при датасетах за пределами капы пагинации (страницы по 200, капа 1000) полный просмотр остаётся честным (догрузка по мере прокрутки), сверхбольшие файлы (>~сотен тысяч строк) упираются только в высоту spacer'а — DOM постоянен.
+
+---
+
+## Task ID: EDA-RECALC-COMPENSATION (2026-10-14) — Вкладка «Разведочный EDA» (/eda): удаление постоянных кнопок «Пересчитать…» со всех 10 остановок с компенсирующим набором (одобрение тимлида рекомендации EDA-RECALC-IMPACT). TDD-цикл RED→GREEN→регресс по AGENTS.md; без commit/push
+
+База: main@539284e. Поставки предшествующих фаз: EDA-RECALC-RESEARCH (факт-карта, П1–П6, Г1–Г8) → EDA-RECALC-IMPACT (сценарный анализ А–Е, Д9–Д14, рекомендация «удалять с компенсацией») → настоящая задача реализует одобренный набор ①–⑤.
+
+### Оценка рисков до кода
+
+- Р1 (мульти-таб регресс): удаление кнопок без компенсации оставило бы сценарий Б (внешняя мутация при смонтированном EDA) без пути обновления — закрывается ① фокус-рефетчем (доказанный паттерн PROGR-9-FOCUS). Риск реализации: лишние GET → трасса «Прогресса» защищена троттлингом profile_requested 300 c (§4.2) и дедупом.
+- Р2 (внутри-EDA мутация датой): фокус её не ловит — закрывается ② проводкой onDateColumnConfirmed (панель вызывает после успеха POST /date-column, до паспорта — PROGR-13-A5 порядок фактов).
+- Р3 (липкая ошибка после сбоя GET): закрывается ③ кнопкой «Повторить» ТОЛЬКО в error-ветке — после клика эффект перезапускается, статус running, кнопка исчезает сама (busy-гейт не нужен; Г7-асимметрия structural исчезает вместе с постоянными кнопками).
+- Р4 (кэш графика распределения): источник бампа RCH-3 пропадает — закрывается ④ mount-scoped префиксом revision; бампы внутри монтирования (фокус/дата/«Повторить») сохранены средним сегментом.
+- Р5 (паритет справки): правка текстов синхронно в ТРЁХ файлах (help.ts, help-parity.fixture.json, registry_data.json) — паритет байт-в-байт оракулом help.test.ts; счетчик записей 77 не менялся.
+- Р6 (неактивные остановки): бамп их refreshKey НЕ порождает GET (эффекты гейтятся activeCheckId) — перезапрос при первом визите; фокус-рефетч даёт ровно 2 GET (descriptive + активная).
+
+### Реализация (файлы и точки)
+
+- packages/ui/components/TsAnalysisEDA.tsx: ① import useWindowFocusRefetch + bumpAllStops (useCallback, бамп всех 10 refreshKey) + useWindowFocusRefetch(bumpAllStops); ② onDateColumnConfirmed={bumpAllStops} в DatasetPassportPanel; ③ retryStop(checkId) (switch по 10 id) + условная кнопка «Повторить» в error-ветке остановки (до «Метрики и алгоритм»); удалена цепочка из 10 постоянных кнопок «Пересчитать…» И мёртвый fallback «Запустить анализ ({label})» (EDA-RECALC-RESEARCH код-факт: недостижим для всех id реестра); шапка-комментарий обновлена.
+- packages/ui/components/EdaDescriptiveOverview.tsx: ④ requestKey = `<mountScope>:<refreshKey>:<activeFeature>`, mountScope — useState-инициализатор Math.random().toString(36) (useId отклонён: двоеточия формата ломают 3-сегментный контракт revision).
+- ⑤ help.ts / help-parity.fixture.json / registry_data.json: 7 текстов pipeline-фасетов (descriptive, correlation, distribution, ih_analysis, seasonality, stationarity, structural) переведены на фактическую механику: автопересчёт при смене цели/параметров, фокус-рефетч, «Повторить» при сбое. feature_select/validation_strategy/model_matrix кнопку не описывали — не тронуты.
+
+### TDD-протокол
+
+- RED (база 539284e, до правок): 7 failed / 57 passed — 6 новых компонентных оракулов (отсутствие 10 кнопок+fallback; фокус-рефетч descriptive; фокус-рефетч активной остановки; «Повторить» только в error+ретрай 500→успех; дата-бамп через панель паспорта; mount-scope RCH-3) + 1 справочный (в pipeline-фасетах EDA нет «Пересчитать/ручная кнопка»; у 7 остановок есть «Повторить»).
+- GREEN: 64/64 (TsAnalysisEDA.test.tsx + help.test.ts). Мигрированы 7 кнопочных оракулов: 6 «reacts to parameters…and supports refresh» → параметр-часть сохранена, кнопочная удалена; «recalculates the descriptive profile on demand» → «refetches…when the window regains focus».
+- Регресс: полный jest монорепо — 171 сюита / 2017 тестов, ВСЕ зелёные (--maxWorkers=2; база 539284e: 2011 — дельта ровно +5 новых оракулов TsAnalysisEDA +1 help, ноль новых падений, ноль «исцелений»). typecheck:all (embedded+standalone) — чисто. Сборка npm run build (standalone, Next production) — успешна.
+- Флейк-расследование (фиксация среды, НЕ дельты задачи): при полных параллельных прогонах падали по таймауту 5 c сертификационные suite'ы prograudit3cert_eda_seed_freshness (C4) и prograudit0_h28_viewed_transfer — нагрузочный класс: внутренние ожидания 9 c внутри тестового лимита 5 c + settle-поллинг. ДОКАЗАТЕЛЬСТВО пре-существования: подмножество {cert_seed_freshness + h28_viewed_transfer + TsAnalysisEDA} на ЧИСТОЙ базе 539284e — 1F/2F/0F по трём прогонам; с дельтой — тот же класс (1F/1F/0F в подмножестве, соло C4 5/5 зелёный). Suite'ы задачи не затрагивают эти файлы; в полном регрессе с --maxWorkers=2 — 0 падений.
+- Уточнение оракула ⑤ в ходе GREEN: требование «Повторить» применено к 7 остановкам, описывавшим кнопку (EDU-реестр подтверждает); feature_select/validation_strategy/model_matrix — только запрет упоминаний кнопки.
+
+### Контракты «Прогресса» (не изменены, сверено)
+
+Каждый авто-GET 9/10 остановок по-прежнему несёт profile_requested (TRACE_ROUTES, троттлинг 300 c — фокус-волны не утопят трассу, прецедент dedupe worklog9.md:49); карта просмотров (eda_check_status, POST /v1/progress/eda-checks) и seed /trace не тронуты; кнопка «Повторить» не создаёт новых классов фактов (ретрай-GET = обычный profile_requested в окне троттлинга).
+
+### Поставка
+
+Изменённые/новые файлы: packages/ui/components/TsAnalysisEDA.tsx; packages/ui/components/EdaDescriptiveOverview.tsx; packages/ui/components/TsAnalysisEDA.test.tsx; packages/ui/components/EdaDescriptiveOverview.test.tsx (пины RCH-3 переведены на 3-сегментный контракт); packages/ui/lib/knowledge/help.ts; packages/ui/lib/knowledge/help-parity.fixture.json; packages/ui/lib/knowledge/help.test.ts; apps/api/knowledge/registry_data.json; worklog/worklog10.md. Deliverable: ZIP cisstat-eda-recalc-compensation.zip в открытый контейнер сессии (download) — только файлы текущей задачи. Без commit/push (AGENTS.md).
+
+### Открытые пункты / примечания тимлиду
+
+- Правка только packages/ui + knowledge-реестры; после мерджа автодеплой Vercel обновит standalone и embedded одновременно (родственная асимметрия «Предобработки» уже устранена PROGR-9 — модули теперь однородны).
+- Сертификационные suite'ы C4/H28: рекомендация вне периметра — поднять testTimeout до 9–10 c или устранить settle-поллинг (нагрузочный класс зафиксирован выше с доказательством на базе).
+- Живой браузерный сценарий мульти-таб на prod не прогонялся (покрытие оракулами на уровне компонента; cookie-контракт и троттлинг — по коду).

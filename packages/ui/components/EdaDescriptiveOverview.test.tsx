@@ -177,15 +177,18 @@ describe("EdaDescriptiveOverview", () => {
   });
 
   // ── Волна 3 plan_review_charts.md (Task RCH-3): cache-buster self-fetch.
-  // Эффект и так перезапускается requestKey-гвардом (`${refreshKey}:${activeFeature}`),
-  // но сам URL запроса сигнал обновления не содержал -- теоретический HTTP-кэш
-  // промежуточных слоёв мог отдать устаревший payload при повторном запросе с
-  // той же парой column+refreshKey. Канон OUTL-1: ревизия включается в query
-  // (revision=<requestKey>) -- URL становится чистой функцией ключа эффекта,
-  // и любое его изменение меняет URL. Неизвестный query-параметр FastAPI
-  // игнорирует -- бэкенд не меняется.
+  // Эффект и так перезапускается requestKey-гвардом, но сам URL запроса сигнал
+  // обновления не содержал -- теоретический HTTP-кэш промежуточных слоёв мог
+  // отдать устаревший payload при повторном запросе с той же парой
+  // column+refreshKey. Канон OUTL-1: ревизия включается в query -- URL
+  // становится чистой функцией ключа эффекта. EDA-RECALC-COMPENSATION ④:
+  // источник бампа refreshKey больше не кнопка «Пересчитать…», поэтому
+  // requestKey получил mount-scoped префикс -- контракт три сегмента
+  // <mount-scope>:<refreshKey>:<feature>: перемонтирование модуля порождает
+  // НОВОЕ пространство URL (кэш не может отдать график прежней ревизии
+  // данных), бампы внутри монтирования меняют средний сегмент.
   describe("self-fetch carries the canonical revision cache-buster (wave 3)", () => {
-    it("первый запрос визуализации несёт revision=<refreshKey>:<feature>", async () => {
+    it("первый запрос визуализации несёт revision=<mount-scope>:<refreshKey>:<feature>", async () => {
       render(
         <EdaDescriptiveOverview
           profile={PROFILE}
@@ -199,12 +202,17 @@ describe("EdaDescriptiveOverview", () => {
 
       fireEvent.click(screen.getByRole("tab", { name: "Гистограмма" }));
       expect(await screen.findByTestId("histogram-chart")).toHaveTextContent("Price");
-      expect(String((global.fetch as jest.Mock).mock.calls[0][0])).toContain(
-        "column=Price&revision=0:Price",
-      );
+      const url = String((global.fetch as jest.Mock).mock.calls[0][0]);
+      const revision = new URL(url).searchParams.get("revision") ?? "";
+      const segments = revision.split(":");
+      // <mount-scope>:<refreshKey>:<feature>
+      expect(segments).toHaveLength(3);
+      expect(segments[0].length).toBeGreaterThan(0);
+      expect(segments[1]).toBe("0");
+      expect(segments[2]).toBe("Price");
     });
 
-    it("смена refreshKey перезапрашивает распределение с новой ревизией (фича не менялась)", async () => {
+    it("смена refreshKey перезапрашивает распределение с новой ревизией (mount-scope и фича не менялись)", async () => {
       const { rerender } = render(
         <EdaDescriptiveOverview
           profile={PROFILE}
@@ -217,6 +225,7 @@ describe("EdaDescriptiveOverview", () => {
       );
       fireEvent.click(screen.getByRole("tab", { name: "Гистограмма" }));
       expect(await screen.findByTestId("histogram-chart")).toBeInTheDocument();
+      const firstRevision = (new URL(String((global.fetch as jest.Mock).mock.calls[0][0])).searchParams.get("revision") ?? "").split(":");
 
       rerender(
         <EdaDescriptiveOverview
@@ -229,12 +238,18 @@ describe("EdaDescriptiveOverview", () => {
         />,
       );
 
-      // requestKey "1:Price" != distributionCacheKey "0:Price" -- дозапрос;
-      // контракт о ПОСЛЕДНЕМ вызове (loading-flash даёт отбрасываемые попытки).
+      // requestKey "<scope>:1:Price" != distributionCacheKey "<scope>:0:Price"
+      // -- дозапрос; контракт о ПОСЛЕДНЕМ вызове (loading-flash даёт
+      // отбрасываемые попытки).
       await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
       const lastUrl = String((global.fetch as jest.Mock).mock.calls[1][0]);
       expect(lastUrl).toContain("column=Price");
-      expect(lastUrl).toContain("revision=1:Price");
+      const segments = (new URL(lastUrl).searchParams.get("revision") ?? "").split(":");
+      expect(segments).toHaveLength(3);
+      // mount-scope стабилен в пределах монтирования, refreshKey бампнулся.
+      expect(segments[0]).toBe(firstRevision[0]);
+      expect(segments[1]).toBe("1");
+      expect(segments[2]).toBe("Price");
     });
   });
 });

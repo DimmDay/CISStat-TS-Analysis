@@ -98,7 +98,17 @@ function EdaDescriptiveOverviewInner({
   const [distributionCacheKey, setDistributionCacheKey] = useState<string | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
   const [distributionError, setDistributionError] = useState<string | null>(null);
-  const requestKey = `${refreshKey}:${activeFeature}`;
+  // EDA-RECALC-COMPENSATION ④ (RCH-3): mount-scoped префикс ревизии.
+  // Источник бампа refreshKey в TsAnalysisEDA больше не кнопка (постоянные
+  // кнопки «Пересчитать…» удалены), поэтому «свежее пространство URL на
+  // каждое монтирование» гарантирует отдельный идентификатор: без него
+  // revision=0:<feature> после перемонтирования совпал бы с прежним
+  // монтированием и теоретический HTTP-кэш промежуточных слоёв мог бы
+  // отдать график, рассчитанный по устаревшей ревизии данных. useId НЕ
+  // подходит: его формат содержит двоеточия, а контракт revision —
+  // три двоеточие-разделённых сегмента <mount>:<refreshKey>:<feature>.
+  const mountScope = useState(() => Math.random().toString(36).slice(2, 10))[0];
+  const requestKey = `${mountScope}:${refreshKey}:${activeFeature}`;
 
   const selected = useMemo(
     () => profile?.columns.find((item) => item.name === activeFeature) ?? null,
@@ -125,7 +135,10 @@ function EdaDescriptiveOverviewInner({
         // requestKey-гвардом, но теоретический HTTP-кэш промежуточных слоёв
         // мог отдать устаревший payload при повторном запросе с той же парой
         // column+refreshKey; revision=${requestKey} делает URL чистой функцией
-        // ключа эффекта: любое его изменение (refreshKey, фича) меняет и URL.
+        // ключа эффекта. EDA-RECALC-COMPENSATION ④: requestKey теперь
+        // <mount-scope>:<refreshKey>:<feature> -- бампы внутри монтирования
+        // (фокус-рефетч/подтверждение даты/«Повторить») меняют средний
+        // сегмент, перемонтирование модуля порождает новый префикс.
         // Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
         const response = await fetch(
           sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(activeFeature)}&revision=${requestKey}`),
