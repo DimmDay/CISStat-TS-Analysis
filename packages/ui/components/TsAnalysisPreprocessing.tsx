@@ -21,6 +21,16 @@
 //  профили обновляются только автоматически: apply мастера, смена
 //  режима/признака/параметров, возврат во вкладку/окно.)
 //
+// UI-PREPR-HDR-1 (2026-10-14): заголовки колонок 3-колоночного layout
+// («Preprocessing», «Описание», «Панель управления») и заголовки окон
+// «Обзор»/«Мастер исправления…» приведены к единому виду по паттерну
+// UI-VALIDATION-HDR-1 «Валидации» (UI-UPLOAD-HDR-1 «Загрузки»): строка
+// flex items-center gap-2 + lucide-иконка (SlidersHorizontal/Info/
+// Eye/Wrench/Settings, size 16, text-brand, aria-hidden) + заголовок
+// text-lg font-semibold text-neutral-800; низы заголовков колонок на
+// одной горизонтали (pt-1 обеих aside убран). Пин контракта:
+// preprocessing-column-headers-unified.test.tsx.
+//
 // PREPR-VALFIX (2026-10-10): жёлтая (warning) остановка степпера -> кнопка
 // «Исправить/Настроить/Обеспечить...» этой остановки в «Панели управления»
 // мигает тонкой (1px) рамкой бренда (плавное появление/гасание, 1.5s
@@ -28,7 +38,14 @@
 // пресета из VALFIX-1). Перенос паттерна VALFIX-1 из «Валидации».
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+// Иконки заголовков layout (UI-PREPR-HDR-1, паттерн UI-VALIDATION-HDR-1
+// «Валидации» / UI-UPLOAD-HDR-1 «Загрузки»): SlidersHorizontal -- левая
+// колонка («математические преобразования ряда» -- рукоятки
+// преобразований, семантически отличима от Settings правой колонки),
+// Info -- окно «Описание» (как в «Загрузке»/«Валидации»), Eye/Wrench --
+// окно «Обзор»/«Мастер исправления…» по режиму, Settings -- «Панель
+// управления» (тот же значок, что в «Валидации»).
+import { ChevronDown, ChevronUp, SlidersHorizontal, Info, Eye, Wrench, Settings } from "lucide-react";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
@@ -875,16 +892,30 @@ export function TsAnalysisPreprocessing() {
     <div className="space-y-5">
       <div className="flex gap-6">
         {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
-        <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+        {/* Офсет pt-1 УБРАН (UI-PREPR-HDR-1): строка заголовка -- первая
+            ветка колонки, низы заголовков трёх колонок на одной
+            горизонтали (как в «Загрузке» UI-UPLOAD-HDR-1 и «Валидации»
+            UI-VALIDATION-HDR-1). */}
+        <aside className="w-60 shrink-0 flex flex-col gap-3">
         {/* Заголовок модуля + справка */}
+        {/* Единый вид заголовков (UI-PREPR-HDR-1, паттерн
+            UI-VALIDATION-HDR-1 «Валидации» / UI-UPLOAD-HDR-1 «Загрузки»):
+            строка flex items-center gap-2 + иконка (SlidersHorizontal,
+            size 16, text-brand, aria-hidden) + h2 text-lg font-semibold
+            text-neutral-800 (растяжение flex-1 min-w-0 прижимает кнопку
+            «Справка» к правому краю узкой колонки -- раньше здесь был
+            justify-between без иконки; truncate -- защита узкой колонки,
+            кнопка -- shrink-0). Пин контракта:
+            preprocessing-column-headers-unified.test.tsx. */}
         <div className="mb-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal size={16} className="text-brand" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
               Preprocessing
             </h2>
             <button
               onClick={handleHelpClick}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
+              className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
                 descriptionSection === "help"
                   ? "bg-brand text-white"
                   : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
@@ -985,10 +1016,20 @@ export function TsAnalysisPreprocessing() {
       {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: метрики-текст + график + метрики-карточки ── */}
       <section className="flex-1 min-w-0">
         {/* Блок «Описание» — текстовое поле над графиком */}
+        {/* Заголовок окна «Описание» -- единый паттерн заголовков layout
+            страницы (UI-PREPR-HDR-1, паттерн «Валидации»/«Загрузки»):
+            строка flex items-center gap-2 + иконка Info (как у «Описания»
+            «Загрузки» и «Валидации») + text-lg font-semibold text-neutral-800
+            (был дефолтный text-base без иконки). mb-1 строки сохраняет
+            исходный ритм «заголовок → подзаголовок» (под строкой --
+            {descriptionSubtitle}, как в «Валидации»). */}
         <div className="mb-5">
-          <h3 className="font-semibold mb-1">
-            Описание
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Info size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Описание
+            </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-2">
             {descriptionSubtitle}
           </p>
@@ -1040,8 +1081,24 @@ export function TsAnalysisPreprocessing() {
         </div>
 
         {/* График / Обзор / Мастер исправления */}
+        {/* Заголовок окна «Обзор» / «Мастер исправления…» -- единый
+            паттерн заголовков layout страницы (UI-PREPR-HDR-1, паттерн
+            «Валидации»/«Загрузки»): строка flex items-center gap-2 +
+            иконка size 16 text-brand aria-hidden + text-lg font-semibold
+            text-neutral-800 (был дефолтный text-base без иконки). Иконка
+            семантична режиму окна: Eye -- «Обзор: …» (как у окон «Обзор»
+            «Загрузки»/«Валидации»), Wrench -- «Мастер исправления…»/
+            «Мастер …» любого из 10 преобразований в pipeline-режиме
+            (исправление/настройка); подпись режима живёт в подзаголовке
+            окна и на этот заголовок не влияет. */}
         <div>
-          <h3 className="font-semibold mb-1">
+          <div className="flex items-center gap-2 mb-1">
+            {descriptionSection === "pipeline" ? (
+              <Wrench size={16} className="text-brand" aria-hidden="true" />
+            ) : (
+              <Eye size={16} className="text-brand" aria-hidden="true" />
+            )}
+            <h3 className="text-lg font-semibold text-neutral-800">
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Мастер исправления пропусков"
               : activeCheckId === "outliers" && descriptionSection === "pipeline"
@@ -1064,6 +1121,7 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер масштабирования"
               : `Обзор: ${activeCheck.label}`}
           </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Выберите колонки и стратегию, оцените последствия на копии и примените исправления."
@@ -1306,8 +1364,13 @@ export function TsAnalysisPreprocessing() {
       </section>
 
       {/* ── ПРАВАЯ КОЛОНКА: панель управления + список проверок ── */}
-      <aside className="w-80 shrink-0 pt-1">
-        <div className="mb-4">
+      {/* Офсет pt-1 УБРАН (UI-PREPR-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной горизонтали.
+          Иконка Settings -- семантика «руль и педали» (тот же значок, что
+          у «Панели управления» «Валидации»). */}
+      <aside className="w-80 shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} className="text-brand" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-neutral-800">
             Панель управления
           </h2>
