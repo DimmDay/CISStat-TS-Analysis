@@ -411,7 +411,9 @@ describe("TsAnalysisEDA", () => {
 
   it("renders the module title", () => {
     render(<TsAnalysisEDA />);
-    expect(screen.getByText("Разведочный EDA")).toBeInTheDocument();
+    // UI-EDA-HDR-2: заголовок левой колонки «Разведочный EDA» переименован
+    // в «Exploration» (не помещался в узкую колонку целиком).
+    expect(screen.getByText("Exploration")).toBeInTheDocument();
   });
 
   it("renders the right control-panel title with the unified layout-header pattern (UI-EDA-HDR-1)", () => {

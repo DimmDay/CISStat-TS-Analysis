@@ -33,7 +33,7 @@
 //     (EdaDescriptiveOverview).
 //
 // UI-EDA-HDR-1 (2026-10-14): заголовки колонок 3-колоночного layout
-// («Разведочный EDA», «Описание», «Панель управления») и заголовок
+// («Exploration», «Описание», «Панель управления») и заголовок
 // окна «Обзор: …» приведены к единому виду по паттерну UI-PREPR-HDR-1
 // «Предобработки» (UI-VALIDATION-HDR-1 «Валидации» / UI-UPLOAD-HDR-1
 // «Загрузки»): строка flex items-center gap-2 + lucide-иконка
@@ -43,6 +43,14 @@
 // мастер-режима окна — центральное окно ВСЕГДА «Обзор: {label}»,
 // поэтому иконка окна — Eye, без режимного Wrench. Пин контракта:
 // eda-column-headers-unified.test.tsx.
+//
+// UI-EDA-HDR-2 (2026-10-14): заголовок левой колонки «Разведочный EDA»
+// переименован в «Exploration» по прямому указанию тимлида -- длинный
+// кириллический заголовок не помещался в узкую колонку (w-60) целиком.
+// truncate flex-1 сохранён как защита узкой колонки; модульное имя
+// «Разведочный EDA» на других поверхностях (навигация ModuleNav/
+// stages.ts/navigator-stops.ts, справка knowledge/*, прогресс,
+// бэкенд-реестр) НЕ менялось -- вне скоупа постановки.
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 // Иконки заголовков layout (UI-EDA-HDR-1, паттерн UI-PREPR-HDR-1
@@ -1401,7 +1409,7 @@ export function TsAnalysisEDA() {
           <div className="flex items-center gap-2">
             <Telescope size={16} className="text-brand" aria-hidden="true" />
             <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
-              Разведочный EDA
+              Exploration
             </h2>
             <button
               onClick={handleHelpClick}

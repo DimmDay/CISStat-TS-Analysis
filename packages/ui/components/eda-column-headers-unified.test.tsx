@@ -4,20 +4,29 @@
 // единому виду по паттерну задачи UI-PREPR-HDR-1 вкладки «Предобработка»
 // (которая, в свою очередь, переносит UI-VALIDATION-HDR-1 «Валидации» →
 // UI-UPLOAD-HDR-1 «Загрузки») заголовки вкладки «Разведочный EDA»:
-//   (1) заголовки колонок 3-колоночного layout («Разведочный EDA»,
+//   (1) заголовки колонок 3-колоночного layout (левая колонка --
+//       «Exploration», после переименования UI-EDA-HDR-2;
 //       «Описание», «Панель управления»);
 //   (2) заголовок окна «Обзор: …» центральной колонки (EDA не имеет
 //       мастер-режима окна — центральное окно ВСЕГДА «Обзор: {label}»,
 //       поэтому иконка окна — Eye, без режимного Wrench).
 //
+// UI-EDA-HDR-2 (2026-10-14, постановка тимлида): заголовок левой колонки
+// «Разведочный EDA» переименован в «Exploration» -- не помещался в узкую
+// колонку (w-60) целиком. Пины заголовка в этом сюите обновлены
+// синхронно (3 query-точки); модульные имена на других поверхностях
+// (навигация, справка, прогресс, бэкенд-реестр) остались «Разведочный
+// EDA» -- вне скоупа постановки. Прецедент EN-заголовков левых колонок:
+// «Preprocessing» («Предобработка»), «Data Quality» («Валидация»).
+//
 // Контракт паттерна (эталон -- preprocessing-column-headers-unified.test.tsx):
 //   (a) типографика: text-lg (18px) + font-semibold + text-neutral-800
-//       («Разведочный EDA»/«Панель управления» уже были text-lg; «Описание»
+//       («Exploration»/«Панель управления» уже были text-lg; «Описание»
 //       и «Обзор» рендерились дефолтным text-base -- рассинхрон 2px);
 //   (b) строка-паттерн: flex items-center gap-2;
 //   (c) иконка паттерна: lucide svg size 16, text-brand, aria-hidden;
 //   (d) состав строки: [иконка, заголовок] у «Описания»/«Обзора»/
-//       «Панели управления»; у «Разведочный EDA» -- [иконка, h2, кнопка
+//       «Панели управления»; у левой колонки -- [иконка, h2, кнопка
 //       «Справка»] с shrink-0 у кнопки (паттерн левых колонок «Загрузки»/
 //       «Валидации»/«Предобработки»; раньше строка была justify-between
 //       без иконки);
@@ -156,10 +165,10 @@ describe("Заголовки EDA -- единый вид (паттерн UI-PREPR
     jest.restoreAllMocks();
   });
 
-  it("заголовки трёх колонок («Разведочный EDA», «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
+  it("заголовки трёх колонок (левая колонка, «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
     renderHdrEda();
 
-    const hEda = await screen.findByRole("heading", { name: "Разведочный EDA", level: 2 });
+    const hEda = await screen.findByRole("heading", { name: "Exploration", level: 2 });
     const hDesc = screen.getByRole("heading", { name: "Описание", level: 3 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
 
@@ -170,9 +179,11 @@ describe("Заголовки EDA -- единый вид (паттерн UI-PREPR
       expectHeaderRowAtColumnTop(h);
     }
 
-    // «Разведочный EDA» сохраняет защиту узкой колонки и растяжение под
+    // Левая колонка сохраняет защиту узкой колонки и растяжение под
     // прижатие кнопки «Справка» к правому краю (паттерн «Загрузки»/
-    // «Валидации»/«Предобработки»).
+    // «Валидации»/«Предобработки»). Заголовок «Exploration» (UI-EDA-HDR-2,
+    // переименование «Разведочный EDA» -- не помещался в узкую колонку)
+    // помещается в строку целиком.
     expect(hEda.className).toContain("truncate");
     expect(hEda.className).toContain("flex-1");
   });
@@ -194,7 +205,7 @@ describe("Заголовки EDA -- единый вид (паттерн UI-PREPR
     // активной остановке секцию не меняет -- инвариант информативности
     // зеркально VALID-2/PREPR; здесь переключение -- на другую остановку).
     const leftAside = screen
-      .getByRole("heading", { name: "Разведочный EDA", level: 2 })
+      .getByRole("heading", { name: "Exploration", level: 2 })
       .closest("aside")!;
     fireEvent.click(within(leftAside).getByRole("button", { name: /^Корреляция/ }));
     const hOverviewNext = await screen.findByRole("heading", {
@@ -208,7 +219,7 @@ describe("Заголовки EDA -- единый вид (паттерн UI-PREPR
   it("выравнивание по нижней горизонтали: офсеты pt-1 ОБОИХ колонок убраны, подпись «Финал перед моделированием» сохранена", async () => {
     renderHdrEda();
 
-    const hEda = await screen.findByRole("heading", { name: "Разведочный EDA", level: 2 });
+    const hEda = await screen.findByRole("heading", { name: "Exploration", level: 2 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
     const leftAside = hEda.closest("aside")!;
     const rightAside = hPanel.closest("aside")!;
