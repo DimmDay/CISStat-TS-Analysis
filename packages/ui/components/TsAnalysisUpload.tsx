@@ -75,6 +75,7 @@ import {
   RefreshCw,
   Loader2,
   Route,
+  Info,
 } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
@@ -979,9 +980,23 @@ export function TsAnalysisUpload() {
         <>
           <div className="flex gap-6">
           {/* ── ЛЕВАЯ КОЛОНКА: заголовок + признак + прогресс + степпер ── */}
-          <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+          {/* Заголовки трёх колонок -- единый вид (2026-10-14, постановка
+              тимлида): (1) размер шрифта -- text-lg, как у заголовка
+              «Загрузка» (был рассинхрон: «Описание»/«Файл» и переменные
+              заголовки правой колонки рендерились дефолтным text-base);
+              (2) низы заголовков на одной горизонтали -- строка заголовка
+              первая ветка КАЖДОЙ колонки, офсет pt-1 левой колонки убран,
+              высоты строк детерминированы одинаково (text-lg line box
+              28px, items-center, иконка 16px). Структурный паттерн --
+              заголовки секции «Примеры прикладных задач» страницы
+              «Знакомство с платформой» (AppliedTasksNavigator): строка
+              flex items-center gap-2 + lucide-иконка (size 16, text-brand,
+              aria-hidden) + заголовок font-semibold text-neutral-800.
+              Пин контракта: upload-column-headers-unified.test.tsx. */}
+          <aside className="w-60 shrink-0 flex flex-col gap-3">
             <div className="mb-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Upload size={16} className="text-brand" aria-hidden="true" />
                 <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">Загрузка</h2>
               </div>
               <p className="text-[11px] text-neutral-500 mt-0.5">Проверка и структура датасета</p>
@@ -1055,7 +1070,10 @@ export function TsAnalysisUpload() {
           {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: Описание + Обзор ("лобовое стекло") ── */}
           <section className="flex-1 min-w-0">
             <div className="mb-5">
-              <h3 className="font-semibold mb-1">Описание</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <Info size={16} className="text-brand" aria-hidden="true" />
+                <h3 className="text-lg font-semibold text-neutral-800">Описание</h3>
+              </div>
               <div className="min-h-[90px] rounded-lg border border-neutral-200 bg-brand-light/50 px-4 py-3 text-sm text-neutral-600">
                 {activeStopDef.description}
               </div>
@@ -1436,7 +1454,10 @@ export function TsAnalysisUpload() {
           <aside className="w-80 shrink-0">
             {activeStop === "overview" && (
               <article>
-                <h3 className="font-semibold mb-2">Файл</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText size={16} className="text-brand" aria-hidden="true" />
+                  <h3 className="text-lg font-semibold text-neutral-800">Файл</h3>
+                </div>
                 <p className="text-sm text-neutral-600 mb-3">
                   {uploadData!.parse_warnings.length > 0
                     ? "Обнаружены технические предупреждения при чтении — проверьте превью и типы колонок слева перед тем, как продолжать."
@@ -1450,7 +1471,10 @@ export function TsAnalysisUpload() {
 
             {activeStop === "chart" && (
               <article>
-                <h3 className="font-semibold mb-2">Зачем это здесь</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart3 size={16} className="text-brand" aria-hidden="true" />
+                  <h3 className="text-lg font-semibold text-neutral-800">Зачем это здесь</h3>
+                </div>
                 <p className="text-sm text-neutral-600 mb-3">
                   Форма ряда на глаз (тренд, разрывы, аномальные всплески) — до того, как погружаться в статистику
                   распределения. Декомпозиция показывает, сколько в ряде объясняется трендом/сезонностью, а сколько
@@ -1466,7 +1490,10 @@ export function TsAnalysisUpload() {
 
             {activeStop === "distribution" && (
               <article>
-                <h3 className="font-semibold mb-2">Зачем это здесь</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity size={16} className="text-brand" aria-hidden="true" />
+                  <h3 className="text-lg font-semibold text-neutral-800">Зачем это здесь</h3>
+                </div>
                 <p className="text-sm text-neutral-600 mb-3">
                   Асимметрия и эксцесс подсказывают, какие модели и трансформации будут уместны позже: сильная асимметрия обычно требует
                   стабилизации дисперсии в «Предобработке» до того, как переходить к ARIMA/SARIMA.
@@ -1481,7 +1508,10 @@ export function TsAnalysisUpload() {
 
             {activeStop === "structure" && (
               <article>
-                <h3 className="font-semibold mb-2">Подтверждение</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar size={16} className="text-brand" aria-hidden="true" />
+                  <h3 className="text-lg font-semibold text-neutral-800">Подтверждение</h3>
+                </div>
                 <p className="text-sm text-neutral-600 mb-3">
                   Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) — переживёт F5. Применение
                   override-эндпоинта на бэкенде — TODO.
@@ -1494,7 +1524,10 @@ export function TsAnalysisUpload() {
 
             {activeStop === "quality" && uploadData!.quality && (
               <article>
-                <h3 className="font-semibold mb-2">Что дальше</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <ArrowRight size={16} className="text-brand" aria-hidden="true" />
+                  <h3 className="text-lg font-semibold text-neutral-800">Что дальше</h3>
+                </div>
                 <p className="text-sm text-neutral-600 mb-2">Только счётчики — содержательный разбор проблем качества живёт в «Валидации».</p>
                 {uploadData!.quality.missing_cols.length > 0 && (
                   <p className="text-xs text-neutral-500 mb-1">
