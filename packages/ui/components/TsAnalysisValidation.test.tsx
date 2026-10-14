@@ -182,7 +182,7 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByRole("heading", { name: "Паспорт свойств ряда: Валидация" })).toBeInTheDocument();
   });
 
-  it("renders the control panel title with the same typography and top offset as Data Quality", async () => {
+  it("renders the control panel title in the unified layout-header pattern (UI-VALIDATION-HDR-1)", async () => {
     renderValidation();
 
     const stepperTitle = await screen.findByRole("heading", {
@@ -194,9 +194,33 @@ describe("TsAnalysisValidation", () => {
       name: "Панель управления",
     });
 
-    expect(controlPanelTitle.className).toBe(stepperTitle.className);
-    expect(stepperTitle.closest("aside")).toHaveClass("pt-1");
-    expect(controlPanelTitle.closest("aside")).toHaveClass("pt-1");
+    // Единый вид заголовков колонок (UI-VALIDATION-HDR-1, паттерн
+    // UI-UPLOAD-HDR-1 «Загрузки»): text-lg + font-semibold + neutral-800,
+    // строка flex items-center gap-2 с aria-hidden иконкой text-brand.
+    // (Прежний пин «одинаковый className + pt-1 у обеих колонок» пинил
+    // старый дизайн с рассинхроном; новый контракт пинит и структурный
+    // вид строк, и отсутствие вертикальных офсетов -- см. также
+    // validation-column-headers-unified.test.tsx.)
+    for (const title of [stepperTitle, controlPanelTitle]) {
+      expect(title.className).toContain("text-lg");
+      expect(title.className).toContain("font-semibold");
+      expect(title.className).toContain("text-neutral-800");
+      const row = title.parentElement as HTMLElement;
+      expect(row.className).toContain("flex");
+      expect(row.className).toContain("items-center");
+      expect(row.className).toContain("gap-2");
+      const icon = row.querySelector("svg");
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon!.getAttribute("class")).toContain("text-brand");
+    }
+    // «Data Quality» сохраняет защиту узкой колонки (truncate + flex-1
+    // под прижатие кнопки «Справка» к правому краю).
+    expect(stepperTitle.className).toContain("truncate");
+
+    // Вертикальные офсеты обеих колонок убраны: строка заголовка -- первая
+    // ветка колонки, низы заголовков трёх колонок на одной горизонтали.
+    expect(stepperTitle.closest("aside")).not.toHaveClass("pt-1");
+    expect(controlPanelTitle.closest("aside")).not.toHaveClass("pt-1");
   });
 
   it("renders all 10 DQ checks in the stepper", async () => {

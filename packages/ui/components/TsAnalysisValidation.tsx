@@ -26,7 +26,15 @@
 // кнопки, keyframes — в tailwind-preset.ts).
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Settings, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Info,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
@@ -494,16 +502,27 @@ export function TsAnalysisValidation() {
     <div className="space-y-5">
       <div className="flex gap-6">
         {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
-        <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+        <aside className="w-60 shrink-0 flex flex-col gap-3">
         {/* Заголовок модуля + справка */}
+        {/* Единый вид заголовков (UI-VALIDATION-HDR-1, паттерн
+            UI-UPLOAD-HDR-1 «Загрузки»): строка flex items-center gap-2 +
+            иконка (ShieldCheck, size 16, text-brand, aria-hidden) + h2
+            text-lg font-semibold text-neutral-800 (растяжение flex-1
+            min-w-0 прижимает кнопку «Справка» к правому краю узкой
+            колонки -- раньше здесь был justify-between без иконки;
+            truncate -- защита узкой колонки). Офсет pt-1 колонки УБРАН:
+            строка заголовка -- первая ветка КАЖДОЙ колонки, низы
+            заголовков трёх колонок на одной горизонтали. Пин контракта:
+            validation-column-headers-unified.test.tsx. */}
         <div className="mb-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-brand" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
               Data Quality
             </h2>
             <button
               onClick={handleHelpClick}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
+              className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
                 descriptionSection === "help"
                   ? "bg-brand text-white"
                   : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
@@ -641,10 +660,20 @@ export function TsAnalysisValidation() {
       {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: описание + график + метрики ── */}
       <section className="flex-1 min-w-0">
         {/* Блок «Описание» — текстовое поле над графиком */}
+        {/* Заголовок окна «Описание» -- единый паттерн заголовков layout
+            страницы (UI-VALIDATION-HDR-1, паттерн «Загрузки»): строка
+            flex items-center gap-2 + иконка Info (как у «Описания»
+            «Загрузки») + text-lg font-semibold text-neutral-800 (был
+            дефолтный text-base без иконки). mb-1 строки сохраняет исходный
+            ритм «заголовок → подзаголовок» (аналогично окну «Обзор»
+            «Загрузки», у которого под строкой тоже есть подзаголовок). */}
         <div className="mb-5">
-          <h3 className="font-semibold mb-1">
-            Описание
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Info size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Описание
+            </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-2">
             {descriptionSubtitle}
           </p>
@@ -700,8 +729,24 @@ export function TsAnalysisValidation() {
         </div>
 
         {/* График */}
+        {/* Заголовок окна «Обзор» / «Мастер исправления…» -- единый
+            паттерн заголовков layout страницы (UI-VALIDATION-HDR-1,
+            паттерн «Загрузки»): строка flex items-center gap-2 + иконка
+            size 16 text-brand aria-hidden + text-lg font-semibold
+            text-neutral-800 (был дефолтный text-base без иконки). Иконка
+            семантична режиму окна: Eye -- «Обзор: …» (как у окна «Обзор»
+            «Загрузки»), Wrench -- «Мастер исправления…» любого из 10
+            критериев в pipeline-режиме (исправление);
+            подпись «Метрики и алгоритм — …» живёт в подзаголовке окна
+            «Описание» и на этот заголовок не влияет. */}
         <div>
-          <h3 className="font-semibold mb-1">
+          <div className="flex items-center gap-2 mb-1">
+            {descriptionSection === "pipeline" ? (
+              <Wrench size={16} className="text-brand" aria-hidden="true" />
+            ) : (
+              <Eye size={16} className="text-brand" aria-hidden="true" />
+            )}
+            <h3 className="text-lg font-semibold text-neutral-800">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Мастер исправления типов"
               : activeCheckId === "formats" && descriptionSection === "pipeline"
@@ -724,6 +769,7 @@ export function TsAnalysisValidation() {
               ? "Мастер решений по достаточности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Выберите преобразования, проверьте последствия и примените их к активному датасету."
@@ -918,8 +964,14 @@ export function TsAnalysisValidation() {
       </section>
 
       {/* ── ПРАВАЯ КОЛОНКА: панель управления + список проверок ── */}
-      <aside className="w-80 shrink-0 pt-1">
-        <div className="mb-4">
+      {/* Офсет pt-1 УБРАН (UI-VALIDATION-HDR-1): строка заголовка --
+          первая ветка колонки, низы заголовков трёх колонок на одной
+          горизонтали. Иконка Settings -- семантика «руль и педали» (тот
+          же lucide-значок уже используется кнопкой «Управление
+          правилами» этого модуля). */}
+      <aside className="w-80 shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} className="text-brand" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-neutral-800">
             Панель управления
           </h2>
