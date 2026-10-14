@@ -86,7 +86,11 @@ class HelpEntry:
     stage_id: str
     node_id: Optional[str]
     facet: str
-    superseded_constant: str
+    # Нативные записи (UI-UPLOAD-HELP-1, spec_education.md §1.1: str | None)
+    # созданы прямо в реестре — константы-предшественника не существует;
+    # у мигрированных записей — «Файл::КОНСТАНТА». Контракт синхронен
+    # types.ts packages/ui (Fix, 2026-10-14).
+    superseded_constant: Optional[str]
     text: str
 
 

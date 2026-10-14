@@ -180,9 +180,19 @@ async function settle(ms = 300) {
 }
 
 function waitForPosts(count: number): Promise<void> {
-  return waitFor(() => expect(edaPosts.length).toBe(count), { timeout: 9000 });
+  return waitFor(() => expect(edaPosts.length).toBe(count), { timeout: 30000 });
 }
 
+// Бюджеты асинхронности (конвенция явного пина prograudit0_h26_no_auto_retry):
+// внутренние ожидания оракулов -- findAllByRole/findByRole/waitForPosts
+// с timeout: 30000 (до двух последовательных на тест) + рендер TsAnalysisEDA
+// (recharts); per-test потолок 90000мс. Причина: среда запуска с 2 vCPU,
+// джест-воркер контендится с хостом -- наблюдаемая деградация сюиты до 3.5×
+// между прогонами (5.1с → 18.2с), поставка POST может прийти позже короткого
+// бюджета; потолки покрывают деградацию с запасом (~×60 к норме ~0.5с)
+// и флак при ней устранён (Fix, 2026-10-14). Семантика оракулов НЕ меняется
+// («доставка обязана прийти в пределах бюджета», не «ждём сколько попало»);
+// цена -- медленный фейл при РЕАЛЬНОЙ регрессии доставки (до 30с/тест).
 describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вселенная по цели", () => {
   beforeEach(() => {
     edaPosts.length = 0;
@@ -212,7 +222,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     };
     global.fetch = jest.fn(makeRouter()) as jest.Mock;
     render(<TsAnalysisEDA />);
-    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 9000 });
+    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 30000 });
     // Seed {correlation}; авто-просмотр активной descriptive (unknown --
     // НЕ сеется) даёт снапшот {correlation, descriptive} != якорь --
     // честная немедленная доставка.
@@ -226,13 +236,13 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
     await settle(300);
     expect(edaPosts.length).toBe(1);
-  });
+  }, 90000);
 
   it("C2: отказ seed удерживает; клик-ретрай при отказе снова удерживает; восстановление -- объединённый снапшот", async () => {
     traceMode = "fail";
     global.fetch = jest.fn(makeRouter()) as jest.Mock;
     render(<TsAnalysisEDA />);
-    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 9000 });
+    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 30000 });
     await settle(300);
     // Активная descriptive просмотрена локально, seed не получен --
     // разрушительная карта НЕ отправляется (H27/§21.4).
@@ -253,7 +263,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     expect(edaPosts[0]["seasonality"]).toBe("done");
     expect(edaPosts[0]["correlation"]).toBe("done");
     expect(edaPosts[0]["ih_analysis"]).toBe("pending");
-  });
+  }, 90000);
 
   it("C3: деградация проекции (session_tail, тело с done-фактами) удерживает отчёт и после клик-ретрая", async () => {
     traceMode = "degraded";
@@ -261,18 +271,18 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     // Деградированное тело НЕПУСТОЕ: сеяться из него нельзя -- история
     // не выдаётся (план §13: «пустой set» не.mean разрушительную карту).
     render(<TsAnalysisEDA />);
-    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 9000 });
+    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 30000 });
     await settle(300);
     expect(edaPosts.length).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: /Сезонность и периодичность/ }));
     await settle(400);
     expect(edaPosts.length).toBe(0);
-  });
+  }, 90000);
 
   it("C4: H28 -- смена цели Flow->Stock при том же datasetId: новая вселенная, просмотры не переносятся", async () => {
     global.fetch = jest.fn(makeRouter()) as jest.Mock;
     render(<TsAnalysisEDA />);
-    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" }, { timeout: 9000 });
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" }, { timeout: 30000 });
     await waitForPosts(1);
     expect(edaPosts[0]["descriptive"]).toBe("done");
 
@@ -284,7 +294,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     // применимость, §21.5); активная seasonality -- честный НОВЫЙ
     // просмотр новой вселенной; descriptive -- только прежней.
     fireEvent.change(selector, { target: { value: "Stock" } });
-    await screen.findByDisplayValue("Stock", {}, { timeout: 9000 });
+    await screen.findByDisplayValue("Stock", {}, { timeout: 30000 });
     await waitForPosts(3);
     expect(edaPosts[2]["seasonality"]).toBe("done");
     expect(edaPosts[2]["descriptive"]).toBe("pending");
@@ -295,13 +305,13 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     // «universeKey без цели» дал бы 3 (кэш прежней вселенной).
     await settle(300);
     expect(traceGets).toBe(4);
-  });
+  }, 90000);
 
   it("C5: якорь переживает успешный seed (нет повторной поставки); новый просмотр доставляется с сеяным done", async () => {
     traceMode = { kind: "seeded", nodes: [edaNode("descriptive", "done", "current")] };
     global.fetch = jest.fn(makeRouter()) as jest.Mock;
     render(<TsAnalysisEDA />);
-    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 9000 });
+    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 30000 });
     await settle(300);
     // Seed == снапшот активной descriptive -- отчёта нет (уже записано,
     // якорь PROGR-18).
@@ -313,7 +323,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     await waitForPosts(1);
     expect(edaPosts[0]["descriptive"]).toBe("done");
     expect(edaPosts[0]["seasonality"]).toBe("done");
-  });
+  }, 90000);
 
   it("C6: легаси-фолбэк (плоский node_statuses) + гейт гонки первого seed'а (ровно seed+биндинг /trace)", async () => {
     // Старый бэкенд: поля nodes НЕТ; сеется плоский node_statuses (N-3).
@@ -323,7 +333,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     }) as jest.Mock;
     // traceMode "ok" без nodes -- форма легаси (плоский словарь пуст).
     render(<TsAnalysisEDA />);
-    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 9000 });
+    await screen.findAllByRole("button", { name: /Сезонность и периодичность/ }, { timeout: 30000 });
     await waitForPosts(1);
     // Bootstrap свежей сессии работает: авто-просмотр descriptive
     // доставлен.
@@ -332,7 +342,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     // первой поставки(1). Снятие hasDataset-гейта дало бы
     // преждевременный второй seed (3).
     expect(traceGets).toBe(2);
-  });
+  }, 90000);
 
   it("C7: легаси-дедуп делится сменой цели -- идентичный снапшот новой вселенной доставляется заново", async () => {
     // /trace: вызов 1 = seed (200, fresh); вызовы-биндинги -- 500
@@ -357,7 +367,7 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
       return makeRouter()(input, init);
     }) as jest.Mock;
     render(<TsAnalysisEDA />);
-    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" }, { timeout: 9000 });
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" }, { timeout: 30000 });
     // POST#1 (легаси-фолбэк): seed(1)=200 -- состоялся; авто-просмотр
     // descriptive; биндинг(2)=500 -- доставка легаси одним POST.
     await waitForPosts(1);
@@ -368,8 +378,8 @@ describe("PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вс
     // снапшот {descriptive} ИДЕНТИЧЕН прежней поставке. Смена
     // universeKey делит дедуп -- POST#2 обязана состояться.
     fireEvent.change(selector, { target: { value: "Stock" } });
-    await screen.findByDisplayValue("Stock", {}, { timeout: 9000 });
+    await screen.findByDisplayValue("Stock", {}, { timeout: 30000 });
     await waitForPosts(2);
     expect(edaPosts[1]["descriptive"]).toBe("done");
-  });
+  }, 90000);
 });

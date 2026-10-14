@@ -136,13 +136,18 @@ describe("Промоушен слоя знаний в backend (Шаг 4 EDU, EDU
     expect(onDisk).toEqual(payload);
   });
 
-  it("состав реестра: 77 записей справки + 13 статей (12 published + 1 draft) + 28 терминов", () => {
+  it("состав реестра: 78 записей справки + 13 статей (12 published + 1 draft) + 28 терминов", () => {
     // Постановка Шага 4 называла «12 статей + 25 терминов» (состояние на
     // момент Шага 1); фактический реестр — источник истины: 13 записей
     // статей (12 published + 1 draft) и 28 терминов. Счётчики жестко
     // зафиксированы: изменение состава реестра требует сознательного
     // обновления обеих сторон промоушена.
-    expect(KNOWLEDGE_HELP_ENTRIES).toHaveLength(77);
+    // 78 = 77 мигрированных вербатим-записей (Шаг 3) + 1 нативная
+    // upload.module.module_help (UI-UPLOAD-HELP-1, spec_education.md §1.1,
+    // superseded_constant: null); обе стороны промоушена обновлены
+    // сознательно (Fix, 2026-10-14): перегенерация registry_data.json
+    // генератором ниже + синхронный пин tests/api/test_knowledge_api.py.
+    expect(KNOWLEDGE_HELP_ENTRIES).toHaveLength(78);
     expect(KNOWLEDGE_ARTICLES).toHaveLength(13);
     expect(
       KNOWLEDGE_ARTICLES.filter((a) => a.status === "published"),

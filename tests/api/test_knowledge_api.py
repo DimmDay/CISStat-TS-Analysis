@@ -32,7 +32,16 @@ client = TestClient(app)
 
 EXPECTED_ARTICLES = 13          # 12 published + 1 draft (честная маркировка)
 EXPECTED_PUBLISHED = 12
-EXPECTED_HELP_ENTRIES = 77      # вербатим-записи справки (Шаг 3)
+# 78 = 77 мигрированных вербатим-записей (Шаг 3) + 1 нативная
+# upload.module.module_help (UI-UPLOAD-HELP-1, spec_education.md §1.1,
+# superseded_constant: null). Пин обновлён сознательно синхронно с
+# scripts/promote_knowledge_registry.test.ts (обе стороны промоушена).
+EXPECTED_HELP_ENTRIES = 78
+# Нативные записи справки (spec §1.1): созданы прямо в реестре без
+# константы-предшественника — superseded_constant равен None. Набор
+# запинен: случайный null у мигрированной записи исключён (у каждой
+# мигрированной поле обязано быть непустой строкой вида «Файл::КОНСТАНТА»).
+EXPECTED_NATIVE_HELP_ENTRY_IDS = {"upload.module.module_help"}
 # Постановка Шага 4 называла «25 терминов» — состояние словаря на момент
 # Шага 1; реестр вырос до 28 (источник истины — TS-реестр, промоушен
 # переносит его целиком, без отсечения «лишнего» контента).
@@ -93,7 +102,15 @@ class TestRegistryIntegrity:
 
     def test_help_entries_have_provenance_and_body(self):
         for entry in self.registry.help_entries:
-            assert entry.superseded_constant, entry.entry_id
+            # Нативные записи (spec_education.md §1.1): superseded_constant
+            # равен None, entry_id входит в запиненный набор; мигрированные —
+            # непустое поле происхождения вида «Файл::КОНСТАНТА».
+            if entry.superseded_constant is None:
+                assert entry.entry_id in EXPECTED_NATIVE_HELP_ENTRY_IDS, (
+                    entry.entry_id
+                )
+            else:
+                assert entry.superseded_constant.strip(), entry.entry_id
             assert entry.text.strip(), entry.entry_id
             assert entry.facet in ("metrics", "pipeline", "module_help", "stage_overview")
 
