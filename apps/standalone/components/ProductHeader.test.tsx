@@ -14,13 +14,19 @@ import tailwindConfig from "../tailwind.config";
 // «font identity and color» починен (требовал font-bold на дереве c7d8344 —
 // падал). Логотип и бренд обёрнуты в ссылку на главную
 // https://ts-standalone.vercel.app/ — клик по любому из них ведёт на главную.
+//
+// UI-HOME-BRAND-1 (2026-10-15): бренд переименован «CISStat TS Analysis» →
+// «CISStat DataTime Lab» — запросы текста/alt/доступного имени ссылки
+// переписаны на новый контракт синхронно (пины нового названия —
+// brand-rename.test.tsx; записи о старом названии в шапке файла —
+// исторические).
 
 describe("ProductHeader", () => {
-  it("renders the CISStat TS Analysis logo positioned before the brand name", () => {
+  it("renders the brand logo positioned before the brand name", () => {
     render(<ProductHeader />);
 
-    const logo = screen.getByAltText("CISStat TS Analysis");
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const logo = screen.getByAltText("CISStat DataTime Lab");
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     expect(logo).toBeInTheDocument();
     expect(brandName).toBeInTheDocument();
@@ -36,7 +42,7 @@ describe("ProductHeader", () => {
   it("renders the brand name in normal weight with the logo-height font size", () => {
     render(<ProductHeader />);
 
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     expect(brandName.tagName).toBe("STRONG");
     expect(brandName).toHaveClass("font-normal");
@@ -49,8 +55,8 @@ describe("ProductHeader", () => {
   it("brand font size equals the logo height (text-[28px] == h-7 == 28px)", () => {
     render(<ProductHeader />);
 
-    const logo = screen.getByAltText("CISStat TS Analysis");
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const logo = screen.getByAltText("CISStat DataTime Lab");
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     // Логотип рендерится в квадратном боксе h-7 w-7 (28px при базовых 16px),
     // object-contain заполняет его по высоте — высота логотипа = 28px.
@@ -65,7 +71,7 @@ describe("ProductHeader", () => {
   it("brand keeps its color; weight is normal (BRND-2)", () => {
     render(<ProductHeader />);
 
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     // BRND-2: начертание normal; цвет (text-brand) не менялся.
     expect(brandName).toHaveClass("font-normal");
@@ -75,7 +81,7 @@ describe("ProductHeader", () => {
   it("brand letter-spacing is slightly reduced (tracking-tight)", () => {
     render(<ProductHeader />);
 
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     // Чуть уменьшенное межбуквенное расстояние: tracking-tight (-0.025em).
     expect(brandName).toHaveClass("tracking-tight");
@@ -84,7 +90,7 @@ describe("ProductHeader", () => {
   it("brand line box matches the logo height (leading-none)", () => {
     render(<ProductHeader />);
 
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     // Строковый бокс 28px: шапка по вертикали остаётся обусловленной
     // логотипом/кнопками h-7, текстовый блок равен высоте логотипа.
@@ -94,8 +100,8 @@ describe("ProductHeader", () => {
   it("logo and brand are wrapped in a single link to the standalone home page", () => {
     render(<ProductHeader />);
 
-    const logo = screen.getByAltText("CISStat TS Analysis");
-    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const logo = screen.getByAltText("CISStat DataTime Lab");
+    const brandName = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
 
     // Клик по логотипу ведёт на главную standalone.
     const link = logo.closest("a");
@@ -110,7 +116,7 @@ describe("ProductHeader", () => {
     render(<ProductHeader />);
 
     const link = screen.getByRole("link", {
-      name: "CISStat TS Analysis — на главную",
+      name: "CISStat DataTime Lab — на главную",
     });
 
     expect(link).toHaveAttribute("href", "https://ts-standalone.vercel.app/");

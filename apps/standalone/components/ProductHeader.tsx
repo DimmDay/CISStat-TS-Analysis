@@ -82,6 +82,21 @@
 // (браузерный замер dev-сервера), иконки/логотип/бренд — без сдвигов,
 // высота шапки 48px сохранена. Структурные пины —
 // product-header-nav-slogan.test.tsx.
+//
+// UI-HOME-BRAND-1 (2026-10-15): переименование бренда — «CISStat TS
+// Analysis» → «CISStat DataTime Lab». Меняется ТОЛЬКО строка-название:
+// (1) текст <strong> в шапке; (2) alt логотипа; (3) доступное имя
+// ссылки бренда — синхронно (паттерн BRND-2: доступное имя обязано
+// совпадать с видимым текстом, alt — текстовая альтернатива той же
+// сущности). Кегль/вес/трекинг/цвет (text-[20px] leading-none
+// font-normal tracking-tight text-brand) и геометрия строки НЕ менялись
+// (+1 символ к длине строки — в десктопных вьюпортах незначимо;
+// уплотнение шапки на узких вьюпортах — пред-существующее состояние,
+// примечание 3 UI-HOME-HEADER-1). Title вкладки браузера —
+// apps/standalone/app/layout.tsx (та же задача), favicon /logo_TS.png
+// НЕ тронут. Пины — brand-rename.test.tsx; легаси-пины
+// ProductHeader.test.tsx / product-header-nav-slogan.test.tsx /
+// layout.test.tsx переписаны на новый контракт синхронно.
 
 import Link from "next/link";
 import Image from "next/image";
@@ -125,20 +140,20 @@ export function ProductHeader() {
         <div className="flex items-center gap-6">
           <a
             href="https://ts-standalone.vercel.app/"
-            aria-label="CISStat TS Analysis — на главную"
+            aria-label="CISStat DataTime Lab — на главную"
             className="flex items-center gap-2"
           >
             <div className="relative h-7 w-7 shrink-0">
               <Image
                 src="/logo_TS.png"
-                alt="CISStat TS Analysis"
+                alt="CISStat DataTime Lab"
                 fill
                 sizes="28px"
                 className="object-contain"
                 priority
               />
             </div>
-            <strong className="text-[20px] leading-none font-normal tracking-tight text-brand">CISStat TS Analysis</strong>
+            <strong className="text-[20px] leading-none font-normal tracking-tight text-brand">CISStat DataTime Lab</strong>
           </a>
           {/* Некликабельный слоган (UI-HOME-HEADER-1): обычный span вне
               ссылки бренда; кегль/вес как у бренда, серый токен

@@ -7,7 +7,10 @@ import { ProductHeader } from "@/components/ProductHeader";
 const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "CISStat TS Analysis",
+  // UI-HOME-BRAND-1 (2026-10-15): title вкладки браузера — переименование
+  // бренда «CISStat TS Analysis» → «CISStat DataTime Lab» (та же задача,
+  // что и текст в ProductHeader). Favicon (icons) НЕ тронут.
+  title: "CISStat DataTime Lab",
   description: "Платформа анализа временных рядов — самостоятельный продукт: веб и API",
   icons: {
     icon: "/logo_TS.png",

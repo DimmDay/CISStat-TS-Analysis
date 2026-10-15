@@ -39,6 +39,12 @@
 // состав групп, сохранение выравнивания items-center), браузерная
 // верификация базовых линий выполнена на dev-сервере (замер Range API,
 // светлая и тёмная темы).
+//
+// UI-HOME-BRAND-1 (2026-10-15): бренд переименован «CISStat TS Analysis» →
+// «CISStat DataTime Lab» — запросы текста бренда/alt логотипа переписаны
+// на новый контракт синхронно (упоминания старого названия в шапке файла —
+// историческая запись постановки UI-HOME-HEADER-1; пины нового названия —
+// brand-rename.test.tsx).
 
 import { render, screen } from "@testing-library/react";
 import { ProductHeader } from "./ProductHeader";
@@ -69,7 +75,7 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
   it("меню перемещено вправо: nav в правом контейнере, перед «РУС / ENG», вне левой группы бренда", () => {
     renderHeader();
 
-    const brand = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const brandLink = brand.closest("a")!;
     const leftGroup = brandLink.parentElement!;
     const nav = screen.getByRole("navigation");
@@ -102,7 +108,7 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
     renderHeader();
 
     const slogan = screen.getByText(SLOGAN);
-    const brand = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const brandLink = brand.closest("a")!;
     const leftGroup = brandLink.parentElement!;
 
@@ -120,7 +126,7 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
   it("слоган: размер, толщина и трекинг как у бренда; однострочный", () => {
     renderHeader();
 
-    const brand = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const slogan = screen.getByText(SLOGAN);
 
     for (const cls of ["text-[20px]", "leading-none", "font-normal", "tracking-tight"]) {
@@ -144,7 +150,7 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
   it("нижнее выравнивание: nav и «РУС / ENG» несут метрический сдвиг top-[2.4px], ряд сохраняет items-center", () => {
     renderHeader();
 
-    const brand = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const brandLink = brand.closest("a")!;
     const row = brandLink.parentElement!.parentElement!;
     const nav = screen.getByRole("navigation");
@@ -173,8 +179,8 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
   it("логотип, бренд и иконки не затронуты выравниванием (нет self-*/pt-сдвигов)", () => {
     renderHeader();
 
-    const logo = screen.getByAltText("CISStat TS Analysis");
-    const brand = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+    const logo = screen.getByAltText("CISStat DataTime Lab");
+    const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const toggle = screen.getByRole("button", { name: "Включить тёмную тему" });
     const cabinet = screen.getByLabelText("Личный кабинет");
     const logoBox = logo.closest("div.relative")!;

@@ -13,7 +13,10 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "CISStat TS Analysis (Embedded)",
+  // UI-HOME-BRAND-1 (2026-10-15): title вкладки браузера — переименование
+  // бренда «CISStat TS Analysis» → «CISStat DataTime Lab» (скоуп-решение:
+  // та же поверхность «название во вкладке браузера», что и у standalone).
+  title: "CISStat DataTime Lab (Embedded)",
   description: "Анализ временных рядов — встроенный модуль портала CISStat",
 };
 

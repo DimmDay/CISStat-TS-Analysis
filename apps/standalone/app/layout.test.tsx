@@ -15,8 +15,12 @@ describe("RootLayout metadata", () => {
     expect(metadata.icons).toEqual({ icon: "/logo_TS.png" });
   });
 
-  it("keeps the existing title and description untouched", () => {
-    expect(metadata.title).toBe("CISStat TS Analysis");
+  it("exposes the renamed brand title (UI-HOME-BRAND-1) and the untouched description", () => {
+    // UI-HOME-BRAND-1: переименование бренда «CISStat TS Analysis» →
+    // «CISStat DataTime Lab» — title вкладки браузера синхронен тексту
+    // в ProductHeader (пины — components/brand-rename.test.tsx);
+    // favicon и description не тронуты.
+    expect(metadata.title).toBe("CISStat DataTime Lab");
     expect(metadata.description).toBe(
       "Платформа анализа временных рядов — самостоятельный продукт: веб и API"
     );
