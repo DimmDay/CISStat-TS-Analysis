@@ -145,7 +145,7 @@ export function ProductHeader() {
               text-neutral-600 (тёмная ревизия — платформенным контрактом
               DKT, без dark:-ветвлений). */}
           <span className="text-[20px] leading-none font-normal tracking-tight text-neutral-600 whitespace-nowrap">
-            Цифровая научно-исследовательская лаборатория
+            Цифровая научно-исследовательская лаборатория анализа данных
           </span>
         </div>
         <div className="flex items-center gap-5 text-[13px] text-neutral-600">

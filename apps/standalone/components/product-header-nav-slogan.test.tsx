@@ -43,7 +43,7 @@
 import { render, screen } from "@testing-library/react";
 import { ProductHeader } from "./ProductHeader";
 
-const SLOGAN = "Цифровая научно-исследовательская лаборатория";
+const SLOGAN = "Цифровая научно-исследовательская лаборатория анализа данных";
 
 function renderHeader() {
   return render(<ProductHeader />);
