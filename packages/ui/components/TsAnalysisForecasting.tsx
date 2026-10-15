@@ -15,10 +15,38 @@
 //
 // Методологическая честность (§5.4): метрики подписаны «по результатам
 // бэктеста»; прогноз потребляет Model Card и не переоткрывает выбор модели.
+//
+// UI-FORECAST-HDR-1 (2026-10-15): заголовки колонок 3-колоночного layout
+// («Forecasting», «Описание этапа», «Панель управления») приведены к
+// единому виду по паттерну UI-PREPR-HDR-1 «Предобработки»
+// (UI-VALIDATION-HDR-1 «Валидации» / UI-UPLOAD-HDR-1 «Загрузки» /
+// UI-EDA-HDR-1 EDA / UI-MODELING-HDR-1 «Моделирования»): строка
+// flex items-center gap-2 + lucide-иконка (TrendingUp/Info/Settings,
+// size 16, text-brand, aria-hidden) + заголовок text-lg font-semibold
+// text-neutral-800; низы заголовков колонок на одной горизонтали (pt-1
+// обеих aside убран). Заголовок левой колонки «Прогнозирование» заменён
+// на «Forecasting» по прямому указанию тимлида (прецедент UI-EDA-HDR-2;
+// модульное имя на других поверхностях не менялось). Отличия лейаута
+// учтены: (1) круглая кнопка справки «?» сохраняет свой дизайн (не
+// заголовок), строке передан shrink-0; (2) «Панель управления» поднят из
+// h4 text-sm первой карточки control-panel на уровень колонки (строка
+// -- первая ветка aside), текст сохранён. Пин контракта:
+// forecasting-column-headers-unified.test.tsx.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Play, RefreshCw, Wand2 } from "lucide-react";
+// Иконки заголовков layout (UI-FORECAST-HDR-1, паттерн UI-PREPR-HDR-1
+// «Предобработки» / серия UI-*-HDR): TrendingUp -- левая колонка
+// («прогнозирование» -- продолжение ряда в будущее; семантически
+// отличима от FileText «Загрузки», ShieldCheck «Валидации»,
+// SlidersHorizontal «Предобработки», Telescope EDA, FlaskConical
+// «Моделирования»), Info -- блок «Описание этапа» (как во всех
+// вкладках), Settings -- «Панель управления» (тот же значок, что во
+// всех вкладках серии). Плюс прежние AlertTriangle/ChevronDown/
+// ChevronUp/Loader2/Play/RefreshCw/Wand2 (предупреждения, шевроны,
+// спиннеры, запуск, обновление, веер). TrendingUp/Info/Settings
+// присутствуют в lucide-react 0.427.0 (проверено node-пробой).
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Play, RefreshCw, Wand2, TrendingUp, Info, Settings } from "lucide-react";
 import { Button } from "./Button";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
@@ -232,14 +260,33 @@ export function TsAnalysisForecasting() {
   return (
     <div className="flex gap-6">
       {/* ══ ЛЕВАЯ КОЛОНКА ══ */}
-      <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+      {/* Офсет pt-1 УБРАН (UI-FORECAST-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной горизонтали
+          (как во всех вкладках серии UI-*-HDR). */}
+      <aside className="w-60 shrink-0 flex flex-col gap-3">
+        {/* Единый вид заголовков (UI-FORECAST-HDR-1, паттерн
+            UI-PREPR-HDR-1 / серия UI-*-HDR): строка flex items-center
+            gap-2 + иконка TrendingUp («прогнозирование» -- продолжение
+            ряда в будущее, size 16, text-brand, aria-hidden) + h2 text-lg
+            font-semibold text-neutral-800 «Forecasting» (переименование
+            «Прогнозирование» -- прямой пункт постановки, прецедент
+            UI-EDA-HDR-2; растяжение flex-1 min-w-0 прижимает кнопку
+            справки к правому краю узкой колонки -- раньше здесь был
+            justify-between без иконки, font-bold text-neutral-900;
+            truncate -- защита узкой колонки). Круглая кнопка «?» --
+            ДИЗАЙН СОХРАНЁН (не заголовок, вне скоупа шрифтов/иконок
+            заголовков), строке передан shrink-0. Пин контракта:
+            forecasting-column-headers-unified.test.tsx. */}
         <div className="mb-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-neutral-900">Прогнозирование</h2>
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-brand" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
+              Forecasting
+            </h2>
             <button
               type="button"
               onClick={() => setDescriptionSection("help")}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-neutral-300 text-xs text-neutral-500 hover:border-brand hover:text-brand"
+              className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full border border-neutral-300 text-xs text-neutral-500 hover:border-brand hover:text-brand"
               aria-label="Справка по этапу"
               data-testid="forecasting-help-btn"
             >
@@ -314,15 +361,25 @@ export function TsAnalysisForecasting() {
       {/* ══ ЦЕНТР ══ */}
       <main className="min-w-0 flex-1 flex flex-col gap-4">
         <div>
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-neutral-800">
+          {/* Заголовок блока «Описание этапа» -- единый паттерн заголовков
+              layout страницы (UI-FORECAST-HDR-1, паттерн серии UI-*-HDR):
+              строка flex items-center gap-2 + иконка Info (как у
+              «Описаний» всех вкладок) + text-lg font-semibold
+              text-neutral-800 (был дефолтный text-sm без иконки);
+              заголовок переключается на «Справка» в режиме справки,
+              возврат «К описанию этапа» -- хвостовая кнопка строки
+              (shrink-0, раньше justify-between без иконки). Ритм до
+              текстового поля не тронут (mt-1 на боксе). */}
+          <div className="flex items-center gap-2">
+            <Info size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800 flex-1 min-w-0">
               {descriptionSection === "help" ? "Справка" : "Описание этапа"}
             </h3>
             {descriptionSection === "help" && (
               <button
                 type="button"
                 onClick={() => setDescriptionSection("main")}
-                className="text-[11px] font-medium text-brand underline"
+                className="shrink-0 text-[11px] font-medium text-brand underline"
               >
                 К описанию этапа
               </button>
@@ -463,10 +520,22 @@ export function TsAnalysisForecasting() {
       </main>
 
       {/* ══ ПРАВАЯ КОЛОНКА ══ */}
-      <aside className="w-80 shrink-0 pt-1">
+      {/* Офсет pt-1 УБРАН (UI-FORECAST-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной горизонтали.
+          Иконка Settings -- семантика «руль и педали» (тот же значок, что
+          во всех вкладках серии). Заголовок «Панель управления» ПОДНЯТ из
+          h4 text-sm первой карточки control-panel на уровень колонки
+          (строка-паттерн -- первая ветка aside, mb-4 -- ритм правых
+          колонок серии; текст сохранён, дубль в карточке убран). */}
+      <aside className="w-80 shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} className="text-brand" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-neutral-800">
+            Панель управления
+          </h2>
+        </div>
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="control-panel">
-            <h4 className="mb-3 text-sm font-semibold text-neutral-800">Панель управления</h4>
 
             <label className="mb-1 block text-[11px] font-medium text-neutral-600" htmlFor="card-select">
               Model Card

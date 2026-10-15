@@ -25,7 +25,11 @@ jest.mock("@cisstat/ui/context/AppShellContext", () => ({
 describe("Standalone /forecasting page", () => {
   it("renders TsAnalysisForecasting (not ModulePlaceholder) with the stage heading", () => {
     render(<Page />);
-    expect(screen.getByRole("heading", { name: "Прогнозирование" })).toBeInTheDocument();
+    // Заголовок левой колонки «Forecasting» (UI-FORECAST-HDR-1,
+    // переименование «Прогнозирование» -- прямой пункт постановки,
+    // прецедент UI-EDA-HDR-2 «Exploration»; модульное имя на других
+    // поверхностях -- «Прогнозирование»).
+    expect(screen.getByRole("heading", { name: "Forecasting" })).toBeInTheDocument();
     expect(screen.getByTestId("no-dataset-gate")).toHaveTextContent(/Загрузите датасет/);
   });
 });
