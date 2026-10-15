@@ -13,6 +13,20 @@
 //   ┌─Определение──○─┐   [фильтр по уровню]     [Полный пайплайн]
 //   ├─Структура───○─┤                           [Запустить бэктест]
 //   └──────────────┘
+//
+// UI-MODELING-HDR-1 (2026-10-15): заголовки колонок 3-колоночного layout
+// («Моделирование», «Описание», «Панель управления») приведены к единому
+// виду по паттерну UI-PREPR-HDR-1 «Предобработки» (UI-VALIDATION-HDR-1
+// «Валидации» / UI-UPLOAD-HDR-1 «Загрузки» / UI-EDA-HDR-1 EDA): строка
+// flex items-center gap-2 + lucide-иконка (FlaskConical/Info/Settings,
+// size 16, text-brand, aria-hidden) + заголовок text-lg font-semibold
+// text-neutral-800; низы заголовков колонок на одной горизонтали (pt-1
+// обеих aside убран). Modeling НЕ имеет окон «Обзор»/«Мастер» в
+// центральной колонке -- описание ЕДИНОЕ текстовое поле, чья подпись
+// (descriptionSubtitle) переключается между остановкой/справкой/
+// операциями, поэтому заголовок центральной колонки ВСЕГДА «Описание»
+// с иконкой Info -- режимных Eye/Wrench в этой вкладке нет. Пин
+// контракта: modeling-column-headers-unified.test.tsx.
 
 import {
   useState,
@@ -20,7 +34,17 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { BadgeCheck, ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
+// Иконки заголовков layout (UI-MODELING-HDR-1, паттерн UI-PREPR-HDR-1
+// «Предобработки» / UI-EDA-HDR-1 EDA): FlaskConical -- левая колонка
+// («моделирование» -- экспериментальная подгонка моделей; семантически
+// отличима от FileText «Загрузки», ShieldCheck «Валидации»,
+// SlidersHorizontal «Предобработки», Telescope EDA), Info -- блок
+// «Описание» (как во всех вкладках), Settings -- «Панель управления»
+// (тот же значок, что в «Валидации»/«Предобработке»/EDA). Плюс прежние
+// BadgeCheck/ChevronDown/ChevronUp/RefreshCw/Filter/Loader2 (бейджи,
+// шевроны, перезагрузка пула, фильтр, спиннеры). FlaskConical/Info/
+// Settings присутствуют в lucide-react 0.427.0 (проверено node-пробой).
+import { BadgeCheck, ChevronDown, ChevronUp, RefreshCw, Filter, Loader2, FlaskConical, Info, Settings } from "lucide-react";
 import { Button } from "./Button";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { Metric } from "./Metric";
@@ -642,12 +666,25 @@ export function TsAnalysisModeling() {
   return (
     <div className="flex gap-6">
       {/* ══ ЛЕВАЯ КОЛОНКА: read-only контекст + прогресс + степпер ══ */}
-      <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+      {/* Офсет pt-1 УБРАН (UI-MODELING-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной горизонтали
+          (как в «Загрузке»/«Валидации»/«Предобработке»/EDA). */}
+      <aside className="w-60 shrink-0 flex flex-col gap-3">
         {/* Заголовок модуля + справка */}
+        {/* Единый вид заголовков (UI-MODELING-HDR-1, паттерн UI-PREPR-HDR-1
+            «Предобработки» / UI-EDA-HDR-1 EDA): строка flex items-center
+            gap-2 + иконка FlaskConical («моделирование» -- экспериментальная
+            подгонка моделей, size 16, text-brand, aria-hidden) + h2 text-lg
+            font-semibold text-neutral-800 (растяжение flex-1 min-w-0
+            прижимает кнопку «Справка» к правому краю узкой колонки --
+            раньше здесь был justify-between без иконки; truncate --
+            защита узкой колонки, кнопка -- shrink-0). Пин контракта:
+            modeling-column-headers-unified.test.tsx. */}
         <div className="mb-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">
-              Моделирование
+          <div className="flex items-center gap-2">
+            <FlaskConical size={16} className="text-brand" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
+              Modeling
             </h2>
             <button
               onClick={() =>
@@ -655,7 +692,7 @@ export function TsAnalysisModeling() {
                   prev === "help" ? null : "help"
                 )
               }
-              className={`text-xs px-2 py-1 rounded transition-colors ${
+              className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
                 descriptionSection === "help"
                   ? "bg-brand text-white"
                   : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
@@ -888,8 +925,22 @@ export function TsAnalysisModeling() {
       {/* ══ ЦЕНТРАЛЬНАЯ КОЛОНКА: описание + таблица + метрики ══ */}
       <section className="flex-1 min-w-0">
         {/* Блок «Описание» */}
+        {/* Заголовок блока «Описание» -- единый паттерн заголовков layout
+            страницы (UI-MODELING-HDR-1, паттерн «Предобработки»/EDA):
+            строка flex items-center gap-2 + иконка Info (как у «Описаний»
+            всех вкладок) + text-lg font-semibold text-neutral-800 (был
+            дефолтный text-base без иконки). mb-1 строки сохраняет исходный
+            ритм «заголовок → подпись» (под строкой -- {descriptionSubtitle}
+            с кнопкой возврата). В Modeling окно описания ЕДИНОЕ, режимных
+            заголовков «Обзор»/«Мастер» нет -- контракт центральной колонки
+            пинится на этой строке. */}
         <div className="mb-5">
-          <h3 className="font-semibold mb-1">Описание</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Info size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Описание
+            </h3>
+          </div>
           <div className="mb-2 flex min-h-5 items-start justify-between gap-3">
             <p
               className="text-xs text-neutral-500"
@@ -1244,8 +1295,13 @@ export function TsAnalysisModeling() {
       </section>
 
       {/* ══ ПРАВАЯ КОЛОНКА: панель управления ══ */}
-      <aside className="w-80 shrink-0 pt-1">
-        <div className="mb-4">
+      {/* Офсет pt-1 УБРАН (UI-MODELING-HDR-1): строка заголовка -- первая
+          ветка колонки, низы заголовков трёх колонок на одной горизонтали.
+          Иконка Settings -- семантика «руль и педали» (тот же значок, что
+          у «Панелей управления» «Валидации»/«Предобработки»/EDA). */}
+      <aside className="w-80 shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings size={16} className="text-brand" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-neutral-800">
             Панель управления
           </h2>
