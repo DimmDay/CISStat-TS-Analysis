@@ -328,7 +328,11 @@ describe("TsAnalysisModeling", () => {
 
   it("renders the module title", () => {
     render(<TsAnalysisModeling />);
-    expect(screen.getByText("Моделирование")).toBeInTheDocument();
+    // UI-MODELING-HDR-2: заголовок левой колонки «Моделирование»
+    // переименован в "Modeling" по прямому указанию тимлида (мотив
+    // FIX-MODELING-TITLE-1 снят: там изменение было случайным без
+    // обновления пинов, здесь -- осознанное, пины обновлены синхронно).
+    expect(screen.getByText("Modeling")).toBeInTheDocument();
   });
 
   it("renders the subtitle", () => {

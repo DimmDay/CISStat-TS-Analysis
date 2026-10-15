@@ -7,7 +7,8 @@
 // вкладки «Разведочный EDA») заголовки колонок 3-колоночного layout
 // вкладки «Моделирование»:
 //   (1) заголовки колонок 3-колоночного layout (левая колонка --
-//       «Моделирование»; «Описание»; «Панель управления»);
+//       "Modeling", после переименования UI-MODELING-HDR-2; «Описание»;
+//       «Панель управления»);
 //   (2) шрифты, выравнивание и иконки -- полный контракт серии
 //       (typography/row/icon/состав/выравнивание по нижней горизонтали).
 //
@@ -23,6 +24,17 @@
 // выправлен с англ. "Modeling" на платформенное имя «Моделирование»
 // (легаси-пин TsAnalysisModeling.test.tsx; структура контракта без
 // изменений -- name-only правка в 3 запросах findByRole/getByRole).
+//
+// UI-MODELING-HDR-2 (2026-10-15, постановка тимлида): заголовок левой
+// колонки «Моделирование» переименован в "Modeling" ПО ПРЯМОМУ УКАЗАНИЮ
+// -- мотив FIX-MODELING-TITLE-1 снят: там текст изменился СЛУЧАЙНО без
+// обновления пинов, здесь переименование ОСОЗНАННОЕ, пины обновлены
+// синхронно в том же изменении (4 query-точки: 3 здесь + легаси-пин
+// «renders the module title»). Модульное имя «Моделирование» на других
+// поверхностях (TasksHub, TaskCard, task-stops, реестр знаний,
+// навигация, прогресс) НЕ менялось -- вне скоупа постановки. Прецедент
+// EN-заголовков левых колонок: «Preprocessing», «Data Quality»,
+// «Exploration» (UI-EDA-HDR-2).
 //
 // Контракт паттерна (эталон -- eda-column-headers-unified.test.tsx /
 // preprocessing-column-headers-unified.test.tsx):
@@ -120,7 +132,7 @@ function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton
   expect(icon).toHaveAttribute("aria-hidden", "true");
   expect(icon!.getAttribute("class")).toContain("text-brand");
 
-  // (d) Состав строки: [иконка, заголовок]; у «Моделирование» --
+  // (d) Состав строки: [иконка, заголовок]; у "Modeling" --
   //     [иконка, h2, кнопка «Справка» (shrink-0)] -- паттерн левых
   //     колонок «Загрузки»/«Валидации»/«Предобработки»/EDA.
   if (opts.withHelpButton) {
@@ -137,7 +149,7 @@ function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton
 // Инвариант «низ заголовков на одной горизонтали» в структурной форме:
 // спуск по firstElementChild от корня колонки приводит ровно в строку
 // заголовка (строка -- первая ветка колонки). Применим ко ВСЕМ ТРЁМ
-// заголовкам колонок («Моделирование», «Описание», «Панель управления»).
+// заголовкам колонок ("Modeling", «Описание», «Панель управления»).
 function expectHeaderRowAtColumnTop(header: HTMLElement) {
   const container = header.closest("aside, section");
   expect(container).toBeTruthy();
@@ -158,10 +170,10 @@ describe("Заголовки «Моделирования» -- единый ви
     jest.restoreAllMocks();
   });
 
-  it("заголовки трёх колонок («Моделирование», «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
+  it("заголовки трёх колонок («Modeling», «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
     renderHdrModeling();
 
-    const hModeling = await screen.findByRole("heading", { name: "Моделирование", level: 2 });
+    const hModeling = await screen.findByRole("heading", { name: "Modeling", level: 2 });
     const hDesc = screen.getByRole("heading", { name: "Описание", level: 3 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
 
@@ -193,7 +205,7 @@ describe("Заголовки «Моделирования» -- единый ви
     // и его строка-паттерн НЕ меняются (в Modeling окно описания единое,
     // режимных заголовков «Обзор»/«Мастер» нет).
     const leftAside = screen
-      .getByRole("heading", { name: "Моделирование", level: 2 })
+      .getByRole("heading", { name: "Modeling", level: 2 })
       .closest("aside")!;
     fireEvent.click(within(leftAside).getByRole("button", { name: /^Определение задачи/ }));
     const subtitleNext = await screen.findByText("Остановка · Определение задачи");
@@ -207,7 +219,7 @@ describe("Заголовки «Моделирования» -- единый ви
   it("выравнивание по нижней горизонтали: офсеты pt-1 ОБОИХ колонок убраны, подпись «Выбор модели для прогнозирования» сохранена", async () => {
     renderHdrModeling();
 
-    const hModeling = await screen.findByRole("heading", { name: "Моделирование", level: 2 });
+    const hModeling = await screen.findByRole("heading", { name: "Modeling", level: 2 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
     const leftAside = hModeling.closest("aside")!;
     const rightAside = hPanel.closest("aside")!;
