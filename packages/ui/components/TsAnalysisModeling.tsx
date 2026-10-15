@@ -27,6 +27,15 @@
 // операциями, поэтому заголовок центральной колонки ВСЕГДА «Описание»
 // с иконкой Info -- режимных Eye/Wrench в этой вкладке нет. Пин
 // контракта: modeling-column-headers-unified.test.tsx.
+//
+// FIX-MODELING-TITLE-1 (2026-10-15): в h2 левой колонки при переносе на
+// строку-паттерн случайно попал англ. «Modeling» -- текст заголовка
+// ИЗМЕНИЛСЯ, хотя контракт UI-MODELING-HDR-1 требует неизменности текстов
+// (легаси-пин TsAnalysisModeling.test.tsx «renders the module title»
+// ждёт «Моделирование»; имя модуля «Моделирование» используется по всей
+// платформе: TasksHub «Перейти к этапу Моделирование», TaskCard,
+// task-stops, реестр знаний). Восстановлен текст «Моделирование»,
+// пин unified-теста скорректирован на то же имя.
 
 import {
   useState,
@@ -684,7 +693,7 @@ export function TsAnalysisModeling() {
           <div className="flex items-center gap-2">
             <FlaskConical size={16} className="text-brand" aria-hidden="true" />
             <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1">
-              Modeling
+              Моделирование
             </h2>
             <button
               onClick={() =>

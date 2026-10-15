@@ -19,6 +19,11 @@
 // вкладке нет; контракт центральной колонки пинится на строке «Описание»
 // + следовании подписи за активной остановкой степпера.
 //
+// FIX-MODELING-TITLE-1 (2026-10-15): пин имени заголовка левой колонки
+// выправлен с англ. "Modeling" на платформенное имя «Моделирование»
+// (легаси-пин TsAnalysisModeling.test.tsx; структура контракта без
+// изменений -- name-only правка в 3 запросах findByRole/getByRole).
+//
 // Контракт паттерна (эталон -- eda-column-headers-unified.test.tsx /
 // preprocessing-column-headers-unified.test.tsx):
 //   (a) типографика: text-lg (18px) + font-semibold + text-neutral-800
@@ -153,10 +158,10 @@ describe("Заголовки «Моделирования» -- единый ви
     jest.restoreAllMocks();
   });
 
-  it("заголовки трёх колонок («Modeling», «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
+  it("заголовки трёх колонок («Моделирование», «Описание», «Панель управления») -- единая типографика text-lg и строка-паттерн с иконкой", async () => {
     renderHdrModeling();
 
-    const hModeling = await screen.findByRole("heading", { name: "Modeling", level: 2 });
+    const hModeling = await screen.findByRole("heading", { name: "Моделирование", level: 2 });
     const hDesc = screen.getByRole("heading", { name: "Описание", level: 3 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
 
@@ -188,7 +193,7 @@ describe("Заголовки «Моделирования» -- единый ви
     // и его строка-паттерн НЕ меняются (в Modeling окно описания единое,
     // режимных заголовков «Обзор»/«Мастер» нет).
     const leftAside = screen
-      .getByRole("heading", { name: "Modeling", level: 2 })
+      .getByRole("heading", { name: "Моделирование", level: 2 })
       .closest("aside")!;
     fireEvent.click(within(leftAside).getByRole("button", { name: /^Определение задачи/ }));
     const subtitleNext = await screen.findByText("Остановка · Определение задачи");
@@ -202,7 +207,7 @@ describe("Заголовки «Моделирования» -- единый ви
   it("выравнивание по нижней горизонтали: офсеты pt-1 ОБОИХ колонок убраны, подпись «Выбор модели для прогнозирования» сохранена", async () => {
     renderHdrModeling();
 
-    const hModeling = await screen.findByRole("heading", { name: "Modeling", level: 2 });
+    const hModeling = await screen.findByRole("heading", { name: "Моделирование", level: 2 });
     const hPanel = screen.getByRole("heading", { name: "Панель управления", level: 2 });
     const leftAside = hModeling.closest("aside")!;
     const rightAside = hPanel.closest("aside")!;
