@@ -4,7 +4,7 @@ Pydantic-схемы запросов/ответов. Форма ответов �
 которую реально возвращают app/core/passport.py и app/validation/regularity.py
 (мы её проверяли построчно за этот разговор) -- не выдумана заново.
 """
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -2094,6 +2094,87 @@ class DatasetMissingCorrectionResponse(BaseModel):
     columns: List[MissingCorrectionResultOut]
     # Профиль ПОСЛЕ операции в канонической области (PROGR-24-ORIGIN-A):
     # флаг-колонки самой операции производные и в профиль не попадают.
+    profile: List[MissingProfileItemOut]
+    derived_summary: Optional["DerivedMissingSummaryOut"] = None
+
+
+# ── Ручное исправление пропусков (MANUAL-MISSING-1, 2026-10-15) ──────
+# Перенос legacy-функционала app.py (~7760-7930): radio-фильтр
+# «Все/Пропуски/Без пропусков» → st.data_editor → «💾 Сохранить»
+# (df_work.update(edited_df)). Аналитик восстановил данные из-за ошибки
+# ввода и правит ячейки руками; фильтр «Только с пропусками» -- legacy
+# «Пропуски», «Весь датасет» -- legacy «Все».
+
+EditorCellValue = Union[str, float]
+
+
+class MissingEditorColumnOut(BaseModel):
+    """Метаданные колонки редактора. semantic -- ТА ЖЕ классификация
+    _semantic_class, что у профиля остановки (вторая реализация семантики
+    запрещена -- закреплённая практика платформы)."""
+
+    column: str
+    dtype: str
+    semantic: Literal["numeric", "datetime", "categorical", "text"]
+
+
+class MissingEditorRowOut(BaseModel):
+    """Строка редактора. row_index -- ПОЗИЦИОННЫЙ индекс исходного
+    датафрейма (не порядковый номер в окне/фильтре): правки адресуются
+    им, поэтому missing_only-окно с несмежными позициями честно. Ячейки:
+    None = NaN/None (редактор показывает пустое поле, честное отличие от
+    строкового 'nan' превью /dataset), число в numeric-колонке, строка
+    в остальных."""
+
+    row_index: int = Field(..., ge=0, description="Позиционная строка исходного датафрейма")
+    cells: List[Optional[EditorCellValue]]
+
+
+class DatasetMissingEditorRowsResponse(BaseModel):
+    """Окно строк редактора ручного исправления пропусков. Пагинация
+    поверх ОБЛАСТИ ФИЛЬТРА: missing_only=False -- весь датафрейм,
+    missing_only=True -- только строки df.isnull().any(axis=1)
+    (legacy-маска «Пропуски»). total_rows -- счётчик области фильтра,
+    по ней размечается ползунок."""
+
+    columns: List[MissingEditorColumnOut]
+    rows: List[MissingEditorRowOut]
+    offset: int = Field(..., ge=0)
+    limit: int = Field(..., ge=1)
+    total_rows: int = Field(..., description="Строк в ОБЛАСТИ фильтра (разметка ползунка)")
+    returned: int
+    has_more: bool
+
+
+class MissingManualEditIn(BaseModel):
+    """Одна ячеечная правка. value: None/"" = очистка в NaN (контекст
+    исправления пропусков: аналитик может честно ПОМЕТИТЬ пропуск);
+    число -- значение numeric-колонки; строка -- значение остальных."""
+
+    row_index: int = Field(..., ge=0)
+    column: str = Field(..., min_length=1)
+    value: Optional[EditorCellValue] = None
+
+
+class DatasetMissingManualCorrectionsRequest(BaseModel):
+    edits: List[MissingManualEditIn] = Field(..., min_length=1, max_length=10000)
+    apply: bool = Field(
+        True,
+        description="True -- применить к сессии (set_dataframe, AUDIT-C); False -- только проверить и посчитать",
+    )
+
+
+class DatasetMissingManualCorrectionsResponse(BaseModel):
+    """Честные счётчики: total_changed -- ФАКТИЧЕСКИ изменившиеся ячейки
+    (перебор того же числа не считается; no-op apply не повышает
+    data_revision -- AUDIT-C). Профиль ПОСЛЕ -- в канонической области
+    (PROGR-24-ORIGIN-A)."""
+
+    applied: bool
+    total_edited_requested: int
+    total_changed: int
+    total_missing_before: int
+    total_missing_after: int
     profile: List[MissingProfileItemOut]
     derived_summary: Optional["DerivedMissingSummaryOut"] = None
 

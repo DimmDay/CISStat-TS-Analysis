@@ -91,7 +91,7 @@ function renderHdrPreprocessing() {
 
 // ── Контракт единого вида заголовка (эталон UI-VALIDATION-HDR-1) ──────
 
-function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean } = {}) {
+function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean; withManualButton?: boolean } = {}) {
   // (a) Единая типографика -- text-lg + font-semibold + neutral-800.
   expect(header.className).toContain("text-lg");
   expect(header.className).toContain("font-semibold");
@@ -112,13 +112,26 @@ function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton
 
   // (d) Состав строки: [иконка, заголовок]; у «Preprocessing» --
   //     [иконка, h2, кнопка «Справка» (shrink-0)] -- паттерн «Загрузки»/
-  //     «Валидации».
+  //     «Валидации»; у окна «Мастер исправления пропусков» --
+  //     [иконка, h3 (flex-1), кнопка «Исправить вручную» (shrink-0)]
+  //     (MANUAL-MISSING-1: VERSIONED-ПРАВКА ПИНА -- раньше строка окна
+  //     пинилась как ровно [иконка, заголовок]; кнопка ручного режима
+  //     в заголовке мастера -- осознанное расширение контракта по
+  //     паттерну левых колонок, обоснование в worklog10.md).
   if (opts.withHelpButton) {
     expect(row!.children).toHaveLength(3);
     const helpButton = row!.children[2] as HTMLElement;
     expect(helpButton.tagName).toBe("BUTTON");
     expect(helpButton.textContent).toBe("Справка");
     expect(helpButton.className).toContain("shrink-0");
+  } else if (opts.withManualButton) {
+    expect(row!.children).toHaveLength(3);
+    const manualButton = row!.children[2] as HTMLElement;
+    expect(manualButton.tagName).toBe("BUTTON");
+    expect(manualButton.textContent).toBe("Исправить вручную");
+    expect(manualButton.className).toContain("shrink-0");
+    // правый край: h3 растянут, кнопка не сжимается
+    expect(header.className).toContain("flex-1");
   } else {
     expect(row!.children).toHaveLength(2);
   }
@@ -196,7 +209,9 @@ describe("Заголовки «Предобработки» -- единый ви
     // семантики, геометрию строки не меняет: обе size 16).
     fireEvent.click(await screen.findByRole("button", { name: "Исправить пропуски" }));
     const hMaster = await screen.findByRole("heading", { name: "Мастер исправления пропусков", level: 3 });
-    expectUnifiedHeaderContract(hMaster);
+    // MANUAL-MISSING-1: строка заголовка мастера пропусков несёт кнопку
+    // «Исправить вручную» (правый край) -- расширение контракта (см. (d))
+    expectUnifiedHeaderContract(hMaster, { withManualButton: true });
     expectWindowHeaderOpensBlock(hMaster);
 
     // Возврат в режим «Обзор» через ПЕРЕКЛЮЧЕНИЕ остановки (клик по УЖЕ

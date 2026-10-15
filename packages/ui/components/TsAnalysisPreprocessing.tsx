@@ -62,6 +62,7 @@ import { useWindowFocusRefetch } from "../hooks/useWindowFocusRefetch";
 import { invalidateChartDetailCache } from "../hooks/useChartDetailData";
 import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
 import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
+import { PreprocessingMissingManualEditor } from "./PreprocessingMissingManualEditor";
 import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
 import { PreprocessingOutliersPipeline } from "./PreprocessingOutliersPipeline";
 import { PreprocessingRegularityOverview, type RegularityProfileResponse } from "./PreprocessingRegularityOverview";
@@ -168,6 +169,11 @@ export function TsAnalysisPreprocessing() {
   // остановки («Пропуски»); placeholder-ветка ниже остаётся как
   // defense-in-depth при недостижимом null.
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>("metrics");
+  // MANUAL-MISSING-1: ручной режим мастера пропусков (редактор датасета
+  // вместо сетки стратегий); закрывается повторным кликом по кнопке и
+  // ПЕРЕКЛЮЧЕНИЕМ остановки (зеркально инварианту Справки -- клик по
+  // другой остановке автозагружает её «Метрики и алгоритм»).
+  const [missingManualMode, setMissingManualMode] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -819,6 +825,15 @@ export function TsAnalysisPreprocessing() {
     setDescriptionSection((prev) => prev === "help" ? "metrics" : "help");
   };
 
+  // MANUAL-MISSING-1: toggle ручного режима мастера пропусков (кнопка
+  // «Исправить вручную» в заголовке окна -- паттерн toggle «Справки»)
+  const handleManualClick = () => {
+    setMissingManualMode((prev) => !prev);
+  };
+  // Кнопка и flex-1 на h3 -- ТОЛЬКО в заголовке мастера пропусков
+  // (у других остановок строка заголовка байт-инвариантна)
+  const isMissingManualHeader = activeCheckId === "missing" && descriptionSection === "pipeline";
+
   // ── Overflow detection для expandable description ──
   useEffect(() => {
     const el = descRef.current;
@@ -986,7 +1001,12 @@ export function TsAnalysisPreprocessing() {
                 // в placeholder). Клик по УЖЕ активной остановке секцию
                 // не меняет (открытая Справка остаётся) — прежняя
                 // семантика сохранена.
-                if (check.id !== activeCheckId) setDescriptionSection("metrics");
+                // MANUAL-MISSING-1: переключение остановки закрывает и
+                // ручной режим редактора (зеркально инварианту Справки)
+                if (check.id !== activeCheckId) {
+                  setDescriptionSection("metrics");
+                  setMissingManualMode(false);
+                }
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
@@ -1090,7 +1110,16 @@ export function TsAnalysisPreprocessing() {
             «Загрузки»/«Валидации»), Wrench -- «Мастер исправления…»/
             «Мастер …» любого из 10 преобразований в pipeline-режиме
             (исправление/настройка); подпись режима живёт в подзаголовке
-            окна и на этот заголовок не влияет. */}
+            окна и на этот заголовок не влияет.
+
+            MANUAL-MISSING-1 (2026-10-15): в заголовок МАСТЕРА ПРОПУСКОВ
+            добавлена кнопка «Исправить вручную» (toggle ручного режима
+            редактора датасета) -- отцентрована по правому краю строки
+            (h3 flex-1 прижимает кнопку к правому краю центральной
+            колонки, кнопка shrink-0 -- структурный паттерн левых колонок
+            UI-UPLOAD-HELP-1/UI-PREPR-HDR-1); активное состояние --
+            bg-brand text-white (паттерн toggle «Справки»). У ДРУГИХ
+            остановок кнопки нет, h3 БЕЗ flex-1 (байт-инвариант строк). */}
         <div>
           <div className="flex items-center gap-2 mb-1">
             {descriptionSection === "pipeline" ? (
@@ -1098,7 +1127,7 @@ export function TsAnalysisPreprocessing() {
             ) : (
               <Eye size={16} className="text-brand" aria-hidden="true" />
             )}
-            <h3 className="text-lg font-semibold text-neutral-800">
+            <h3 className={`text-lg font-semibold text-neutral-800 ${isMissingManualHeader ? "flex-1" : ""}`}>
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Мастер исправления пропусков"
               : activeCheckId === "outliers" && descriptionSection === "pipeline"
@@ -1121,6 +1150,24 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер масштабирования"
               : `Обзор: ${activeCheck.label}`}
           </h3>
+          {/* MANUAL-MISSING-1: кнопка «Исправить вручную» -- ТОЛЬКО в
+              заголовке мастера пропусков (toggle ручного режима редактора;
+              переключение остановки закрывает режим -- зеркально
+              инварианту Справки). */}
+          {isMissingManualHeader && (
+            <button
+              type="button"
+              onClick={handleManualClick}
+              aria-pressed={missingManualMode}
+              className={`shrink-0 rounded px-2 py-1 text-xs transition-colors ${
+                missingManualMode
+                  ? "bg-brand text-white"
+                  : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+              }`}
+            >
+              Исправить вручную
+            </button>
+          )}
           </div>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "missing" && descriptionSection === "pipeline"
@@ -1167,7 +1214,11 @@ export function TsAnalysisPreprocessing() {
           </p>
 
           {activeCheckId === "missing" && descriptionSection === "pipeline" ? (
-            <PreprocessingMissingPipeline onApplied={handleApplied} />
+            missingManualMode ? (
+              <PreprocessingMissingManualEditor onApplied={handleApplied} />
+            ) : (
+              <PreprocessingMissingPipeline onApplied={handleApplied} />
+            )
           ) : activeCheckId === "missing" ? (
             <PreprocessingMissingOverview refreshKey={missingRefreshKey + datasetVersion} />
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (

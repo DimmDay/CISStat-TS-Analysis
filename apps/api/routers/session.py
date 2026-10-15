@@ -16,8 +16,9 @@ import logging
 import math
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
@@ -89,6 +90,11 @@ from apps.api.schemas import (
     DatasetMissingCorrectionResponse,
     DatasetMissingCorrelationResponse,
     DatasetMissingDistributionResponse,
+    DatasetMissingEditorRowsResponse,
+    DatasetMissingManualCorrectionsRequest,
+    DatasetMissingManualCorrectionsResponse,
+    MissingEditorColumnOut,
+    MissingEditorRowOut,
     DatasetOutlierCorrectionRequest,
     DatasetOutlierCorrectionResponse,
     DatasetOutlierBoxplotResponse,
@@ -235,6 +241,7 @@ from app.preprocessing.missing import (
     missing_per_row_histogram,
     missing_summary,
     profile_missing,
+    _semantic_class,  # MANUAL-MISSING-1: ЕДИНАЯ классификация семантики (вторая реализация запрещена)
 )
 from apps.api.outliers_correction import detect_mask_on_residual, outlier_boxplot_groups, preview_outlier_corrections
 from app.preprocessing.outliers import detect_outlier_mask, method_bounds, outliers_summary, profile_outliers
@@ -1974,6 +1981,223 @@ def correct_dataset_missing(
         columns=[MissingCorrectionResultOut(**item) for item in raw_results],
         profile=[MissingProfileItemOut(**item) for item in next_profile],
         derived_summary=_derived_missing_summary(corrected_df, derived_after),
+    )
+
+
+# ── Ручное исправление пропусков (MANUAL-MISSING-1, 2026-10-15) ──────
+# Перенос legacy-функционала app.py (~7760-7930): фильтр строк
+# («Все/Пропуски/Без пропусков») → st.data_editor → «💾 Сохранить»
+# (df_work.update(edited_df)). Редактор остановки «Пропуски»: аналитик
+# восстановил данные из-за ошибки ввода и правит ячейки руками.
+
+
+def _editor_cell_value(value: Any, semantic: str) -> Optional[Union[str, float]]:
+    """JSON-нативное представление ячейки редактора: None для NaN/None
+    (честное отличие от строкового 'nan'/'None' превью /dataset), число
+    в numeric-колонке, строка в остальных."""
+    if value is None or (isinstance(value, float) and math.isnan(value)) or (
+        not isinstance(value, (int, float, str, bool)) and pd.isna(value)
+    ):
+        return None
+    if semantic == "numeric":
+        return float(value)
+    return str(value)
+
+
+@router.get("/dataset/missing-editor-rows", response_model=DatasetMissingEditorRowsResponse)
+def get_dataset_missing_editor_rows(
+    request: Request,
+    response: Response,
+    offset: int = Query(0, ge=0, description="Смещение окна ВНУТРИ области фильтра"),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=FULL_ROWS_MAX_LIMIT,
+        description=f"Размер окна (1..{FULL_ROWS_MAX_LIMIT})",
+    ),
+    missing_only: bool = Query(
+        False,
+        description="True -- только строки хотя бы с одним пропуском (legacy-маска «Пропуски»)",
+    ),
+):
+    """Окно строк для редактора ручного исправления пропусков
+    (остановка «Пропуски» модуля «Предобработка», MANUAL-MISSING-1).
+
+    Пагинация поверх ОБЛАСТИ ФИЛЬТРА (не датафрейма): missing_only=True
+    возвращает строки df.isnull().any(axis=1) -- legacy-маска фильтра
+    «Пропуски» из app.py; каждая строка несёт ПОЗИЦИОННЫЙ row_index
+    исходного датафрейма, по которому адресуются правки
+    (POST /dataset/missing-manual-corrections). Ячейки -- JSON-нативно
+    (None = NaN), semantic колонок -- ТА ЖЕ _semantic_class, что у
+    профиля остановки (вторая реализация семантики запрещена)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    columns_meta = [
+        {
+            "column": str(col),
+            "dtype": str(df[col].dtype),
+            "semantic": _semantic_class(df[col]),
+        }
+        for col in df.columns
+    ]
+    semantics = [meta["semantic"] for meta in columns_meta]
+
+    if missing_only:
+        mask = df.isnull().any(axis=1)
+        total_rows = int(mask.sum())
+        positions = df.index[mask].tolist()[offset : offset + limit]
+        window = df.loc[positions]
+        position_indices = [int(df.index.get_loc(idx)) for idx in positions]
+    else:
+        total_rows = int(len(df))
+        window = df.iloc[offset : offset + limit]
+        position_indices = list(range(offset, offset + len(window)))
+
+    rows = []
+    for pos, (_, row) in zip(position_indices, window.iterrows()):
+        rows.append(
+            {
+                "row_index": pos,
+                "cells": [_editor_cell_value(row.iloc[i], semantics[i]) for i in range(len(semantics))],
+            }
+        )
+    returned = len(rows)
+    return DatasetMissingEditorRowsResponse(
+        columns=[MissingEditorColumnOut(**meta) for meta in columns_meta],
+        rows=[MissingEditorRowOut(**row) for row in rows],
+        offset=offset,
+        limit=limit,
+        total_rows=total_rows,
+        returned=returned,
+        has_more=(offset + returned) < total_rows,
+    )
+
+
+@router.post("/dataset/missing-manual-corrections", response_model=DatasetMissingManualCorrectionsResponse)
+def apply_dataset_missing_manual_corrections(
+    payload: DatasetMissingManualCorrectionsRequest,
+    request: Request,
+    response: Response,
+):
+    """Применение ячеечных правок редактора пропусков (MANUAL-MISSING-1).
+
+    Правки применяются к КОПИИ датафрейма по ПОЗИЦИОННЫМ row_index;
+    last-wins на дубли (row, column) в одном запросе. None/"" = очистка
+    ячейки в NaN (контекст исправления пропусков: аналитик честно
+    помечает пропуск); numeric-колонки принимают только приводимые к
+    float значения (честная 422 с колонкой и строкой -- иначе молчаливая
+    коэрция выдала бы мусор за исправление).
+
+    total_changed -- ФАКТИЧЕСКИ изменившиеся ячейки (перебор того же
+    значения не считается). Сохранение -- единая точка set_dataframe
+    (AUDIT-C): no-op apply не повышает data_revision. Ячеечные правки
+    структурно не добавляют колонок, поэтому register_derived_columns
+    не вызывается (реестру производных нечего регистрировать) --
+    в отличие от /dataset/missing-corrections с флаг-стратегией.
+    apply=False -- валидация и счётчики БЕЗ сохранения (датасет и
+    ревизия не трогаются)."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    total_missing_before = int(df.isnull().sum().sum())
+    semantics = {str(col): _semantic_class(df[col]) for col in df.columns}
+    n_rows = int(len(df))
+
+    # last-wins на дубли (row, column): аналитик правил ту же ячейку
+    # несколько раз за сессию правки -- финальное значение побеждает,
+    # ФАКТ изменения -- один (ячейка одна).
+    merged: dict[tuple[int, str], Any] = {}
+    order: list[tuple[int, str]] = []
+    for edit in payload.edits:
+        key = (edit.row_index, edit.column)
+        if key not in merged:
+            order.append(key)
+        merged[key] = edit.value
+
+    work = df.copy()
+    total_changed = 0
+    for row_index, column in order:
+        if column not in semantics:
+            raise HTTPException(status_code=422, detail=f"Колонка '{column}' не найдена в датасете")
+        if row_index >= n_rows or row_index < 0:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Строка {row_index} за пределами датасета ({n_rows} строк)",
+            )
+        raw = merged[(row_index, column)]
+        col_idx = work.columns.get_loc(column)
+        current = work.iat[row_index, col_idx]
+
+        if semantics[column] == "numeric":
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                new_value: Any = np.nan
+            else:
+                if isinstance(raw, bool):
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Значение '{raw}' в колонке '{column}' (строка {row_index + 1}) не приводится к числу",
+                    )
+                try:
+                    new_value = float(raw)  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Значение '{raw}' в колонке '{column}' (строка {row_index + 1}) не приводится к числу",
+                    )
+        else:
+            # нечисловые колонки: строка как есть, пустое = NaN; число
+            # из JSON -- честная строка (без молчаливой смены типа)
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                new_value = np.nan
+            else:
+                new_value = str(raw)
+
+        if pd.isna(current) and pd.isna(new_value):
+            continue  # NaN → NaN: ячейка не менялась
+        if not pd.isna(current) and not pd.isna(new_value) and current == new_value:
+            continue  # перебор того же значения: не считаем изменением
+        try:
+            work.iat[row_index, col_idx] = new_value
+        except (TypeError, ValueError) as ex:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Значение '{new_value}' не совместимо с колонкой '{column}' (строка {row_index + 1}): {ex}",
+            )
+        total_changed += 1
+
+    if payload.apply:
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(work, reason="validation:missing_manual_corrections")
+        if session.dataset is not None:
+            session.dataset.rows = len(work)
+            session.dataset.columns = len(work.columns)
+        session.touch()
+        store.save(session)
+
+    # Профиль ПОСЛЕ (гипотетический при apply=False) -- в канонической
+    # области: производные колонки вне статуса (PROGR-24-ORIGIN-A).
+    derived_after = sorted(set(session.derived_columns))
+    scope_after = [str(name) for name in work.columns if str(name) not in set(derived_after)]
+    next_profile = profile_missing(scope_frame(work, scope_after))
+
+    return DatasetMissingManualCorrectionsResponse(
+        applied=payload.apply,
+        total_edited_requested=len(payload.edits),
+        total_changed=total_changed,
+        total_missing_before=total_missing_before,
+        total_missing_after=int(work.isnull().sum().sum()),
+        profile=[MissingProfileItemOut(**item) for item in next_profile],
+        derived_summary=_derived_missing_summary(work, derived_after),
     )
 
 
