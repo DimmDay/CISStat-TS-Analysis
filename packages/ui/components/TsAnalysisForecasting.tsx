@@ -27,13 +27,33 @@
 // обеих aside убран). Заголовок левой колонки «Прогнозирование» заменён
 // на «Forecasting» по прямому указанию тимлида (прецедент UI-EDA-HDR-2;
 // модульное имя на других поверхностях не менялось). Отличия лейаута
-// учтены: (1) круглая кнопка справки «?» сохраняет свой дизайн (не
+// учтены: (1) круглая кнопка справки «?» сохраняла свой дизайн (не
 // заголовок), строке передан shrink-0; (2) «Панель управления» поднят из
 // h4 text-sm первой карточки control-panel на уровень колонки (строка
 // -- первая ветка aside), текст сохранён. Пин контракта:
 // forecasting-column-headers-unified.test.tsx.
+//
+// UI-FORECAST-HELP-1 (2026-10-15): три правки по паттерну EDA
+// (TsAnalysisEDA.tsx, эталон): (1) круглая «?» левой колонки заменена
+// текстовой кнопкой «Справка» (text-xs px-2 py-1 rounded
+// transition-colors; active bg-brand text-white / inactive
+// bg-brand-light text-neutral-700 hover:bg-brand-light/80; toggle --
+// второй клик возвращает к описанию этапа, зеркально EDA-2; testid
+// forecasting-help-btn СОХРАН -- пины двух сюитов; aria-label снят --
+// доступное имя по видимому тексту, паритет с EDA); (2) шрифт текста
+// окна «Описание этапа» text-xs → text-sm (паттерн EDA «text-sm
+// text-neutral-600», геометрия 220px не тронута); (3) шеврон окна по
+// паттерну EDA: сворачивание -- sticky bottom-0 ВНУТРИ развёрнутого
+// бокса (desc-collapse-btn, прилипает к НИЗУ окна; прежде единый
+// toggle desc-toggle-btn сидел absolute bottom-1 внешней обёртки --
+// при развёрнутом окне визуально «вверху»), разворачивание --
+// absolute bottom-1 только при переполнении (desc-expand-btn;
+// hasOverflow: ref + ResizeObserver, scrollHeight > clientHeight + 2 --
+// перенос EDA :1311-1322). Click-outside и сворачивание при смене
+// секции (EDA :1269-1284) -- вне скоупа постановки. Пин контракта:
+// forecasting-help-eda-pattern.test.tsx.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 // Иконки заголовков layout (UI-FORECAST-HDR-1, паттерн UI-PREPR-HDR-1
 // «Предобработки» / серия UI-*-HDR): TrendingUp -- левая колонка
@@ -121,6 +141,10 @@ export function TsAnalysisForecasting() {
   const [error, setError] = useState<string | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [descriptionSection, setDescriptionSection] = useState<"main" | "help">("main");
+  // Переполнение окна описания (UI-FORECAST-HELP-1, паттерн EDA):
+  // expand-шеврон показывается только когда контент не влезает в 220px.
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const descRef = useRef<HTMLDivElement>(null);
 
   const refreshAll = useCallback(async () => {
     setCardsLoading(true);
@@ -256,6 +280,26 @@ export function TsAnalysisForecasting() {
       ? (describeNode("forecasting", null, "module_help")?.text ?? "")
       : (describeNode("forecasting", null, "stage_overview")?.text ?? "");
 
+  // ── Overflow detection для expandable description (UI-FORECAST-HELP-1,
+//    паттерн EDA -- перенос TsAnalysisEDA.tsx :1311-1322) ──
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const checkOverflow = () => {
+      setHasOverflow(el.scrollHeight > el.clientHeight + 2);
+    };
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [descriptionSection]); // ResizeObserver отслеживает контент
+
+  // Справка -- toggle по паттерну EDA (EDA-2, «инвариант
+  // информативности»): закрытие возвращает к описанию этапа.
+  const handleHelpClick = () => {
+    setDescriptionSection((prev) => (prev === "help" ? "main" : "help"));
+  };
+
   // ── Рендер ──
   return (
     <div className="flex gap-6">
@@ -273,10 +317,13 @@ export function TsAnalysisForecasting() {
             UI-EDA-HDR-2; растяжение flex-1 min-w-0 прижимает кнопку
             справки к правому краю узкой колонки -- раньше здесь был
             justify-between без иконки, font-bold text-neutral-900;
-            truncate -- защита узкой колонки). Круглая кнопка «?» --
-            ДИЗАЙН СОХРАНЁН (не заголовок, вне скоупа шрифтов/иконок
-            заголовков), строке передан shrink-0. Пин контракта:
-            forecasting-column-headers-unified.test.tsx. */}
+            truncate -- защита узкой колонки). Текстовая кнопка «Справка» --
+            паттерн EDA (UI-FORECAST-HELP-1; прежде круглая «?», чей
+            дизайн сохранялся до отдельной постановки): toggle-семантика
+            (второй клик закрывает справку), активное состояние
+            bg-brand text-white; строке передан shrink-0. Пины:
+            forecasting-column-headers-unified.test.tsx (состав строки),
+            forecasting-help-eda-pattern.test.tsx (кнопка). */}
         <div className="mb-1">
           <div className="flex items-center gap-2">
             <TrendingUp size={16} className="text-brand" aria-hidden="true" />
@@ -285,12 +332,15 @@ export function TsAnalysisForecasting() {
             </h2>
             <button
               type="button"
-              onClick={() => setDescriptionSection("help")}
-              className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full border border-neutral-300 text-xs text-neutral-500 hover:border-brand hover:text-brand"
-              aria-label="Справка по этапу"
+              onClick={handleHelpClick}
+              className={`shrink-0 text-xs px-2 py-1 rounded transition-colors ${
+                descriptionSection === "help"
+                  ? "bg-brand text-white"
+                  : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+              }`}
               data-testid="forecasting-help-btn"
             >
-              ?
+              Справка
             </button>
           </div>
           <p className="mt-0.5 text-[11px] text-neutral-500">
@@ -385,24 +435,56 @@ export function TsAnalysisForecasting() {
               </button>
             )}
           </div>
+          {/* Expandable Description Box -- паттерн EDA (UI-FORECAST-HELP-1):
+              шрифт текста text-sm (был text-xs; эталон EDA «text-sm
+              text-neutral-600»), геометрия 220px/px-4 py-3 сохранена.
+              Шевроны по паттерну EDA: сворачивание -- sticky bottom-0
+              ВНУТРИ развёрнутого бокса (прилипает к НИЗУ окна; прежде
+              единый toggle desc-toggle-btn сидел absolute bottom-1
+              внешней обёртки -- при развёрнутом окне визуально
+              «вверху», у нижней грани свёрнутого следа);
+              разворачивание -- absolute bottom-1 по центру, только при
+              переполнении (hasOverflow). Пин:
+              forecasting-help-eda-pattern.test.tsx. */}
           <div className="relative">
             <div
-              className={`mt-1 rounded-lg border px-4 py-3 text-xs text-neutral-600 whitespace-pre-wrap ${
+              ref={descRef}
+              className={`mt-1 rounded-lg border px-4 py-3 text-sm text-neutral-600 whitespace-pre-wrap ${
                 descriptionExpanded
                   ? "absolute top-0 left-0 right-0 z-20 max-h-[calc(100vh-180px)] min-h-[220px] overflow-y-auto border-brand/30 bg-brand-light shadow-lg"
                   : "max-h-[220px] min-h-[220px] overflow-hidden bg-brand-light/50 border-neutral-200"
               }`}
             >
               {descriptionContent}
+              {/* Collapse chevron -- паттерн EDA: sticky прилипает к низу
+                  scroll-области развёрнутого окна. */}
+              {descriptionExpanded && (
+                <div className="sticky bottom-0 flex justify-center py-1 bg-brand-light rounded-b-lg">
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionExpanded(false)}
+                    className="flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
+                    aria-label="Свернуть описание"
+                    data-testid="desc-collapse-btn"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => setDescriptionExpanded((value) => !value)}
-              className="absolute bottom-1 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-t bg-brand/10 px-3 py-0.5 text-brand hover:bg-brand/20"
-              aria-label={descriptionExpanded ? "Свернуть описание" : "Развернуть описание"}
-              data-testid="desc-toggle-btn"
-            >
-              {descriptionExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
+            {/* Expand chevron -- паттерн EDA: только при переполнении,
+                absolute bottom-1 по центру под боксом. */}
+            {hasOverflow && !descriptionExpanded && (
+              <button
+                type="button"
+                onClick={() => setDescriptionExpanded(true)}
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
+                aria-label="Развернуть описание"
+                data-testid="desc-expand-btn"
+              >
+                <ChevronDown size={14} />
+              </button>
+            )}
           </div>
         </div>
 
