@@ -226,6 +226,23 @@ describe("Заголовки «Предобработки» -- единый ви
     expectWindowHeaderOpensBlock(hOverviewNext);
   });
 
+  it("заголовок окна «Мастер исправления выбросов» -- тот же контракт с кнопкой «Исправить вручную» (MANUAL-OUTLIERS-1)", async () => {
+    renderHdrPreprocessing();
+
+    // Переход: степпер → «Выбросы» → «Исправить выбросы» (pipeline-режим).
+    // Данные Обзора/мастера не нужны: заголовок структурный (оседает в
+    // error-состоянии, R6 оценки рисков UI-PREPR-HDR-1).
+    const leftAside = screen.getByRole("heading", { name: "Preprocessing", level: 2 }).closest("aside")!;
+    fireEvent.click(within(leftAside).getByRole("button", { name: /^Выбросы/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить выбросы" }));
+    const hMaster = await screen.findByRole("heading", { name: "Мастер исправления выбросов", level: 3 });
+    // MANUAL-OUTLIERS-1: строка заголовка мастера выбросов несёт кнопку
+    // «Исправить вручную» (правый край) -- то же расширение контракта,
+    // что у мастера пропусков (MANUAL-MISSING-1).
+    expectUnifiedHeaderContract(hMaster, { withManualButton: true });
+    expectWindowHeaderOpensBlock(hMaster);
+  });
+
   it("выравнивание по нижней горизонтали: офсеты pt-1 ОБОИХ колонок убраны, подпись «Математические преобразования» сохранена", async () => {
     renderHdrPreprocessing();
 

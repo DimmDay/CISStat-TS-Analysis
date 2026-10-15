@@ -2275,6 +2275,65 @@ DatasetMissingProfileResponse.model_rebuild()
 DatasetMissingCorrectionResponse.model_rebuild()
 
 
+# ── Ручное исправление выбросов (MANUAL-OUTLIERS-1, 2026-10-15) ───────
+# Паттерн MANUAL-MISSING-1 для остановки «Выбросы»: перенос legacy app.py
+# (radio «Все/Только выбросы/Только норма» → st.data_editor с маркировкой
+# «Выброс/Норма» → «💾 Сохранить», блок ~8256-8334) с улучшениями.
+# Схемы ПЕРЕИСПОЛЬЗУЮТ редакторные классы пропусков (MissingEditorColumnOut/
+# MissingEditorRowOut/MissingManualEditIn): ячеечная правка и метаданные
+# колонки -- ОДИН контракт (вторая реализация семантики запрещена --
+# закреплённая практика платформы).
+
+
+class DatasetOutlierEditorRowsResponse(BaseModel):
+    """Окно строк редактора ручного исправления выбросов. Пагинация
+    поверх ОБЛАСТИ ФИЛЬТРА: outliers_only=False -- весь датафрейм,
+    outliers_only=True -- только строки хотя бы с одним выбросом
+    (маска: числовые колонки КАНОНИЧЕСКОЙ области, кард-шкала iqr-1.5 --
+    та же шкала, что у карточки Обзора и статуса остановки, PROGR-23/24).
+    total_rows -- счётчик области фильтра, по ней размечается ползунок."""
+
+    columns: List[MissingEditorColumnOut]
+    rows: List[MissingEditorRowOut]
+    offset: int = Field(..., ge=0)
+    limit: int = Field(..., ge=1)
+    total_rows: int = Field(..., description="Строк в ОБЛАСТИ фильтра (разметка ползунка)")
+    returned: int
+    has_more: bool
+
+
+class DatasetOutlierManualCorrectionsRequest(BaseModel):
+    """Ячеечные правки редактора выбросов -- тот же контракт, что у
+    пропусков (MissingManualEditIn: None/"" = очистка в NaN -- аналитик
+    честно решает, что значение -- ошибка ввода без замены; пропуск
+    подхватит остановка «Пропуски»)."""
+
+    edits: List[MissingManualEditIn] = Field(..., min_length=1, max_length=10000)
+    apply: bool = Field(
+        True,
+        description="True -- применить к сессии (set_dataframe, AUDIT-C); False -- только проверить и посчитать",
+    )
+
+
+class DatasetOutlierManualCorrectionsResponse(BaseModel):
+    """Честные счётчики: total_changed -- ФАКТИЧЕСКИ изменившиеся ячейки
+    (перебор того же числа не считается; no-op apply не повышает
+    data_revision -- AUDIT-C). total_outliers_before/after и profile --
+    КАРД-ШКАЛА (iqr-1.5) канонической области (PROGR-23/24): редактор
+    живёт в шкале карточки, у мастера выбросов шкала выбирается методом,
+    здесь метода нет -- честная фиксированная шкала. derived_summary НЕТ:
+    ячеечные правки структурно не меняют производный состав (fresh
+    derived_summary отдаёт GET /dataset/outlier-profile, который Обзор
+    перечитывает каскадом datasetVersion)."""
+
+    applied: bool
+    total_edited_requested: int
+    total_changed: int
+    total_outliers_before: int
+    total_outliers_after: int
+    profile: List[OutlierProfileItemOut]
+
+
 class DatasetOutlierProfileResponse(BaseModel):
     rule_source: Literal["system", "not_applicable"]
     mode: Literal["auto", "enabled", "disabled"] = "auto"

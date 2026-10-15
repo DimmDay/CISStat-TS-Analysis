@@ -99,8 +99,11 @@ from apps.api.schemas import (
     DatasetOutlierCorrectionResponse,
     DatasetOutlierBoxplotResponse,
     DatasetOutlierDensityResponse,
+    DatasetOutlierEditorRowsResponse,
     DatasetOutlierHistogramResponse,
     DatasetOutlierLineResponse,
+    DatasetOutlierManualCorrectionsRequest,
+    DatasetOutlierManualCorrectionsResponse,
     DatasetOutlierProfileResponse,
     DatasetPassportCaptureResponse,
     DatasetPassportCompareResponse,
@@ -2198,6 +2201,236 @@ def apply_dataset_missing_manual_corrections(
         total_missing_after=int(work.isnull().sum().sum()),
         profile=[MissingProfileItemOut(**item) for item in next_profile],
         derived_summary=_derived_missing_summary(work, derived_after),
+    )
+
+
+# ── Ручное исправление выбросов (MANUAL-OUTLIERS-1, 2026-10-15) ───────
+# Паттерн MANUAL-MISSING-1 для остановки «Выбросы»: перенос legacy app.py
+# (radio «Все/Только выбросы/Только норма» → st.data_editor с маркировкой
+# «Выброс/Норма» → «💾 Сохранить», блок ~8256-8334) с улучшениями.
+# Маска «Только с выбросами» -- числовые колонки КАНОНИЧЕСКОЙ области в
+# КАРДОЧНОЙ шкале iqr-1.5 (профиль фиксированным методом карточки,
+# PROGR-23; производные вне статуса, PROGR-24-ORIGIN-A): редактор живёт
+# в той же шкале, что карточка Обзора и статус остановки, -- окно фильтра
+# сходится с тем, что аналитик видит на остановке.
+
+
+def _outlier_row_mask(df: pd.DataFrame, canonical: list[str]) -> pd.Series:
+    """Булева маска «хотя бы один выброс в строке»: ИЛИ по числовым
+    колонкам канонической области, кард-шкала iqr-1.5 (та же
+    detect_outlier_mask, что у профиля остановки -- вторая реализация
+    обнаружения запрещена). Нечисловые/производные колонки маску не
+    строят; недостаточная выборка -- колонка молчит (detect возвращает
+    all-False, как у профиля)."""
+    mask = pd.Series(False, index=df.index)
+    for column in canonical:
+        if column in df.columns and pd.api.types.is_numeric_dtype(df[column]):
+            mask |= detect_outlier_mask(df[column], "iqr", None)
+    return mask
+
+
+@router.get("/dataset/outlier-editor-rows", response_model=DatasetOutlierEditorRowsResponse)
+def get_dataset_outlier_editor_rows(
+    request: Request,
+    response: Response,
+    offset: int = Query(0, ge=0, description="Смещение окна ВНУТРИ области фильтра"),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=FULL_ROWS_MAX_LIMIT,
+        description=f"Размер окна (1..{FULL_ROWS_MAX_LIMIT})",
+    ),
+    outliers_only: bool = Query(
+        False,
+        description="True -- только строки хотя бы с одним выбросом "
+        "(legacy-маска «Только выбросы»; кард-шкала iqr-1.5 канонической области)",
+    ),
+):
+    """Окно строк для редактора ручного исправления выбросов
+    (остановка «Выбросы» модуля «Предобработка», MANUAL-OUTLIERS-1,
+    паттерн MANUAL-MISSING-1).
+
+    Пагинация поверх ОБЛАСТИ ФИЛЬТРА: outliers_only=True возвращает
+    строки маски «хотя бы один выброс» (числовые колонки канонической
+    области, iqr-1.5 -- та же шкала, что у карточки Обзора); каждая
+    строка несёт ПОЗИЦИОННЫЙ row_index исходного датафрейма, по которому
+    адресуются правки (POST /dataset/outlier-manual-corrections).
+    Ячейки -- JSON-нативно (_editor_cell_value MANUAL-MISSING-1:
+    None = NaN), semantic колонок -- ТА ЖЕ _semantic_class, что у
+    профиля остановки (вторая реализация семантики запрещена). Сами
+    строки -- ВЕСЬ датафрейм (все колонки): править можно любую ячейку,
+    маска определяет только область фильтра."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    columns_meta = [
+        {
+            "column": str(col),
+            "dtype": str(df[col].dtype),
+            "semantic": _semantic_class(df[col]),
+        }
+        for col in df.columns
+    ]
+    semantics = [meta["semantic"] for meta in columns_meta]
+
+    if outliers_only:
+        mask = _outlier_row_mask(df, canonical_columns(session))
+        total_rows = int(mask.sum())
+        positions = df.index[mask].tolist()[offset : offset + limit]
+        window = df.loc[positions]
+        position_indices = [int(df.index.get_loc(idx)) for idx in positions]
+    else:
+        total_rows = int(len(df))
+        window = df.iloc[offset : offset + limit]
+        position_indices = list(range(offset, offset + len(window)))
+
+    rows = []
+    for pos, (_, row) in zip(position_indices, window.iterrows()):
+        rows.append(
+            {
+                "row_index": pos,
+                "cells": [_editor_cell_value(row.iloc[i], semantics[i]) for i in range(len(semantics))],
+            }
+        )
+    returned = len(rows)
+    return DatasetOutlierEditorRowsResponse(
+        columns=[MissingEditorColumnOut(**meta) for meta in columns_meta],
+        rows=[MissingEditorRowOut(**row) for row in rows],
+        offset=offset,
+        limit=limit,
+        total_rows=total_rows,
+        returned=returned,
+        has_more=(offset + returned) < total_rows,
+    )
+
+
+@router.post("/dataset/outlier-manual-corrections", response_model=DatasetOutlierManualCorrectionsResponse)
+def apply_dataset_outlier_manual_corrections(
+    payload: DatasetOutlierManualCorrectionsRequest,
+    request: Request,
+    response: Response,
+):
+    """Применение ячеечных правок редактора выбросов (MANUAL-OUTLIERS-1,
+    паттерн MANUAL-MISSING-1).
+
+    Тот же контракт применения, что у /dataset/missing-manual-corrections:
+    правки на КОПИИ по ПОЗИЦИОННЫМ row_index; last-wins на дубли
+    (row, column); None/"" = очистка в NaN (в контексте выбросов честно:
+    аналитик может решить, что значение -- ошибка ввода без замены,
+    пропуск подхватит остановка «Пропуски»); numeric-колонки принимают
+    только приводимые к float значения (честная 422 с колонкой и
+    строкой); total_changed -- ФАКТИЧЕСКИ изменившиеся ячейки
+    (перебор того же значения не считается); сохранение -- единая точка
+    set_dataframe (AUDIT-C: no-op apply не повышает ревизию).
+    register_derived_columns НЕ вызывается -- ячеечные правки структурно
+    не добавляют колонок (реестру нечего регистрировать).
+    apply=False -- валидация и счётчики БЕЗ сохранения.
+
+    Счётчики выбросов и профиль ПОСЛЕ -- кард-шкала (iqr-1.5)
+    канонической области: редактор живёт в шкале карточки Обзора
+    (PROGR-23), у мастера выбросов шкала выбирается методом -- здесь
+    метода нет, честная фиксированная шкала."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    total_outliers_before = int(_outlier_row_mask(df, canonical_columns(session)).sum())
+    semantics = {str(col): _semantic_class(df[col]) for col in df.columns}
+    n_rows = int(len(df))
+
+    # last-wins на дубли (row, column): аналитик правил ту же ячейку
+    # несколько раз за сессию правки -- финальное значение побеждает,
+    # ФАКТ изменения -- один (ячейка одна).
+    merged: dict[tuple[int, str], Any] = {}
+    order: list[tuple[int, str]] = []
+    for edit in payload.edits:
+        key = (edit.row_index, edit.column)
+        if key not in merged:
+            order.append(key)
+        merged[key] = edit.value
+
+    work = df.copy()
+    total_changed = 0
+    for row_index, column in order:
+        if column not in semantics:
+            raise HTTPException(status_code=422, detail=f"Колонка '{column}' не найдена в датасете")
+        if row_index >= n_rows or row_index < 0:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Строка {row_index} за пределами датасета ({n_rows} строк)",
+            )
+        raw = merged[(row_index, column)]
+        col_idx = work.columns.get_loc(column)
+        current = work.iat[row_index, col_idx]
+
+        if semantics[column] == "numeric":
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                new_value: Any = np.nan
+            else:
+                if isinstance(raw, bool):
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Значение '{raw}' в колонке '{column}' (строка {row_index + 1}) не приводится к числу",
+                    )
+                try:
+                    new_value = float(raw)  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Значение '{raw}' в колонке '{column}' (строка {row_index + 1}) не приводится к числу",
+                    )
+        else:
+            # нечисловые колонки: строка как есть, пустое = NaN; число
+            # из JSON -- честная строка (без молчаливой смены типа)
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                new_value = np.nan
+            else:
+                new_value = str(raw)
+
+        if pd.isna(current) and pd.isna(new_value):
+            continue  # NaN → NaN: ячейка не менялась
+        if not pd.isna(current) and not pd.isna(new_value) and current == new_value:
+            continue  # перебор того же значения: не считаем изменением
+        try:
+            work.iat[row_index, col_idx] = new_value
+        except (TypeError, ValueError) as ex:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Значение '{new_value}' не совместимо с колонкой '{column}' (строка {row_index + 1}): {ex}",
+            )
+        total_changed += 1
+
+    if payload.apply:
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(work, reason="validation:outlier_manual_corrections")
+        if session.dataset is not None:
+            session.dataset.rows = len(work)
+            session.dataset.columns = len(work.columns)
+        session.touch()
+        store.save(session)
+
+    # Профиль ПОСЛЕ (гипотетический при apply=False) -- кард-шкала
+    # (iqr-1.5) в канонической области: производные колонки вне статуса
+    # (PROGR-24-ORIGIN-A).
+    derived_after = sorted(set(session.derived_columns))
+    scope_after = [str(name) for name in work.columns if str(name) not in set(derived_after)]
+    next_profile = profile_outliers(scope_frame(work, scope_after), method="iqr", param=None)
+
+    return DatasetOutlierManualCorrectionsResponse(
+        applied=payload.apply,
+        total_edited_requested=len(payload.edits),
+        total_changed=total_changed,
+        total_outliers_before=total_outliers_before,
+        total_outliers_after=int(_outlier_row_mask(work, scope_after).sum()),
+        profile=[OutlierProfileItemOut(**item) for item in next_profile],
     )
 
 

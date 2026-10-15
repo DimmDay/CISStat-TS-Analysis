@@ -65,6 +65,7 @@ import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
 import { PreprocessingMissingManualEditor } from "./PreprocessingMissingManualEditor";
 import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
 import { PreprocessingOutliersPipeline } from "./PreprocessingOutliersPipeline";
+import { PreprocessingOutliersManualEditor } from "./PreprocessingOutliersManualEditor";
 import { PreprocessingRegularityOverview, type RegularityProfileResponse } from "./PreprocessingRegularityOverview";
 import { PreprocessingRegularityPipeline } from "./PreprocessingRegularityPipeline";
 import {
@@ -174,6 +175,10 @@ export function TsAnalysisPreprocessing() {
   // ПЕРЕКЛЮЧЕНИЕМ остановки (зеркально инварианту Справки -- клик по
   // другой остановке автозагружает её «Метрики и алгоритм»).
   const [missingManualMode, setMissingManualMode] = useState(false);
+  // MANUAL-OUTLIERS-1: ручной режим мастера выбросов -- ТОТ ЖЕ паттерн
+  // (редактор датасета вместо сетки стратегий; закрытие повторным
+  // кликом и переключением остановки; два режима независимы).
+  const [outliersManualMode, setOutliersManualMode] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -830,9 +835,15 @@ export function TsAnalysisPreprocessing() {
   const handleManualClick = () => {
     setMissingManualMode((prev) => !prev);
   };
-  // Кнопка и flex-1 на h3 -- ТОЛЬКО в заголовке мастера пропусков
-  // (у других остановок строка заголовка байт-инвариантна)
+  // MANUAL-OUTLIERS-1: toggle ручного режима мастера выбросов -- тот же
+  // паттерн toggle «Справки».
+  const handleOutliersManualClick = () => {
+    setOutliersManualMode((prev) => !prev);
+  };
+  // Кнопка и flex-1 на h3 -- ТОЛЬКО в заголовках мастеров пропусков и
+  // выбросов (у других остановок строка заголовка байт-инвариантна)
   const isMissingManualHeader = activeCheckId === "missing" && descriptionSection === "pipeline";
+  const isOutliersManualHeader = activeCheckId === "outliers" && descriptionSection === "pipeline";
 
   // ── Overflow detection для expandable description ──
   useEffect(() => {
@@ -1003,9 +1014,11 @@ export function TsAnalysisPreprocessing() {
                 // семантика сохранена.
                 // MANUAL-MISSING-1: переключение остановки закрывает и
                 // ручной режим редактора (зеркально инварианту Справки)
+                // MANUAL-OUTLIERS-1: и ручной режим мастера выбросов
                 if (check.id !== activeCheckId) {
                   setDescriptionSection("metrics");
                   setMissingManualMode(false);
+                  setOutliersManualMode(false);
                 }
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
@@ -1118,8 +1131,11 @@ export function TsAnalysisPreprocessing() {
             (h3 flex-1 прижимает кнопку к правому краю центральной
             колонки, кнопка shrink-0 -- структурный паттерн левых колонок
             UI-UPLOAD-HELP-1/UI-PREPR-HDR-1); активное состояние --
-            bg-brand text-white (паттерн toggle «Справки»). У ДРУГИХ
-            остановок кнопки нет, h3 БЕЗ flex-1 (байт-инвариант строк). */}
+            bg-brand text-white (паттерн toggle «Справки»).
+            MANUAL-OUTLIERS-1 (2026-10-15): та же кнопка добавлена в
+            заголовок МАСТЕРА ВЫБРОСОВ (тот же структурный паттерн, свой
+            независимый toggle); у ДРУГИХ остановок кнопки нет, h3 БЕЗ
+            flex-1 (байт-инвариант строк). */}
         <div>
           <div className="flex items-center gap-2 mb-1">
             {descriptionSection === "pipeline" ? (
@@ -1127,7 +1143,7 @@ export function TsAnalysisPreprocessing() {
             ) : (
               <Eye size={16} className="text-brand" aria-hidden="true" />
             )}
-            <h3 className={`text-lg font-semibold text-neutral-800 ${isMissingManualHeader ? "flex-1" : ""}`}>
+            <h3 className={`text-lg font-semibold text-neutral-800 ${isMissingManualHeader || isOutliersManualHeader ? "flex-1" : ""}`}>
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Мастер исправления пропусков"
               : activeCheckId === "outliers" && descriptionSection === "pipeline"
@@ -1150,17 +1166,18 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер масштабирования"
               : `Обзор: ${activeCheck.label}`}
           </h3>
-          {/* MANUAL-MISSING-1: кнопка «Исправить вручную» -- ТОЛЬКО в
-              заголовке мастера пропусков (toggle ручного режима редактора;
-              переключение остановки закрывает режим -- зеркально
-              инварианту Справки). */}
-          {isMissingManualHeader && (
+          {/* MANUAL-MISSING-1: кнопка «Исправить вручную» в заголовке
+              мастера пропусков; MANUAL-OUTLIERS-1 -- и в заголовке мастера
+              выбросов (toggle ручного режима редактора; переключение
+              остановки закрывает режим -- зеркально инварианту Справки).
+              У ДРУГИХ остановок кнопки нет. */}
+          {(isMissingManualHeader || isOutliersManualHeader) && (
             <button
               type="button"
-              onClick={handleManualClick}
-              aria-pressed={missingManualMode}
+              onClick={isMissingManualHeader ? handleManualClick : handleOutliersManualClick}
+              aria-pressed={isMissingManualHeader ? missingManualMode : outliersManualMode}
               className={`shrink-0 rounded px-2 py-1 text-xs transition-colors ${
-                missingManualMode
+                (isMissingManualHeader ? missingManualMode : outliersManualMode)
                   ? "bg-brand text-white"
                   : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
               }`}
@@ -1222,7 +1239,14 @@ export function TsAnalysisPreprocessing() {
           ) : activeCheckId === "missing" ? (
             <PreprocessingMissingOverview refreshKey={missingRefreshKey + datasetVersion} />
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
-            <PreprocessingOutliersPipeline onApplied={handleApplied} />
+            // MANUAL-OUTLIERS-1: своп контента выбросов -- ручной режим
+            // редактора датасета вместо сетки стратегий (паттерн
+            // MANUAL-MISSING-1)
+            outliersManualMode ? (
+              <PreprocessingOutliersManualEditor onApplied={handleApplied} />
+            ) : (
+              <PreprocessingOutliersPipeline onApplied={handleApplied} />
+            )
           ) : activeCheckId === "outliers" ? (
             <PreprocessingOutliersOverview refreshKey={outliersRefreshKey + datasetVersion} column={activeFeature} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (

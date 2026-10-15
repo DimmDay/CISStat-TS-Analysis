@@ -15,8 +15,11 @@
 // (3) переключение остановки закрывает ручной режим (возврат к «Пропускам»
 //     показывает сетку мастера, не редактор) -- зеркально инварианту
 //     Справки;
-// (4) у ДРУГИХ остановок (Выбросы, pipeline) кнопки «Исправить вручную»
-//     НЕТ, строка заголовка без flex-1 (байт-инвариант остальных окон).
+// (4) у ДРУГИХ остановок (Регулярность, pipeline) кнопки «Исправить
+//     вручную» НЕТ, строка заголовка без flex-1 (байт-инвариант остальных
+//     окон). VERSIONED (MANUAL-OUTLIERS-1, 2026-10-15): «Выбросы» ВЫШЛИ
+//     из этого пина -- получили СВОЮ кнопку в заголовке мастера (тот же
+//     паттерн); регрессионная цель байт-инварианта -- «Регулярность».
 //
 // Корпус дизъюнктен: мок /session/current с маркером сессии
 // manual-missing-1; маршруты редактора -- свои страницы «метеостанции».
@@ -217,16 +220,28 @@ describe("«Исправить вручную» в заголовке масте
     expect(screen.queryByRole("region", { name: "Ручное исправление пропусков" })).not.toBeInTheDocument();
   });
 
-  it("other stops' masters do NOT have the manual button and keep the byte-identical header row", async () => {
+  it("VERSIONED MANUAL-OUTLIERS-1: outliers master got its own manual button; regularity master keeps the byte-identical row", async () => {
     renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
+    // VERSIONED (MANUAL-OUTLIERS-1): «Выбросы» ВЫШЛИ из пина «окон без
+    // кнопки» -- мастер выбросов несёт СВОЮ кнопку «Исправить вручную»
+    // и flex-1 (тот же структурный паттерн, что мастер пропусков);
+    // регрессионная цель байт-инварианта строк -- «Регулярность».
     fireEvent.click(screen.getByText("Выбросы"));
     fireEvent.click(await screen.findByRole("button", { name: "Исправить выбросы" }));
     expect(await screen.findByRole("region", { name: "Мастер исправления выбросов" })).toBeInTheDocument();
+    const outliersButton = screen.getByRole("button", { name: "Исправить вручную" });
+    const outliersRow = outliersButton.parentElement as HTMLElement;
+    expect(outliersRow).toHaveClass("flex", "items-center");
+    expect(outliersRow.querySelector("h3")).toHaveClass("flex-1");
+    expect(outliersButton).toHaveClass("shrink-0");
+
+    // Регулярность -- остаётся в байт-инварианте: кнопки нет, h3 без flex-1
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить регулярность" }));
+    expect(await screen.findByRole("region", { name: "Мастер исправления регулярности" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Исправить вручную" })).not.toBeInTheDocument();
-    // h3 заголовка окна выбросов БЕЗ flex-1 (байт-инвариант остальных окон);
-    // heading-role -- в пайплайне выбросов есть подпись-абзац с тем же текстом
-    const h3 = screen.getByRole("heading", { name: "Мастер исправления выбросов" });
+    const h3 = screen.getByRole("heading", { name: "Мастер исправления регулярности" });
     expect(h3).not.toHaveClass("flex-1");
   });
 });
