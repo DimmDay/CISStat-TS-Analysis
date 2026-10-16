@@ -34,6 +34,9 @@ from apps.api.trace_hook import TraceHookMiddleware
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 from apps.api.routers import forecasting_session, tasks_session
+# UPLOAD-DB-4 (фаза B): БД-дорожка «Загрузки» -- монтируется в ОБОИХ
+# семействах (конвенция платформы; один модуль реализации, см. модуль).
+from apps.api.routers import upload_db
 # PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
 from apps.api.routers import progress
 from apps.api.knowledge import router as knowledge_router_module
@@ -128,6 +131,11 @@ app.include_router(progress.router, prefix="/v1/progress", tags=["progress"])
 # registry_data.json (паритет с TS-реестрами застрахован тестами).
 app.include_router(knowledge_router_module.router, prefix="/v1/knowledge", tags=["knowledge"])
 app.include_router(knowledge_router_module.learning_router, prefix="/v1/learning", tags=["learning"])
+# UPLOAD-DB-4 (фаза B): «Загрузка → База данных (SQL)» -- паритет
+# файловой дорожки (public за API-ключом, internal по cookie-сессии);
+# контракт и карта ошибок -- в docstring модуля routers/upload_db.py.
+app.include_router(upload_db.router, prefix="/v1/internal/upload/db", tags=["upload"])
+app.include_router(upload_db.public_router, prefix="/v1/public/upload/db", tags=["upload"])
 
 
 @app.exception_handler(SessionConflictError)

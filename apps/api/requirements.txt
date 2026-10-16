@@ -52,3 +52,18 @@ redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
 # импорт сохранён (dev без БД не требует драйвера), но в requirements
 # он объявлен ЯВНО, а сборка Dockerfile проверяет импорт (см. Dockerfile).
 psycopg[binary]>=3.1.0        # apps/api/research_runs.py PostgresResearchRunStore
+
+# UPLOAD-DB-4 (фаза B): драйверы БД-дорожки «Загрузки» в контуре API.
+# psycopg v3 уже объявлен выше (одна зависимость на два назначения --
+# скоуп-решение S1). SQLAlchemy -- универсальный слой ядра Фазы A
+# (app/data/db_connectors.py): ВСЕ дорожки кроме нативного ClickHouse
+# (включая embedded SQLite/DuckDB) открывают engine'ы через create_engine.
+# В образе API его раньше не было (AST-разбор импортов РОУТЕРОВ его не
+# видел: реестр коннекторов разрешает sqlalchemy лениво/guarded) -- без
+# явного пина БД-дорожка деградировала бы до ImportError в runtime.
+# PyMySQL/pyodbc -- скоуп UPLOAD-DB-7 (матрица «зажигания»: MySQL/MSSQL
+# зажигаются на 7).
+sqlalchemy>=2.0.0             # универсальный слой коннекторов (ядро Фазы A)
+clickhouse-connect>=0.7.0     # нативный клиент ClickHouse (паритет legacy)
+duckdb>=1.0.0                 # встроенная DuckDB (read_only) + Parquet/CSV
+duckdb-engine>=0.13.0         # SQLAlchemy-диалект duckdb:// (RP3 закрыт RED-пробами Фазы A)

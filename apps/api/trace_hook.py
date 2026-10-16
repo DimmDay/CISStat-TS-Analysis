@@ -179,6 +179,19 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
     ),
     TraceRouteSpec("POST", "/v1/session/demo", "upload", "overview",
                    "upload_completed"),
+    # UPLOAD-DB-4 (фаза B): БД-датасет идёт пайплайном файла -- ТЕ ЖЕ
+    # события, без новых типов (ограничение плана): узел overview,
+    # upload_completed, payload -- форма UploadResponse. «Тест»
+    # (POST /upload/db/test) сознательно ВНЕ таблицы: probe, не факт
+    # анализа (fail-closed: вне таблицы -- не трассируется).
+    TraceRouteSpec(
+        "POST", "/v1/internal/upload/db/load", "upload", "overview",
+        "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/public/upload/db/load", "upload", "overview",
+        "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
+    ),
     # PROGR-13-A3: подтверждение структуры аналитиком (остановка
     # «Структура» модуля «Загрузка»): факт решения -- колонка из ТЕЛА
     # ОТВЕТА DateColumnResponse (payload_keys -- форма ответа, §4.1).

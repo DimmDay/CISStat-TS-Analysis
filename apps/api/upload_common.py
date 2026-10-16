@@ -26,6 +26,7 @@ confidence, candidates: [{name, score}]}, которую ожидает фрон
 """
 from io import BytesIO
 import uuid
+from typing import Optional
 
 import pandas as pd
 from fastapi import HTTPException, Request, Response, UploadFile
@@ -122,6 +123,85 @@ def _compute_parse_warnings(df: pd.DataFrame) -> list[str]:
     return warnings
 
 
+def register_uploaded_dataframe(
+    df: pd.DataFrame,
+    *,
+    name: Optional[str],
+    size_label: str,
+    request: Request,
+    response: Response,
+    dataset_fingerprint: str = "",
+    extra_parse_warnings: Optional[list] = None,
+) -> UploadResponse:
+    """ЕДИНАЯ регистрация DataFrame как датасета сессии (UPLOAD-DB-4).
+
+    Общая «хвостовая» часть двух дорожек вкладки «Загрузка»:
+      - файловой (POST /upload через handle_upload -- fingerprint байтов
+        файла, если файловый слой доступен);
+      - БД- (POST /upload/db/load через routers/upload_db.py -- источник
+        без файла, fingerprint пуст по контракту DatasetInfo).
+
+    Семантика (паритет с прежним handle_upload, не дублируем):
+      preview (head/tail) → dataset_id → cookie-сессия (SessionStore) →
+      set_dataset (сброс прогресса пайплайна, остановка upload=done) →
+      авто-фиксация цели (PROGR-25-A) → save() → UploadResponse.
+
+    extra_parse_warnings -- технические флаги источника сверх общих
+    _compute_parse_warnings (например, честная пометка усечения выборки
+    row_limit'ом у БД-дорожки; без новых полей схемы и новых событий
+    трассы).
+    """
+    head_rows = df.head(5).values.tolist()
+    tail_rows = df.tail(5).values.tolist()
+    head = [[str(cell) for cell in row] for row in head_rows]
+    tail = [[str(cell) for cell in row] for row in tail_rows]
+    head = [[str(col) for col in df.columns.tolist()]] + head
+
+    dataset_id = str(uuid.uuid4())
+
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    session.set_dataset(
+        DatasetInfo(
+            dataset_id=dataset_id,
+            name=name,
+            rows=len(df),
+            columns=len(df.columns),
+            size_label=size_label,
+            dataset_fingerprint=dataset_fingerprint,
+        ),
+        df,
+    )
+    # PROGR-25-A: авто-фиксация исследуемого признака при ровно одном
+    # кандидате (spec_progress_target_column.md §4-A) -- единая точка
+    # target_column_rule; событие target_column_changed(source="auto")
+    # сеется программно в точке фиксации (не фиктивный POST).
+    # Неоднозначность (2+ кандидатов) -- честное «не выбран».
+    auto_fix_and_seed(session)
+    # КОНТРАКТ SessionStore: после мутации -- обязательно save().
+    # В Memory save() -- no-op (алиасинг), но без него Redis-бэкенд
+    # потеряет изменения при следующем get().
+    store.save(session)
+
+    parse_warnings = _compute_parse_warnings(df)
+    if extra_parse_warnings:
+        parse_warnings = parse_warnings + list(extra_parse_warnings)
+
+    return UploadResponse(
+        dataset_id=dataset_id,
+        name=name,
+        rows=len(df),
+        columns=len(df.columns),
+        preview={"head": head, "tail": tail},
+        columns_info=_compute_column_info(df),
+        quality=_compute_quality_teaser(df),
+        size_label=size_label,
+        parse_warnings=parse_warnings,
+        error=None,
+    )
+
+
 async def handle_upload(file: UploadFile, request: Request, response: Response) -> UploadResponse:
     try:
         contents = await file.read()
@@ -132,18 +212,8 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
 
         df, _ext = read_uploaded_file(file_like)
 
-        head_rows = df.head(5).values.tolist()
-        tail_rows = df.tail(5).values.tolist()
-        head = [[str(cell) for cell in row] for row in head_rows]
-        tail = [[str(cell) for cell in row] for row in tail_rows]
-        head = [[str(col) for col in df.columns.tolist()]] + head
-
         size_label = format_size_label(len(contents))
-        dataset_id = str(uuid.uuid4())
 
-        session_id = get_or_create_session_id(request, response)
-        store = get_session_store()
-        session = store.get_or_create(session_id)
         # PROGR-5 (§12 п.3): байты исходного файла -- в файловый слой по
         # dataset_fingerprint, иначе restore (§5.3) останется "только
         # метаданные". Best-effort: сбой диска не роняет загрузку.
@@ -164,39 +234,17 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
                 exc_info=True,
             )
             fingerprint = ""
-        session.set_dataset(
-            DatasetInfo(
-                dataset_id=dataset_id,
-                name=file.filename,
-                rows=len(df),
-                columns=len(df.columns),
-                size_label=size_label,
-                dataset_fingerprint=fingerprint,
-            ),
-            df,
-        )
-        # PROGR-25-A: авто-фиксация исследуемого признака при ровно одном
-        # кандидате (spec_progress_target_column.md §4-A) -- единая точка
-        # target_column_rule; событие target_column_changed(source="auto")
-        # сеется программно в точке фиксации (не фиктивный POST).
-        # Неоднозначность (2+ кандидатов) -- честное «не выбран».
-        auto_fix_and_seed(session)
-        # КОНТРАКТ SessionStore: после мутации -- обязательно save().
-        # В Memory save() -- no-op (алиасинг), но без него Redis-бэкенд
-        # потеряет изменения при следующем get().
-        store.save(session)
 
-        return UploadResponse(
-            dataset_id=dataset_id,
+        # Регистрация датасета (preview/сессия/авто-фиксация/ответ) --
+        # единая точка register_uploaded_dataframe (UPLOAD-DB-4):
+        # БД-дорожка routers/upload_db.py переиспользует ту же семантику.
+        return register_uploaded_dataframe(
+            df,
             name=file.filename,
-            rows=len(df),
-            columns=len(df.columns),
-            preview={"head": head, "tail": tail},
-            columns_info=_compute_column_info(df),
-            quality=_compute_quality_teaser(df),
             size_label=size_label,
-            parse_warnings=_compute_parse_warnings(df),
-            error=None,
+            request=request,
+            response=response,
+            dataset_fingerprint=fingerprint,
         )
     except HTTPException:
         raise

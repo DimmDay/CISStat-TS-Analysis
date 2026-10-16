@@ -114,6 +114,12 @@ def test_route_table_covers_documented_endpoints():
     assert ("POST", "/v1/internal/upload") in keys
     assert ("POST", "/v1/public/upload") in keys
     assert ("POST", "/v1/session/demo") in keys
+    # UPLOAD-DB-4 (фаза B): БД-дорожка «Загрузки» -- ТЕ ЖЕ события
+    # (upload_completed/overview), без новых типов; «Тест» (/test)
+    # сознательно вне таблицы (probe, не факт анализа)
+    assert ("POST", "/v1/internal/upload/db/load") in keys
+    assert ("POST", "/v1/public/upload/db/load") in keys
+    assert ("POST", "/v1/internal/upload/db/test") not in keys
     # PROGR-13-A3: подтверждение структуры аналитиком (POST /date-column)
     assert ("POST", "/v1/session/date-column") in keys
     # Корректировки Валидации (8 + sufficiency + convert-types)
@@ -182,8 +188,11 @@ def test_route_table_covers_documented_endpoints():
     # (P0 ×2, P1 ×3, P2 ×4) = 53 (детально -- секция 9 ниже);
     # G345-фикс (PROGR-23): + GET /v1/session/dataset/outlier-profile
     # (живой пересчёт карточки «Выбросы», outliers_profile_status,
-    # dedupe) = 54.
-    assert len(TRACE_ROUTES) == 54
+    # dedupe) = 54;
+    # UPLOAD-DB-4 (фаза B): + 2 строки БД-дорожки «Загрузки»
+    # (internal/public /upload/db/load -- upload_completed/overview,
+    # без новых типов событий) = 56.
+    assert len(TRACE_ROUTES) == 56
     assert ("GET", "/v1/session/dataset/outlier-profile") in keys
 
 
@@ -912,11 +921,13 @@ def test_progr20_route_table_rows_present():
 
 def test_progr20_route_table_count_54():
     """44 (PROGR-3..13) + 9 строк PROGR-20 (P0 ×2, P1 ×3, P2 ×4) = 53;
-    G345-фикс (PROGR-23): + 1 строка GET /dataset/outlier-profile = 54.
-    (Имя теста сохраняет историю счётчика: 53 -> 54.)"""
+    G345-фикс (PROGR-23): + 1 строка GET /dataset/outlier-profile = 54;
+    UPLOAD-DB-4 (фаза B): + 2 строки БД-дорожки «Загрузки»
+    (internal/public /upload/db/load) = 56.
+    (Имя теста сохраняет историю счётчика: 53 -> 54 -> 56.)"""
     from apps.api.trace_hook import TRACE_ROUTES
 
-    assert len(TRACE_ROUTES) == 54
+    assert len(TRACE_ROUTES) == 56
 
 
 def test_progr20_conscious_exclusions_stay_untraced():
@@ -953,6 +964,14 @@ def test_progr20_conscious_exclusions_stay_untraced():
     ) is None
     assert resolve_trace_route(
         "POST", "/v1/session/modeling/tuning/step"
+    ) is None
+    # UPLOAD-DB-4 (фаза B): «Тест» подключения к БД -- probe, не факт
+    # анализа (датасет не появляется; факт -- только загрузка /db/load).
+    assert resolve_trace_route(
+        "POST", "/v1/internal/upload/db/test"
+    ) is None
+    assert resolve_trace_route(
+        "POST", "/v1/public/upload/db/test"
     ) is None
 
 

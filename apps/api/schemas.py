@@ -4,8 +4,8 @@ Pydantic-схемы запросов/ответов. Форма ответов �
 которую реально возвращают app/core/passport.py и app/validation/regularity.py
 (мы её проверяли построчно за этот разговор) -- не выдумана заново.
 """
-from typing import Any, Dict, List, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SeriesPoint(BaseModel):
@@ -106,6 +106,112 @@ class UploadResponse(BaseModel):
         description="Технические флаги парсинга (кодировка, неверно определённый заголовок) -- пункт 7 контракта вкладки «Загрузка»",
     )
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
+
+
+# ── UPLOAD-DB-4 (spec_database_plan.md, фаза B): API-контракт сервисов
+# «Загрузка → База данных (SQL)». Два профиля подключения --
+# дискриминированный union по db_type (архитектурное решение 3 плана):
+# серверные креды (4 СУБД) и embedded-путь (DuckDB/SQLite). Канонические
+# id -- реестр коннекторов app/data/db_connectors.py (Фаза A); алиасы
+# ("Postgres Pro", "MariaDB", ...) -- UI-удобство форм UPLOAD-DB-5, API
+# принимает только канонические id (строгий контракт OpenAPI).
+
+
+class ServerDbCredentials(BaseModel):
+    """Профиль подключения к СЕРВЕРНОЙ СУБД (PostgreSQL/Postgres Pro,
+    ClickHouse, MS SQL Server, MySQL/MariaDB).
+
+    Safe-дефолты фазы B: ssl=False (паритет legacy-прототипа, находка D3);
+    port None → default_port реестра (5432/8123/1433/3306). Пароль живёт
+    только в теле запроса: в URL соединения он не попадает (D4, ядро
+    Фазы A), в ответах/трассе маскируется."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    db_type: Literal["postgresql", "clickhouse", "mssql", "mysql"] = Field(
+        ..., description="Канонический id реестра коннекторов"
+    )
+    host: str = Field(..., min_length=1, description="Хост сервера")
+    port: Optional[int] = Field(
+        None, ge=1, le=65535,
+        description="Порт (None → default_port реестра)",
+    )
+    database: str = Field(..., min_length=1, description="Имя базы данных")
+    user: str = Field(..., description="Имя пользователя")
+    password: str = Field(..., description="Пароль (в URL соединения не попадает — D4)")
+    ssl: bool = Field(
+        False,
+        description="TLS-подключение (D3: PG sslmode / CH secure / MSSQL Encrypt / MySQL ssl; safe-дефолт False)",
+    )
+
+
+class EmbeddedDbSource(BaseModel):
+    """Профиль ВСТРОЕННОЙ СУБД (DuckDB/SQLite) -- вторая ветка union.
+
+    Путь на серверной ФС (скоуп-решение S3: drag-and-drop .duckdb/.parquet
+    вне v1). DuckDB дополнительно читает Parquet/CSV прямым SELECT без
+    сервера (допустимые расширения валидируются ядром Фазы A)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    db_type: Literal["duckdb", "sqlite"] = Field(
+        ..., description="Канонический id реестра коннекторов"
+    )
+    path: str = Field(
+        ..., min_length=1,
+        description="Путь к файлу на серверной ФС (.db/.sqlite/.duckdb/.parquet/.csv)",
+    )
+
+
+DbConnection = Annotated[
+    Union[ServerDbCredentials, EmbeddedDbSource],
+    Field(discriminator="db_type"),
+]
+
+
+class DbTestRequest(BaseModel):
+    """Тело пробы подключения («Тест»): один профиль -- union."""
+
+    connection: DbConnection
+
+
+class DbTestResponse(BaseModel):
+    """Ответ пробы: ok + факты (контракт плана: ok/db_type/server_version/
+    latency_ms) + маскированная причина отказа.
+
+    ok=False -- честный отрицательный результат пробы (транспорт/креды/
+    драйвер/файл); контрактные нарушения -- HTTP 422. server_version --
+    результат version_probe реестра (SELECT version() -- вендор-детекция
+    PG-семейства, UPLOAD-DB-8); None -- у СУБД без probe (embedded)."""
+
+    ok: bool
+    db_type: str = Field(..., description="Канонический id реестра коннекторов")
+    server_version: Optional[str] = Field(
+        None, description="Версия/вендор сервера (version_probe реестра)"
+    )
+    latency_ms: Optional[int] = Field(
+        None, ge=0, description="Длительность успешной пробы, мс"
+    )
+    error: Optional[str] = Field(
+        None, description="Маскированная причина отказа (ok=False; D4)"
+    )
+
+
+class DbLoadRequest(BaseModel):
+    """Тело загрузки БД-датасета: профиль union + SQL-запрос чтения
+    (проходит read-only guard ядра -- только SELECT/WITH) + желаемый
+    лимит строк (жёстко ограничен env UPLOAD_DB_ROW_LIMIT, дефолт
+    1 000 000 -- скоуп-решение S4)."""
+
+    connection: DbConnection
+    sql: str = Field(
+        ..., min_length=1,
+        description="SQL-запрос чтения (SELECT/WITH; DML/DDL/мультистейтмент отклоняются guard'ом — 422)",
+    )
+    row_limit: Optional[int] = Field(
+        None, ge=1,
+        description="Лимит строк выборки (None → env-потолок UPLOAD_DB_ROW_LIMIT, S4)",
+    )
 
 
 class DerivedColumnOut(BaseModel):

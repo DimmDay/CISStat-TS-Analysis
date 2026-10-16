@@ -44,6 +44,7 @@ RUN pip install --no-cache-dir -r apps/api/requirements.txt \
     && python -c "import redis; print('redis OK:', redis.__version__)" \
     && python -c "import psycopg; print('psycopg OK:', psycopg.__version__)" \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
+    && python -c "import sqlalchemy, duckdb_engine, clickhouse_connect, duckdb; print('db-track deps OK (UPLOAD-DB-4):', sqlalchemy.__version__)" \
     && python -c "import neuralforecast, torch; print('neural OK:', neuralforecast.__version__, torch.__version__)"
 
 # Копируем ТОЛЬКО то, что реально импортируется бэкендом (проверено
