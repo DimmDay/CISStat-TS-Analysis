@@ -1,0 +1,10 @@
+RED-протокол UPLOAD-DB-7 (до GREEN):
+  FAIL | mssql url.password: url.password == None (цель: None)
+  FAIL | mysql.version_probe: SELECT VERSION() (цель: TextClause SELECT VERSION())
+  FAIL | mssql.version_probe: SELECT @@VERSION (цель: TextClause SELECT @@VERSION)
+  FAIL | mysql.pip_package: 'PyMySQL cryptography' (цель: 'PyMySQL cryptography')
+  FAIL | mssql.fallback_pip_package: pymssql (цель: 'pymssql')
+  FAIL | _odbc_quote: {p;a}
+  FAIL | mssql_driver param: принят (цель: ValueError/TypeRED)
+  FAIL | mssql connect_args: connect_args keys=['PWD', 'timeout'] (цель: PWD='{pw}', timeout=10)
+  FAIL | missing pyodbc D2-hint: GREEN: хинт с fallback есть

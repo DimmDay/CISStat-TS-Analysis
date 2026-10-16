@@ -280,6 +280,13 @@ class TestHostWhitelist:
 
 class TestSslFlags:
 
+    @pytest.fixture(autouse=True)
+    def _deterministic_mssql_driver(self, monkeypatch):
+        """UPLOAD-DB-7: авто-резолюция mssql-драйвера детерминированна в тестах
+        D3 (pyodbc — основной по S2; fallback-ветка тестируется в
+        test_db_connectors.py::TestUploadDb7MssqlFallback)."""
+        monkeypatch.setattr(db_connectors, "pyodbc", object())
+
     def test_pg_sslmode_explicit(self):
         """D3: sslmode задаётся явно: True → require, False → disable."""
         spec = db_connectors.get_connector("postgresql")

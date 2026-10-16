@@ -22,6 +22,20 @@ psycopg2-binary>=2.9.9
 # совместим с sqlalchemy>=2.0, находка RP3 плана).
 duckdb>=1.0.0
 duckdb-engine>=0.13.0
+# === Серверные СУБД фазы C (UPLOAD-DB-7): MySQL/MariaDB + MS SQL Server ===
+# PyMySQL — диалект mysql+pymysql (реестр app/data/db_connectors.py).
+# Замечание по записи плана «PyMySQL[cryptography]»: в метаданных PyMySQL
+# extra 'cryptography' НЕ существует (только 'rsa'/'ed25519') — аутентификация
+# MySQL 8 (caching_sha2_password) требует пакет cryptography, поэтому он
+# пиннен ОТДЕЛЬНО явно (замысел плана сохранён, механика честная).
+PyMySQL>=1.1.0
+cryptography>=41.0.0  # caching_sha2_password (MySQL 8) для PyMySQL
+# pyodbc — основной драйвер mssql+pyodbc (S2 утверждено тимлидом); требует
+# системный ODBC Driver 18 for SQL Server (слой unixodbc+msodbcsql18 в
+# apps/api/Dockerfile). Fallback pymssql (RP2: закрытый контур без
+# apt-репозитория MS) СОЗНАТЕЛЬНО НЕ пиннен — ставится опционально
+# (pip install pymssql) и включается env UPLOAD_DB_MSSQL_DRIVER=pymssql.
+pyodbc>=5.0.0
 numpy>=1.24.0
 scipy>=1.11.0
  

@@ -49,6 +49,16 @@ try:
 except ImportError:  # pragma: no cover — средовой класс (драйвер не установлен)
     clickhouse_connect = None
 
+try:
+    import pyodbc  # noqa: F401 — основной драйвер MSSQL (S2)
+except ImportError:  # pragma: no cover — средовой класс (драйвер не установлен)
+    pyodbc = None
+
+try:
+    import pymssql  # noqa: F401 — fallback-драйвер MSSQL (S2, чистый pip)
+except ImportError:  # pragma: no cover — средовой класс (драйвер не установлен)
+    pymssql = None
+
 from app.data.db_guard import mask_secrets, validate_host_allowed
 
 logger = logging.getLogger(__name__)
@@ -85,6 +95,8 @@ class DbConnectorSpec:
         query_file_extensions: embedded: файл читается прямым SELECT
                               (DuckDB по Parquet/CSV без сервера).
         pip_package:          D2: подсказка установки недостающего драйвера.
+        fallback_pip_package: S2 (только mssql): fallback-драйвер — упоминается
+                              в D2-подсказке ImportError (UPLOAD-DB-7).
         version_probe:        ГОТОВЫЙ text() запроса версии/вендора сервера.
     """
 
@@ -100,6 +112,7 @@ class DbConnectorSpec:
     path_extensions: Tuple[str, ...] = ()
     query_file_extensions: Tuple[str, ...] = ()
     pip_package: Optional[str] = None
+    fallback_pip_package: Optional[str] = None
     version_probe: Any = None
 
 
@@ -139,6 +152,8 @@ DB_CONNECTORS = {
         test_sql=_test_clause("SELECT 1"),
         ssl_support=True,
         pip_package="pyodbc",
+        fallback_pip_package="pymssql",  # S2: чистый pip-fallback (RP2)
+        version_probe=_test_clause("SELECT @@VERSION"),  # UPLOAD-DB-7
     ),
     "mysql": DbConnectorSpec(
         id="mysql",
@@ -149,7 +164,11 @@ DB_CONNECTORS = {
         default_port=3306,
         test_sql=_test_clause("SELECT 1"),
         ssl_support=True,
-        pip_package="PyMySQL",
+        # UPLOAD-DB-7: MySQL 8 (caching_sha2_password) требует cryptography;
+        # в метаданных PyMySQL extra 'cryptography' НЕ существует (только
+        # 'rsa'/'ed25519') — подсказка перечисляет оба пакета (паттерн duckdb).
+        pip_package="PyMySQL cryptography",
+        version_probe=_test_clause("SELECT VERSION()"),  # MySQL и MariaDB
     ),
     "duckdb": DbConnectorSpec(
         id="duckdb",
@@ -242,6 +261,60 @@ def list_connectors() -> list:
     return list(DB_CONNECTORS.values())
 
 
+def _odbc_quote(value: str) -> str:
+    """ODBC-экранирование значения строки соединения (UPLOAD-DB-7).
+
+    SQLDriverConnect: значения со спецсимволами (';') заключаются в фигурные
+    скобки, внутренняя '}' удваивается. Оборачивание всегда — безопасно:
+    менеджер драйверов снимает скобки при разборе строки соединения.
+    Применяется к PWD перед передачей через connect_args (pyodbc.connect
+    добавляет неизвестные kwargs к строке соединения — докстринг pyodbc 5.x).
+    """
+    return "{" + str(value).replace("}", "}}") + "}"
+
+
+_MSSQL_DRIVERS = ("pyodbc", "pymssql")
+_MSSQL_DIALECTS = {"pyodbc": "mssql+pyodbc", "pymssql": "mssql+pymssql"}
+
+
+def _resolve_mssql_driver(explicit: Optional[str] = None) -> str:
+    """Резолюция драйвера MSSQL (UPLOAD-DB-7, S2/RP2).
+
+    Порядок (первый заданный выигрывает):
+      1) явный параметр mssql_driver ("pyodbc"|"pymssql");
+      2) env UPLOAD_DB_MSSQL_DRIVER — переключатель деплоя без правки кода
+         (закрытый контур без apt-репозитория Microsoft — риск RP2);
+      3) авто по доступности: pyodbc установлен — основной (S2);
+         иначе если установлен pymssql — fallback;
+         иначе дефолт mssql+pyodbc (ошибка открытия будет дружественной
+         D2 с подсказкой обоих драйверов).
+
+    Raises:
+        ValueError: неверное значение параметра или env (громкая ошибка
+            конфигурации, не тихое игнорирование).
+    """
+    if explicit is not None:
+        if explicit not in _MSSQL_DRIVERS:
+            raise ValueError(
+                f"Неверный mssql_driver={explicit!r}: ожидается "
+                f"{' или '.join(_MSSQL_DRIVERS)}"
+            )
+        return _MSSQL_DIALECTS[explicit]
+    env_value = os.getenv("UPLOAD_DB_MSSQL_DRIVER", "").strip().lower()
+    if env_value:
+        if env_value not in _MSSQL_DRIVERS:
+            raise ValueError(
+                f"Неверное UPLOAD_DB_MSSQL_DRIVER={env_value!r}: ожидается "
+                f"{' или '.join(_MSSQL_DRIVERS)}"
+            )
+        return _MSSQL_DIALECTS[env_value]
+    if pyodbc is not None:  # S2: основной драйвер
+        return _MSSQL_DIALECTS["pyodbc"]
+    if pymssql is not None:  # S2/RP2: fallback
+        return _MSSQL_DIALECTS["pymssql"]
+    return _MSSQL_DIALECTS["pyodbc"]  # дефолт с D2-подсказкой при открытии
+
+
 def build_server_url(
     spec: DbConnectorSpec,
     *,
@@ -251,17 +324,31 @@ def build_server_url(
     username: str,
     password: str,
     ssl: bool = False,
+    mssql_driver: Optional[str] = None,
 ) -> Tuple[Any, dict]:
     """Собирает (URL, connect_args) для серверного SQLAlchemy-диалекта.
 
-    D4: пароль НЕ включается в URL (кроме pyodbc-особенности MSSQL, где
-    строка ODBC собирается диалектом из URL-объекта, а str(url) маскирует
-    пароль штатным render_as_string(hide_password=True)).
+    D4: пароль НЕ включается в URL — НИ ДЛЯ ОДНОЙ СУБД. UPLOAD-DB-7 снял
+    исключение pyodbc (Фаза A держала пароль MSSQL в URL-объекте: str(url)
+    его маскирует, но render_as_string(hide_password=False) и атрибут
+    url.password отдают сырой пароль — эксперимент E1, протокол в
+    scripts/upload_db7_experiments.py). Паритет с PG/MySQL/ClickHouse:
+      PG/MySQL:      connect_args["password"];
+      MSSQL/pyodbc:  connect_args["PWD"] с ODBC-экранированием _odbc_quote
+                     (pyodbc.connect добавляет неизвестные kwargs к строке
+                     соединения; kwarg timeout перехватывается как
+                     login-таймаут — докстринг pyodbc 5.x);
+      MSSQL/pymssql: connect_args["password"] (нативный API pymssql).
 
     D3: ssl-флаг управляет TLS-поведением диалекта —
       PG:    sslmode=require / disable (явно — находка D3);
       MySQL: ssl_verify_cert=True / ssl_disabled=True (PyMySQL);
       MSSQL: Encrypt=yes+TrustServerCertificate=no / Encrypt=no (ODBC 18).
+
+    mssql_driver (UPLOAD-DB-7, S2/RP2): "pyodbc" — основной (ODBC Driver 18),
+    "pymssql" — fallback (чистый pip). None → env UPLOAD_DB_MSSQL_DRIVER →
+    авто-резолюция по доступности (_resolve_mssql_driver). Для остальных
+    СУБД параметр должен быть None (misuse — ValueError).
 
     Returns:
         (sqlalchemy.engine.URL, dict connect_args)
@@ -272,8 +359,24 @@ def build_server_url(
     connect_timeout, query_timeout = get_db_timeouts()
 
     if spec.id == "mssql":
-        # pyodbc: параметры ODBC передаются в query-части URL; пароль маскируется
-        # в str(url). Скоуп-решение S2: pyodbc + ODBC Driver 18, fallback pymssql.
+        dialect = _resolve_mssql_driver(mssql_driver)
+        if dialect == "mssql+pymssql":
+            # S2-fallback: нативный API pymssql — пароль через connect_args.
+            url = URL.create(
+                dialect,
+                username=username,
+                host=host,
+                port=port_int,
+                database=database,
+            )
+            connect_args: dict = {
+                "password": password,
+                "login_timeout": connect_timeout,
+            }
+            return url, connect_args
+        # Основной pyodbc-путь (ODBC Driver 18): параметры ODBC — в query
+        # URL (не секреты), пароль — через connect_args (пересмотр D4,
+        # указание тимлида из UPLOAD-DB-4).
         query = {
             "driver": _DRIVER_ODBC_MSSQL,
             "Encrypt": "yes" if ssl else "no",
@@ -281,40 +384,54 @@ def build_server_url(
         if ssl:
             query["TrustServerCertificate"] = "no"
         url = URL.create(
-            spec.dialect,
+            dialect,
             username=username,
-            password=password,
             host=host,
             port=port_int,
             database=database,
             query=query,
         )
-        connect_args: dict = {}
-    else:
-        # PG/MySQL: пароль строго ВНЕ строки соединения — через connect_args.
-        url = URL.create(
-            spec.dialect,
-            username=username,
-            host=host,
-            port=port_int,
-            database=database,
+        connect_args = {
+            "PWD": _odbc_quote(password),
+            "timeout": connect_timeout,  # pyodbc: login-таймаут (перехватывается)
+        }
+        return url, connect_args
+
+    if mssql_driver is not None:
+        raise ValueError(
+            "Параметр mssql_driver применим только для mssql "
+            f"(передан для {spec.label})"
         )
-        connect_args = {"password": password}
-        if spec.dialect == "postgresql+psycopg":
-            connect_args["connect_timeout"] = connect_timeout
-            connect_args["options"] = f"-c statement_timeout={query_timeout * 1000}"
-            connect_args["sslmode"] = "require" if ssl else "disable"  # D3
-        elif spec.dialect == "mysql+pymysql":
-            connect_args["connect_timeout"] = connect_timeout
-            if ssl:  # D3: TLS с проверкой сертификата сервера
-                connect_args["ssl_verify_cert"] = True
-            else:
-                connect_args["ssl_disabled"] = True
+
+    # PG/MySQL: пароль строго ВНЕ строки соединения — через connect_args.
+    url = URL.create(
+        spec.dialect,
+        username=username,
+        host=host,
+        port=port_int,
+        database=database,
+    )
+    connect_args = {"password": password}
+    if spec.dialect == "postgresql+psycopg":
+        connect_args["connect_timeout"] = connect_timeout
+        connect_args["options"] = f"-c statement_timeout={query_timeout * 1000}"
+        connect_args["sslmode"] = "require" if ssl else "disable"  # D3
+    elif spec.dialect == "mysql+pymysql":
+        connect_args["connect_timeout"] = connect_timeout
+        if ssl:  # D3: TLS с проверкой сертификата сервера
+            connect_args["ssl_verify_cert"] = True
+        else:
+            connect_args["ssl_disabled"] = True
     return url, connect_args
 
 
 def open_server_engine(spec: DbConnectorSpec, url: Any, connect_args: dict) -> Any:
-    """Открывает SQLAlchemy Engine серверной СУБД (паритет legacy: пул + ping)."""
+    """Открывает SQLAlchemy Engine серверной СУБД (паритет legacy: пул + ping).
+
+    UPLOAD-DB-7: ModuleNotFoundError (dbapi-слой диалекта, например
+    import pyodbc — эксперимент E4-correct) оборачивается в дружественный
+    ImportError (D2) с подсказкой основного И fallback-драйвера (S2).
+    """
     if create_engine is None:
         raise ImportError(
             f"sqlalchemy не установлен — {spec.label} недоступна. "
@@ -332,6 +449,19 @@ def open_server_engine(spec: DbConnectorSpec, url: Any, connect_args: dict) -> A
         raise ImportError(
             f"Не установлен драйвер {spec.label}. "
             f'Установите: pip install "{spec.pip_package}"'
+        ) from exc
+    except ModuleNotFoundError as exc:
+        # D2 (UPLOAD-DB-7): сырой ImportError dbapi-слоя диалекта (создание
+        # engine инициализирует dbapi для версии драйвера) — до пользователя
+        # не доходит; подсказка включает fallback-драйвер (S2), если объявлен.
+        hint = f'Установите: pip install "{spec.pip_package}"'
+        if spec.fallback_pip_package:
+            hint += (
+                f" или fallback: pip install \"{spec.fallback_pip_package}\" "
+                f"(и env UPLOAD_DB_MSSQL_DRIVER=pymssql)"
+            )
+        raise ImportError(
+            f"Не установлен драйвер {spec.label} ({exc.name}). {hint}"
         ) from exc
 
 

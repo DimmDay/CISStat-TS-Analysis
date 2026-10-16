@@ -21,6 +21,32 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# UPLOAD-DB-7 (фаза C, S2/RP2): системный ODBC-стек для драйвера mssql+pyodbc.
+#
+# RP2-смягчение: msodbcsql18 ставится из внешнего apt-репозитория Microsoft
+# (packages.microsoft.com) -- в закрытом контуре/прокси-CI он может быть
+# недоступен. Слой условный: сборка с --build-arg INSTALL_MSODBCSQL18=false
+# пропускает его, а MSSQL уходит на pymssql-fallback (S2): pip install pymssql
+# + env UPLOAD_DB_MSSQL_DRIVER=pymssql (реестр app/data/db_connectors.py,
+# _resolve_mssql_driver). unixodbc (libodbc.so.2) обязателен в обоих случаях:
+# без него не импортируется сам pyodbc (manylinux-wheel линкуется с libodbc).
+ARG INSTALL_MSODBCSQL18=true
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl gnupg2 ca-certificates unixodbc \
+    && if [ "$INSTALL_MSODBCSQL18" = "true" ]; then \
+        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+            | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+        && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list \
+            -o /etc/apt/sources.list.d/mssql-release.list \
+        && apt-get update \
+        && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+        && odbcinst -q -d -n "ODBC Driver 18 for SQL Server" \
+            && echo "msodbcsql18 registered (UPLOAD-DB-7)"; \
+    else \
+        echo "INSTALL_MSODBCSQL18=false: MSSQL via pymssql-fallback (S2/RP2)"; \
+    fi \
+    && rm -rf /var/lib/apt/lists/*
+
 # Системные зависимости для сборки некоторых wheel'ов (scipy/statsmodels
 # на редких платформах требуют компилятор, если бинарного wheel нет).
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -45,6 +71,7 @@ RUN pip install --no-cache-dir -r apps/api/requirements.txt \
     && python -c "import psycopg; print('psycopg OK:', psycopg.__version__)" \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
     && python -c "import sqlalchemy, duckdb_engine, clickhouse_connect, duckdb; print('db-track deps OK (UPLOAD-DB-4):', sqlalchemy.__version__)" \
+    && python -c "import pyodbc, pymysql, cryptography; print('db-track C OK (UPLOAD-DB-7): pyodbc', pyodbc.version, '| pymysql', pymysql.__version__)" \
     && python -c "import neuralforecast, torch; print('neural OK:', neuralforecast.__version__, torch.__version__)"
 
 # Копируем ТОЛЬКО то, что реально импортируется бэкендом (проверено

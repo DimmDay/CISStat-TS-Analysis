@@ -1,0 +1,7 @@
+1) bash -n: OK
+2) py_compile db_connectors.py: OK
+2) py_compile test_db_connectors.py: OK
+2) py_compile test_db_guard.py: OK
+3) pyodbc import: OK (5.3.0)
+4) pymysql import: OK (2.2.8)
+5) cryptography: OK (44.0.3)

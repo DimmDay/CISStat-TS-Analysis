@@ -1,0 +1,10 @@
+RED-протокол UPLOAD-DB-7 (до GREEN):
+  FAIL | mssql url.password: url.password == 'mssql-pw' (цель: None)
+  FAIL | mysql.version_probe: None (цель: TextClause SELECT VERSION())
+  FAIL | mssql.version_probe: None (цель: TextClause SELECT @@VERSION)
+  FAIL | mysql.pip_package: 'PyMySQL' (цель: 'PyMySQL cryptography')
+  FAIL | mssql.fallback_pip_package: <нет атрибута> (цель: 'pymssql')
+  FAIL | _odbc_quote: AttributeError: module 'app.data.db_connectors' has no attribute '_odbc_quote'
+  FAIL | mssql_driver param: TypeError: build_server_url() got an unexpected keyword argument 'mssql_driver'
+  FAIL | mssql connect_args: connect_args keys=[] (цель: PWD='{pw}', timeout=10)
+  FAIL | missing pyodbc D2-hint: сырой ImportError без D2-хинта: 'import of pyodbc halted; None in sys.modules'

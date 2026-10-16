@@ -67,3 +67,15 @@ sqlalchemy>=2.0.0             # универсальный слой коннек
 clickhouse-connect>=0.7.0     # нативный клиент ClickHouse (паритет legacy)
 duckdb>=1.0.0                 # встроенная DuckDB (read_only) + Parquet/CSV
 duckdb-engine>=0.13.0         # SQLAlchemy-диалект duckdb:// (RP3 закрыт RED-пробами Фазы A)
+
+# UPLOAD-DB-7 (фаза C): драйверы MySQL/MariaDB и MS SQL Server.
+# PyMySQL -- диалект mysql+pymysql. Запись плана «PyMySQL[cryptography]»
+# уточнена по метаданным: extra 'cryptography' у PyMySQL НЕ существует
+# ('rsa'/'ed25519') -- MySQL 8 (caching_sha2_password) требует пакет
+# cryptography, он пиннен отдельно явно. pyodbc -- основной драйвер
+# mssql+pyodbc (S2), требует системный ODBC Driver 18 (слой
+# unixodbc+msodbcsql18 в apps/api/Dockerfile). Fallback pymssql (RP2)
+# НЕ пиннен: опциональная установка + env UPLOAD_DB_MSSQL_DRIVER=pymssql.
+PyMySQL>=1.1.0                # диалект mysql+pymysql (MySQL / MariaDB)
+cryptography>=41.0.0          # caching_sha2_password (MySQL 8) для PyMySQL
+pyodbc>=5.0.0                 # диалект mssql+pyodbc, ODBC Driver 18 (S2)
