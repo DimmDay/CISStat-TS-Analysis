@@ -25,6 +25,16 @@
 - счётчики session.dataset обновляются, touch+save персистируют;
 - 404 без активного датасета; 422 на пустой список, неизвестную колонку,
   каноническую колонку, отсутствующую в кадре запись реестра.
+
+Усиление F2 (акт сертификации DATASET-VIEW-EDITOR-1-CERT): ключевые
+персистенционные пины параметризованы на ДВА бэкенда -- memory (дефолт)
+и RedisSessionStore на fakeredis (настоящая граница сериализации
+save→get, production-путь Upstash/render.com). Memory-бэкенд хранит
+ССЫЛКУ на сессию: алиасинг маскирует потерю store.save (мутант MB-9
+акта «save снят» переживал repo-канал; тот же класс, что дефект
+PROGR-25-F1 -- потеря target_column_source в Redis). На fakeredis
+состояние после POST читается СКВОЗЬ хранилище: без save() удаление
+не переживает перечитку -- мутант убит самим репозиторием.
 """
 from __future__ import annotations
 
@@ -53,6 +63,37 @@ def _reset_store():
     reset_session_store_for_testing()
     yield
     reset_session_store_for_testing()
+
+
+@pytest.fixture(params=["memory", "fakeredis"])
+def persistence_backend(request, monkeypatch, _reset_store):
+    """Параметризация персистенционных пинов (усиление F2 акта
+    сертификации DATASET-VIEW-EDITOR-1-CERT).
+
+    memory -- дефолтный бэкенд тестов: get() возвращает ТУ ЖЕ ссылку,
+    мутации видимы по алиасингу и потеря store.save() ненаблюдаема.
+
+    fakeredis -- RedisSessionStore на FakeStrictRedis(FakeServer()):
+    НАСТОЯЩАЯ граница сериализации json.dumps→redis→json.loads;
+    подмена singleton -- паттерн test_progress_progr17.py
+    (monkeypatch.setattr(session_store_module, "_store", store)),
+    изоляция сервера на тест -- паттерн test_session_store.py.
+    """
+    if request.param == "memory":
+        yield "memory"
+        return
+    fakeredis = pytest.importorskip("fakeredis")
+    from apps.api import session_store as session_store_module
+    from apps.api.session_store import RedisSessionStore
+
+    fake_server = fakeredis.FakeServer()
+    store = RedisSessionStore(
+        client=fakeredis.FakeStrictRedis(server=fake_server), ttl_seconds=3600
+    )
+    # Эндпоинт берёт store через get_session_store() -- singleton модуля;
+    # подменяем его на Redis-бэкенд (monkeypatch откатит после теста).
+    monkeypatch.setattr(session_store_module, "_store", store)
+    yield "fakeredis"
 
 
 def _three_predictor_frame() -> pd.DataFrame:
@@ -177,10 +218,15 @@ def test_422_stale_registry_entry_without_frame_column():
 # ── Основной сценарий ────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("persistence_backend")
 def test_delete_one_of_three_added_columns():
     """Ядро сценария дефекта: стратегия 1 добавила 3 колонки; сохранение
     удаления одной -- 200, deleted=[имя]; /dataset/rows больше НЕ отдаёт
-    колонку; GET derived-columns -- total 2 (каскад реестра)."""
+    колонку; GET derived-columns -- total 2 (каскад реестра).
+
+    F2: на fakeredis оба GET читают состояние СКВОЗЬ хранилище --
+    потеря store.save (мутант MB-9) оставила бы колонку в кадре и
+    запись в реестре перечитанной сессии."""
     _strategy1_adds_three_columns()
 
     resp = client.post(DELETE_URL, json={"columns": ["temp_missing_flag"]})
@@ -199,13 +245,18 @@ def test_delete_one_of_three_added_columns():
     assert registry["total"] == 2
 
 
+@pytest.mark.usefixtures("persistence_backend")
 def test_registry_cascade_removes_entry():
     """Каскад реестра: намеренное удаление через редактор убирает запись
     из session.derived_columns (unregister_derived_columns) -- реестр
-    согласован с фактом; исходные записи не затронуты."""
+    согласован с фактом; исходные записи не затронуты.
+
+    F2: состояние ПОСЛЕ сохранения читается ЗАНОВО из хранилища (на
+    memory это та же ссылка -- алиасинг; на fakeredis -- свежая
+    десериализация: несохранённый каскад теряется при перечитке)."""
     _strategy1_adds_three_columns()
-    session = _session()
-    assert set(session.derived_columns) == {
+    before = _session()
+    assert set(before.derived_columns) == {
         "value_missing_flag",
         "temp_missing_flag",
         "humidity_missing_flag",
@@ -213,7 +264,9 @@ def test_registry_cascade_removes_entry():
 
     resp = client.post(DELETE_URL, json={"columns": ["temp_missing_flag"]})
     assert resp.status_code == 200, resp.text
-    assert set(session.derived_columns) == {"value_missing_flag", "humidity_missing_flag"}
+
+    after = _session()
+    assert set(after.derived_columns) == {"value_missing_flag", "humidity_missing_flag"}
 
 
 def test_delete_bumps_data_revision_once():
@@ -256,24 +309,39 @@ def test_duplicate_names_in_request_are_deduped():
     assert resp.json()["deleted"] == ["temp_missing_flag"]
 
 
+@pytest.mark.usefixtures("persistence_backend")
 def test_dataset_counters_updated_and_persisted():
     """Счётчики session.dataset обновлены (columns), touch+save выполнены:
     updated_at сдвинулся, повторное чтение сессии из хранилища отдаёт
-    состав после удаления."""
+    состав после удаления.
+
+    F2: ключевой персистенционный пин параметризован на memory и
+    fakeredis. На memory get() возвращает ту же ссылку (алиасинг) --
+    потеря save() ненаблюдаема; на fakeredis чтение после POST идёт
+    СКВОЗЬ хранилище (json.dumps→redis→json.loads): без save() ни
+    счётчик, ни touch, ни состав после удаления не переживают
+    перечитку (мутант MB-9 акта, класс дефекта PROGR-25-F1)."""
     _strategy1_adds_three_columns()
-    session = _session()
-    columns_before = int(session.dataset.columns)
-    updated_before = session.updated_at
+    before = _session()
+    columns_before = int(before.dataset.columns)
+    updated_before = before.updated_at
 
     resp = client.post(DELETE_URL, json={"columns": ["temp_missing_flag"]})
     assert resp.status_code == 200, resp.text
 
-    assert session.dataset.columns == columns_before - 1
-    assert session.updated_at != updated_before
-
-    reloaded = get_session_store().get(session.session_id)
+    # Чтение ИЗ ХРАНИЛИЩА: memory -- та же ссылка; fakeredis -- свежая
+    # десериализация, save обязателен, иначе состав потерян.
+    reloaded = get_session_store().get(before.session_id)
+    assert reloaded is not None, (
+        "сессия отсутствует в хранилище после сохранения -- save() не записал документ"
+    )
+    assert int(reloaded.dataset.columns) == columns_before - 1
+    assert reloaded.updated_at != updated_before
     assert "temp_missing_flag" not in reloaded.dataframe.columns
-    assert set(reloaded.derived_columns) == {"value_missing_flag", "humidity_missing_flag"}
+    assert set(reloaded.derived_columns) == {
+        "value_missing_flag",
+        "humidity_missing_flag",
+    }
 
 
 def test_delete_then_readd_reregisters_fresh():

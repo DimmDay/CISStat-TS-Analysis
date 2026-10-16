@@ -13,7 +13,9 @@ read-only реестр производных колонок сессии (за�
 - поля записи: column, stage, source, created_at; сортировка по created_at
   (порядок появления колонок в датасете);
 - СТРОГО read-only: ни touch, ни save, ни set_dataframe -- двойной GET не
-  меняет data_revision (мутационная безопасность R6 проекта решения);
+  меняет data_revision, updated_at и снапшот кадра/реестра (мутационная
+  безопасность R6 проекта решения; усиление F1 акта сертификации
+  DATASET-VIEW-EDITOR-1-CERT -- пин уровня оракула B06);
 - старые сессии/свежая загрузка без реестра -- columns: [], total: 0
   (честное отсутствие, задокументированная совместимость column_origin.py);
 - 404 без активного датасета;
@@ -224,18 +226,43 @@ def test_strategies_without_new_columns_not_registered():
 
 
 def test_get_is_read_only_data_revision_unchanged():
-    """Мутационная безопасность (R6 проекта решения): двойной GET после
-    мутаций НЕ меняет data_revision -- эндпоинт не трогает сессию
-    (без touch/save/set_dataframe)."""
+    """Мутационная безопасность (R6 проекта решения; усиление F1 акта
+    сертификации DATASET-VIEW-EDITOR-1-CERT): двойной GET после мутаций
+    НЕ меняет НИ data_revision, НИ updated_at, НИ снапшот кадра/реестра --
+    эндпоинт не трогает сессию (без touch/save/set_dataframe).
+
+    F1: repo-пин раньше отслеживал только data_revision -- touch() его
+    НЕ поднимает, и мутант «touch+save в GET» (MB-2 акта) переживал
+    repo-канал; ловил только оракул B06. Пин updated_at + снапшот
+    кадра/реестра поднимает repo-пин до уровня B06: touch/save в
+    чтении детектируются самим репозиторием."""
     _upload(_g345_frame())
     client.post(
         "/v1/session/dataset/missing-corrections",
         json={"columns": ["value"], "strategy": "flag", "apply": True},
     )
-    before = _data_revision()
+    session = _session()
+    before_revision = _data_revision()
+    before_updated_at = session.updated_at
+    before_frame = session.dataframe.copy(deep=True)
+    before_registry = dict(session.derived_columns or {})
+
     assert client.get(URL).status_code == 200
     assert client.get(URL).status_code == 200
-    assert _data_revision() == before
+
+    assert _data_revision() == before_revision
+    # F1: touch() ревизию данных не поднимает -- пиним updated_at напрямую.
+    assert session.updated_at == before_updated_at, (
+        "GET мутирует сессию (touch) -- чтение не является read-only"
+    )
+    # Контент сессии тоже нетронут: сравнение с глубоким снапшотом до GET
+    # (save изменённого документа алиасингом памяти не маскируется).
+    assert session.dataframe.equals(before_frame), (
+        "GET меняет датафрейм сессии -- чтение не является read-only"
+    )
+    assert dict(session.derived_columns or {}) == before_registry, (
+        "GET меняет реестр производных колонок -- чтение не является read-only"
+    )
 
 
 def test_removed_beyond_registry_not_in_response():
