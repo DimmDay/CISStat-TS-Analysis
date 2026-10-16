@@ -112,6 +112,36 @@ def derived_columns_in_frame(session: AnalysisSession) -> list[str]:
     return [str(name) for name in session.dataframe.columns if str(name) in registry]
 
 
+def unregister_derived_columns(session: AnalysisSession, names: Iterable[str]) -> list[str]:
+    """Каскад реестра при НАМЕРЕННОМ удалении производных колонок
+    (дефект-репорт к DATASET-VIEW-EDITOR-1, 2026-10-16: кнопка
+    «Сохранить» «Редактора датасета» -- POST /dataset/derived-columns/delete).
+
+    Отличие от «удаления мимо реестра»: там запись ОСТАЁТСЯ (append-only,
+    безвредна -- область всегда пересекается с фактом присутствия в кадре),
+    здесь удаление выполняет пользователь редактора осознанно, поэтому
+    запись убирается -- реестр остаётся зеркалом факта. Повторный apply
+    операции-источника заново зарегистрирует колонку (register_derived_columns
+    сравнивает состав до/после) -- скрытых долгов удаление не оставляет.
+
+    Args:
+        session: сессия, у которой apply уже удалил колонки из датафрейма.
+        names: имена удалённых колонок (записей без колонки не создаётся).
+
+    Returns:
+        Список фактически снятых записей реестра (порядок аргумента).
+    """
+    if session.derived_columns is None:
+        return []
+    removed: list[str] = []
+    for name in names:
+        key = str(name)
+        if key in session.derived_columns:
+            del session.derived_columns[key]
+            removed.append(key)
+    return removed
+
+
 def scope_frame(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """DataFrame, ограниченный до перечисленных колонок.
 

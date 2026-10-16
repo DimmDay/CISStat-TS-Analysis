@@ -275,3 +275,175 @@ describe("DatasetViewEditor -- generic read-only просмотр датасет
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
+
+// ── «Сохранить» -- persist удаления добавленных колонок ─────────────
+//
+// Дефект-репорт тимлида к DATASET-VIEW-EDITOR-1 (2026-10-16): стратегия 1
+// добавляет в датасет 3 колонки, аналитик идёт на следующую остановку,
+// стратегия 2 рекомендует удалить одну из добавленных; аналитик удаляет её
+// в «Редакторе датасета» (×), но СОХРАНИТЬ не может -- справа от «Вернуть
+// все колонки» нет кнопки «Сохранить», и ни один контракт не мутирует.
+//
+// Контракт сохранения:
+// (S1) кнопка «Сохранить» стоит ПРАВЕЕ «Вернуть все колонки» (правый
+//      край), disabled при пустом скрытии;
+// (S2) скрытые колонки -- очередь удаления: подсказка «Удаление применится
+//      кнопкой «Сохранить»»; «Сохранить» отправляет РОВНО ОДИН POST
+//      /dataset/derived-columns/delete со списком скрытых имён;
+// (S3) успех: скрытие сброшено, чипы/бейдж исчезли, показано «Сохранено:
+//      удалено колонок: N», реестр и страница 0 строк перечитаны --
+//      удалённая колонка исчезла из сетки (мок отдаёт состав после
+//      удаления), «Вернуть все колонки» снова disabled;
+// (S4) отказ бэкенда: alert с detail, скрытие СОХРАНЕНО (можно повторить);
+// (S5) «Вернуть все колонки» до «Сохранить» отменяет скрытие БЕЗ сети
+//      (POST не отправляется);
+// (S6) само скрытие по-прежнему без сети -- POST уходит только от
+//      «Сохранить».
+describe("DatasetViewEditor -- «Сохранить»: persist удаления добавленных колонок (дефект-репорт)", () => {
+  let deletedColumns: string[] = [];
+  let posts: Array<{ url: string; body: unknown }>;
+  let failSave: { status: number; detail: string } | null;
+
+  beforeEach(() => {
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    deletedColumns = [];
+    posts = [];
+    failSave = null;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function statefulFetch() {
+    const registryNow = () => ({
+      columns: DERIVED.columns.filter((entry) => !deletedColumns.includes(entry.column)),
+      total: DERIVED.total - deletedColumns.length,
+    });
+    const rowsNow = (offset: number) => {
+      const base = rowsPage(offset);
+      const keep = COLUMNS.filter((name) => !deletedColumns.includes(name));
+      return {
+        ...base,
+        columns: keep,
+        rows: base.rows.map((row) => row.filter((_, i) => COLUMNS[i] !== undefined && keep.includes(COLUMNS[i]))),
+      };
+    };
+    return jest.fn((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "POST" && url.includes("/dataset/derived-columns/delete")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { columns?: string[] };
+        posts.push({ url: String(url), body });
+        if (failSave) {
+          return Promise.resolve({ ok: false, status: failSave.status, json: () => Promise.resolve({ detail: failSave.detail }) });
+        }
+        deletedColumns = [...deletedColumns, ...(body.columns ?? [])];
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              deleted: body.columns ?? [],
+              remaining_total: DERIVED.total - deletedColumns.length,
+            }),
+        });
+      }
+      if (url.includes("/dataset/derived-columns")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(registryNow()) });
+      }
+      if (url.includes("/dataset/rows")) {
+        const offset = Number(new URLSearchParams(url.split("?")[1]).get("offset") ?? 0);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rowsNow(offset)) });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ detail: "no dataset" }) });
+    }) as unknown as typeof fetch;
+  }
+
+  async function renderWithHiddenColumn() {
+    global.fetch = statefulFetch();
+    render(<DatasetViewEditor />);
+    await screen.findByText("recorded_at");
+    fireEvent.click(screen.getByRole("button", { name: "Скрыть колонку temp_c_smoothed из просмотра" }));
+    expect(await screen.findByText("Скрыто из просмотра: 1")).toBeInTheDocument();
+  }
+
+  function topRow() {
+    // Верхняя строка бокса -- родитель кнопки «Выбрать».
+    return screen.getByRole("button", { name: "Выбрать" }).parentElement as HTMLElement;
+  }
+
+  it("S1: «Сохранить» стоит правее «Вернуть все колонки», disabled при пустом скрытии", async () => {
+    await renderWithHiddenColumn();
+
+    const buttons = Array.from(topRow().querySelectorAll("button")).map((b) => b.textContent?.trim());
+    const restoreIdx = buttons.indexOf("Вернуть все колонки");
+    const saveIdx = buttons.findIndex((name) => name?.startsWith("Сохранить"));
+    expect(restoreIdx).toBeGreaterThan(-1);
+    expect(saveIdx).toBeGreaterThan(-1);
+    expect(saveIdx).toBeGreaterThan(restoreIdx);
+
+    // Пустое скрытие -- «Сохранить» заблокирован.
+    fireEvent.click(screen.getByRole("button", { name: "Вернуть колонку temp_c_smoothed в просмотр" }));
+    expect(screen.getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  });
+
+  it("S2+S3: клик «Сохранить» -- один POST со списком скрытых; успех: чипы сброшены, «Сохранено: удалено колонок: 1», реестр и страница 0 перечитаны, колонки нет в сетке", async () => {
+    await renderWithHiddenColumn();
+    expect(screen.getByText("Удаление применится кнопкой «Сохранить»")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    // РОВНО ОДИН POST с телом-списком скрытых.
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].url).toContain("/dataset/derived-columns/delete");
+    expect(posts[0].body).toEqual({ columns: ["temp_c_smoothed"] });
+
+    // Скрытие сброшено, честный статус сохранения, чипов нет.
+    expect(await screen.findByText("Сохранено: удалено колонок: 1")).toBeInTheDocument();
+    expect(screen.queryByText(/Скрыто из просмотра/)).toBeNull();
+    expect(screen.queryByTestId("view-editor-unchanged-badge")).toBeNull();
+
+    // Реестр и страница 0 перечитаны (мок отдаёт состав ПОСЛЕ удаления).
+    await waitFor(() => {
+      const grid = screen.getByTestId("view-editor-spacer");
+      expect(within(grid).queryByText("temp_c_smoothed")).toBeNull();
+      expect(within(grid).getByText("temp_c_missing_flag")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Сохранить" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Вернуть все колонки" })).toBeDisabled();
+
+    const fetchMock = global.fetch as unknown as jest.Mock;
+    const calls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(calls.filter((u) => u.includes("/dataset/derived-columns")).length).toBeGreaterThanOrEqual(2);
+    expect(calls.filter((u) => u.includes("/dataset/rows") && u.includes("offset=0")).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("S4: отказ бэкенда -- alert с detail, скрытие сохранено, повтор возможен", async () => {
+    await renderWithHiddenColumn();
+    failSave = { status: 422, detail: "Удалять можно только добавленные колонки" };
+
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Удалять можно только добавленные колонки");
+    expect(screen.getByText("Скрыто из просмотра: 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Сохранить" })).toBeEnabled();
+
+    // Повтор после восстановления сервиса -- успех.
+    failSave = null;
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(await screen.findByText("Сохранено: удалено колонок: 1")).toBeInTheDocument();
+  });
+
+  it("S5+S6: «Вернуть все колонки» отменяет скрытие без сети; POST уходит только от «Сохранить»", async () => {
+    await renderWithHiddenColumn();
+    expect(posts).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Вернуть все колонки" }));
+    expect(await screen.findByText("temp_c_smoothed")).toBeInTheDocument();
+    expect(screen.queryByText(/Скрыто из просмотра/)).toBeNull();
+    expect(posts).toHaveLength(0);
+  });
+});

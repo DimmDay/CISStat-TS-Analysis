@@ -32,6 +32,7 @@ from apps.api.column_origin import (
     operation_added_columns,
     register_derived_columns,
     scope_frame,
+    unregister_derived_columns,
 )
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
@@ -214,6 +215,8 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
     DatasetRowsResponse,
     DatasetDerivedColumnsResponse,
+    DatasetDerivedColumnsDeleteRequest,
+    DatasetDerivedColumnsDeleteResponse,
     DerivedColumnOut,
 )
 from app.core.passport import (
@@ -769,6 +772,78 @@ def get_dataset_derived_columns(request: Request, response: Response):
         )
     columns_out.sort(key=lambda entry: entry.created_at)
     return DatasetDerivedColumnsResponse(columns=columns_out, total=len(columns_out))
+
+
+@router.post("/dataset/derived-columns/delete", response_model=DatasetDerivedColumnsDeleteResponse)
+def delete_dataset_derived_columns(
+    payload: DatasetDerivedColumnsDeleteRequest,
+    request: Request,
+    response: Response,
+):
+    """
+    Сохранение удаления добавленных (производных) колонок из «Редактора
+    датасета» (дефект-репорт к DATASET-VIEW-EDITOR-1, 2026-10-16:
+    аналитик скрывает колонку кнопкой ×, но сохранить удаление не может --
+    справа от «Вернуть все колонки» нет кнопки «Сохранить», и ни один
+    контракт не мутирует).
+
+    Удалять МОЖНО ТОЛЬКО добавленные колонки, присутствующие в датафрейме
+    (derived_columns_in_frame = реестр ∩ кадр): исходные (канонические)
+    колонки НЕ удаляемы -- 422, датасет не мутирует (главная гарантия
+    безопасности источника данных, пинится
+    tests/api/test_dataset_derived_columns_delete.py). Смешанный запрос
+    отклоняется ЦЕЛИКОМ: частичное применение маскировало бы отказ по
+    остальным именам.
+
+    Мутация -- ЕДИНАЯ ТОЧКА set_dataframe (ревизия данных повышается
+    ТОЛЬКО при фактическом изменении контента, no-op не выдаётся за
+    изменённые данные) + каскад реестра unregister_derived_columns
+    (намеренное удаление снимает записи; append-only совместимость для
+    удалений мимо реестра сохраняется) + обновление счётчиков
+    session.dataset + touch + save.
+
+    Строки НЕ отдаёт: источник строк -- GET /dataset/rows, читающий уже
+    обновлённый session.dataframe.
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataset is None or session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    # Дубли имени схлопываем с сохранением порядка (drop по дубликату
+    # поднял бы KeyError, ответ не должен удваивать факт).
+    targets = list(dict.fromkeys(str(name) for name in payload.columns))
+    if not targets:
+        raise HTTPException(status_code=422, detail="Не указаны колонки для удаления")
+
+    deletable = set(derived_columns_in_frame(session))
+    offending = [name for name in targets if name not in deletable]
+    if offending:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Удалять можно только добавленные колонки, присутствующие в датасете "
+                "(исходные колонки не удаляются): " + ", ".join(offending)
+            ),
+        )
+
+    next_df = session.dataframe.drop(columns=targets)
+    # AUDIT-C: единая точка замены DataFrame -- ревизия данных повышается
+    # ТОЛЬКО при фактическом изменении контента.
+    session.set_dataframe(next_df, reason="dataset:derived_columns_delete")
+    # Каскад реестра: намеренное удаление через редактор снимает записи
+    # (unregister_derived_columns); удаления мимо реестра по-прежнему
+    # append-only-совместимы (запись остаётся, область = реестр ∩ кадр).
+    unregister_derived_columns(session, targets)
+    if session.dataset is not None:
+        session.dataset.rows = len(next_df)
+        session.dataset.columns = len(next_df.columns)
+    session.touch()
+    store.save(session)
+
+    remaining_total = len(derived_columns_in_frame(session))
+    return DatasetDerivedColumnsDeleteResponse(deleted=targets, remaining_total=remaining_total)
 
 
 def _distribution_hint(skew: Optional[float], kurtosis: Optional[float]) -> str:

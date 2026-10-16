@@ -1,22 +1,33 @@
 "use client";
 
-// Редактор датасета -- generic read-only просмотр датасета из Мастеров
+// Редактор датасета -- generic просмотр датасета из Мастеров
 // остановок, добавляющих колонки (DATASET-VIEW-EDITOR-1, 2026-10-16,
 // проект решения в worklog10.md; постановка тимлида: кнопка «Редактор
 // датасета» в Мастерах остановок-источников новых колонок; бокс --
 // просмотр всего датасета по умолчанию с удалением (скрытием) ТОЛЬКО
-// добавленных колонок БЕЗ ИЗМЕНЕНИЯ входящей глубокой копии датасета).
+// добавленных колонок).
+//
+// Дефект-репорт тимлида (2026-10-16, сценарий: стратегия 1 добавляет в
+// датасет 3 колонки, стратегия 2 следующей остановки рекомендует удалить
+// одну из добавленных; аналитик удаляет её в редакторе, но СОХРАНИТЬ не
+// может -- справа от «Вернуть все колонки» нет кнопки «Сохранить»):
+// расширение -- кнопка «Сохранить», персистирующая удаление скрытых
+// колонок через POST /dataset/derived-columns/delete (единственная
+// мутация компонента); скрытые колонки -- очередь удаления,
+// «Вернуть все колонки»/×-чип -- отмена до сохранения.
 //
 // Дизайн-принципы проекта решения:
-//   P1 READ-ONLY: сетка просмотр + управление колонками; ячеечных правок
-//      НЕТ (эксклюзив MANUAL-редакторов Пропусков/Выбросов). Компонент не
-//      содержит POST/PATCH/PUT -- только два исходных GET
-//      (/dataset/derived-columns + /dataset/rows).
-//   P2 «Удаление» производной колонки = локальное скрытие из ПРЕДСТАВЛЕНИЯ
-//      (клиентский Set), а не удаление из session.dataframe: ни один
+//   P1 READ-ONLY СЕТКА: просмотр + управление колонками; ячеечных правок
+//      НЕТ (эксклюзив MANUAL-редакторов Пропусков/Выбросов). Сеть --
+//      два исходных GET (/dataset/derived-columns + /dataset/rows) и
+//      РОВНО ОДИН POST сохранения удаления (только кликом «Сохранить»;
+//      скрытие/возврат/фильтр -- локальны, без сети).
+//   P2 «Удаление» производной колонки -- локальное скрытие из ПРЕДСТАВЛЕНИЯ
+//      (клиентский Set), т.е. ОЧЕРЕДЬ удаления: до «Сохранить» ни один
 //      контракт бэкенда не мутируется, data_revision не меняется. UX-
-//      формулировки честные: «Скрыть из просмотра», бейдж «датасет не
-//      изменён», строка «Скрыто из просмотра: N».
+//      формулировки честные: «Скрыть из просмотра», подсказка «Удаление
+//      применится кнопкой «Сохранить»», бейдж «датасет не изменён»
+//      (истина до сохранения), строка «Скрыто из просмотра: N».
 //   P3 Дефолт -- «Весь датасет» (все строки, все колонки), применён сразу
 //      при открытии: точка входа -- проверка РЕЗУЛЬТАТА операции, а не
 //      области проблемы (отличие от MANUAL-редакторов, где дефолт --
@@ -32,10 +43,24 @@
 // Строки -- GET /dataset/rows (единственный источник строк, читающий
 // живой session.dataframe -- включая добавленные колонки); метаданные
 // производных -- GET /dataset/derived-columns. Скрытие/возврат/фильтр --
-// клиентские операции без сети.
+// клиентские операции без сети; сохранение удаления -- POST
+// /dataset/derived-columns/delete ({columns: [...]}) -- удаляет скрытые
+// производные колонки из датасета (бэкенд валидирует: только реестр ∩
+// кадр; исходные колонки не удаляемы) и снимает записи реестра
+// (unregister_derived_columns); после успеха -- перечитка реестра и строк.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+
+async function responseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось выполнить операцию (HTTP ${response.status})`;
+}
 
 type FilterMode = "all" | "derived";
 
@@ -59,6 +84,11 @@ interface RowsResponse {
   total_rows: number;
   returned: number;
   has_more: boolean;
+}
+
+interface DeleteColumnsResponse {
+  deleted: string[];
+  remaining_total: number;
 }
 
 const PAGE_LIMIT = 200; // строк на страницу запроса (<= капы бэкенда)
@@ -89,8 +119,14 @@ export function DatasetViewEditor() {
   const [derivedMap, setDerivedMap] = useState<Map<string, DerivedColumnMeta>>(new Map());
   const [derivedTotal, setDerivedTotal] = useState<number | null>(null);
 
-  // ── Скрытые колонки (P2: клиентский Set, без сети) ──
+  // ── Скрытые колонки (P2: клиентский Set -- очередь удаления; persist
+  //    ТОЛЬКО кнопкой «Сохранить») ──
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+
+  // ── Сохранение удаления (дефект-репорт: кнопка «Сохранить») ──
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   // ── Строки / виртуализация (паттерн MANUAL-*/UI-UPLOAD-FULL-1) ──
   const [meta, setMeta] = useState<{ columns: string[]; totalRows: number } | null>(null);
@@ -216,6 +252,41 @@ export function DatasetViewEditor() {
 
   const restoreAll = () => setHidden(new Set());
 
+  // Сохранение удаления: скрытые колонки (только производные -- защитный
+  // фильтр по реестру; бэкенд валидирует повторно) уходят РОВНО ОДНИМ
+  // POST /dataset/derived-columns/delete. Успех: скрытие сброшено, кэш
+  // страниц и меты очищен (состав колонок изменился!), refreshKey
+  // перечитывает реестр и окно строк -- сетка показывает датасет после
+  // удаления; честный статус «Сохранено: удалено колонок: N». Отказ:
+  // alert с detail, скрытие СОХРАНЕНО (можно повторить).
+  const saveDeletion = async () => {
+    if (hidden.size === 0 || saving) return;
+    const targets = [...hidden].filter((name) => derivedMap.has(name));
+    if (targets.length === 0) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const res = await fetch(sessionApiUrl("/dataset/derived-columns/delete"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ columns: targets }),
+      });
+      if (!res.ok) throw new Error(await responseDetail(res));
+      const data: DeleteColumnsResponse = await res.json();
+      setHidden(new Set());
+      setPages(new Map());
+      setMeta(null);
+      setRefreshKey((k) => k + 1);
+      setSaveSuccess(`Сохранено: удалено колонок: ${data.deleted.length}`);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "Не удалось сохранить удаление колонок");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const emptyRegistry = derivedTotal !== null && derivedTotal === 0;
 
   return (
@@ -225,8 +296,11 @@ export function DatasetViewEditor() {
       className="h-[468px] rounded-lg border border-neutral-200 bg-white p-4 flex flex-col"
     >
       {/* Верхняя строка бокса: слева фильтры-чекбоксы + «Выбрать»
-          (паттерн MANUAL-*), справа -- «Вернуть все колонки» (ml-auto,
-          правый край; disabled, когда скрытых нет). */}
+          (паттерн MANUAL-*), справа -- «Вернуть все колонки» (отмена
+          скрытия, disabled при пустом) и ПРАВЕЕ неё «Сохранить»
+          (первичная кнопка: persist удаления скрытых, disabled при
+          пустом скрытии) -- дефект-репорт: сохранить удаление было
+          НЕВОЗМОЖНО. */}
       <div className="flex items-center gap-3 mb-2 shrink-0">
         <label className="flex items-center gap-1.5 text-xs text-neutral-700">
           <input
@@ -259,27 +333,42 @@ export function DatasetViewEditor() {
         </button>
         <button
           type="button"
-          disabled={hidden.size === 0}
+          disabled={hidden.size === 0 || saving}
           onClick={restoreAll}
           className="ml-auto rounded bg-brand-light px-2 py-1 text-xs text-neutral-700 hover:bg-brand-light/80 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Вернуть все колонки
         </button>
+        <button
+          type="button"
+          disabled={hidden.size === 0 || saving}
+          onClick={() => void saveDeletion()}
+          title={
+            hidden.size === 0
+              ? "Скрытых колонок нет"
+              : `Удалить из датасета скрытые колонки: ${hidden.size}`
+          }
+          className="rounded bg-brand px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving ? "Сохранение…" : "Сохранить"}
+        </button>
       </div>
 
       {/* Чипы скрытых колонок с индивидуальной возвратной ×; честная
           строка «Скрыто из просмотра: N» + бейдж «датасет не изменён»
-          (P2: скрытие -- представление, а не мутация данных). */}
+          (истина ДО сохранения) + подсказка, что удаление применится
+          кнопкой «Сохранить» (P2: скрытие -- очередь удаления). */}
       {hidden.size > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2 shrink-0" data-testid="view-editor-hidden-chips">
           <span className="text-xs text-neutral-500">Скрыто из просмотра: {hidden.size}</span>
           <span
             data-testid="view-editor-unchanged-badge"
             className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700"
-            title="Колонки скрыты только из этого просмотра; сам датасет и его глубокая копия в сессии не изменены"
+            title="Колонки скрыты только из этого просмотра; сам датасет изменится только после «Сохранить»"
           >
             датасет не изменён
           </span>
+          <span className="text-xs text-neutral-500">Удаление применится кнопкой «Сохранить»</span>
           {[...hidden].map((name) => (
             <span
               key={name}
@@ -356,7 +445,7 @@ export function DatasetViewEditor() {
                       <button
                         type="button"
                         aria-label={`Скрыть колонку ${name} из просмотра`}
-                        title="Скрыть из просмотра (датасет не изменяется)"
+                        title="Скрыть из просмотра; удаление из датасета -- кнопкой «Сохранить»"
                         onClick={() => hideColumn(name)}
                         className="shrink-0 text-neutral-400 hover:text-neutral-700"
                       >
@@ -435,6 +524,20 @@ export function DatasetViewEditor() {
             Повторить
           </button>
         </p>
+      )}
+
+      {/* Сохранение удаления (дефект-репорт): отказ -- alert с detail
+          бэкенда (скрытие сохранено, можно повторить), успех -- честный
+          статус (паттерн MANUAL-редакторов). */}
+      {saveError && (
+        <p role="alert" className="mt-2 rounded bg-red-50 px-3 py-2 text-sm text-red-700 shrink-0">
+          {saveError}
+        </p>
+      )}
+      {saveSuccess && (
+        <div role="status" className="mt-2 rounded bg-green-50 px-3 py-2 text-sm text-green-700 shrink-0">
+          <p>{saveSuccess}</p>
+        </div>
       )}
     </section>
   );
