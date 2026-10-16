@@ -1,0 +1,23 @@
+СЕРТИФИКАЦИЯ UPLOAD-DB-3 — оракулы на СВОИХ данных (corpus dизъюнктен repo-тестам)
+Корпус: /tmp/dbcert_oracles_vhv2hnk2
+[PASS] O01 Реестр: 6 СУБД, path-метаданные embedded — 6 записей; path-метаданные по плану; корпус покрыт
+[PASS] O02 SQLite СВОИ данные: Test→Load + md5-инвариант — Test→Load 20 строк; точечные значения; md5 файла не изменился
+[PASS] O03 SQLite строго read-only: INSERT/CREATE — INSERT/CREATE отклонены (mode=ro); md5 цел
+[PASS] O04 SQLite путь с ПРОБЕЛОМ (repo-гэп прикрыт) — путь с пробелом: 'station telemetry.sqlite' — 20 строк
+[PASS] O05 DuckDB файл: Test→Load + read-only + md5 — Test→Load 7 строк; read-only (INSERT отклонён); md5 цел
+[PASS] O06 CSV юникод+пробел+пропуски: прямой SELECT — юникод+пробел в пути; 8 строк; 2 пропуска сохранены
+[PASS] O07 Parquet СВОИ данные: прямой SELECT — Parquet: 15 строк; точные float
+[PASS] O08 Битый CSV: «Тест» падает честно (probe читает файл) — битый CSV → ConnectionError на фазе «Тест» (probe читает файл)
+[PASS] O09 Мусор в глубине CSV (28КБ): «Тест» падает честно — мусор в глубине (за снапшотом): «Тест» падает честно — сниффер сканирует весь файл
+[PASS] O10 Битый .duckdb: «Тест» падает честно — битый .duckdb → ConnectionError на фазе «Тест»
+[PASS] O11 Матрица валидации пути (6 сценариев) — пустой/без расширения/.txt/.csv-для-sqlite/отсутствующий/каталог — все честно отклонены
+[FAIL] O11b expanduser: путь через ~ (fake HOME): FileNotFoundError: Файл не найден: ~/dbcert_home.db
+[PASS] O12 Guard на embedded: 7 запретов + row_limit — guard: 7 запретов; лимит 5/7 строк → 5+truncated; лимит 50 → 7 без обрезки
+[PASS] O12b env-капа UPLOAD_DB_ROW_LIMIT сильнее параметра — UPLOAD_DB_ROW_LIMIT=3: запрос 50 → 3 строки (капа сильнее параметра)
+[PASS] O13 Chunksize-стриминг: 20 строк, сумма точная — chunksize=7 по 20 строкам: 20 строк, сумма сошлась (стриминг честный)
+[PASS] O14 Импорт-безопасность без sqlalchemy (subprocess) — без sqlalchemy: реестр читаем (6 записей), open_embedded → ImportError с подсказкой
+[PASS] O15 Резолюция id/alias + честные негативы — id/alias case-insensitive; UI-подпись/чужие/пустые — честный ValueError
+[PASS] O16 Средовой факт: одна конфигурация DuckDB на файл — факт подтверждён изолированно: rw-конфликт есть; чистый read-only путь работает (7 строк)
+
+ИТОГ: 17/18 PASS
+Корпус (список файлов): cargo_flow.duckdb, garbage.csv, garbage.duckdb, later_bad.csv, station telemetry.sqlite, wind_probe.parquet, макро_ряд 2024.csv

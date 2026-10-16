@@ -1,0 +1,21 @@
+СЕРТИФИКАЦИЯ UPLOAD-DB-3 (2026-10-16) — RED-воспроизведение на коде ДО фазы A
+База RED: 68fd65d (до коммита фазы A 88a5459); HEAD аудита: 6cff336
+
+=== RED-1: файлы фазы A отсутствуют на 68fd65d (collection RED) ===
+  ABSENT at 68fd65d: app/data/db_connectors.py
+  ABSENT at 68fd65d: app/data/db_guard.py
+  ABSENT at 68fd65d: tests/unit/test_db_embedded.py
+  ABSENT at 68fd65d: tests/unit/test_db_connectors.py
+  ABSENT at 68fd65d: tests/unit/test_db_guard.py
+  RED-1 VERDICT: CONFIRMED (все 5 файлов новые — collection падает: честный RED)
+
+=== RED-2: D1-дефект живьём (legacy file_loader@68fd65d, sqlalchemy>=2.0) ===
+  PROBE-RESULT: ConnectionError: Не удалось подключиться к PostgreSQL
+    CAUSE: ObjectNotExecutableError: Not an executable object: 'SELECT 1'
+    CAUSE: AttributeError: 'str' object has no attribute '_execute_on_connection'
+  Побочно (подтверждено чтением legacy-кода): 'SQLite'/'DuckDB' на 68fd65d —
+  ветка else → logger.warning('Unsupported database type') → return None:
+  embedded-СУБД legacy НЕ поддерживались вовсе (RED-композиция полная).
+  RED-2 VERDICT: CONFIRMED (D1 жив: сырая строка отклонена SQLAlchemy 2.0)
+
+ИТОГ RED: CONFIRMED (RED-1 collection + RED-2 живой D1-дефект на реальном соединении)

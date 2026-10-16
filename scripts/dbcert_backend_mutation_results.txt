@@ -1,0 +1,39 @@
+СЕРТИФИКАЦИЯ UPLOAD-DB-3 — мутационный прогон (свои мутанты, каналы repo+oracle)
+repo-канал: 5 сюитов фазы A (137 тестов)
+oracle-канал: scripts/dbcert_oracles.py (18 оракулов на своих данных)
+
+md5-паспорт: db_connectors.py=6664774a; file_loader.py=820b8a2d
+MB-00 no-op: repo=137 passed | oracle=18/18 PASS → SURVIVED обоими
+MB-01 [db_connectors.py] снят read-only SQLite (mode=ro):
+    repo=FAILED (136 passed) → KILLED-repo | oracle=FAIL:  → KILLED-oracle
+MB-02 [db_connectors.py] снят uri=true (квотирование пути):
+    repo=FAILED (134 passed) → KILLED-repo | oracle=FAIL: O02, O03, O04, O11b, O12b, O13 → KILLED-oracle
+MB-03 [db_connectors.py] снят read_only DuckDB-файла:
+    repo=FAILED (136 passed) → KILLED-repo | oracle=FAIL:  → KILLED-oracle
+MB-04 [db_connectors.py] снят isfile-чек (отсутствующий файл проходит):
+    repo=FAILED (135 passed) → KILLED-repo | oracle=FAIL: O11 → KILLED-oracle
+MB-05 [db_connectors.py] снят контроль расширения embedded-пути:
+    repo=FAILED (135 passed) → KILLED-repo | oracle=FAIL: O11 → KILLED-oracle
+MB-06 [db_connectors.py] снят file-probe Parquet/CSV («Тест» не читает файл):
+    repo=137 passed → SURVIVED-repo | oracle=FAIL:  → KILLED-oracle
+MB-07 [db_connectors.py] снят quote() SQLite-URI (пробел в пути):
+    repo=137 passed → SURVIVED-repo | oracle=18/18 PASS → SURVIVED-oracle
+MB-08 [db_connectors.py] in-memory заменён файлом для Parquet/CSV:
+    repo=137 passed → SURVIVED-repo | oracle=18/18 PASS → SURVIVED-oracle
+MB-09 [db_connectors.py] снят LIMIT 1 file-probe:
+    repo=137 passed → SURVIVED-repo | oracle=18/18 PASS → SURVIVED-oracle
+MB-10 [file_loader.py] ValueError/FileNotFoundError завёрнуты в ConnectionError:
+    repo=FAILED (133 passed) → KILLED-repo | oracle=FAIL: O11 → KILLED-oracle
+MB-11 [db_connectors.py] расширение .sqlite снято с реестра:
+    repo=FAILED (135 passed) → KILLED-repo | oracle=FAIL: O01, O02, O03, O04, O12b, O13 → KILLED-oracle
+MB-12 [db_connectors.py] снят expanduser (пути ~/...):
+    repo=137 passed → SURVIVED-repo | oracle=FAIL: O11b → KILLED-oracle
+MB-13 [file_loader.py] file-probe потерян на слое file_loader (path не передан):
+    repo=137 passed → SURVIVED-repo | oracle=FAIL:  → KILLED-oracle
+
+Финальный контроль: md5 СХОДИТСЯ; git diff пуст
+
+ИТОГ: убиты ОБОИМИ 7; пережили ровно один канал 3; пережили ОБА 3
+  DUAL-SURVIVOR: MB-07 db_connectors.py
+  DUAL-SURVIVOR: MB-08 db_connectors.py
+  DUAL-SURVIVOR: MB-09 db_connectors.py
