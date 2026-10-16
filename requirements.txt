@@ -8,6 +8,20 @@ pandas>=2.0.0,<3.0.0
 plotly>=5.18.0
 sqlalchemy>=2.0.0
 clickhouse-connect>=0.7.0
+# === Источник «База данных (SQL)» — драйверы СУБД (UPLOAD-DB-1, spec_database_plan.md) ===
+# Скоуп-решение S1 (утверждено тимлидом): драйвер PG — psycopg v3 (диалект
+# postgresql+psycopg реестра app/data/db_connectors.py). Тот же пин уже
+# обслуживает durable-стор «Прогресса» в apps/api/requirements.txt — одна
+# зависимость на два назначения.
+psycopg[binary]>=3.1.0
+# psycopg2-binary — совместимость legacy-прототипа на переходный период
+# (до UPLOAD-DB-10, где app.py переключается на общий реестр).
+psycopg2-binary>=2.9.9
+# Embedded-СУБД (UPLOAD-DB-3): DuckDB — in-process OLAP, чтение Parquet/CSV
+# без сервера; duckdb-engine — SQLAlchemy-диалект duckdb:// (проверено RED-фазой:
+# совместим с sqlalchemy>=2.0, находка RP3 плана).
+duckdb>=1.0.0
+duckdb-engine>=0.13.0
 numpy>=1.24.0
 scipy>=1.11.0
  

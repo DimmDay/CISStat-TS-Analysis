@@ -52,19 +52,9 @@ def _csv_has_header(sample: str, delimiter: str) -> bool:
         return True
     return not first_row or not all(_looks_like_csv_data(value) for value in first_row)
 
-# Опциональные зависимости (драйверы БД)
-# Импортируются на уровне модуля с защитой от отсутствия
-try:
-    from sqlalchemy import create_engine
-except ImportError:
-    create_engine = None
-    logger.debug("sqlalchemy not installed — PostgreSQL support disabled")
-
-try:
-    import clickhouse_connect
-except ImportError:
-    clickhouse_connect = None
-    logger.debug("clickhouse-connect not installed — ClickHouse support disabled")
+# Опциональные зависимости (драйверы БД) перенесены в реестр коннекторов
+# app/data/db_connectors.py (UPLOAD-DB-1) — единственную точку знания о СУБД.
+from app.data import db_connectors
 
 
 def init_db_connection(
@@ -73,75 +63,103 @@ def init_db_connection(
     port: int,
     user: str,
     password: str,
-    db_name: str
+    db_name: str,
+    ssl: bool = False,
+    path: Optional[str] = None,
 ) -> Optional[Any]:
     """
-    Создаёт подключение к базе данных.
-    
+    Создаёт подключение к базе данных (делегирование реестру коннекторов).
+
+    UPLOAD-DB-1 (spec_database_plan.md, фаза A): единственная реализация
+    семантики подключения живёт в app/data/db_connectors.py — реестр 6 СУБД
+    утверждённой матрицы (PostgreSQL/Postgres Pro, ClickHouse, MS SQL Server,
+    MySQL/MariaDB, DuckDB, SQLite). Здесь — только оркестрация
+    «резолюция → whitelist → открытие → контрольный запрос» и обёртка ошибок.
+
+    UPLOAD-DB-2 (безопасность ядра): host-whitelist (D5/SSRF, env
+    UPLOAD_DB_HOST_WHITELIST, off в песочнице — S5), ssl-флаги по СУБД
+    (D3), централизованное маскирование секретов в исключениях (D4).
+
+    UPLOAD-DB-3 (embedded): встроенные СУБД подключаются по пути к файлу
+    (path): SQLite (.db/.sqlite), DuckDB (.db/.duckdb) и прямой
+    DuckDB-SELECT по Parquet/CSV; обе открываются строго read-only.
+
     Args:
-        db_type: Тип БД ("PostgreSQL" или "ClickHouse")
-        host: Хост сервера
-        port: Порт
+        db_type: Тип БД (id или alias реестра, например "PostgreSQL",
+                 "ClickHouse", "Postgres Pro", "MariaDB")
+        host: Хост сервера (серверные СУБД; для embedded игнорируется)
+        port: Порт (None/пусто → default_port реестра; embedded игнорирует)
         user: Имя пользователя
-        password: Пароль
+        password: Пароль (в строку соединения НЕ попадает — D4)
         db_name: Имя базы данных
-    
+        ssl: TLS-подключение (D3: PG sslmode, CH secure/verify, MySQL ssl,
+             MSSQL Encrypt; по умолчанию False — паритет legacy)
+        path: Путь к файлу для embedded-СУБД (UPLOAD-DB-3)
+
     Returns:
-        Объект подключения (SQLAlchemy engine для PostgreSQL, 
-        clickhouse_connect client для ClickHouse) или None при ошибке
-    
+        Объект подключения (SQLAlchemy engine для SQLAlchemy-диалектов,
+        clickhouse_connect client для ClickHouse)
+
     Raises:
-        ImportError: Если драйвер БД не установлен
-        ConnectionError: Если не удалось подключиться
-    
+        ValueError: тип БД вне утверждённой матрицы (DoD UPLOAD-DB-1); невалидный
+                    путь embedded-источника (расширение/отсутствие файла)
+        HostNotAllowed: хост вне белого списка UPLOAD_DB_HOST_WHITELIST (D5)
+        FileNotFoundError: embedded-файл не найден
+        ImportError: драйвер не установлен (дружественная подсказка — D2)
+        ConnectionError: не удалось подключиться (сообщение маскировано — D4)
+
     Note:
         Декоратор @st.cache_resource остаётся в UI-обёртке (app.py),
         а не в бизнес-функции, согласно правилу "бизнес-логика не импортирует streamlit".
     """
-    try:
-        if db_type == "PostgreSQL":
-            if create_engine is None:
-                raise ImportError("psycopg2-binary")
-            
-            url = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
-            engine = create_engine(
-                url,
-                connect_args={"connect_timeout": 10, "options": "-c statement_timeout=60000"},
-                pool_pre_ping=True,
-                pool_recycle=300
-            )
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
+    spec = db_connectors.get_connector(db_type)  # ValueError — DoD UPLOAD-DB-1
+
+    if spec.mode == "embedded":
+        # UPLOAD-DB-3: path-режим; host/port/креды встроенных СУБД не нужны.
+        try:
+            engine = db_connectors.open_embedded(spec, path=path)
+            db_connectors.probe_connection(spec, engine, path=path)
             return engine
-        
-        elif db_type == "ClickHouse":
-            if clickhouse_connect is None:
-                raise ImportError("clickhouse-connect")
-            
-            client = clickhouse_connect.get_client(
-                host=host,
-                port=port,
-                username=user,
-                password=password,
-                database=db_name,
-                secure=False,
-                verify=False,
-                connect_timeout=10,
-                send_receive_timeout=60
+        except (ImportError, ValueError, FileNotFoundError):
+            raise
+        except Exception as e:
+            logger.error(f"DB Connection failed: {spec.label} @ {path} - {e}")
+            raise ConnectionError(f"Не удалось подключиться к {db_type}: {e}") from e
+
+    # D5/SSRF: whitelist ПЕРЕД любым сетевым действием (соединение не
+    # открывается, если хост не разрешён).
+    db_connectors.validate_host_allowed(host)
+
+    try:
+        if spec.native_client:
+            conn = db_connectors.open_clickhouse(
+                spec, host=host, port=port,
+                username=user, password=password, database=db_name, ssl=ssl,
             )
-            client.ping()
-            return client
-        
-        else:
-            logger.warning(f"Unsupported database type: {db_type}")
-            return None
-    
-    except ImportError as e:
-        logger.error(f"Missing database driver: {e}")
+            db_connectors.probe_connection(spec, conn)
+            return conn
+
+        url, connect_args = db_connectors.build_server_url(
+            spec, host=host, port=port,
+            database=db_name, username=user, password=password, ssl=ssl,
+        )
+        engine = db_connectors.open_server_engine(spec, url, connect_args)
+        db_connectors.probe_connection(spec, engine)  # контрольный text() — D1
+        return engine
+
+    except ImportError:
+        logger.error(f"Missing database driver: {db_type}")
         raise
     except Exception as e:
-        logger.error(f"DB Connection failed: {db_type}@{host}:{port}/{db_name} - {e}")
-        raise ConnectionError(f"Не удалось подключиться к {db_type}")
+        # D4: секреты (пароль) маскируются централизованно — ни в исключении,
+        # ни в журнале пароль не появляется открытым текстом.
+        masked = db_connectors.mask_secrets(e, password)
+        logger.error(
+            f"DB Connection failed: {db_type}@{host}:{port}/{db_name} - {masked}"
+        )
+        raise ConnectionError(
+            f"Не удалось подключиться к {db_type}: {masked}"
+        ) from e
     
 def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
     """
