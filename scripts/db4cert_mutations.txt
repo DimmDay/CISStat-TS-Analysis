@@ -1,0 +1,109 @@
+db4cert мутационный прогон UPLOAD-DB-4 (свои мутанты, двухканальная схема repo+oracle)
+md5-паспорт до прогона: {'upload_db.py': '21861468be4449baf83a1b9f27a18880', 'schemas.py': '25103cc9d580c340d4bac42b3aadabc6', 'trace_hook.py': 'c68544ef2365dfebc8d392d197dc2a5e', 'upload_common.py': '6e0f4c9df36fd320390d370c1fc54545'}
+
+MB-00 no-op-контроль (харнесс достоверен, если переживает оба канала)
+    repo: SURVIVED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: SURVIVED ()
+    вердикт: DUAL-SURVIVOR
+MB-01 /test: probe лжёт ok=True при транспортном сбое
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (ERROR    app.data.file_loader:file_loader.py:126 DB Connection failed: SQLite (встроенная))
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_connection_failure_ok_false_masked', 'FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_file_not_found_ok_false', 'FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_driver_missing_ok_false_with_hint']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:126 DB Connection failed: SQLite (встроенная) @ /tmp/pytest-of-z/pytest-50/test_o06_broken_sources_error_0/broken.sqlite - (sqlite3.DatabaseError) file is not a database', 'FAILED scripts/db4cert_oracles.py::test_o06_broken_sources_error_map_no_500']
+    вердикт: ok
+MB-02 /test: снято маскирование причины отказа (D4)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: пароль утёк в тело /test)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_connection_failure_ok_false_masked']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o07_password_never_leaks_through_error_paths']
+    вердикт: ok
+MB-03 /test: ValueError (вкл. whitelist/расширение) -> 400 вместо 422
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: {"detail":"Недопустимое расширение .txt для SQLite (встроенная). Ожида)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_bad_extension_422', 'FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_host_not_allowed_422']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:126 DB Connection failed: SQLite (встроенная) @ /tmp/pytest-of-z/pytest-54/test_o06_broken_sources_error_0/broken.sqlite - (sqlite3.DatabaseError) file is not a database', 'ERROR    app.data.file_loader:file_loader.py:126 DB Connection failed: DuckDB (встроенная) @ /tmp/pytest-of-z/pytest-54/test_o06_broken_sources_error_0/broken.duckdb - (_duckdb.IOException) IO Error: The file "/tmp/pytest-of-z/pytest-54/test_o06_broken_sources_error_0/broken.duckdb" exists, but it is not a valid DuckDB database file!', 'FAILED scripts/db4cert_oracles.py::test_o06_broken_sources_error_map_no_500']
+    вердикт: ok
+MB-04 /load: DbQueryRejected (read-only guard) -> 400 вместо 422
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: ('DELETE FROM gauge_readings', '{"detail":"Разрешены только запросы чт)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_delete_rejected_422_no_dataset', 'FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_multistatement_rejected_422']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o13_guard_rejects_and_fail_closed[delete]']
+    вердикт: ok
+MB-05 /load: init-сбой -> 422 вместо 400 (карта ошибок перевёрнута)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (ERROR    apps.api.routers.upload_db:upload_db.py:191 DB load failed (postgresql): FATAL: p)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_connection_failure_400_masked']
+    oracle-убийцы: ['ERROR    apps.api.routers.upload_db:upload_db.py:191 DB load failed (postgresql): FATAL: password authentication failed for user hydrolog (password ****)', 'FAILED scripts/db4cert_oracles.py::test_o07_password_never_leaks_through_error_paths']
+    вердикт: ok
+MB-06 /load: честная пометка усечения снята (truncated игнорируется)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: [])
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_row_limit_applied_and_warned']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o12_truncation_honesty - AssertionErr...']
+    вердикт: ok
+MB-07 /load: имя серверного источника без label реестра
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED ('PostgreSQL /...o: harbor_poc')
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_server_name_uses_label_and_database']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o14_source_naming_server_and_unicode_basename']
+    вердикт: ok
+MB-08 /load: имя embedded-источника — полный путь вместо basename
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED ('gauge_river.sqlite')
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_sqlite_returns_upload_contract', 'FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_registers_session_pipeline_entry', 'FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_writes_upload_completed_trace']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o08_load_full_file_contract - Asserti...']
+    вердикт: ok
+MB-09 /load: size_label — константа (нечестная размерность)
+    repo: SURVIVED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: assert '0 B' != '0 B')
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o08_load_full_file_contract - Asserti...']
+    вердикт: ok
+MB-10 register_uploaded_dataframe: потеря store.save (класс PROGR-25-F1; Memory-алиасинг маскирует)
+    repo: SURVIVED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (=)
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o17_load_persists_through_redis_backend']
+    вердикт: ok
+MB-11 register_uploaded_dataframe: авто-фиксация цели снята (PROGR-25-A)
+    repo: SURVIVED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: None)
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o10_db_track_auto_fixes_single_numeric_target']
+    вердикт: ok
+MB-12 preview.head без строки заголовка колонок
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (6))
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_sqlite_returns_upload_contract']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o08_load_full_file_contract - Asserti...']
+    вердикт: ok
+MB-13 TRACE_ROUTES: путь internal db/load разъехался (событие не пишется)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: upload_completed@overview не записан)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestTraceRegistration::test_trace_routes_registered_for_db_load', 'FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_writes_upload_completed_trace', 'FAILED tests/api/test_progress_trace_hook.py::test_route_table_covers_documented_endpoints']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o11_trace_payload_and_test_leaves_trace_untouched']
+    вердикт: ok
+MB-14 TRACE_ROUTES: payload internal db/load обеднен (size_label потерян)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   KeyError: 'rows')
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestTraceRegistration::test_trace_routes_registered_for_db_load', 'FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_writes_upload_completed_trace']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o11_trace_payload_and_test_leaves_trace_untouched']
+    вердикт: ok
+MB-15 schemas: safe-дефолт ssl=False перевёрнут в True (D3)
+    repo: SURVIVED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: {'db_name': 'harbor_poc', 'db_type': 'postgresql', 'host': 'gauge-db.h)
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o20_router_passes_registry_default_port_and_ssl_default']
+    вердикт: ok
+MB-16 schemas: extra=forbid снят (смешение профилей принимается молча)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: {"ok":false,"db_type":"postgresql","server_version":null,"latency_ms":)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestSchemas::test_extra_fields_forbidden']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: postgresql@gauge-db.hydro.net:5432/harbor_poc - (psycopg.errors.ConnectionTimeout) connection timeout expired', 'FAILED scripts/db4cert_oracles.py::test_o02_union_mixing_rejected_over_the_wire']
+    вердикт: ok
+MB-17 public-семейство: API-ключ снят (require_api_key)
+    repo: KILLED (/home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In fu)
+    oracle: KILLED (E   AssertionError: {"ok":true,"db_type":"sqlite","server_version":null,"latency_ms":0,"er)
+    repo-убийцы: ['FAILED tests/api/test_upload_db.py::TestFamilies::test_public_test_requires_api_key']
+    oracle-убийцы: ['FAILED scripts/db4cert_oracles.py::test_o15_public_family_gated_by_api_key - ...']
+    вердикт: ok
+
+md5-паспорт после прогона: СХОДИТСЯ = True
+git diff пуст (дерево чистое): True
+DUAL-SURVIVORS (без MB-00): 0

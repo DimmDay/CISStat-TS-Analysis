@@ -1,0 +1,18 @@
+RED-воспроизведение UPLOAD-DB-4: родитель ae9ae67 (pre-UPLOAD-DB-4), worktree /home/z/my-project/db4cert_red_wt
+
+R1a routers/upload_db.py на родителе: ОТСУТСТВУЕТ (RED)
+R1b tests/api/test_upload_db.py на родителе: ОТСУТСТВУЕТ (RED; repo-сюита collection невозможна)
+R2 DbTestRequest в schemas.py родителя: ОТСУТСТВУЕТ (RED)
+R2b DbConnection (дискриминатор) на родителе: ОТСУТСТВУЕТ (RED)
+R4 монтирование upload_db в main.py родителя: ОТСУТСТВУЕТ (RED)
+R5 TRACE_ROUTES db/load на родителе: ОТСУТСТВУЕТ (RED)
+
+R3 оракулы аудитора на родителе (worktree): rc=1
+    FAILED scripts/db4cert_oracles.py::test_o06_broken_sources_error_map_no_500
+    FAILED scripts/db4cert_oracles.py::test_o07_password_never_leaks_through_error_paths
+    ============================== 24 failed in 5.18s ==============================
+R3 итог: RED 24/24 оракулов (падения = честный RED: эндпоинты 404)
+
+Вывод: композиция RED полная — контракты задачи на родителе не существуют,
+оракулы падают ровно на точках контракта (404), GREEN достигается только реализацией UPLOAD-DB-4.
+cleanup: worktree удалён, дерево основного репозитория не тронуто
