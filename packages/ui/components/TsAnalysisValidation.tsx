@@ -24,6 +24,20 @@
 // рамкой бренда (animate-fix-border-blink, токен border-brand: индиго
 // в светлой теме, яркий голубой в тёмной; подробнее — комментарий у
 // кнопки, keyframes — в tailwind-preset.ts).
+//
+// DATASET-VIEW-EDITOR-1 (2026-10-16): кнопка «Редактор датасета» в
+// заголовках окон Мастеров 9 остановок-источников флаг-колонок
+// (formats, ranges, consistency, uniqueness, inclusion, referential,
+// text_quality, regularity, sufficiency) -- toggle режима: клик свапает
+// контент окна на generic read-only DatasetViewEditor, повторный клик
+// возвращает сетку мастера. ПРАВЫЙ КРАЙ ЗАГОЛОВКОВ «ВАЛИДАЦИИ» СТАНОВИТСЯ
+// КНОПОЧНЫМ ВПЕРВЫЕ (у «Типов данных» кнопки НЕТ -- остановка не
+// добавляет колонок, байт-инвариант). Переключение проверки закрывает
+// режим (зеркально инварианту Справки).
+// Пины: validation-dataset-editor-toggle.test.tsx (НОВЫЙ);
+// validation-column-headers-unified.test.tsx (VERSIONED: карта
+// «с кнопкой/без» расширена -- 9 заголовков получают кнопку, правый
+// край пересматривается).
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
@@ -64,6 +78,7 @@ import { ValidationRegularityOverview } from "./ValidationRegularityOverview";
 import { ValidationRegularityPipeline } from "./ValidationRegularityPipeline";
 import { ValidationSufficiencyOverview } from "./ValidationSufficiencyOverview";
 import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
+import { DatasetViewEditor } from "./DatasetViewEditor";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
@@ -180,6 +195,13 @@ export function TsAnalysisValidation() {
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>("metrics");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
+  // DATASET-VIEW-EDITOR-1: режим «Редактор датасета» -- generic read-only
+  // просмотр датасета с управлением составом добавленных колонок вместо
+  // сетки МАСТЕРА (single-active toggle, паттерн «Предобработки»);
+  // закрывается повторным кликом и переключением проверки. У «Типов
+  // данных» кнопки нет (остановка не добавляет колонок) -- режим там
+  // недостижим.
+  const [datasetEditorMode, setDatasetEditorMode] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
 
   // ── Единый "исследуемый признак" (target_column) для всей платформы
@@ -362,6 +384,30 @@ export function TsAnalysisValidation() {
     setActiveCheckId(check.id);
     setDescriptionSection(section);
   };
+
+  // DATASET-VIEW-EDITOR-1: toggle режима «Редактор датасета» -- тот же
+  // паттерн toggle «Справки»/«Исправить...» (active -- bg-brand text-white,
+  // клик по кнопке свапает контент окна).
+  const handleDatasetEditorClick = () => {
+    setDatasetEditorMode((prev) => !prev);
+  };
+  // DATASET-VIEW-EDITOR-1: правый край заголовка мастеров 9 остановок-
+  // источников флаг-колонок (карта -- AUDIT-NEWCOLS-1/F2; «Типы данных»
+  // без кнопки -- остановка не добавляет колонок). Режим доступен ТОЛЬКО
+  // в pipeline-режиме окна. Кнопочный правый край «Валидации» -- впервые.
+  const DATASET_EDITOR_STOPS = new Set([
+    "formats",
+    "ranges",
+    "consistency",
+    "uniqueness",
+    "inclusion",
+    "referential",
+    "text_quality",
+    "regularity",
+    "sufficiency",
+  ]);
+  const isDatasetEditorHeader =
+    descriptionSection === "pipeline" && DATASET_EDITOR_STOPS.has(activeCheckId);
 
   const runValidation = () => {
     if (!activeDataset) return;
@@ -592,7 +638,12 @@ export function TsAnalysisValidation() {
                 // прежнего сброса в placeholder). Клик по УЖЕ активной
                 // остановке секцию не меняет (открытая Справка/Правилы
                 // остаются) — прежняя семантика сохранена.
-                if (check.id !== activeCheckId) setDescriptionSection("metrics");
+                // DATASET-VIEW-EDITOR-1: переключение проверки закрывает
+                // режим «Редактор датасета» (зеркально инварианту Справки).
+                if (check.id !== activeCheckId) {
+                  setDescriptionSection("metrics");
+                  setDatasetEditorMode(false);
+                }
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
@@ -746,7 +797,12 @@ export function TsAnalysisValidation() {
             ) : (
               <Eye size={16} className="text-brand" aria-hidden="true" />
             )}
-            <h3 className="text-lg font-semibold text-neutral-800">
+            {/* DATASET-VIEW-EDITOR-1: flex-1 на h3 ТОЛЬКО у 9 мастеров
+                остановок-источников флаг-колонок (isDatasetEditorHeader)
+                -- прижимает кнопку «Редактор датасета» к правому краю;
+                остальные строки (включая мастера «Типов данных») -- без
+                растяжения (байт-инвариант). */}
+            <h3 className={`text-lg font-semibold text-neutral-800 ${isDatasetEditorHeader ? "flex-1" : ""}`}>
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Мастер исправления типов"
               : activeCheckId === "formats" && descriptionSection === "pipeline"
@@ -769,6 +825,24 @@ export function TsAnalysisValidation() {
               ? "Мастер решений по достаточности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
+          {/* DATASET-VIEW-EDITOR-1: кнопка «Редактор датасета» (правый край,
+              toggle с aria-pressed и активным состоянием bg-brand) -- в 9
+              мастерах остановок-источников флаг-колонок; у «Типов данных»
+              кнопки нет (байт-инвариант остановки без новых колонок). */}
+          {isDatasetEditorHeader && (
+            <button
+              type="button"
+              onClick={handleDatasetEditorClick}
+              aria-pressed={datasetEditorMode}
+              className={`shrink-0 rounded px-2 py-1 text-xs transition-colors ${
+                datasetEditorMode
+                  ? "bg-brand text-white"
+                  : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+              }`}
+            >
+              Редактор датасета
+            </button>
+          )}
           </div>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
@@ -824,44 +898,90 @@ export function TsAnalysisValidation() {
               onSchemaSaved={runValidation}
             />
           ) : activeCheckId === "formats" && descriptionSection === "pipeline" ? (
-            <ValidationFormatPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна -- режим «Редактор
+            // датасета» вместо сетки мастера (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationFormatPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "ranges" && descriptionSection === "pipeline" ? (
-            <ValidationRangePipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationRangePipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "consistency" && descriptionSection === "pipeline" ? (
-            <ValidationConsistencyPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationConsistencyPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "uniqueness" && descriptionSection === "pipeline" ? (
-            <ValidationUniquenessPipeline onApplied={runValidation} />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationUniquenessPipeline onApplied={runValidation} />
+            )
           ) : activeCheckId === "inclusion" && descriptionSection === "pipeline" ? (
-            <ValidationInclusionPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationInclusionPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "referential" && descriptionSection === "pipeline" ? (
-            <ValidationReferentialPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationReferentialPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "text_quality" && descriptionSection === "pipeline" ? (
-            <ValidationTextQualityPipeline onApplied={runValidation} />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationTextQualityPipeline onApplied={runValidation} />
+            )
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
-            <ValidationRegularityPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationRegularityPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : activeCheckId === "sufficiency" && descriptionSection === "pipeline" ? (
-            <ValidationSufficiencyPipeline
-              onApplied={runValidation}
-              onOpenRules={() => setDescriptionSection("rules")}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <ValidationSufficiencyPipeline
+                onApplied={runValidation}
+                onOpenRules={() => setDescriptionSection("rules")}
+              />
+            )
           ) : validationHasRun && activeCheck.status === "skipped" ? (
             <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
               {activeCheck.statusReason === "disabled"

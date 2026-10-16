@@ -24,6 +24,13 @@
 //       «Загрузке»), «Мастер исправления…» -- Wrench; обе text-brand
 //       aria-hidden.
 //
+// VERSIONED (DATASET-VIEW-EDITOR-1, 2026-10-16): правый край заголовков
+// ОКОН МАСТЕРОВ 9 остановок-источников флаг-колонок становится кнопочным
+// впервые ([иконка, h3 (flex-1), кнопка «Редактор датасета» (shrink-0)])
+// -- та же практика расширения контракта, что MANUAL-MISSING-1 для
+// «Предобработки»; у «Типов данных» (и окон «Обзора») состав строки
+// остаётся [иконка, заголовок] (байт-инвариант).
+//
 // jsdom не считает layout -- инвариант «низы на одной горизонтали» пинится
 // структурой: строка -- первая ветка колонки + одинаковый line box всех
 // заголовков (text-lg 28px > иконки 16px, items-center). Тот же подход,
@@ -86,7 +93,7 @@ function renderHdrValidation() {
 
 // ── Контракт единого вида заголовка (эталон UI-UPLOAD-HDR-1) ──────────
 
-function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean } = {}) {
+function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean; withDatasetEditorButton?: boolean } = {}) {
   // (a) Единая типографика -- text-lg + font-semibold + neutral-800.
   expect(header.className).toContain("text-lg");
   expect(header.className).toContain("font-semibold");
@@ -106,13 +113,25 @@ function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton
   expect(icon!.getAttribute("class")).toContain("text-brand");
 
   // (d) Состав строки: [иконка, заголовок]; у «Data Quality» --
-  //     [иконка, h2, кнопка «Справка» (shrink-0)] -- паттерн «Загрузки».
+  //     [иконка, h2, кнопка «Справка» (shrink-0)] -- паттерн «Загрузки»;
+  //     у окон МАСТЕРОВ 9 остановок-источников флаг-колонок --
+  //     [иконка, h3 (flex-1), кнопка «Редактор датасета» (shrink-0)]
+  //     (DATASET-VIEW-EDITOR-1: VERSIONED-ПРАВКА ПИНА -- правый край
+  //     заголовков «Валидации» становится кнопочным впервые).
   if (opts.withHelpButton) {
     expect(row!.children).toHaveLength(3);
     const helpButton = row!.children[2] as HTMLElement;
     expect(helpButton.tagName).toBe("BUTTON");
     expect(helpButton.textContent).toBe("Справка");
     expect(helpButton.className).toContain("shrink-0");
+  } else if (opts.withDatasetEditorButton) {
+    expect(row!.children).toHaveLength(3);
+    const editorButton = row!.children[2] as HTMLElement;
+    expect(editorButton.tagName).toBe("BUTTON");
+    expect(editorButton.textContent).toBe("Редактор датасета");
+    expect(editorButton.className).toContain("shrink-0");
+    // правый край: h3 растянут, кнопка не сжимается
+    expect(header.className).toContain("flex-1");
   } else {
     expect(row!.children).toHaveLength(2);
   }
@@ -193,14 +212,25 @@ describe("Заголовки «Валидации» -- единый вид (па
     expectUnifiedHeaderContract(hMaster);
     expectWindowHeaderOpensBlock(hMaster);
 
+    // VERSIONED (DATASET-VIEW-EDITOR-1): мастер Форматов (остановка-
+    // источник флаг-колонки) несёт кнопку «Редактор датасета» -- правый
+    // край строки кнопочный (расширение контракта, см. (d)); мастер
+    // «Типов данных» (выше) -- остаётся без кнопки (байт-инвариант).
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить форматы и шаблоны" }));
+    const hFormatsMaster = await screen.findByRole("heading", { name: "Мастер исправления форматов и шаблонов", level: 3 });
+    expectUnifiedHeaderContract(hFormatsMaster, { withDatasetEditorButton: true });
+    expectWindowHeaderOpensBlock(hFormatsMaster);
+
     // Возврат в режим «Обзор» через ПЕРЕКЛЮЧЕНИЕ остановки (клик по УЖЕ
     // активной остановке секцию не меняет -- инвариант информативности
     // сохраняет открытый «Мастер»; переключение автозагружает «Метрики и
     // алгоритм» новой остановки). Заголовок окна следует за активной
-    // проверкой с тем же контрактом.
+    // проверкой с тем же контрактом. VERSIONED (DATASET-VIEW-EDITOR-1):
+    // активной проверкой после блока выше стал «Формат» -- переключаемся
+    // на «Диапазоны».
     const leftAside = screen.getByRole("heading", { name: "Data Quality", level: 2 }).closest("aside")!;
-    fireEvent.click(within(leftAside).getByRole("button", { name: /^Форматы и шаблоны/ }));
-    const hOverviewNext = await screen.findByRole("heading", { name: "Обзор: Форматы и шаблоны", level: 3 });
+    fireEvent.click(within(leftAside).getByRole("button", { name: /^Диапазоны/ }));
+    const hOverviewNext = await screen.findByRole("heading", { name: "Обзор: Диапазоны значений", level: 3 });
     expectUnifiedHeaderContract(hOverviewNext);
     expectWindowHeaderOpensBlock(hOverviewNext);
   });

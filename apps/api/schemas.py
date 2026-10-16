@@ -108,6 +108,41 @@ class UploadResponse(BaseModel):
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
 
 
+class DerivedColumnOut(BaseModel):
+    """Метаданные ОДНОЙ производной колонки сессии -- запись реестра
+    происхождения (PROGR-24-ORIGIN-A). Поля -- зеркало
+    session.derived_columns[name]: остановка-источник, человекочитаемое
+    описание происхождения (метод/операция/исходные колонки) и метка
+    времени регистрации."""
+
+    column: str = Field(..., description="Имя производной колонки")
+    stage: str = Field(..., description="Остановка-источник (stage регистрации)")
+    source: str = Field(..., description="Человекочитаемое описание происхождения")
+    created_at: str = Field(..., description="Метка времени регистрации (ISO 8601, UTC)")
+
+
+class DatasetDerivedColumnsResponse(BaseModel):
+    """Read-only реестр производных колонок сессии, пересечённый с
+    фактическими колонками датафрейма (задача DATASET-VIEW-EDITOR-1,
+    2026-10-16, проект решения в worklog10.md).
+
+    Источник истины -- session.derived_columns (PROGR-24-ORIGIN-A,
+    derived_columns_in_frame): реестр append-only, запись о колонке,
+    удалённой мимо реестра, в ответ НЕ попадает (область определяется
+    фактом присутствия в датафрейме). Старые сессии/свежая загрузка без
+    реестра -- columns: [] (честное отсутствие, задокументированная
+    совместимость column_origin.py).
+
+    Эндпоинт СТРОГО read-only: строки НЕ отдаёт (источник строк --
+    GET /dataset/rows, читающий живой session.dataframe); ни touch, ни
+    save, ни set_dataframe -- мутационная безопасность пинится тестом."""
+
+    columns: List[DerivedColumnOut] = Field(
+        ..., description="Производные колонки, отсортированные по created_at"
+    )
+    total: int = Field(..., ge=0, description="Число производных колонок (== len(columns))")
+
+
 class DatasetRowsResponse(BaseModel):
     """Окно строк ПОЛНОГО датасета -- вкладка «Весь датасет» остановки
     «Превью датасета» (UI-UPLOAD-FULL-1, 2026-10-14, постановка тимлида).

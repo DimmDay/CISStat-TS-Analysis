@@ -213,6 +213,8 @@ from apps.api.schemas import (
     ValidationCheckResult,
     ValidationTypeProfileOut,
     DatasetRowsResponse,
+    DatasetDerivedColumnsResponse,
+    DerivedColumnOut,
 )
 from app.core.passport import (
     _compare_ts_props,
@@ -722,6 +724,51 @@ def get_dataset_rows(
         returned=returned,
         has_more=(offset + returned) < total_rows,
     )
+
+
+@router.get("/dataset/derived-columns", response_model=DatasetDerivedColumnsResponse)
+def get_dataset_derived_columns(request: Request, response: Response):
+    """
+    Read-only реестр производных колонок сессии -- метаданные для кнопки
+    «Редактор датасета» Мастеров остановок, добавляющих колонки
+    (DATASET-VIEW-EDITOR-1, 2026-10-16, проект решения в worklog10.md).
+
+    Источник истины -- session.derived_columns (PROGR-24-ORIGIN-A,
+    ЕДИНАЯ ТОЧКА register_derived_columns во всех apply-эндпоинтах,
+    добавляющих колонки; происхождение НЕ угадывается по суффиксу имени).
+    Ответ -- derived_columns_in_frame(session): реестр ∩ фактические
+    колонки датафрейма -- append-only совместимость (запись о колонке,
+    удалённой мимо реестра, в ответ не попадает). Сортировка по
+    created_at -- порядок появления колонок в датасете.
+
+    СТРОГО read-only: НИ touch, НИ save, НИ set_dataframe -- чтение
+    сессии не меняет data_revision (мутационная безопасность R6 проекта
+    решения, пинится тестом tests/api/test_dataset_derived_columns.py).
+    Строки НЕ отдаёт: единственный источник строк -- GET /dataset/rows,
+    читающий живой session.dataframe (уже включает производные колонки).
+
+    Совместимость (column_origin.py): старые сессии без реестра и свежие
+    загрузки отдают columns: [] -- честное отсутствие, НЕ ноль-заглушка.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataset is None or session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    registry = session.derived_columns or {}
+    columns_out: list[DerivedColumnOut] = []
+    for name in derived_columns_in_frame(session):
+        meta = registry.get(name, {})
+        columns_out.append(
+            DerivedColumnOut(
+                column=name,
+                stage=str(meta.get("stage", "")),
+                source=str(meta.get("source", "")),
+                created_at=str(meta.get("created_at", "")),
+            )
+        )
+    columns_out.sort(key=lambda entry: entry.created_at)
+    return DatasetDerivedColumnsResponse(columns=columns_out, total=len(columns_out))
 
 
 def _distribution_hint(skew: Optional[float], kurtosis: Optional[float]) -> str:

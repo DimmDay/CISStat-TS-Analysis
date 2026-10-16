@@ -27,6 +27,15 @@
 //       «Загрузке»/«Валидации»), «Мастер исправления…» -- Wrench; обе
 //       text-brand aria-hidden.
 //
+// VERSIONED (DATASET-VIEW-EDITOR-1, 2026-10-16): карты «с кнопкой/без»
+// расширены -- МАСТЕРА 6 остановок-источников новых колонок (Регулярность,
+// Декомпозиция, Дисперсия, Сглаживание, Стационарность, Генерация
+// признаков) несут кнопку «Редактор датасета» правым краем
+// ([иконка, h3 (flex-1), кнопка (shrink-0)]); «Пропуски»/«Выбросы»
+// остаются с ОДНОКНОПОЧНЫМ правым краем («Исправить вручную»;
+// скоуп-уточнение тимлида: двукнопочный правый край не вводится);
+// «Спектральный анализ»/«Масштабирование» -- без кнопки (байт-инвариант).
+//
 // jsdom не считает layout -- инвариант «низы на одной горизонтали» пинится
 // структурой: строка -- первая ветка колонки + одинаковый line box всех
 // заголовков (text-lg 28px > иконки 16px, items-center). Тот же подход,
@@ -91,7 +100,7 @@ function renderHdrPreprocessing() {
 
 // ── Контракт единого вида заголовка (эталон UI-VALIDATION-HDR-1) ──────
 
-function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean; withManualButton?: boolean } = {}) {
+function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton?: boolean; withManualButton?: boolean; withDatasetEditorButton?: boolean } = {}) {
   // (a) Единая типографика -- text-lg + font-semibold + neutral-800.
   expect(header.className).toContain("text-lg");
   expect(header.className).toContain("font-semibold");
@@ -131,6 +140,16 @@ function expectUnifiedHeaderContract(header: HTMLElement, opts: { withHelpButton
     expect(manualButton.textContent).toBe("Исправить вручную");
     expect(manualButton.className).toContain("shrink-0");
     // правый край: h3 растянут, кнопка не сжимается
+    expect(header.className).toContain("flex-1");
+  } else if (opts.withDatasetEditorButton) {
+    // VERSIONED (DATASET-VIEW-EDITOR-1): мастера 6 остановок-источников
+    // новых колонок -- [иконка, h3 (flex-1), кнопка «Редактор датасета»
+    // (shrink-0)] (то же расширение контракта, что MANUAL-MISSING-1).
+    expect(row!.children).toHaveLength(3);
+    const editorButton = row!.children[2] as HTMLElement;
+    expect(editorButton.tagName).toBe("BUTTON");
+    expect(editorButton.textContent).toBe("Редактор датасета");
+    expect(editorButton.className).toContain("shrink-0");
     expect(header.className).toContain("flex-1");
   } else {
     expect(row!.children).toHaveLength(2);
@@ -241,6 +260,30 @@ describe("Заголовки «Предобработки» -- единый ви
     // что у мастера пропусков (MANUAL-MISSING-1).
     expectUnifiedHeaderContract(hMaster, { withManualButton: true });
     expectWindowHeaderOpensBlock(hMaster);
+  });
+
+  it("заголовки окон мастеров остановок-источников новых колонок -- контракт с кнопкой «Редактор датасета»; у Спектра/Масштабирования кнопки нет (DATASET-VIEW-EDITOR-1)", async () => {
+    renderHdrPreprocessing();
+
+    const leftAside = screen.getByRole("heading", { name: "Preprocessing", level: 2 }).closest("aside")!;
+
+    // Мастер «Регулярности» (остановка-источник новых колонок): кнопка
+    // «Редактор датасета» правым краем, h3 flex-1 -- расширение контракта
+    // (VERSIONED DATASET-VIEW-EDITOR-1); «Исправить вручную» у неё НЕТ
+    // (однокнопочный правый край, скоуп-уточнение тимлида).
+    fireEvent.click(within(leftAside).getByRole("button", { name: /^Регулярность/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить регулярность" }));
+    const hRegularity = await screen.findByRole("heading", { name: "Мастер исправления регулярности", level: 3 });
+    expectUnifiedHeaderContract(hRegularity, { withDatasetEditorButton: true });
+    expectWindowHeaderOpensBlock(hRegularity);
+
+    // Мастер «Спектрального анализа» (не добавляет колонок): без кнопок
+    // -- байт-инвариант строки [иконка, h3].
+    fireEvent.click(within(leftAside).getByRole("button", { name: /^Спектральный/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Зафиксировать периоды" }));
+    const hSpectral = await screen.findByRole("heading", { name: "Мастер спектрального анализа", level: 3 });
+    expectUnifiedHeaderContract(hSpectral);
+    expectWindowHeaderOpensBlock(hSpectral);
   });
 
   it("выравнивание по нижней горизонтали: офсеты pt-1 ОБОИХ колонок убраны, подпись «Математические преобразования» сохранена", async () => {

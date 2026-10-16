@@ -15,11 +15,15 @@
 // (3) переключение остановки закрывает ручной режим (возврат к «Пропускам»
 //     показывает сетку мастера, не редактор) -- зеркально инварианту
 //     Справки;
-// (4) у ДРУГИХ остановок (Регулярность, pipeline) кнопки «Исправить
+// (4) у ДРУГИХ остановок кнопки «Исправить
 //     вручную» НЕТ, строка заголовка без flex-1 (байт-инвариант остальных
 //     окон). VERSIONED (MANUAL-OUTLIERS-1, 2026-10-15): «Выбросы» ВЫШЛИ
 //     из этого пина -- получили СВОЮ кнопку в заголовке мастера (тот же
-//     паттерн); регрессионная цель байт-инварианта -- «Регулярность».
+//     паттерн). VERSIONED (DATASET-VIEW-EDITOR-1, 2026-10-16): «Регулярность»
+//     ВЫШЛА из пина -- получила кнопку «Редактор датасета» и flex-1
+//     (остановка-источник новых колонок); регрессионная цель
+//     байт-инварианта -- «Спектральный анализ» (без новых колонок,
+//     без кнопок).
 //
 // Корпус дизъюнктен: мок /session/current с маркером сессии
 // manual-missing-1; маршруты редактора -- свои страницы «метеостанции».
@@ -220,13 +224,12 @@ describe("«Исправить вручную» в заголовке масте
     expect(screen.queryByRole("region", { name: "Ручное исправление пропусков" })).not.toBeInTheDocument();
   });
 
-  it("VERSIONED MANUAL-OUTLIERS-1: outliers master got its own manual button; regularity master keeps the byte-identical row", async () => {
+  it("VERSIONED MANUAL-OUTLIERS-1 + DATASET-VIEW-EDITOR-1: outliers master got its own manual button; spectral master keeps the byte-identical row", async () => {
     renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
     // VERSIONED (MANUAL-OUTLIERS-1): «Выбросы» ВЫШЛИ из пина «окон без
     // кнопки» -- мастер выбросов несёт СВОЮ кнопку «Исправить вручную»
-    // и flex-1 (тот же структурный паттерн, что мастер пропусков);
-    // регрессионная цель байт-инварианта строк -- «Регулярность».
+    // и flex-1 (тот же структурный паттерн, что мастер пропусков).
     fireEvent.click(screen.getByText("Выбросы"));
     fireEvent.click(await screen.findByRole("button", { name: "Исправить выбросы" }));
     expect(await screen.findByRole("region", { name: "Мастер исправления выбросов" })).toBeInTheDocument();
@@ -236,12 +239,26 @@ describe("«Исправить вручную» в заголовке масте
     expect(outliersRow.querySelector("h3")).toHaveClass("flex-1");
     expect(outliersButton).toHaveClass("shrink-0");
 
-    // Регулярность -- остаётся в байт-инварианте: кнопки нет, h3 без flex-1
+    // VERSIONED (DATASET-VIEW-EDITOR-1): «Регулярность» ВЫШЛА из пина
+    // -- несёт кнопку «Редактор датасета» (отдельную от «Исправить
+    // вручную», которого у неё нет) и flex-1.
     fireEvent.click(screen.getByText("Регулярность ряда"));
     fireEvent.click(await screen.findByRole("button", { name: "Исправить регулярность" }));
     expect(await screen.findByRole("region", { name: "Мастер исправления регулярности" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Исправить вручную" })).not.toBeInTheDocument();
-    const h3 = screen.getByRole("heading", { name: "Мастер исправления регулярности" });
+    const regularityButton = screen.getByRole("button", { name: "Редактор датасета" });
+    const regularityRow = regularityButton.parentElement as HTMLElement;
+    expect(regularityRow.querySelector("h3")).toHaveClass("flex-1");
+    expect(regularityButton).toHaveClass("shrink-0");
+
+    // Спектральный анализ -- регрессионная цель байт-инварианта: без
+    // «Исправить вручную», без «Редактора датасета», h3 без flex-1.
+    fireEvent.click(screen.getByText("Спектральный анализ"));
+    fireEvent.click(await screen.findByRole("button", { name: "Зафиксировать периоды" }));
+    expect(await screen.findByRole("region", { name: "Мастер спектрального анализа" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Исправить вручную" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Редактор датасета" })).not.toBeInTheDocument();
+    const h3 = screen.getByRole("heading", { name: "Мастер спектрального анализа" });
     expect(h3).not.toHaveClass("flex-1");
   });
 });

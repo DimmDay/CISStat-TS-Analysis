@@ -36,6 +36,24 @@
 // мигает тонкой (1px) рамкой бренда (плавное появление/гасание, 1.5s
 // ease-in-out — средняя скорость; keyframes fix-border-blink общего
 // пресета из VALFIX-1). Перенос паттерна VALFIX-1 из «Валидации».
+//
+// DATASET-VIEW-EDITOR-1 (2026-10-16): кнопка «Редактор датасета» в
+// заголовках окон Мастеров 6 остановок-источников новых колонок
+// (regularity, decomposition, variance_stab, smoothing, stationarity,
+// feature_eng) -- toggle режима: клик свапает контент окна на generic
+// read-only DatasetViewEditor (просмотр всего датасета + скрытие
+// добавленных колонок из ПРЕДСТАВЛЕНИЯ без мутации сессии), повторный
+// клик возвращает сетку мастера. СКОУП-УТОЧНЕНИЕ ТИМЛИДА (чат сессии):
+// остановки «Пропуски» и «Выбросы» НЕ трогаются -- их правый край
+// остаётся однокнопочным («Исправить вручную» MANUAL-MISSING-1/
+// MANUAL-OUTLIERS-1); «Спектральный анализ»/«Масштабирование» -- без
+// кнопки (не добавляют колонок). Переключение остановки закрывает
+// режим (зеркально инварианту Справки и ручным режимам).
+// Пины: preprocessing-dataset-editor-toggle.test.tsx (НОВЫЙ);
+// preprocessing-missing/outliers-manual-toggle.test.tsx (VERSIONED:
+// регрессионная цель байт-инварианта «Регулярность» заменена
+// «Спектральным анализом»); preprocessing-column-headers-unified
+// (карта «с кнопкой/без» расширена).
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 // Иконки заголовков layout (UI-PREPR-HDR-1, паттерн UI-VALIDATION-HDR-1
@@ -106,6 +124,7 @@ import {
   type ScalingProfileResponse,
 } from "./PreprocessingScalingOverview";
 import { PreprocessingScalingPipeline } from "./PreprocessingScalingPipeline";
+import { DatasetViewEditor } from "./DatasetViewEditor";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { describeNode } from "../lib/knowledge/knowledge";
 
@@ -179,6 +198,13 @@ export function TsAnalysisPreprocessing() {
   // (редактор датасета вместо сетки стратегий; закрытие повторным
   // кликом и переключением остановки; два режима независимы).
   const [outliersManualMode, setOutliersManualMode] = useState(false);
+  // DATASET-VIEW-EDITOR-1: режим «Редактор датасета» -- generic read-only
+  // просмотр датасета с управлением составом добавленных колонок вместо
+  // сетки стратегий МАСТЕРА (single-active toggle, паттерн «Исправить
+  // вручную»); закрывается повторным кликом и переключением остановки.
+  // Пропуски/Выбросы НЕ получают кнопку (скоуп-уточнение тимлида),
+  // поэтому режим у них недостижим (isDatasetEditorHeader false).
+  const [datasetEditorMode, setDatasetEditorMode] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -840,10 +866,30 @@ export function TsAnalysisPreprocessing() {
   const handleOutliersManualClick = () => {
     setOutliersManualMode((prev) => !prev);
   };
+  // DATASET-VIEW-EDITOR-1: toggle режима «Редактор датасета» -- тот же
+  // паттерн toggle «Справки»/«Исправить вручную» (active -- bg-brand
+  // text-white, клик по кнопке свапает контент окна).
+  const handleDatasetEditorClick = () => {
+    setDatasetEditorMode((prev) => !prev);
+  };
   // Кнопка и flex-1 на h3 -- ТОЛЬКО в заголовках мастеров пропусков и
   // выбросов (у других остановок строка заголовка байт-инвариантна)
   const isMissingManualHeader = activeCheckId === "missing" && descriptionSection === "pipeline";
   const isOutliersManualHeader = activeCheckId === "outliers" && descriptionSection === "pipeline";
+  // DATASET-VIEW-EDITOR-1: правый край заголовка мастеров 6 остановок-
+  // источников новых колонок (карта -- AUDIT-NEWCOLS-1; Пропуски/Выбросы
+  // НЕ тронуты -- скоуп-уточнение тимлида; Спектр/Масштабирование -- без
+  // колонок, без кнопки). Режим доступен ТОЛЬКО в pipeline-режиме окна.
+  const DATASET_EDITOR_STOPS = new Set([
+    "regularity",
+    "decomposition",
+    "variance_stab",
+    "smoothing",
+    "stationarity",
+    "feature_eng",
+  ]);
+  const isDatasetEditorHeader =
+    descriptionSection === "pipeline" && DATASET_EDITOR_STOPS.has(activeCheckId);
 
   // ── Overflow detection для expandable description ──
   useEffect(() => {
@@ -1015,10 +1061,12 @@ export function TsAnalysisPreprocessing() {
                 // MANUAL-MISSING-1: переключение остановки закрывает и
                 // ручной режим редактора (зеркально инварианту Справки)
                 // MANUAL-OUTLIERS-1: и ручной режим мастера выбросов
+                // DATASET-VIEW-EDITOR-1: и режим «Редактор датасета»
                 if (check.id !== activeCheckId) {
                   setDescriptionSection("metrics");
                   setMissingManualMode(false);
                   setOutliersManualMode(false);
+                  setDatasetEditorMode(false);
                 }
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
@@ -1143,7 +1191,7 @@ export function TsAnalysisPreprocessing() {
             ) : (
               <Eye size={16} className="text-brand" aria-hidden="true" />
             )}
-            <h3 className={`text-lg font-semibold text-neutral-800 ${isMissingManualHeader || isOutliersManualHeader ? "flex-1" : ""}`}>
+            <h3 className={`text-lg font-semibold text-neutral-800 ${isMissingManualHeader || isOutliersManualHeader || isDatasetEditorHeader ? "flex-1" : ""}`}>
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Мастер исправления пропусков"
               : activeCheckId === "outliers" && descriptionSection === "pipeline"
@@ -1170,7 +1218,14 @@ export function TsAnalysisPreprocessing() {
               мастера пропусков; MANUAL-OUTLIERS-1 -- и в заголовке мастера
               выбросов (toggle ручного режима редактора; переключение
               остановки закрывает режим -- зеркально инварианту Справки).
-              У ДРУГИХ остановок кнопки нет. */}
+              У ДРУГИХ остановок кнопки нет.
+              DATASET-VIEW-EDITOR-1: отдельная кнопка «Редактор датасета»
+              в заголовках мастеров 6 остановок-источников новых колонок
+              (isDatasetEditorHeader); у Пропусков/Выбросов правый край
+              остаётся ОДНОКНОПОЧНЫМ (скоуп-уточнение тимлида: «Пропуски
+              и Выбросы -- не трогаем»), у Спектра/Масштабирования -- без
+              кнопки (байт-инвариант). aria-pressed/активный класс -- по
+              СВОЕМУ флагу datasetEditorMode (режимы независимы). */}
           {(isMissingManualHeader || isOutliersManualHeader) && (
             <button
               type="button"
@@ -1183,6 +1238,20 @@ export function TsAnalysisPreprocessing() {
               }`}
             >
               Исправить вручную
+            </button>
+          )}
+          {isDatasetEditorHeader && (
+            <button
+              type="button"
+              onClick={handleDatasetEditorClick}
+              aria-pressed={datasetEditorMode}
+              className={`shrink-0 rounded px-2 py-1 text-xs transition-colors ${
+                datasetEditorMode
+                  ? "bg-brand text-white"
+                  : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+              }`}
+            >
+              Редактор датасета
             </button>
           )}
           </div>
@@ -1250,15 +1319,26 @@ export function TsAnalysisPreprocessing() {
           ) : activeCheckId === "outliers" ? (
             <PreprocessingOutliersOverview refreshKey={outliersRefreshKey + datasetVersion} column={activeFeature} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
-            <PreprocessingRegularityPipeline onApplied={handleApplied} />
+            // DATASET-VIEW-EDITOR-1: своп контента окна -- режим «Редактор
+            // датасета» вместо сетки мастера (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingRegularityPipeline onApplied={handleApplied} />
+            )
           ) : activeCheckId === "regularity" ? (
             <PreprocessingRegularityOverview refreshKey={regularityRefreshKey + datasetVersion} />
           ) : activeCheckId === "decomposition" && descriptionSection === "pipeline" ? (
-            <PreprocessingDecompositionPipeline
-              column={activeFeature}
-              profile={decompositionProfile?.profile ?? null}
-              onApplied={handleApplied}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingDecompositionPipeline
+                column={activeFeature}
+                profile={decompositionProfile?.profile ?? null}
+                onApplied={handleApplied}
+              />
+            )
           ) : activeCheckId === "decomposition" ? (
             <PreprocessingDecompositionOverview
               profile={decompositionProfile?.profile ?? null}
@@ -1268,11 +1348,16 @@ export function TsAnalysisPreprocessing() {
               refreshKey={decompositionRefreshKey + datasetVersion}
             />
           ) : activeCheckId === "variance_stab" && descriptionSection === "pipeline" ? (
-            <PreprocessingVariancePipeline
-              column={activeFeature}
-              recommendedMethod={varianceProfile?.profile.selected_method ?? null}
-              onApplied={handleApplied}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingVariancePipeline
+                column={activeFeature}
+                recommendedMethod={varianceProfile?.profile.selected_method ?? null}
+                onApplied={handleApplied}
+              />
+            )
           ) : activeCheckId === "variance_stab" ? (
             <PreprocessingVarianceOverview
               profile={varianceProfile?.profile ?? null}
@@ -1281,11 +1366,16 @@ export function TsAnalysisPreprocessing() {
               noDataset={varianceNoDataset}
             />
           ) : activeCheckId === "smoothing" && descriptionSection === "pipeline" ? (
-            <PreprocessingSmoothingPipeline
-              column={activeFeature}
-              recommendedMethod={smoothingProfile?.profile.selected_method ?? null}
-              onApplied={handleApplied}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingSmoothingPipeline
+                column={activeFeature}
+                recommendedMethod={smoothingProfile?.profile.selected_method ?? null}
+                onApplied={handleApplied}
+              />
+            )
           ) : activeCheckId === "smoothing" ? (
             <PreprocessingSmoothingOverview
               profile={smoothingProfile?.profile ?? null}
@@ -1294,12 +1384,17 @@ export function TsAnalysisPreprocessing() {
               noDataset={smoothingNoDataset}
             />
           ) : activeCheckId === "stationarity" && descriptionSection === "pipeline" ? (
-            <PreprocessingStationarityPipeline
-              column={activeFeature}
-              recommendedMethod={stationarityProfile?.profile?.selected_method ?? null}
-              seasonalPeriod={stationarityProfile?.profile?.seasonal_period ?? 12}
-              onApplied={handleApplied}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingStationarityPipeline
+                column={activeFeature}
+                recommendedMethod={stationarityProfile?.profile?.selected_method ?? null}
+                seasonalPeriod={stationarityProfile?.profile?.seasonal_period ?? 12}
+                onApplied={handleApplied}
+              />
+            )
           ) : activeCheckId === "stationarity" ? (
             <PreprocessingStationarityOverview
               profile={stationarityProfile?.profile ?? null}
@@ -1325,11 +1420,16 @@ export function TsAnalysisPreprocessing() {
               refreshKey={spectralRefreshKey + datasetVersion}
             />
           ) : activeCheckId === "feature_eng" && descriptionSection === "pipeline" ? (
-            <PreprocessingFeatureEngineeringPipeline
-              column={activeFeature}
-              profile={featureGenerationProfile?.profile ?? null}
-              onApplied={handleApplied}
-            />
+            // DATASET-VIEW-EDITOR-1: своп контента окна (паттерн MANUAL-MISSING-1)
+            datasetEditorMode ? (
+              <DatasetViewEditor />
+            ) : (
+              <PreprocessingFeatureEngineeringPipeline
+                column={activeFeature}
+                profile={featureGenerationProfile?.profile ?? null}
+                onApplied={handleApplied}
+              />
+            )
           ) : activeCheckId === "feature_eng" ? (
             <PreprocessingFeatureEngineeringOverview
               profile={featureGenerationProfile?.profile ?? null}

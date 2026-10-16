@@ -237,13 +237,27 @@ describe("«Исправить вручную» в заголовке масте
   it("other stops' masters do NOT have the manual button and keep the byte-identical header row", async () => {
     renderPreprocessing();
     await screen.findByRole("table", { name: "Выбросы по числовым колонкам" }).catch(() => undefined);
+    // VERSIONED (DATASET-VIEW-EDITOR-1, 2026-10-16): «Регулярность» ВЫШЛА
+    // из пина «окон без кнопок» -- несёт кнопку «Редактор датасета»
+    // (отдельную от «Исправить вручную», которого у неё НЕТ) и flex-1.
     fireEvent.click(screen.getByText("Регулярность ряда"));
     fireEvent.click(await screen.findByRole("button", { name: "Исправить регулярность" }));
     expect(await screen.findByRole("region", { name: "Мастер исправления регулярности" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Исправить вручную" })).not.toBeInTheDocument();
-    // h3 заголовка окна регулярности БЕЗ flex-1 (байт-инвариант остальных
-    // окон; VERSIONED MANUAL-OUTLIERS-1: «Выбросы» вышли из этого пина)
-    const h3 = screen.getByRole("heading", { name: "Мастер исправления регулярности" });
+    const regularityButton = screen.getByRole("button", { name: "Редактор датасета" });
+    const regularityRow = regularityButton.parentElement as HTMLElement;
+    expect(regularityRow.querySelector("h3")).toHaveClass("flex-1");
+    expect(regularityButton).toHaveClass("shrink-0");
+
+    // Спектральный анализ -- регрессионная цель байт-инварианта строк:
+    // без кнопок, h3 без flex-1 (VERSIONED DATASET-VIEW-EDITOR-1:
+    // сменила «Регулярность», вышедшую из пина).
+    fireEvent.click(screen.getByText("Спектральный анализ"));
+    fireEvent.click(await screen.findByRole("button", { name: "Зафиксировать периоды" }));
+    expect(await screen.findByRole("region", { name: "Мастер спектрального анализа" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Исправить вручную" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Редактор датасета" })).not.toBeInTheDocument();
+    const h3 = screen.getByRole("heading", { name: "Мастер спектрального анализа" });
     expect(h3).not.toHaveClass("flex-1");
   });
 
