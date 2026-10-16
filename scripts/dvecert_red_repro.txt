@@ -1,0 +1,52 @@
+RED-воспроизведение DATASET-VIEW-EDITOR-1-CERT (свои оракулы на коде ДО задач)
+==================================================================
+
+── Шаг 1: откат к 1c9eb29 (до дефект-репорта: нет POST /delete и кнопки «Сохранить»)
+[бэкенд-оракулы]
+  [PASSED] B01 guard: GET derived-columns без датасета -- 404
+  [PASSED] B02 guard: POST delete без датасета -- 404
+  [PASSED] B03 guard: свежая загрузка -- columns [], total 0
+  [PASSED] B04a: стратегия 1 (flag на 2 колонках) -- добавлены обе
+  [PASSED] B04b: реестр -- 2 записи, stage=missing, source по паттерну, порядок created_at
+  [PASSED] B05: вторая остановка -- 3 записи, стадии missing/missing/outliers, created_at монотонны
+  [PASSED] B06: GET ×2 read-only -- ревизия/updated_at/кадр/реестр нетронуты
+  [FAILED] B07: смешанный [производная, month] -- 422 целиком, offending в detail, кадр/ревизия целы -- status=404 detail=
+  [FAILED] B08: каноническая calls -- 422, ревизия без изменений, состав кадра байт-равен -- status=404
+  [FAILED] B09: ЯДРО -- удаление 1 из 3: 200, deleted, remaining_total==GET, строки без колонки, канонические целы, каскад реестра -- status=404 body={}
+  [FAILED] B10a: ревизия выросла ровно на 1 -- 2 -> 2
+  [FAILED] B10b: второе удаление -- ещё ровно +1
+  [FAILED] B11: дубли имени -- 200, deleted единожды, реестр пуст -- {}
+  [FAILED] B12: re-add заново регистрирует (нет скрытых долгов) -- {"columns": [{"column": "calls_missing_flag", "stage": "missing", "source": "missing_correction:flag:calls,cargo_kt", "created_at": "2026-10-16T10:53:52.897554+00:00"}, {"column": "cargo_kt_missing_fl
+  [FAILED] B14: контракт delete -- deleted list[str], remaining_total int == GET total, строк в ответе нет -- {"detail": "Not Found"}
+[фронт-оракулы]
+  Tests:       5 failed, 13 passed, 18 total
+
+── Шаг 2: откат к c6823e3 выполняется вручную (DatasetViewEditor.tsx -- НОВЫЙ файл задачи 1;
+   в c6823e3 отсутствует -- корректный откат = удаление файла; см. протокол dvecert_red_repro.txt)
+
+── Шаг 2 (ручной): откат к c6823e3 (до задачи 1) ─────────────────────
+Файлы apps/api/schemas.py, apps/api/routers/session.py,
+TsAnalysisPreprocessing.tsx, TsAnalysisValidation.tsx откачены к c6823e3;
+packages/ui/components/DatasetViewEditor.tsx (НОВЫЙ файл задачи 1) --
+удалён (в c6823e3 отсутствует). Прогон своих оракулов:
+
+[бэкенд-оракулы]
+  [PASSED] B01 guard (404 -- неотличимо от «нет маршрута»: честная
+           оговорка guard-класса), [PASSED] B02 guard, далее скрипт
+           ПАДАЕТ на B03: KeyError 'columns' -- GET /dataset/derived-columns
+           отдаёт 404 Not Found (маршрута нет) вместо контракта 200 {}.
+           Падение скрипта = RED: контракт задачи 1 не существует.
+[фронт-оракулы]
+  dvecert_DatasetViewEditor.test.tsx -- сюит НЕ ЗАГРУЖАЕТСЯ (импорт
+  удалённого компонента) = RED целиком (12 оракулов).
+  dvecert_toggle_oracles.test.tsx -- 4 failed / 2 passed:
+    ✕ T1 (Дисперсия: кнопка/своп/возврат), ✕ T2 (закрытие сменой
+    остановки), ✕ T4 (Уникальность: кнопка/своп), ✕ T6 (закрытие сменой);
+    ✓ T3/T5 -- байт-инварианты Пропусков/Выбросов/Спектра и «Типов
+    данных» (guard-класс: эти контракты и ДО задачи были такими).
+  Tests: 4 failed, 2 passed, 6 total (+ сюит из 12 не загрузился).
+
+Композиция RED честная: падают ровно killer-оракулы контрактов задач,
+переживают guard-оракулы классов, где поведение до задач совпадало.
+
+Восстановление 68fd65d побайтовое (md5 сошёлся, git diff пуст).

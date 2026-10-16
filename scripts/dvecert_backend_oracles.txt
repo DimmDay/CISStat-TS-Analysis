@@ -1,0 +1,22 @@
+Оракулы сертификации DATASET-VIEW-EDITOR-1-CERT -- бэкенд (свои данные, «порт-звонки»)
+==============================================================================
+[PASSED] B01 guard: GET derived-columns без датасета -- 404
+[PASSED] B02 guard: POST delete без датасета -- 404
+[PASSED] B03 guard: свежая загрузка -- columns [], total 0
+[PASSED] B04a: стратегия 1 (flag на 2 колонках) -- добавлены обе
+[PASSED] B04b: реестр -- 2 записи, stage=missing, source по паттерну, порядок created_at
+[PASSED] B05: вторая остановка -- 3 записи, стадии missing/missing/outliers, created_at монотонны
+[PASSED] B06: GET ×2 read-only -- ревизия/updated_at/кадр/реестр нетронуты
+[PASSED] B07: смешанный [производная, month] -- 422 целиком, offending в detail, кадр/ревизия целы
+[PASSED] B08: каноническая calls -- 422, ревизия без изменений, состав кадра байт-равен
+[PASSED] B09: ЯДРО -- удаление 1 из 3: 200, deleted, remaining_total==GET, строки без колонки, канонические целы, каскад реестра, счётчик dataset.columns -1
+[FAILED] B10a: ревизия выросла ровно на 1 -- 2 -> 2
+[FAILED] B10b: второе удаление -- ещё ровно +1
+[PASSED] B11: дубли имени -- 200, deleted единожды, реестр пуст
+[PASSED] B12: re-add заново регистрирует (нет скрытых долгов)
+[PASSED] B14: контракт delete -- deleted list[str], remaining_total int == GET total, строк в ответе нет
+[PASSED] B15 guard: запись без колонки в кадре -- GET не отдаёт (append-only ∩ кадр), POST -- 422
+[PASSED] B16 guard: пустой список columns -- 422
+[PASSED] B13: Redis-персистенция (fakeredis): save→get roundtrip -- кадр и каскад реестра пережили хранилище; RAW JSON согласован
+
+ИТОГО: 16/18 PASSED

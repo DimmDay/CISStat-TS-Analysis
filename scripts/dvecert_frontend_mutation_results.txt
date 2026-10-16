@@ -1,0 +1,79 @@
+==============================================================================
+МУТАЦИОННЫЙ ПРОГОН DATASET-VIEW-EDITOR-1-CERT -- ФРОНТЕНД (свои мутанты)
+Каналы: repo (3 repo-сюиты задачи) + oracle (18 оракулов dvecert_*)
+База: 68fd65d; партия мутантов: 1..13 из 13
+==============================================================================
+
+── Мутант TF-0: no-op контроль харнесса (обязан ВЫЖИТЬ в обоих каналах)
+    repo   : SURVIVED (Tests:       24 passed, 24 total)
+    oracle : SURVIVED (Tests:       18 passed, 18 total)
+    вердикт: OK-CONTROL
+
+── Мутант TF-1: кнопка «Сохранить» отсутствует (исходный дефект-репорт воспроизведён)
+    repo   : KILLED   (Tests:       3 failed, 21 passed, 24 total)
+    oracle : KILLED   (Tests:       4 failed, 14 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-2: × скрытия уходит в POST (анти-P2: сеть на клиентской операции)
+    repo   : KILLED   (Tests:       3 failed, 21 passed, 24 total)
+    oracle : KILLED   (Tests:       5 failed, 13 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-3: кнопки переставлены: «Сохранить» ЛЕВЕЕ «Вернуть все колонки» (анти-S1 правый край)
+    repo   : KILLED   (Tests:       1 failed, 23 passed, 24 total)
+    oracle : SURVIVED (Tests:       18 passed, 18 total)
+    вердикт: SURVIVED
+
+── Мутант TF-4: после успеха кэш страниц/меты не очищен, перечитки нет (анти-S3: устаревшая сетка)
+    repo   : KILLED   (Tests:       1 failed, 23 passed, 24 total)
+    oracle : KILLED   (Tests:       1 failed, 17 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-5: статус успеха врёт о числе удалённых колонок (анти-честность)
+    repo   : KILLED   (Tests:       2 failed, 22 passed, 24 total)
+    oracle : KILLED   (Tests:       3 failed, 15 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-6: при отказе бэкенда скрытие сбрасывается (анти-S4: очередь удаления потеряна)
+    repo   : KILLED   (Tests:       1 failed, 23 passed, 24 total)
+    oracle : KILLED   (Tests:       2 failed, 16 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-7: disabled-логика «Сохранить» инвертирована (пустое скрытие -- enabled)
+    repo   : KILLED   (Tests:       3 failed, 21 passed, 24 total)
+    oracle : KILLED   (Tests:       4 failed, 14 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-8: POST уходит с ПУСТЫМ списком (анти-контракт: очередь не передаётся)
+    repo   : KILLED   (Tests:       2 failed, 22 passed, 24 total)
+    oracle : KILLED   (Tests:       3 failed, 15 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-9: бейдж «датасет не изменён» и чипы рендерятся ВСЕГДА (анти-P2 честность)
+    repo   : KILLED   (Tests:       3 failed, 21 passed, 24 total)
+    oracle : KILLED   (Tests:       3 failed, 15 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-10: нечестная формулировка ×-кнопки: «Удалить» до сохранения (анти-P2)
+    repo   : KILLED   (Tests:       8 failed, 16 passed, 24 total)
+    oracle : KILLED   (Tests:       9 failed, 9 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-11: кнопка «Редактор датасета» добавлена в «Пропуски» (анти-скоуп-уточнение: байт-инвариант нарушен)
+    repo   : KILLED   (Tests:       1 failed, 23 passed, 24 total)
+    oracle : KILLED   (Tests:       1 failed, 17 passed, 18 total)
+    вердикт: KILLED
+
+── Мутант TF-12: смена остановки НЕ закрывает режим редактора (анти-инвариант)
+    repo   : KILLED   (Tests:       1 failed, 23 passed, 24 total)
+    oracle : SURVIVED (Tests:       18 passed, 18 total)
+    вердикт: SURVIVED
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+ИТОГО партии: убиты ОБОИМИ каналами: 10; пережили хотя бы один: 2
+    ПЕРЕЖИЛ TF-3 (repo=KILLED, oracle=SURVIVED): кнопки переставлены: «Сохранить» ЛЕВЕЕ «Вернуть все колонки» (анти-S1 правый край)
+    ПЕРЕЖИЛ TF-12 (repo=KILLED, oracle=SURVIVED): смена остановки НЕ закрывает режим редактора (анти-инвариант)
+    КОНТРОЛЬ TF-0: repo=SURVIVED, oracle=SURVIVED -- ОК (выжил -- харнесс достоверен)
+──────────────────────────────────────────────────────────────────────────────

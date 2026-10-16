@@ -1,0 +1,74 @@
+==============================================================================
+МУТАЦИОННЫЙ ПРОГОН DATASET-VIEW-EDITOR-1-CERT -- БЭКЕНД (свои мутанты)
+Каналы: repo (2 repo-сюиты задачи) + oracle (18 оракулов dvecert_backend_oracles)
+База: 68fd65d; партия мутантов: 1..12 из 12
+==============================================================================
+
+── Мутант MB-0: no-op контроль харнесса (обязан ВЫЖИТЬ в обоих каналах)
+    repo   : SURVIVED (============================= test session starts ==========)
+    oracle : SURVIVED (ИТОГО: 18/18 PASSED)
+    вердикт: OK-CONTROL
+
+── Мутант MB-1: GET: сортировка реестра инвертирована (порядок появления нарушен)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: KILLED
+
+── Мутант MB-2: GET: touch+save -- чтение не является read-only (анти-R6)
+    repo   : SURVIVED (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: SURVIVED
+
+── Мутант MB-3: GET: область = весь реестр БЕЗ пересечения с кадром (анти-append-only)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: KILLED
+
+── Мутант MB-4: POST: проверка offending снята -- канонические колонки удаляемы (ГЛАВНАЯ гарантия безопасности источника)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (?)
+    вердикт: KILLED
+
+── Мутант MB-5: POST: unregister снят -- реестр расходится с фактом (скрытые долги)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (?)
+    вердикт: KILLED
+
+── Мутант MB-6: POST: дубли имени не схлопываются (drop по дубликату -- KeyError/500)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: KILLED
+
+── Мутант MB-7: POST: счётчики session.dataset не обновляются
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (?)
+    вердикт: KILLED
+
+── Мутант MB-8: POST: remaining_total жёстко 0 (ответ врёт о состоянии реестра)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: KILLED
+
+── Мутант MB-9: POST: store.save снят -- на production-бэкенде Redis удаление не переживает save→get (Memory-бэкенд маскирует)
+    repo   : SURVIVED (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 17/18 PASSED)
+    вердикт: SURVIVED
+
+── Мутант MB-10: POST: пустой список не отклоняется (анти-гейт 422)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (?)
+    вердикт: KILLED
+
+── Мутант MB-11: POST: замена кадра мимо set_dataframe -- ревизия данных не растёт (анти-AUDIT-C)
+    repo   : KILLED   (============================= test session starts ==========)
+    oracle : KILLED   (ИТОГО: 16/18 PASSED)
+    вердикт: KILLED
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+ИТОГО партии: убиты ОБОИМИ каналами: 9; пережили хотя бы один: 2
+    ПЕРЕЖИЛ MB-2 (repo=SURVIVED, oracle=KILLED): GET: touch+save -- чтение не является read-only (анти-R6)
+    ПЕРЕЖИЛ MB-9 (repo=SURVIVED, oracle=KILLED): POST: store.save снят -- на production-бэкенде Redis удаление не переживает save→get (Memory-бэкенд маскирует)
+    КОНТРОЛЬ MB-0: repo=SURVIVED, oracle=SURVIVED -- ОК (выжил -- харнесс достоверен)
+──────────────────────────────────────────────────────────────────────────────
