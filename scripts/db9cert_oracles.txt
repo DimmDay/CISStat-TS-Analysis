@@ -1,0 +1,36 @@
+UPLOAD-DB-9-CERT: свои оракулы (независимая реализация), режим live
+HEAD: 5a4f2de; реестр: 6 СУБД; env кода: ['UPLOAD_DB_CHUNKSIZE', 'UPLOAD_DB_CONNECT_TIMEOUT', 'UPLOAD_DB_HOST_WHITELIST', 'UPLOAD_DB_MSSQL_DRIVER', 'UPLOAD_DB_QUERY_TIMEOUT', 'UPLOAD_DB_ROW_LIMIT']
+маршруты кода: ['/v1/internal/upload/db/load', '/v1/internal/upload/db/test', '/v1/public/upload/db/load', '/v1/public/upload/db/test']
+UI-факты: форма-заглушка=True, навигатор-заглушка=True
+знание: статей ts=14, registry=14, счётчики теста=14/13
+
+[live] реальные доки HEAD (5a4f2de): нарушений 0 (ожидание 0)
+EXIT=0
+UPLOAD-DB-9-CERT: свои оракулы (независимая реализация), режим sandbox
+HEAD: 5a4f2de; реестр: 6 СУБД; env кода: ['UPLOAD_DB_CHUNKSIZE', 'UPLOAD_DB_CONNECT_TIMEOUT', 'UPLOAD_DB_HOST_WHITELIST', 'UPLOAD_DB_MSSQL_DRIVER', 'UPLOAD_DB_QUERY_TIMEOUT', 'UPLOAD_DB_ROW_LIMIT']
+маршруты кода: ['/v1/internal/upload/db/load', '/v1/internal/upload/db/test', '/v1/public/upload/db/load', '/v1/public/upload/db/test']
+UI-факты: форма-заглушка=True, навигатор-заглушка=True
+знание: статей ts=14, registry=14, счётчики теста=14/13
+
+[sandbox] синтетический ЧИСТЫЙ корпус: нарушений 0 (ожидание 0)
+[sandbox] d1-port-readme: ПОЙМАН OC1 (1 наруш.) — OK
+[sandbox] d2-default-wrong: ПОЙМАН OC2 (1 наруш.) — OK
+[sandbox] d3-route-phantom: ПОЙМАН OC3 (2 наруш.) — OK
+[sandbox] d4-driver-unnamed: ПОЙМАН OC4 (1 наруш.) — OK
+[sandbox] d5-dishonest-ui: ПОЙМАН OC5 (2 наруш.) — OK
+[sandbox] d6-registry-drift: ПОЙМАН OC6 (1 наруш.) — OK
+[sandbox] d7-xref-broken: ПОЙМАН OC7 (1 наруш.) — OK
+[sandbox] d8-smoke-no-422: ПОЙМАН OC8 (1 наруш.) — OK
+[sandbox] d9-help-no-pghba: ПОЙМАН OC9 (1 наруш.) — OK
+[sandbox] d10-phantom-env: ПОЙМАН OC2 (1 наруш.) — OK
+EXIT=0
+UPLOAD-DB-9-CERT: свои оракулы (независимая реализация), режим selftest
+HEAD: 5a4f2de; реестр: 6 СУБД; env кода: ['UPLOAD_DB_CHUNKSIZE', 'UPLOAD_DB_CONNECT_TIMEOUT', 'UPLOAD_DB_HOST_WHITELIST', 'UPLOAD_DB_MSSQL_DRIVER', 'UPLOAD_DB_QUERY_TIMEOUT', 'UPLOAD_DB_ROW_LIMIT']
+маршруты кода: ['/v1/internal/upload/db/load', '/v1/internal/upload/db/test', '/v1/public/upload/db/load', '/v1/public/upload/db/test']
+UI-факты: форма-заглушка=True, навигатор-заглушка=True
+знание: статей ts=14, registry=14, счётчики теста=14/13
+
+[selftest] перевёрнутое ожидание «row_limit 1000000->999999» → ПОЙМАНО OC2 — OK
+[selftest] перевёрнутое ожидание «ui_stub True->False» → ПОЙМАНО OC5 — OK
+[selftest] перевёрнутое ожидание «routes minus test-path» → ПОЙМАНО OC3 — OK
+EXIT=0

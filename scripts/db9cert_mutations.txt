@@ -1,0 +1,39 @@
+UPLOAD-DB-9-CERT: мутационный харнесс (L1 мутанты цели + L2 мутанты на своих мутантах)
+HEAD: 5a4f2de
+
+── УРОВЕНЬ L1: мутанты цели (двухканальная схема REPO + ORACLE) ──
+R1 [README] порт PostgreSQL в матрице README 5432→5433: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.41s =========================) | oracle: ORACLE-KILL ['OC1'] (1 наруш.)
+R2 [README] дефолт UPLOAD_DB_ROW_LIMIT в README 1 000 000→2 000 000: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.41s =========================) | oracle: ORACLE-KILL ['OC2'] (1 наруш.)
+R3 [README] маршрут /test → /check в README: ORACLE-ONLY (repo-гэп канала — см. примечание) | repo: repo-green | oracle: ORACLE-KILL ['OC3'] (1 наруш.)
+R4 [README] драйвер ClickHouse в README → вымышленный: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.42s =========================) | oracle: ORACLE-KILL ['OC1', 'OC4'] (2 наруш.)
+R5 [README] нечестный статус UI в README: заглушка→реализована: ORACLE-ONLY (repo-гэп канала — см. примечание) | repo: repo-green | oracle: ORACLE-KILL ['OC5'] (1 наруш.)
+R6 [README] ссылка на спеку плана в README → несуществующий файл: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.41s =========================) | oracle: ORACLE-KILL ['OC7'] (1 наруш.)
+R7 [README] env UPLOAD_DB_HOST_WHITELIST → вымышленное имя в README: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.40s =========================) | oracle: ORACLE-KILL ['OC2'] (1 наруш.)
+H1 [HELP] pg_hba.conf → pg_access.conf (все вхождения): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.38s =========================) | oracle: ORACLE-KILL ['OC9'] (1 наруш.)
+H2 [HELP] SQLite read-only URI mode=ro → mode=rw (семантический флип): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.39s =========================) | oracle: ORACLE-KILL ['OC9'] (1 наруш.)
+H3 [HELP] DuckDB read_only=True → read_only=False: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.38s =========================) | oracle: ORACLE-KILL ['OC9'] (1 наруш.)
+H4 [HELP] caching_sha2_password → caching_sha256_password (все): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.38s =========================) | oracle: ORACLE-KILL ['OC9'] (1 наруш.)
+H5 [HELP] users.xml → users.yaml (все): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.39s =========================) | oracle: ORACLE-KILL ['OC9'] (1 наруш.)
+H6 [HELP] фантомная env UPLOAD_DB_MAX_ROWS в таблице справки: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.40s =========================) | oracle: ORACLE-KILL ['OC2'] (1 наруш.)
+A1 [ARCHITECTURE] ссылка реестра на код → несуществующий путь: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.38s =========================) | oracle: ORACLE-KILL ['OC7'] (1 наруш.)
+A2 [ARCHITECTURE] контракт записи DbConnectorSpec → ConnectorSpec: REPO-ONLY | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.39s =========================) | oracle: oracle-clean
+A4 [ARCHITECTURE] порт ClickHouse в ARCHITECTURE 8123→8124: ORACLE-ONLY (repo-гэп канала — см. примечание) | repo: repo-green | oracle: ORACLE-KILL ['OC1'] (1 наруш.)
+S1 [SMOKE] INSTALL_MSODBCSQL18 → INSTALL_MSODBC18 (все): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.39s =========================) | oracle: ORACLE-KILL ['OC8'] (1 наруш.)
+S2 [SMOKE] 422 → 400 во всём смоук-чеклисте: DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.41s =========================) | oracle: ORACLE-KILL ['OC8'] (1 наруш.)
+S3 [SMOKE] SQLite → SQLight в смоук-чеклисте (CI-пара): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.42s =========================) | oracle: ORACLE-KILL ['OC8'] (1 наруш.)
+K1 [ARTICLES] article_id статьи → upload-db-conn (articles.ts): DUAL-KILLED | repo: REPO-KILL (========================= 3 failed, 60 passed in 0.42s =========================) | oracle: ORACLE-KILL ['OC6'] (2 наруш.)
+K2 [ARTICLES] stage_id статьи upload → uploads (articles.ts): DUAL-KILLED | repo: REPO-KILL (========================= 1 failed, 62 passed in 0.40s =========================) | oracle: ORACLE-KILL ['OC6'] (1 наруш.)
+K3 [REGISTRY] дрейф промоушена: article_id в registry_data.json: ORACLE-ONLY (repo-гэп канала — см. примечание) | repo: repo-green | oracle: ORACLE-KILL ['OC6'] (1 наруш.)
+N1 [README] no-op контроль: пустая строка в конец README: SURVIVOR-OK (контроль) | repo: repo-green | oracle: oracle-clean
+N2 [HELP] no-op контроль: фактически нейтральная фраза в справку: SURVIVOR-OK (контроль) | repo: repo-green | oracle: oracle-clean
+
+── УРОВЕНЬ L2: мутанты на своих мутантах ──
+M2-1 реверс-мутант (применений 1+1): OK: нетто-нооп распознан по sha256, каналы не насчитали убийства | repo: repo-green | oracle: oracle-clean
+M2-2 идемпотентный мутант H2: OK: повторное применение ОТЛОВЛЕНО (APPLY-0, паттерн уже отсутствует) — двойная мутация не проходит незамеченной
+M2-3 ослабленный мутант R1w (порт только в HELP): УБИТ (oracle-каналом) — покрытие вхождений полно
+M2-4 мутанты оракула (3 перевёрнутых ожидания): OK: все перевёрнутые ожидания пойманы (3/3)
+
+Восстановление рабочего дерева: ПОДТВЕРЖДЕНО sha256 всех 6 целей
+
+Итог L1: DUAL-KILLED=17, REPO-ONLY=1, ORACLE-ONLY=4, DUAL-SURVIVOR=0; контролов no-op=2
+НАХОДОК НЕТ (все kill-мутанты убиты хотя бы одним каналом, no-op-контролы пережили, L2-контроль пройден)

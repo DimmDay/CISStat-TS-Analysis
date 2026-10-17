@@ -1,0 +1,19 @@
+UPLOAD-DB-9-CERT: RED-воспроизведение на родителе 659f8fd (git-worktree)
+
+(0) родитель DB-9-коммита 8167662: 659f8fd75b2d == 659f8fd OK
+(1) git worktree add /home/z/my-project/wt_db9red 659f8fd: OK
+(2) в родителе отсутствуют новые файлы документации: ['docs/upload_db_connections_help.md', 'docs/upload_db_release_smoke_checklist.md'] OK (новые файлы DB-9)
+(3) pytest гварда HEAD на родителе 659f8fd: ========================= 62 failed, 1 passed in 0.40s =========================
+    зелёные на родителе: ['test_readme_honest_ui_status']
+    вывод: массовый RED подтверждён
+(4) git diff 659f8fd..5a4f2de по кодовым файлам фактов: ПУСТО — факты идентичны OK
+(5) свои оракулы на корпусе родителя: 93 нарушений, классы ['OC1', 'OC10', 'OC2', 'OC3', 'OC4', 'OC6', 'OC8', 'OC9'] — ОРАКУЛЬНЫЙ RED OK
+    пример: OC1: README не содержит диалект/клиент «postgresql+psycopg» (postgresql)
+    пример: OC1: ARCHITECTURE не содержит диалект/клиент «postgresql+psycopg» (postgresql)
+    пример: OC1: README не содержит порт 5432 (postgresql)
+    пример: OC1: HELP не содержит порт 5432 (postgresql)
+    пример: OC1: ARCHITECTURE не содержит порт 5432 (postgresql)
+    пример: OC1: HELP не содержит label реестра «PostgreSQL / Postgres Pro»
+(6) worktree удалён: OK
+
+ИТОГ RED-воспроизведения: ПОДТВЕРЖДЕНО (TDD-претензия честна)
