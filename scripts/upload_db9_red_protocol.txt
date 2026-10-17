@@ -1,0 +1,37 @@
+UPLOAD-DB-9 RED-протокол (2026-10-17)
+База: main@659f8fd (HEAD ровно 659f8fd «UPLOAD-DB-4-CERT», рабочее дерево несёт только файлы текущей задачи)
+Сюит: tests/unit/test_upload_db9_docs.py (гвард «docs соответствуют коду»)
+
+Команда: python -m pytest tests/unit/test_upload_db9_docs.py -q
+
+РЕЗУЛЬТАТ RED: 63 failed (документация задачи отсутствует).
+
+Факт-скан кода ДО документации: scripts/upload_db9_fact_scan.py / .txt
+  E1 реестр: 6 СУБД (labels/mode/dialect/ports/pip_package/fallback),
+     таймауты-дефолты 10/60
+  E2 guard: row_limit 1 000 000, chunksize 50 000, whitelist None (off),
+     mask_secrets pwd=**** / url creds ****
+  E3 env: UPLOAD_DB_{ROW_LIMIT,CHUNKSIZE,CONNECT_TIMEOUT,QUERY_TIMEOUT,
+     HOST_WHITELIST,MSSQL_DRIVER} — ровно 6 имён в коде
+  E4 маршруты: /v1/{internal,public}/upload/db/{test,load} — 4 пути
+  E5 пины: sqlalchemy/clickhouse-connect/duckdb/PyMySQL/cryptography/pyodbc/psycopg
+     в обоих requirements (duckdb-engine найден регэкспом частично — пиннен в обоих)
+  E6 UI: TsAnalysisUpload — форма БД ЗАГЛУШКА; NavigatorSourceFileDbPreview
+     пометку «заглушка» содержит (честный статус обязателен в доках)
+  E7 HEAD: 659f8fd
+
+Состав RED (все 63 — отсутствие документации, не ошибки корпуса):
+  - TestUploadDb9MatrixInDocs: 4 (матрица/порты/расширения не отражены)
+  - TestUploadDb9DriversInDocs: 9 (драйверы/fallback/ODBC/INSTALL_MSODBCSQL18)
+  - TestUploadDb9EnvInDocs: 8 (env-имена/дефолты/whitelist/анти-фантом)
+  - TestUploadDb9ApiInDocs: 9 (4 маршрута + семантики 200{ok:false}/422/D4/union)
+  - TestUploadDb9SecurityInDocs: 5 (D6/RP4/стриминг/D4-пароль/таймауты)
+  - TestUploadDb9Architecture: 4 (раздел реестра/ссылки/решения/roadmap)
+  - TestUploadDb9HelpDoc: 8 (pg_hba/sslmode/users.xml/ODBC/MySQL/ro/проблемы/env)
+  - TestUploadDb9SmokeChecklist: 7 (эндпоинты/CI-пара/негативы/env/Docker/UI-статус)
+  - TestUploadDb9KnowledgeArticle: 3 (статья не зарегистрирована)
+  - TestUploadDb9CrossReferences: 4 (ссылки/честный статус/эпик)
+
+Примечание: тесты import-ят факты из КОДА (реестр/guard/константы), текстовые
+проверки — substring на устойчивых идентификаторах (RD3). При GREEN те же
+проверки становятся постоянным гвардом дрейфа «доки ≠ код».

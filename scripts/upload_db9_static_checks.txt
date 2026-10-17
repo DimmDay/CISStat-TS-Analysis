@@ -1,0 +1,6 @@
+py_compile OK: tests/unit/test_upload_db9_docs.py
+py_compile OK: scripts/upload_db9_fact_scan.py
+py_compile OK: scripts/upload_db9_static_checks.py
+py_compile OK: tests/api/test_knowledge_api.py
+registry_data.json валиден, статья upload-db-connections присутствует (status=published)
+HEAD: 659f8fd

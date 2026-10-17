@@ -482,6 +482,16 @@ rules:
 ⚠️ **АРХИТЕКТУРНЫЙ РЕЗЕРВ (Post-MVP / Этап 4+):**
 Базовая интеграция закладывается в Этапе 4 (Dataset Lifecycle), но полноценный Source Registry с автодетектом контрактов по метаданным вынесен в Этап 11+.
 
+**Roadmap-пометка (UPLOAD-DB-PLAN-1 → UPLOAD-DB-9):** источник «База данных (SQL)»
+сервиса «Загрузка» реализован через реестр коннекторов `app/data/db_connectors.py`
+(см. раздел «Реестр коннекторов БД» ниже) — это первая живая реализация идеи
+Source Registry на уровне подключения источников. Полноценный Source Registry с
+YAML-контрактами источников (схема, semantic_metadata, quality_rules, lineage,
+detection_hints — см. шаблон ниже) остаётся архитектурным резервом Этапа 11+: БД-дорожка
+сегодня подключает источники по профилю соединения и SQL-запросу аналитика, но НЕ
+связывает их с контрактами формата выгрузки; связывание «источник → контракт»
+аддитивно расширится реестром без изменения API-контракта загрузки.
+
 **Цель:** Формализация "договора" между внешним источником данных и аналитическим пайплайном. 
 Защита от "молчаливых поломок" при изменении формата выгрузки источника (переименование колонок, смена единиц измерения, изменение частоты).
 
@@ -546,6 +556,88 @@ detection_hints:                   # Подсказки для автодете�
   header_signature:
     - ["Date", "Country", "Commodity", "Price"]
 ```
+
+## РЕЕСТР КОННЕКТОРОВ БД (app/data/db_connectors.py)
+
+Реализовано в эпике UPLOAD-DB (spec_database_plan.md, задачи UPLOAD-DB-1…9;
+документация — UPLOAD-DB-9). Реестр — **единственная точка знания о поддерживаемых
+СУБД**: изменение матрицы = правка одной записи, ни файловый лоадер, ни роутеры
+API о конкретных СУБД не знают.
+
+### Утверждённая матрица (UPLOAD-DB-PLAN-1)
+
+| id реестра | Label | Режим | Диалект / клиент | Порт | Драйвер |
+|---|---|---|---|---|---|
+| `postgresql` | PostgreSQL / Postgres Pro | server | `postgresql+psycopg` | 5432 | `psycopg[binary]` v3 (S1; Postgres Pro — алиасы одной записи, вендор по `SELECT version()`) |
+| `clickhouse` | ClickHouse | server | нативный `clickhouse-connect` | 8123 | `clickhouse-connect` |
+| `mssql` | MS SQL Server | server | `mssql+pyodbc` | 1433 | `pyodbc` + ODBC Driver 18; fallback `pymssql` (S2/RP2) |
+| `mysql` | MySQL / MariaDB | server | `mysql+pymysql` | 3306 | `PyMySQL` + `cryptography` |
+| `duckdb` | DuckDB (встроенная) | embedded | `duckdb://` | — | `duckdb duckdb-engine`; прямой SELECT по `.parquet`/`.csv` |
+| `sqlite` | SQLite (встроенная) | embedded | `sqlite://` | — | stdlib `sqlite3` |
+
+### Контракт записи DbConnectorSpec (frozen dataclass)
+
+Поля: `id`, `label`, `aliases`, `mode: server|embedded`, `dialect` (None —
+нативный клиент ClickHouse), `default_port`, **`test_sql` — ГОТОВЫЙ
+`sqlalchemy.text()` контрольный запрос** (фикс D1: SQLAlchemy 2.0 отклоняет сырые
+строки), `ssl_support`, `native_client`, `path_extensions` / `query_file_extensions`
+(embedded), `pip_package` (подсказка D2 при отсутствии драйвера),
+`fallback_pip_package` (S2: только mssql → pymssql), `version_probe`
+(вендор-детекция PG-семейства, UPLOAD-DB-8).
+
+### Архитектурные решения (зафиксированы планом, реализованы в реестре)
+
+- **D1** — контрольные запросы хранятся в реестре как готовые `text()`-объекты;
+  «Тест» исполняет их через движок, ClickHouse — `ping()`.
+- **D3** — TLS-флаг подключения управляет ssl-поведением по СУБД: PG `sslmode`
+  require/disable, CH `secure`+`verify`, MySQL `ssl_verify_cert`/`ssl_disabled`,
+  MSSQL `Encrypt`+`TrustServerCertificate`. Safe-дефолт — False (паритет legacy).
+- **D4** — пароль НЕ включается в строку соединения НИ ДЛЯ ОДНОЙ СУБД: PG/MySQL —
+  `connect_args["password"]`, MSSQL/pyodbc — `connect_args["PWD"]` с ODBC-экранированием
+  (`_odbc_quote`), MSSQL/pymssql — `connect_args["password"]`, ClickHouse — kwarg
+  нативного клиента. Централизованное маскирование секретов в исключениях —
+  `app/data/db_guard.py::mask_secrets`.
+- **D2** — дружественная детекция отсутствия драйвера: `NoSuchModuleError` и сырой
+  `ModuleNotFoundError` dbapi-слоя оборачиваются в ImportError с pip-подсказкой
+  реестра (и fallback-подсказкой pymssql для MSSQL).
+- **S1** — драйвер PG: psycopg v3 (одна зависимость на два назначения — research_runs
+  и коннектор). **S2** — MSSQL: pyodbc основной, pymssql fallback; резолюция —
+  явный параметр → env `UPLOAD_DB_MSSQL_DRIVER` → авто по доступности (неверное
+  значение — громкий ValueError).
+- **S4** — лимиты: `UPLOAD_DB_ROW_LIMIT` (дефолт 1 000 000) + chunksize-стриминг
+  (`UPLOAD_DB_CHUNKSIZE`, 50 000) + таймауты 10 с / 60 с; потолок жёсткий,
+  усечение честно помечается в `parse_warnings`.
+- **D5/S5** — host-whitelist env `UPLOAD_DB_HOST_WHITELIST` (хосты/CIDR через
+  запятую; пусто/`*` — off в песочнице) против SSRF.
+- **D6** — read-only guard загрузки: только SELECT/WITH, запрет мультистейтментов,
+  DML/DDL (вкл. внутри CTE), блокировок строк и опасных функций
+  (`app/data/db_guard.py::validate_readonly_sql`); остаточный риск закрывается
+  рекомендацией развертывания с read-only пользователем БД (RP4).
+- **Embedded read-only** — SQLite открывается URI `file:…?mode=ro&uri=true`,
+  DuckDB — `read_only=True`; DuckDB по Parquet/CSV — in-memory движок и прямой
+  SELECT по пути файла (контрольный запрос «Тест» читает первую строку файла).
+
+### Слои поверх реестра
+
+- `app/data/file_loader.py::init_db_connection` — оркестрация
+  «резолюция типа → whitelist → открытие → контрольный запрос» с обёрткой ошибок;
+  legacy-прототип и API используют один фасад.
+- `apps/api/routers/upload_db.py` (Фаза B) — эндпоинты
+  `POST /v1/{internal|public}/upload/db/test` + `/load` в ОБОИХ семействах:
+  probe-семантика «Тест» (`200 {ok:false}` при отказе транспорта/кредов/драйвера,
+  422 — контрактные нарушения), `/load` — guard → лимит → стриминг → единая
+  регистрация `register_uploaded_dataframe` → тот же `UploadResponse` →
+  SessionStore (5-остановочный пайплайн «Загрузки» без новых типов событий трассы).
+  Дискриминированный union профиля по `db_type`: `ServerDbCredentials |
+  EmbeddedDbSource` (apps/api/schemas.py).
+- Статус UI-дорожки: форма подключения на странице «Загрузка» — заглушка,
+  блок-схема навигатора описывает БД-дорожку как заглушку (задачи UPLOAD-DB-5/6 —
+  roadmap); тест-стенд docker-compose UPLOAD-DB-8 и legacy-выравнивание
+  UPLOAD-DB-10 — roadmap.
+
+Гвард соответствия документации коду — `tests/unit/test_upload_db9_docs.py`
+(UPLOAD-DB-9): матрица, драйверы, env-лимиты, маршруты и рекомендации сверяются
+с константами кода.
 
 ## УРОВНИ ДОСТУПА: Read (Чтение) vs Execute (Исполнение)
 

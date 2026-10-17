@@ -93,6 +93,67 @@
       "superseded_constant": null
     },
     {
+      "article_id": "upload-db-connections",
+      "stage_id": "upload",
+      "node_id": null,
+      "facet": "library",
+      "directions": [
+        "methodology_validation"
+      ],
+      "title": "Подключение к базам данных: серверы, права, частые проблемы",
+      "summary": "Как подготовить серверную СУБД (PostgreSQL/Postgres Pro, ClickHouse, MS SQL Server, MySQL/MariaDB) или файл встроенной (DuckDB, SQLite) к загрузке данных в платформу: права только на чтение, TLS, лимиты и разбор частых ошибок.",
+      "reading_minutes": 6,
+      "body_blocks": [
+        {
+          "type": "paragraph",
+          "text": "Источник «База данных (SQL)» подключает шесть СУБД утверждённой матрицы: PostgreSQL / Postgres Pro, ClickHouse, MS SQL Server, MySQL / MariaDB — по параметрам сервера; DuckDB и SQLite — по пути к файлу. Платформа исполняет ровно один запрос чтения и регистрирует выборку как датасет, после чего она идёт тем же пайплайном «Загрузки», что и файл. Поэтому главное требование к подключению — учётная запись только для чтения: платформа потребитель данных, а не их владелец."
+        },
+        {
+          "type": "paragraph",
+          "text": "Запрос загрузки проходит встроенный read-only guard: разрешены только SELECT и WITH, запрещены любые изменения схемы и данных, мультистейтменты и блокировки строк. Но guard лексический — эвристический анализ текста запроса, поэтому серверная защита правами пользователя остаётся обязательной второй линией: выдайте платформенной учётной записи только право SELECT на нужную схему."
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "PostgreSQL / Postgres Pro: в postgresql.conf — listen_addresses и порт 5432, в pg_hba.conf — подсеть платформы с методом scram-sha-256; TLS-флаг формы включает sslmode=require. Postgres Pro, TimescaleDB и Greenplum работают по протоколу PostgreSQL без отдельной настройки.",
+            "ClickHouse: пользователь с профилем readonly (SQL: CREATE USER … SETTINGS readonly = 2) и подсетью в users.xml либо SQL-синтаксисом; платформа обращается на HTTP-порт 8123, не на native 9000.",
+            "MS SQL Server: включите TCP/IP и SQL-аутентификацию, выдайте роль db_datareader; нужен системный ODBC Driver 18 — в контейнере apps/api он ставится слоем Dockerfile (в закрытом контуре — pymssql-fallback через UPLOAD_DB_MSSQL_DRIVER=pymssql).",
+            "MySQL / MariaDB: CREATE USER с подсетью и GRANT SELECT; MySQL 8 требует пакет cryptography (аутентификация caching_sha2_password) — он уже в пинах платформы. MariaDB распознаётся тем же коннектором.",
+            "DuckDB и SQLite: путь к файлу на серверной ФС (.db/.duckdb, .db/.sqlite; расширения валидируются). Обе открываются строго read-only; DuckDB дополнительно читает .parquet и .csv прямым SELECT без запуска сервера."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "Лимиты платформы: выборка жёстко ограничена потолком UPLOAD_DB_ROW_LIMIT (по умолчанию 1 000 000 строк, усечение честно помечается), чтение идёт чанками, таймауты — 10 с на подключение и 60 с на запрос. Тяжёлую агрегацию делайте на стороне СУБД: GROUP BY и индексы дешевле, чем гигабайт по сети."
+        },
+        {
+          "type": "paragraph",
+          "text": "Кнопка «Тест» перед загрузкой проверяет транспорт, креды, драйвер и — для встроенных СУБД — читаемость файла; ответ честно возвращает и вендора сервера (PostgreSQL или Postgres Pro видно по SELECT version()). Отрицательный результат пробы — не сбой платформы, а диагностический ответ с маскированной причиной: пароль никогда не появляется ни в тексте ошибки, ни в строке соединения. Если «Тест» падает, начните с доступности host:port с машины API, затем проверьте учётную запись, затем — установку драйвера."
+        }
+      ],
+      "body_md": "Источник «База данных (SQL)» подключает шесть СУБД утверждённой матрицы: PostgreSQL / Postgres Pro, ClickHouse, MS SQL Server, MySQL / MariaDB — по параметрам сервера; DuckDB и SQLite — по пути к файлу. Платформа исполняет ровно один запрос чтения и регистрирует выборку как датасет, после чего она идёт тем же пайплайном «Загрузки», что и файл. Поэтому главное требование к подключению — учётная запись только для чтения: платформа потребитель данных, а не их владелец.\n\nЗапрос загрузки проходит встроенный read-only guard: разрешены только SELECT и WITH, запрещены любые изменения схемы и данных, мультистейтменты и блокировки строк. Но guard лексический — эвристический анализ текста запроса, поэтому серверная защита правами пользователя остаётся обязательной второй линией: выдайте платформенной учётной записи только право SELECT на нужную схему.\n\n- PostgreSQL / Postgres Pro: в postgresql.conf — listen_addresses и порт 5432, в pg_hba.conf — подсеть платформы с методом scram-sha-256; TLS-флаг формы включает sslmode=require. Postgres Pro, TimescaleDB и Greenplum работают по протоколу PostgreSQL без отдельной настройки.\n- ClickHouse: пользователь с профилем readonly (SQL: CREATE USER … SETTINGS readonly = 2) и подсетью в users.xml либо SQL-синтаксисом; платформа обращается на HTTP-порт 8123, не на native 9000.\n- MS SQL Server: включите TCP/IP и SQL-аутентификацию, выдайте роль db_datareader; нужен системный ODBC Driver 18 — в контейнере apps/api он ставится слоем Dockerfile (в закрытом контуре — pymssql-fallback через UPLOAD_DB_MSSQL_DRIVER=pymssql).\n- MySQL / MariaDB: CREATE USER с подсетью и GRANT SELECT; MySQL 8 требует пакет cryptography (аутентификация caching_sha2_password) — он уже в пинах платформы. MariaDB распознаётся тем же коннектором.\n- DuckDB и SQLite: путь к файлу на серверной ФС (.db/.duckdb, .db/.sqlite; расширения валидируются). Обе открываются строго read-only; DuckDB дополнительно читает .parquet и .csv прямым SELECT без запуска сервера.\n\n> Лимиты платформы: выборка жёстко ограничена потолком UPLOAD_DB_ROW_LIMIT (по умолчанию 1 000 000 строк, усечение честно помечается), чтение идёт чанками, таймауты — 10 с на подключение и 60 с на запрос. Тяжёлую агрегацию делайте на стороне СУБД: GROUP BY и индексы дешевле, чем гигабайт по сети.\n\nКнопка «Тест» перед загрузкой проверяет транспорт, креды, драйвер и — для встроенных СУБД — читаемость файла; ответ честно возвращает и вендора сервера (PostgreSQL или Postgres Pro видно по SELECT version()). Отрицательный результат пробы — не сбой платформы, а диагностический ответ с маскированной причиной: пароль никогда не появляется ни в тексте ошибки, ни в строке соединения. Если «Тест» падает, начните с доступности host:port с машины API, затем проверьте учётную запись, затем — установку драйвера.",
+      "sources": [
+        {
+          "kind": "official_docs",
+          "label": "PostgreSQL: документация по pg_hba.conf и sslmode (официальное руководство)",
+          "url": "https://www.postgresql.org/docs/current/auth-pg-hba-conf.html"
+        },
+        {
+          "kind": "official_docs",
+          "label": "ClickHouse: пользователи и права доступа (официальное руководство)",
+          "url": "https://clickhouse.com/docs/en/operations/access-rights"
+        },
+        {
+          "kind": "official_docs",
+          "label": "Microsoft: ODBC Driver 18 for SQL Server — установка на Linux",
+          "url": "https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server"
+        }
+      ],
+      "status": "published",
+      "last_reviewed_at": null,
+      "superseded_constant": null
+    },
+    {
       "article_id": "validation-dama",
       "stage_id": "validation",
       "node_id": null,

@@ -30,8 +30,14 @@ from apps.api.session_store import STAGES
 
 client = TestClient(app)
 
-EXPECTED_ARTICLES = 13          # 12 published + 1 draft (честная маркировка)
-EXPECTED_PUBLISHED = 12
+EXPECTED_ARTICLES = 14          # 13 published + 1 draft (честная маркировка)
+EXPECTED_PUBLISHED = 13
+# 14-я статья upload-db-connections (13 published + 1 draft) — UPLOAD-DB-9
+# (2026-10-17): справка подключения к БД в разделе «Обучение» (перенос
+# UI_HELP app.py:812-918 на матрицу 6 СУБД). Пин обновлён сознательно
+# синхронно с scripts/promote_knowledge_registry.test.ts и
+# перегенерацией apps/api/knowledge/registry_data.json (обе стороны
+# промоушена).
 # 78 = 77 мигрированных вербатим-записей (Шаг 3) + 1 нативная
 # upload.module.module_help (UI-UPLOAD-HELP-1, spec_education.md §1.1,
 # superseded_constant: null). Пин обновлён сознательно синхронно с

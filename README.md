@@ -43,6 +43,59 @@ uvicorn main:app --reload --port 8000
 интеграции в сторонние ИТ-системы" — задокументированный публичный API
 уже есть из коробки, просто за счёт FastAPI).
 
+## Загрузка из баз данных (SQL)
+
+Эпик **UPLOAD-DB** (`spec_database_plan.md`): источник «База данных (SQL)»
+сервиса «Загрузка» подключает СУБД утверждённой матрицы и регистрирует
+выборку как датасет — дальше она проходит тот же пятиостановочный
+пайплайн, что и файл. Единственная точка знания о СУБД — реестр
+коннекторов `app/data/db_connectors.py` (архитектура — раздел «Реестр
+коннекторов БД» в ARCHITECTURE.md); справка подключения (настройка
+серверов всех шести СУБД) — `docs/upload_db_connections_help.md`;
+приёмочный прогон релиза — `docs/upload_db_release_smoke_checklist.md`.
+
+**Матрица СУБД** (реестр коннекторов, обе встроенные — строго read-only):
+
+| СУБД | Режим | Диалект / клиент | Порт | Драйвер (pip) |
+|---|---|---|---|---|
+| PostgreSQL / Postgres Pro | server | `postgresql+psycopg` | 5432 | `psycopg[binary]` (v3, S1) |
+| ClickHouse | server | нативный `clickhouse-connect` | 8123 | `clickhouse-connect` |
+| MS SQL Server | server | `mssql+pyodbc` | 1433 | `pyodbc` + ODBC Driver 18, fallback `pymssql` (S2) |
+| MySQL / MariaDB | server | `mysql+pymysql` | 3306 | `PyMySQL` + `cryptography` (caching_sha2_password) |
+| DuckDB (встроенная) | embedded | `duckdb` (файл, read_only) | — | `duckdb duckdb-engine` (+ прямой SELECT по `.parquet`/`.csv`) |
+| SQLite (встроенная) | embedded | `sqlite` (файл, `mode=ro`) | — | стандартная библиотека Python |
+
+**API-контракт** (оба семейства, конвенция платформы):
+`POST /v1/internal/upload/db/test` и `POST /v1/public/upload/db/test`
+(проба: `200 {ok, db_type, server_version, latency_ms}` или
+`200 {ok: false, error маскирован}`; контрактные нарушения — 422),
+`POST /v1/internal/upload/db/load` и `POST /v1/public/upload/db/load`
+(загрузка → тот же `UploadResponse`, что у файла; read-only guard
+только `SELECT`/`WITH` → нарушение 422). Дискриминированный union
+профиля по `db_type`: `ServerDbCredentials` (серверные) |
+`EmbeddedDbSource` (путь к файлу). Пароль в URL соединения не попадает
+ни для одной СУБД (D4), в ошибках маскируется.
+
+**env-переменные дорожки** (дефолты — константы кода, S4/D5/S2):
+
+| Переменная | Дефолт | Назначение |
+|---|---|---|
+| `UPLOAD_DB_ROW_LIMIT` | 1 000 000 | принудительный потолок строк выборки |
+| `UPLOAD_DB_CHUNKSIZE` | 50 000 | размер чанка chunksize-стриминга |
+| `UPLOAD_DB_CONNECT_TIMEOUT` | 10 (с) | таймаут подключения |
+| `UPLOAD_DB_QUERY_TIMEOUT` | 60 (с) | таймаут запроса |
+| `UPLOAD_DB_HOST_WHITELIST` | пусто (off) | белый список хостов/CIDR (D5/SSRF; `*` — off) |
+| `UPLOAD_DB_MSSQL_DRIVER` | авто | `pyodbc` \| `pymssql` (S2/RP2: закрытый контур без apt MS) |
+
+**Статус дорожки** (честно, по задачам эпика): ядро Фазы A (реестр,
+безопасность, embedded — UPLOAD-DB-1/2/3/7) и API-контракт Фазы B
+(UPLOAD-DB-4) реализованы и сертифицированы; **форма подключения к БД
+на странице «Загрузка» — заглушка**, а блок-схема навигатора описывает
+дорожку как заглушку (UI-задачи UPLOAD-DB-5/6 — roadmap), тест-стенд
+docker-compose UPLOAD-DB-8 и legacy-выравнивание UPLOAD-DB-10 — roadmap.
+Серверные СУБД «зажигаются» интеграционно на стенде UPLOAD-DB-8;
+SQLite/DuckDB проходят сквозной Test→Load в CI без сервисов.
+
 ## Что ЗАГЛУШКА и требует вашего решения
 
 | Файл | Статус |

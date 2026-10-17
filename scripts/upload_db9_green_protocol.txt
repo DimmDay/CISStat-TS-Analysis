@@ -1,0 +1,57 @@
+UPLOAD-DB-9 GREEN-протокол (2026-10-17)
+База: main@659f8fd (HEAD ровно 659f8fd; поставка без commit/push)
+
+ГВАРД ДОКУМЕНТАЦИИ tests/unit/test_upload_db9_docs.py:
+  RED (до документации): 63 failed — files/разделы отсутствуют
+  GREEN (после документации): 63 passed
+  В ходе GREEN исправлены 3 ошибки КОРПУСА (не документации):
+    (1) REPO-путь вычислялся parent.parent от tests/unit — указывал на
+        tests/; исправлен на parents[2] (файлы доков «не находились»);
+    (2) ClickHouse имеет dialect=None (нативный клиент) — TypeError
+        «in <str>»; ветка: None-диалект → пин pip_package (clickhouse-connect);
+    (3) окно поиска статуса статьи 2000 символов меньше тела статьи —
+        расширено до 12000. Дефолтные числа («1 000 000» vs 1000000):
+        тест нормализует разделители тысяч в окне после env-имени —
+        человеческий формат документации не считается расхождением.
+
+РЕГРЕСС:
+  DB-трек юниты: 218/218 (test_db_connectors 60 + test_db_guard +
+    test_db_embedded + test_db_connection 155 базлайн + 63 новых гварда)
+  tests/api смежные: test_upload_db 31/31 + test_docker_image_layout 4/4
+    + test_upload 5/5 = 40/40
+  tests/api/test_knowledge_api.py: 41/41 (пины согласованы: 14 статей /
+    13 published)
+  jest knowledge+education+promote: 113/113 (10 сюитов)
+  ПОЛНЫЙ jest монорепо ×3 (--maxWorkers=2): прогон 1 — 2173/2173 тестов,
+    1 сюит-флак средового нагрузочного класса (без ассертных падений,
+    известный класс worklog: jsdom-таймаут/SIGKILL воркера); прогоны 2-3
+    ПОДРЯД — 193/193 сюитов, 2176/2176 тестов PASS = базлайн, ДЕЛЬТА 0
+  ПОЛНЫЙ tests/unit: 1738 passed / 45 failed / 24 skipped / 3 errors —
+    побайтовая сверка ID падений с чистой базой 659f8fd (git stash -u):
+    48/48 ИДЕНТИЧНО (средовый класс: tbats/prophet/structural_breaks/
+    нейро-каталог; ни одного docs/добавления) — ДЕЛЬТА 0
+  ПОЛНЫЙ tests/api: 2000 passed / 38 failed / 41 skipped — сверка ID с
+    чистой базой 659f8fd: 38/38 ИДЕНТИЧНО (средовый класс:
+    forecasting_session/psycopg-light-env; ни одного knowledge/upload) —
+    ДЕЛЬТА 0
+
+СБОРКА (проверка сборки):
+  npm run typecheck:all — standalone 0 / embedded 0
+  next build standalone — успешно: 18 статических страниц,
+    /education First Load JS 553 kB (+3 kB к 550 — чанк статьи,
+    tree-shaking сохранён)
+  next build embedded — успешно: 14 страниц
+  Промоушен знаний: registry_data.json перегенерирован штатным
+    генератором (PROMOTE_KNOWLEDGE=1, jest-тест байт-паритета 4/4);
+    git diff — чисто аддитивный (+61 строка, 0 удалений)
+
+СТАТИЧЕСКИЕ ПРОВЕРКИ (scripts/upload_db9_static_checks.py/.txt):
+  py_compile 4 py-файлов OK; registry_data.json валиден, статья
+  upload-db-connections published; HEAD 659f8fd
+
+ФАКТ-СКАН ДО ДОКУМЕНТАЦИИ (scripts/upload_db9_fact_scan.py/.txt):
+  E1 реестр 6 СУБД (labels/диалекты/порты/pip) · E2 guard-дефолты
+  (1 000 000 / 50 000 / whitelist off) · E3 6 env-имён UPLOAD_DB_* в коде ·
+  E4 4 маршрута /v1/{internal|public}/upload/db/{test|load} ·
+  E5 пины обоих requirements · E6 UI-форма — ЗАГЛУШКА (честный статус
+  обязателен) · E7 HEAD 659f8fd

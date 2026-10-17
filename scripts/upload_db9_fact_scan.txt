@@ -1,0 +1,143 @@
+### E1 реестр коннекторов (6 записей)
+{
+  "count": 6,
+  "connect_timeout_default": 10,
+  "query_timeout_default": 60,
+  "specs": {
+    "postgresql": {
+      "label": "PostgreSQL / Postgres Pro",
+      "mode": "server",
+      "dialect": "postgresql+psycopg",
+      "default_port": 5432,
+      "pip_package": "psycopg[binary]",
+      "fallback_pip_package": null,
+      "path_extensions": [],
+      "native_client": false
+    },
+    "clickhouse": {
+      "label": "ClickHouse",
+      "mode": "server",
+      "dialect": null,
+      "default_port": 8123,
+      "pip_package": "clickhouse-connect",
+      "fallback_pip_package": null,
+      "path_extensions": [],
+      "native_client": true
+    },
+    "mssql": {
+      "label": "MS SQL Server",
+      "mode": "server",
+      "dialect": "mssql+pyodbc",
+      "default_port": 1433,
+      "pip_package": "pyodbc",
+      "fallback_pip_package": "pymssql",
+      "path_extensions": [],
+      "native_client": false
+    },
+    "mysql": {
+      "label": "MySQL / MariaDB",
+      "mode": "server",
+      "dialect": "mysql+pymysql",
+      "default_port": 3306,
+      "pip_package": "PyMySQL cryptography",
+      "fallback_pip_package": null,
+      "path_extensions": [],
+      "native_client": false
+    },
+    "duckdb": {
+      "label": "DuckDB (встроенная)",
+      "mode": "embedded",
+      "dialect": "duckdb",
+      "default_port": null,
+      "pip_package": "duckdb duckdb-engine",
+      "fallback_pip_package": null,
+      "path_extensions": [
+        ".db",
+        ".duckdb",
+        ".parquet",
+        ".csv"
+      ],
+      "native_client": false
+    },
+    "sqlite": {
+      "label": "SQLite (встроенная)",
+      "mode": "embedded",
+      "dialect": "sqlite",
+      "default_port": null,
+      "pip_package": null,
+      "fallback_pip_package": null,
+      "path_extensions": [
+        ".db",
+        ".sqlite"
+      ],
+      "native_client": false
+    }
+  }
+}
+### E2 guard: дефолты лимитов и маскирование
+{
+  "row_limit_default": 1000000,
+  "chunksize_default": 50000,
+  "whitelist_default_env": "None",
+  "mask_secrets_demo": "pwd=**** url=postgres://u:****@h"
+}
+### E3 env-переменные UPLOAD_DB_* в коде
+{
+  "UPLOAD_DB_CHUNKSIZE": [
+    "app/data/db_guard.py"
+  ],
+  "UPLOAD_DB_CONNECT_TIMEOUT": [
+    "app/data/db_connectors.py",
+    "app/data/db_guard.py"
+  ],
+  "UPLOAD_DB_HOST_WHITELIST": [
+    "app/data/db_guard.py",
+    "app/data/file_loader.py"
+  ],
+  "UPLOAD_DB_MSSQL_DRIVER": [
+    "app/data/db_connectors.py"
+  ],
+  "UPLOAD_DB_QUERY_TIMEOUT": [
+    "app/data/db_connectors.py",
+    "app/data/db_guard.py"
+  ],
+  "UPLOAD_DB_ROW_LIMIT": [
+    "app/data/db_guard.py",
+    "apps/api/schemas.py"
+  ]
+}
+### E4 маршруты API upload/db
+[
+  "/v1/internal/upload/db/load",
+  "/v1/internal/upload/db/test",
+  "/v1/public/upload/db/load",
+  "/v1/public/upload/db/test"
+]
+### E5 пины драйверов requirements
+{
+  "requirements.txt": [
+    "PyMySQL",
+    "clickhouse-connect",
+    "cryptography",
+    "duckdb",
+    "psycopg",
+    "pyodbc",
+    "sqlalchemy"
+  ],
+  "apps/api/requirements.txt": [
+    "PyMySQL",
+    "clickhouse-connect",
+    "cryptography",
+    "duckdb",
+    "psycopg",
+    "pyodbc",
+    "sqlalchemy"
+  ]
+}
+### E6 статус UI
+{
+  "upload_placeholder": true,
+  "nav_placeholder_mentions": true
+}
+### E7 HEAD
+"659f8fd"
