@@ -1,0 +1,139 @@
+db7cert мутационный прогон UPLOAD-DB-7 (свои мутанты, двухканальная схема repo+oracle)
+объект: app/data/db_connectors.py
+md5 до прогона: 47828d23f698f14051a37fefc84afd87
+
+MB-00 no-op-контроль (харнесс достоверен, если переживает оба канала)
+    repo: SURVIVED (============================= 190 passed in 11.62s =============================)
+    oracle: SURVIVED (============================== 27 passed in 1.22s ==============================)
+    вердикт: DUAL-SURVIVOR
+MB-01 _odbc_quote: снята обёртка в фигурные скобки
+    repo: KILLED (======================== 4 failed, 186 passed in 11.29s ========================)
+    oracle: KILLED (E   AssertionError: assert 'p@ss;w0rd}}}}Памир' == '{p@ss;w0rd}}}}Памир}')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_password_via_connect_args_odbc_escaped', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_odbc_escaping_special_chars']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords', 'FAILED scripts/db7cert_oracles.py::test_o09_odbc_quote_own_pins - AssertionEr...']
+    вердикт: ok
+MB-02 _odbc_quote: снято удвоение '}' (PWD с '}' ломает строку ODBC)
+    repo: KILLED (======================== 1 failed, 189 passed in 11.65s ========================)
+    oracle: KILLED (E   AssertionError: assert '{p@ss;w0rd}}Памир}' == '{p@ss;w0rd}}}}Памир}')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_odbc_escaping_special_chars']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords', 'FAILED scripts/db7cert_oracles.py::test_o09_odbc_quote_own_pins - AssertionEr...']
+    вердикт: ok
+MB-03 mssql/pyodbc: пароль ВЕРНУТ в URL-объект (регрессия пересмотра D4, E1)
+    repo: KILLED (======================== 2 failed, 188 passed in 11.26s ========================)
+    oracle: KILLED (E   AssertionError: assert 'p@ss;w0rd}}Памир' is None)
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_password_not_in_url_object_at_all', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_pyodbc_connect_receives_pwd_as_kwarg']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o05_mssql_d4_password_not_in_url_object', 'FAILED scripts/db7cert_oracles.py::test_o21_pyodbc_handshake_pamir_password_kwarg']
+    вердикт: ok
+MB-04 mssql/pyodbc: PWD без ODBC-экранирования (сырой пароль)
+    repo: KILLED (======================== 3 failed, 187 passed in 11.49s ========================)
+    oracle: KILLED (E   AssertionError: assert 'p@ss;w0rd}}Памир' == '{p@ss;w0rd}}}}Памир}')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_password_via_connect_args_odbc_escaped', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlFallback::test_explicit_pyodbc_driver']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords', 'FAILED scripts/db7cert_oracles.py::test_o11_pyodbc_explicit - AssertionError:...']
+    вердикт: ok
+MB-05 mssql/pyodbc: PWD удалён из connect_args (аутентификация потеряна)
+    repo: KILLED (======================== 4 failed, 186 passed in 11.37s ========================)
+    oracle: KILLED (E   KeyError: 'PWD')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_password_via_connect_args_odbc_escaped', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_login_timeout_in_connect_args']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords', 'FAILED scripts/db7cert_oracles.py::test_o08_mssql_login_timeout_and_env_override']
+    вердикт: ok
+MB-06 mssql/pyodbc: login-таймаут снят (S4)
+    repo: KILLED (======================== 2 failed, 188 passed in 11.18s ========================)
+    oracle: KILLED (E   KeyError: 'timeout')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_login_timeout_in_connect_args', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_pyodbc_connect_receives_pwd_as_kwarg']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o08_mssql_login_timeout_and_env_override', "FAILED scripts/db7cert_oracles.py::test_o11_pyodbc_explicit - KeyError: 'time..."]
+    вердикт: ok
+MB-07 mssql: Encrypt инвертирован (D3: TLS выключается при ssl=True)
+    repo: KILLED (======================== 3 failed, 187 passed in 11.17s ========================)
+    oracle: KILLED (E   AssertionError: assert 'yes' == 'no')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_ssl_query_flags_unchanged', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_pyodbc_connect_receives_pwd_as_kwarg']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o07_mssql_query_odbc_flags - Assertio...', 'FAILED scripts/db7cert_oracles.py::test_o21_pyodbc_handshake_pamir_password_kwarg']
+    вердикт: ok
+MB-08 mssql: TrustServerCertificate=no снят (ssl=True понижает проверку)
+    repo: KILLED (======================== 2 failed, 188 passed in 11.30s ========================)
+    oracle: KILLED (E   KeyError: 'TrustServerCertificate')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_ssl_query_flags_unchanged', 'FAILED tests/unit/test_db_guard.py::TestSslFlags::test_mssql_encrypt - KeyErr...']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o07_mssql_query_odbc_flags - KeyError...']
+    вердикт: ok
+MB-09 mysql: default_port 3306 -> 3307
+    repo: KILLED (======================== 2 failed, 188 passed in 11.31s ========================)
+    oracle: KILLED (========================= 1 failed, 26 passed in 1.24s =========================)
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestRegistry::test_default_ports - A...', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7MysqlUrl::test_default_port_3306']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o02_mysql_default_port_3306_rendered']
+    вердикт: ok
+MB-10 mysql: ssl-ветки инвертированы (D3: ssl=True отключает TLS)
+    repo: KILLED (FAILED tests/unit/test_db_guard.py::TestSslFlags::test_mysql_ssl - KeyError: ...)
+    oracle: KILLED (E   KeyError: 'ssl_verify_cert')
+    repo-убийцы: ['FAILED tests/unit/test_db_guard.py::TestSslFlags::test_mysql_ssl - KeyError: ...']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o03_mysql_ssl_flags_exclusive - KeyEr...']
+    вердикт: ok
+MB-11 mysql: connect_timeout снят (S4-паритет)
+    repo: KILLED (======================== 1 failed, 189 passed in 11.18s ========================)
+    oracle: KILLED (E   KeyError: 'connect_timeout')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MysqlUrl::test_connect_timeout_present']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o04_mysql_connect_timeout_and_env_override']
+    вердикт: ok
+MB-12 env UPLOAD_DB_MSSQL_DRIVER: неверное значение тихо игнорируется
+    repo: KILLED (======================== 1 failed, 189 passed in 11.44s ========================)
+    oracle: KILLED (E   Failed: DID NOT RAISE <class 'ValueError'>)
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlFallback::test_env_invalid_value_raises']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o14_env_invalid_value_loud_valueerror']
+    вердикт: ok
+MB-13 авто-резолюция: pyodbc-ветка возвращает fallback-диалект
+    repo: KILLED (======================== 8 failed, 182 passed in 11.30s ========================)
+    oracle: KILLED (E   AssertionError: assert 'mssql+pymssql' == 'mssql+pyodbc')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestBuildServerUrl::test_mssql_url_driver_and_masked', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlUrl::test_password_not_in_url_object_at_all']
+    oracle-убийцы: ['ERROR    app.data.file_loader:file_loader.py:157 DB Connection failed: mssql@meteo.pamir.gla:1433/pamir_observations - **** — транспорт недоступен (сентинел)', 'FAILED scripts/db7cert_oracles.py::test_o05_mssql_d4_password_not_in_url_object', 'FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords']
+    вердикт: ok
+MB-14 D2-подсказка: fallback-драйвер не упомянут (S2)
+    repo: KILLED (FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_f)
+    oracle: KILLED (========================= 1 failed, 26 passed in 1.24s =========================)
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_fallback_hint']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o19_mssql_missing_pyodbc_friendly_d2_with_fallback']
+    вердикт: ok
+MB-15 D2: обработчик ModuleNotFoundError снят (сырая ошибка dbapi-слоя)
+    repo: KILLED (FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_f)
+    oracle: KILLED (E   AssertionError: assert 'MS SQL Server' in 'import of pyodbc halted; None in sys.modules')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_fallback_hint', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pymysql_friendly_error']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o19_mssql_missing_pyodbc_friendly_d2_with_fallback', 'FAILED scripts/db7cert_oracles.py::test_o20_mysql_missing_pymysql_friendly_d2']
+    вердикт: ok
+MB-16 реестр: version_probe mysql снят (вендор-детекция UPLOAD-DB-8)
+    repo: KILLED (======================== 1 failed, 189 passed in 11.20s ========================)
+    oracle: KILLED (E   AttributeError: 'NoneType' object has no attribute 'text')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7Registry::test_mysql_version_probe']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o17_version_probe_matrix - AttributeE...']
+    вердикт: ok
+MB-17 реестр: version_probe mssql испорчен (SELECT 1 вместо @@VERSION)
+    repo: KILLED (======================== 1 failed, 189 passed in 11.44s ========================)
+    oracle: KILLED (E   AssertionError: assert 'SELECT 1' == 'SELECT @@VERSION')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7Registry::test_mssql_version_probe']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o17_version_probe_matrix - AssertionE...']
+    вердикт: ok
+MB-18 реестр: D2-подсказка mysql без cryptography (MySQL 8)
+    repo: KILLED (FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pymysql_friendly_error)
+    oracle: KILLED (E   AssertionError: assert 'PyMySQL' == 'PyMySQL cryptography')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7Registry::test_mysql_pip_hint_includes_cryptography', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pymysql_friendly_error']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o18_registry_pip_hints_and_fallback', 'FAILED scripts/db7cert_oracles.py::test_o20_mysql_missing_pymysql_friendly_d2', 'FAILED scripts/db7cert_oracles.py::test_o23_import_safety_without_drivers - A...']
+    вердикт: ok
+MB-19 реестр: fallback_pip_package mssql снят (S2)
+    repo: KILLED (FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_f)
+    oracle: KILLED (E   AssertionError: assert None == 'pymssql')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7Registry::test_mssql_fallback_pip_package', 'FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_missing_pyodbc_friendly_error_with_fallback_hint']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o18_registry_pip_hints_and_fallback', 'FAILED scripts/db7cert_oracles.py::test_o19_mssql_missing_pyodbc_friendly_d2_with_fallback', 'FAILED scripts/db7cert_oracles.py::test_o23_import_safety_without_drivers - A...']
+    вердикт: ok
+MB-20 misuse-гвард снят: mssql_driver принят для не-mssql
+    repo: KILLED (======================== 1 failed, 189 passed in 11.44s ========================)
+    oracle: KILLED (E   Failed: DID NOT RAISE <class 'ValueError'>)
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlFallback::test_mssql_driver_param_rejected_for_mysql']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o16_mssql_driver_rejected_for_mysql']
+    вердикт: ok
+MB-21 явная валидация mssql_driver снята (неизвестный драйвер без ValueError)
+    repo: KILLED (======================== 1 failed, 189 passed in 11.28s ========================)
+    oracle: KILLED (E   KeyError: 'adonet')
+    repo-убийцы: ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7MssqlFallback::test_unknown_driver_raises']
+    oracle-убийцы: ['FAILED scripts/db7cert_oracles.py::test_o12_unknown_explicit_driver_valueerror']
+    вердикт: ok
+
+md5 после прогона: 47828d23f698f14051a37fefc84afd87 — СХОДИТСЯ = True
+git diff пуст (дерево чистое): True
+no-op-контроль MB-00 пережил оба канала: True
+DUAL-SURVIVORS (без MB-00): 0

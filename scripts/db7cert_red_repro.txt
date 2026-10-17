@@ -1,0 +1,43 @@
+db7cert RED-воспроизведение на родителе e2fa9a1 (git-worktree, дерево аудита не тронуто)
+
+### Статические факты RED (родитель e2fa9a1)
+PASS F1 mysql.version_probe is None
+PASS F2 mssql.version_probe is None
+PASS F3 mssql.fallback_pip_package отсутствует
+PASS F4 _odbc_quote отсутствует
+PASS F5 mssql_driver kwarg отклонён (TypeError)
+PASS F6 родитель: пароль MSSQL В URL-объекте (D4-исключение фазы A)
+PASS F7 родитель: connect_args mssql пуст (нет PWD/timeout)
+PASS F8 пины PyMySQL/cryptography/pyodbc отсутствуют в requirements
+PASS F9 Dockerfile без msodbcsql18
+PASS F10 mysql.pip_package == 'PyMySQL' (без cryptography)
+RED-FACTS: ALL-RED
+
+### Оракулы аудитора на родителе
+pytest rc=1; FAILED=22 (расшифровка ниже); PASSED(родительские регресс-пины вне scope DB-7)=5
+    FAILED scripts/db7cert_oracles.py::test_o05_mssql_d4_password_not_in_url_object
+    FAILED scripts/db7cert_oracles.py::test_o06_mssql_pwd_odbc_escaped_special_passwords
+    FAILED scripts/db7cert_oracles.py::test_o08_mssql_login_timeout_and_env_override
+    FAILED scripts/db7cert_oracles.py::test_o09_odbc_quote_own_pins - ImportError...
+    FAILED scripts/db7cert_oracles.py::test_o10_pymssql_explicit_raw_password_no_odbc
+    FAILED scripts/db7cert_oracles.py::test_o11_pyodbc_explicit - TypeError: buil...
+    FAILED scripts/db7cert_oracles.py::test_o12_unknown_explicit_driver_valueerror
+    FAILED scripts/db7cert_oracles.py::test_o13_env_switch_case_whitespace_normalized
+    FAILED scripts/db7cert_oracles.py::test_o14_env_invalid_value_loud_valueerror
+    FAILED scripts/db7cert_oracles.py::test_o15_auto_resolution_matrix - Attribut...
+    FAILED scripts/db7cert_oracles.py::test_o16_mssql_driver_rejected_for_mysql
+    FAILED scripts/db7cert_oracles.py::test_o17_version_probe_matrix - AttributeE...
+    FAILED scripts/db7cert_oracles.py::test_o18_registry_pip_hints_and_fallback
+    FAILED scripts/db7cert_oracles.py::test_o19_mssql_missing_pyodbc_friendly_d2_with_fallback
+    FAILED scripts/db7cert_oracles.py::test_o20_mysql_missing_pymysql_friendly_d2
+    FAILED scripts/db7cert_oracles.py::test_o21_pyodbc_handshake_pamir_password_kwarg
+    FAILED scripts/db7cert_oracles.py::test_o22_pymssql_handshake_raw_password_kwarg
+    FAILED scripts/db7cert_oracles.py::test_o23_import_safety_without_drivers - A...
+    FAILED scripts/db7cert_oracles.py::test_o24_init_db_connection_e2e_connect_args_reach_engine
+    FAILED scripts/db7cert_oracles.py::test_o25_d4_matrix_all_server_paths - Asse...
+    FAILED scripts/db7cert_oracles.py::test_o26_requirements_pins_phase_c - Asser...
+    FAILED scripts/db7cert_oracles.py::test_o27_dockerfile_odbc_layer_and_build_guard
+ИТОГ RED-КОМПОЗИЦИИ: ПОЛНАЯ (suite RED)
+
+worktree удалён (cleanup): True
+git diff пуст (дерево аудита чистое): True
