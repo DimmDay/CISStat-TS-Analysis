@@ -211,6 +211,16 @@ class KnowledgeRegistry:
             return None
         return self._key_index.get((stage_id, node_id, facet))
 
+    def find_article_by_id(self, article_id: str) -> Optional[KnowledgeArticle]:
+        """Поиск статьи по article_id (MNS-TEXT-5, spec_mentor_next_step.md
+        §5.2: join записи реестра объяснимости MNS-REG-2 -- help_entry_id --
+        со статьёй реестра знаний). Индекс покрывает ВСЕ статьи: библиотеку
+        (facet="library") и вербатим-справку узлов (article_id == entry_id,
+        title == первая строка текста -- механический вывод промоушена,
+        без перенабора). Промах -> None (no fabricated results, паттерн
+        find_article); Caller решает, как назвать недостающее."""
+        return self._article_index.get(article_id)
+
     def stage_label(self, stage_id: str) -> str:
         """RU-метка этапа пайплайна (stage_labels_ru артефакта промоушена,
         PROGR-7 §5.4): единая терминология с фронтовым knowledge.ts

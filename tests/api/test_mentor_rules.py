@@ -733,6 +733,343 @@ class TestNextStepFallbackLayerB:
         assert "Превью датасета" in recommendation["message"]
 
 
+# ── Контур 4c: объяснение «почему жёлтый/красный» (MNS-TEXT-5, spec_mentor_next_step.md §5.1/§5.2) ──
+
+
+class TestNextStepExplanationMNS5:
+    """MNS-TEXT-5: аддитивное поле explanation в рекомендации ответа
+    next-step -- три уже посчитанных слоя (спека §5.2): status_reason +
+    summary_count той же проекции AUDIT-5B, что бейджи панели, и ссылка
+    на методологию остановки (help_entry_id реестра знаний + вербатим
+    заголовка статьи; решение Q7 -- ссылкой, вербатим остаётся отчёту
+    run_report.py::node_methodology). Объяснение появляется ТОЛЬКО когда
+    рекомендация указывает на известную warning-способную остановку с
+    проблемным статусом (error/warning) в той же проекции. Советы --
+    не факты (§3.2 spec_progress.md): в трассу объяснение не пишется.
+    Схема аддитивна: ровно одно новое поле, существующие потребители
+    не ломаются."""
+
+    def test_endpoint_fallback_explanation_fields(self, client):
+        """Слой B REST: жёлтый узел вне 8 правил -- объяснение несёт
+        факт статуса, причину и бейдж той же проекции, ссылку на
+        методологию (help_entry_id + вербатим заголовка статьи)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "validation_check_status", stage="validation", node_id="ranges",
+                run_id="RUN-AAA00001", status="warning", total_violations=3,
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        explanation = data["recommendation"]["explanation"]
+        assert explanation is not None, (
+            "MNS-TEXT-5: рекомендация Слоя B без объяснения -- контракт §5.2 нарушен"
+        )
+        assert explanation["status"] == "warning"
+        assert (
+            explanation["status_reason"]
+            == "Статус проверки отчитан модулем «Валидация»"
+        )
+        assert explanation["summary_count"] == 3
+        assert explanation["help_entry_id"] == "validation.ranges.metrics"
+        assert explanation["methodology_title"] == "Метрики и алгоритм: Диапазоны значений"
+
+    def test_endpoint_layer_a_rule_explanation(self, client):
+        """Слой A: жёлтая остановка, покрытая правилом
+        (correction_previewed с фактом нарушений ->
+        preprocessing_missing_attention), -- объяснение собирается по
+        recommended_action правила с фактами той же проекции (Слой A и
+        Слой B объясняются одинаково; исход violations -- AUDIT-4:
+        warning честно выводится из фактов результата payload)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "correction_previewed", stage="preprocessing", node_id="missing",
+                run_id="RUN-AAA00001", strategy="median_mode", total_missing=7,
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        recommendation = data["recommendation"]
+        assert recommendation is not None
+        assert recommendation["rule_id"] == "preprocessing_missing_attention"
+        assert recommendation["recommended_action"] == "preprocessing.missing"
+        explanation = recommendation["explanation"]
+        assert explanation is not None
+        assert explanation["status"] == "warning"
+        assert (
+            explanation["status_reason"]
+            == "Найдены нарушения: предпросмотр коррекции"
+        )
+        # Бейдж -- то же число, что в бейдже узла (P16: счётчик следует
+        # за reason-событием; violations-ключ payload).
+        assert explanation["summary_count"] == 7
+        assert explanation["help_entry_id"] == "preprocessing.missing.metrics"
+        assert explanation["methodology_title"] == "Метрики и алгоритм: Пропуски"
+
+    def test_endpoint_upload_module_explanation_title(self, client):
+        """Upload-остановка: методология -- статья модуля
+        (upload.module.module_help), заголовок -- вербатим первой строки
+        артефакта промоушена («Цели модуля «Загрузка»»)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "upload_stop_status", stage="upload", node_id="overview",
+                run_id="RUN-AAA00001", status="warning",
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        explanation = data["recommendation"]["explanation"]
+        assert explanation is not None
+        assert explanation["help_entry_id"] == "upload.module.module_help"
+        assert explanation["methodology_title"] == "Цели модуля «Загрузка»"
+
+    def test_endpoint_error_status_explanation(self, client):
+        """Красный узел (error) -- инвариант v2 покрывает оба статуса;
+        explanation.status == "error" (честный рендер «почему красная»)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "validation_check_status", stage="validation", node_id="ranges",
+                run_id="RUN-AAA00001", status="error",
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        recommendation = data["recommendation"]
+        assert recommendation is not None
+        assert recommendation["rule_id"] == "fallback_error"
+        explanation = recommendation["explanation"]
+        assert explanation is not None
+        assert explanation["status"] == "error"
+
+    def test_endpoint_process_rule_explanation_is_none(self, client):
+        """Процессное правило (Прогнозирование -- стадия без
+        warning-семантики, вне реестра объяснимости): explanation None --
+        объяснение «почему жёлтый» к процессному гэпу неприменимо."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "forecast_generated", stage="forecasting", node_id="forecast_generated",
+                run_id="RUN-AAA00001", model="naive",
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        recommendation = data["recommendation"]
+        assert recommendation is not None
+        assert recommendation["rule_id"] == "forecast_not_compared_before_export"
+        assert recommendation["explanation"] is None
+
+    def test_response_shape_additive_exactly_one_new_field(self, client):
+        """Аддитивность схемы (DoD): рекомендация -- прежние 4 поля плюс
+        РОВНО explanation; верхний уровень ответа не расширялся;
+        phase_text/summary прежние."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "validation_check_status", stage="validation", node_id="ranges",
+                run_id="RUN-AAA00001", status="warning", total_violations=3,
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert set(data.keys()) == {
+            "run_id",
+            "run_status",
+            "last_active_stage",
+            "phase_text",
+            "summary",
+            "recommendation",
+            "history_warnings",
+            "watermark",
+            "events_total",
+        }
+        assert set(data["recommendation"].keys()) == {
+            "rule_id",
+            "stage",
+            "message",
+            "recommended_action",
+            "explanation",
+        }
+        assert isinstance(data["phase_text"], str)
+        assert set(data["summary"].keys()) == {
+            "stage",
+            "total_nodes",
+            "done_count",
+            "warning_nodes",
+            "nodes",
+        }
+
+    def test_explanation_not_written_to_trace(self, client):
+        """Советы -- не факты (§3.2 spec_progress.md): объяснение живёт
+        только в HTTP-ответе; трасса запуска после вызова next-step не
+        дополнилась (наблюдение next_step -- в журнал наблюдений, не в
+        трассу; контракты MNS-FALLBACK-4 прежние)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "validation_check_status", stage="validation", node_id="ranges",
+                run_id="RUN-AAA00001", status="warning", total_violations=3,
+            ),
+        )
+        events_before = len(store.list_events("RUN-AAA00001"))
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        assert response.json()["recommendation"]["explanation"] is not None
+        assert len(store.list_events("RUN-AAA00001")) == events_before
+
+    # ── unit-контур сборщика (роутер -- данные приносит роутер) ──
+
+    def _builder(self):
+        # Функция появляется в этой задаче -- импорт В ТЕСТЕ (не на
+        # уровне модуля): честный RED отдельных тестов, контуры
+        # PROGR-6/MNS-* собираются независимо.
+        from apps.api.routers.progress import _explanation_for_recommendation
+
+        return _explanation_for_recommendation
+
+    def test_builder_unknown_action_shapes(self):
+        """recommended_action без узла (только стадия) / пустой -- None:
+        объяснение без адресата не выдумывается."""
+        builder = self._builder()
+
+        class _Rec:
+            rule_id = "x"
+            stage = "preprocessing"
+            recommended_action = "preprocessing"
+
+        assert builder(_Rec(), {}, {}) is None
+
+        class _RecNoAction:
+            rule_id = "x"
+            stage = "preprocessing"
+            recommended_action = None
+
+        assert builder(_RecNoAction(), {}, {}) is None
+
+    def test_builder_node_outside_registry_is_none(self):
+        """Узел вне реестра объяснимости (процессная стадия) -- None."""
+        builder = self._builder()
+
+        class _Rec:
+            rule_id = "modeling_selected_without_backtest"
+            stage = "modeling"
+            recommended_action = "modeling.backtest"
+
+        assert builder(_Rec(), {"modeling/backtest": "done"}, {}) is None
+
+    def test_builder_node_without_problem_status_is_none(self):
+        """Защитный инвариант: узел известен, но статус не проблемный --
+        объяснение «почему жёлтый» не выдаётся."""
+        builder = self._builder()
+
+        class _Rec:
+            rule_id = "x"
+            stage = "validation"
+            recommended_action = "validation.ranges"
+
+        statuses = {"validation/ranges": "done"}
+        facts = {"validation/ranges": {"status_reason": "r", "summary_count": 1}}
+        assert builder(_Rec(), statuses, facts) is None
+
+    def test_builder_fact_shield_not_truthworthy_values(self):
+        """Щит фактов (тот же контракт _clean_summary_count): bool/
+        дробное/строка/отрицательное в summary_count и пустая причина --
+        честный None, не факт (советы -- не факты §3.2)."""
+        builder = self._builder()
+
+        class _Rec:
+            rule_id = "fallback_warning"
+            stage = "validation"
+            recommended_action = "validation.ranges"
+
+        statuses = {"validation/ranges": "warning"}
+        for bad in (True, 2.5, "3", -1):
+            facts = {"validation/ranges": {"status_reason": "r", "summary_count": bad}}
+            explanation = builder(_Rec(), statuses, facts)
+            assert explanation is not None
+            assert explanation.summary_count is None
+        facts = {"validation/ranges": {"status_reason": "   ", "summary_count": 4}}
+        explanation = builder(_Rec(), statuses, facts)
+        assert explanation is not None
+        assert explanation.status_reason is None
+        assert explanation.summary_count == 4
+
+    def test_builder_methodology_title_miss_is_honest_none(self, monkeypatch):
+        """Промах статьи в реестре знаний -- methodology_title None
+        (no fabricated results), help_entry_id передаётся как есть."""
+        from apps.api.routers import progress as progress_router
+
+        class _StubRegistry:
+            def find_article_by_id(self, article_id):
+                return None
+
+        monkeypatch.setattr(
+            progress_router, "load_registry", lambda: _StubRegistry()
+        )
+        builder = progress_router._explanation_for_recommendation
+
+        class _Rec:
+            rule_id = "fallback_warning"
+            stage = "validation"
+            recommended_action = "validation.ranges"
+
+        explanation = builder(
+            _Rec(),
+            {"validation/ranges": "warning"},
+            {"validation/ranges": {"status_reason": "r", "summary_count": 2}},
+        )
+        assert explanation is not None
+        assert explanation.help_entry_id == "validation.ranges.metrics"
+        assert explanation.methodology_title is None
+
+    def test_builder_uses_registry_entry_identity(self):
+        """Join по help_entry_id записи реестра объяснимости (MNS-REG-2):
+        id статьи и её вербатим-заголовок -- из артефакта промоушена."""
+        builder = self._builder()
+
+        class _Rec:
+            rule_id = "fallback_warning"
+            stage = "preprocessing"
+            recommended_action = "preprocessing.variance_stab"
+
+        explanation = builder(
+            _Rec(),
+            {"preprocessing/variance_stab": "warning"},
+            {"preprocessing/variance_stab": {"status_reason": None, "summary_count": 5}},
+        )
+        assert explanation is not None
+        assert explanation.help_entry_id == "preprocessing.variance_stab.metrics"
+        assert explanation.methodology_title == "Метрики и алгоритм: Стабилизация дисперсии"
+        assert explanation.status_reason is None
+        assert explanation.summary_count == 5
+
+
 # ── Контур 5: derive_node_statuses -- переехал в PROGR-10 ────────────
 # Тесты движка статусов живут в tests/api/test_node_status_engine.py
 # (Расхождение №1: единый движок app/core/node_status.py для панели,

@@ -35,6 +35,29 @@ export interface MentorRecommendationInfo {
   stage: string;
   message: string;
   recommended_action?: string | null;
+  /** MNS-TEXT-5 (аддитивно, spec_mentor_next_step.md §5.1/§5.2):
+   * объяснение «почему жёлтый/красный» из трёх уже посчитанных слоёв
+   * (status_reason + summary_count той же проекции AUDIT-5B, что
+   * бейджи панели, + методология остановки ссылкой, Q7). None --
+   * процессные правила и узлы вне реестра объяснимости; старые
+   * ответы без поля тоже валидны (аддитивный контракт). */
+  explanation?: MentorExplanationInfo | null;
+}
+
+/** MNS-TEXT-5: структурное объяснение рекомендации (зеркало
+ * pydantic-схемы MentorExplanationOut). status_reason/summary_count --
+ * сырые факты узла: null -- факт не отчитан, строка на фронте НЕ
+ * рисуется и не выдумывается (советы -- не факты, §3.2
+ * spec_progress.md; честную формулировку уже несёт message).
+ * methodology_title -- вербатим заголовка статьи реестра знаний;
+ * вербатим целиком остаётся окну «Метрики и алгоритм» остановки
+ * (куда ведёт deep-link) и отчёту (node_methodology). */
+export interface MentorExplanationInfo {
+  status: string; // "warning" | "error" -- факт статуса узла
+  status_reason?: string | null;
+  summary_count?: number | null;
+  help_entry_id: string;
+  methodology_title?: string | null;
 }
 
 export interface MentorNodeFact {

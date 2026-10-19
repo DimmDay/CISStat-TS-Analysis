@@ -236,3 +236,93 @@ describe("resolveRecommendationLink (MNS-LINK-3)", () => {
     expect(resolveRecommendationLink("")).toBeNull();
   });
 });
+
+// ── MNS-TEXT-5: аддитивное объяснение «почему жёлтый/красный» ────────
+// spec_mentor_next_step.md §5.1/§5.2, план §6 (MNS-TEXT-5): под
+// сообщением рекомендации -- структурное объяснение из трёх уже
+// посчитанных слоёв (status_reason + summary_count той же проекции
+// AUDIT-5B + методология остановки ссылкой, Q7). Рекомендация без
+// explanation (старый контракт/процессные правила) -- блок не
+// рендерится, прежние элементы целы (аддитивность).
+
+const NEXT_STEP_WITH_EXPLANATION = {
+  ...NEXT_STEP,
+  recommendation: {
+    ...NEXT_STEP.recommendation,
+    explanation: {
+      status: "warning",
+      status_reason: "Найдены нарушения: предпросмотр коррекции",
+      summary_count: 4,
+      help_entry_id: "preprocessing.missing.metrics",
+      methodology_title: "Метрики и алгоритм: Пропуски",
+    },
+  },
+};
+
+describe("MentorPanel explanation (MNS-TEXT-5)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("рендерит объяснение: заголовок «жёлтая», причина, бейдж, методология", async () => {
+    mockFetch(NEXT_STEP_WITH_EXPLANATION);
+    render(<MentorPanel runId={RUN_ID} />);
+    await screen.findByText("В ряде остались нарушения регулярности временного шага.");
+    expect(screen.getByText("Почему остановка жёлтая")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Причина: Найдены нарушения: предпросмотр коррекции/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Проблем по бейджу остановки: 4/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Методология: «Метрики и алгоритм: Пропуски»/),
+    ).toBeInTheDocument();
+  });
+
+  it("error-статус -- заголовок «красная» (инвариант v2 покрывает оба статуса)", async () => {
+    mockFetch({
+      ...NEXT_STEP_WITH_EXPLANATION,
+      recommendation: {
+        ...NEXT_STEP_WITH_EXPLANATION.recommendation,
+        explanation: {
+          ...NEXT_STEP_WITH_EXPLANATION.recommendation.explanation,
+          status: "error",
+        },
+      },
+    });
+    render(<MentorPanel runId={RUN_ID} />);
+    await screen.findByText("Почему остановка красная");
+    expect(screen.queryByText("Почему остановка жёлтая")).toBeNull();
+  });
+
+  it("рекомендация без explanation (старый контракт) -- блока нет, прежние элементы целы", async () => {
+    mockFetch(NEXT_STEP);
+    render(<MentorPanel runId={RUN_ID} />);
+    await screen.findByText("В ряде остались нарушения регулярности временного шага.");
+    expect(screen.queryByText(/Почему остановка/)).toBeNull();
+    expect(screen.queryByText(/Методология:/)).toBeNull();
+    expect(screen.getByRole("link", { name: /Перейти: Регулярность ряда/ })).toBeInTheDocument();
+  });
+
+  it("None-факты -- строки причины/бейджа не рисуются, методология остаётся (не выдумываем)", async () => {
+    mockFetch({
+      ...NEXT_STEP_WITH_EXPLANATION,
+      recommendation: {
+        ...NEXT_STEP_WITH_EXPLANATION.recommendation,
+        explanation: {
+          status: "warning",
+          status_reason: null,
+          summary_count: null,
+          help_entry_id: "preprocessing.missing.metrics",
+          methodology_title: "Метрики и алгоритм: Пропуски",
+        },
+      },
+    });
+    render(<MentorPanel runId={RUN_ID} />);
+    await screen.findByText("Почему остановка жёлтая");
+    expect(screen.queryByText(/Причина:/)).toBeNull();
+    expect(screen.queryByText(/Проблем по бейджу остановки:/)).toBeNull();
+    expect(
+      screen.getByText(/Методология: «Метрики и алгоритм: Пропуски»/),
+    ).toBeInTheDocument();
+  });
+});

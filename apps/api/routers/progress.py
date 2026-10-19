@@ -148,6 +148,7 @@ from app.core.admin_analytics import (
     build_admin_overview,
     select_case_bank_candidates,
 )
+from app.core.mentor_explanations import MENTOR_STOP_EXPLANATIONS_BY_KEY
 from app.core.mentor_rules import (
     CorrectionOutcomeSummary,
     evaluate_history_warnings,
@@ -176,6 +177,7 @@ from app.core.run_report import (
     render_markdown,
 )
 from apps.api.auth import require_admin_role
+from apps.api.knowledge.registry import load_registry  # MNS-TEXT-5: методология — ссылкой (Q7)
 from apps.api.delivery_outbox import (  # AUDIT-6B: восстановимая доставка
     DeliveryTask,
     STATE_DELIVERED,
@@ -1787,15 +1789,59 @@ class SanityWarningOut(BaseModel):
     suggested_action: Optional[str] = None
 
 
+class MentorExplanationOut(BaseModel):
+    """Аддитивное объяснение «почему жёлтый/красный» (MNS-TEXT-5,
+    spec_mentor_next_step.md §5.1/§5.2): три уже посчитанных слоя,
+    ноль нового I/O -- пересказ той же проекции AUDIT-5B, что бейджи
+    панели и отчёт.
+
+    status -- факт статуса узла (warning/error) той же проекции:
+    честный рендер «жёлтая/красная» на фронте (инвариант v2 покрывает
+    оба статуса -- канон-формулировка §0 спеки).
+
+    status_reason/summary_count -- сырые факты узла (status_reason из
+    EVENT_NODE_REASON/причины отчётов модулей; summary_count -- то же
+    число, что бейдж остановки); None -- факт не отчитан, ЧЕСТНО
+    (советы -- не факты, §3.2 spec_progress.md: недостающее не
+    выдумывается; отрендеренное сообщение рекомендации уже несёт
+    честные формулировки «причина не отчитана»/«не отчитано»).
+
+    help_entry_id/methodology_title -- ссылка на методологию остановки
+    (решение Q7: В ОТВЕТЕ ссылка, вербатим целиком ответ не утяжеляет;
+    идентичность -- join по article_id реестра знаний, заголовок --
+    вербатим первой строки статьи артефакта промоушена, ноль новых
+    текстов; VERBATIM-текст остаётся отчёту
+    run_report.py::node_methodology и окну «Метрики и алгоритм»
+    остановки, куда ведёт deep-link).
+
+    Советы -- не факты: объяснение живёт ТОЛЬКО в HTTP-ответе --
+    в трассу (слой 1/2) и журнал наблюдений MentorObservation
+    (факт выдачи: rule_id/stage) не пишется."""
+
+    status: str
+    status_reason: Optional[str] = None
+    summary_count: Optional[int] = None
+    help_entry_id: str
+    methodology_title: Optional[str] = None
+
+
 class MentorRecommendationOut(BaseModel):
     """Одна рекомендация §7.1 v2-гибрида (MNS-FALLBACK-4): правило
     Слоя A (первое сработавшее on_demand-правило) или рекомендация
-    Слоя B (fallback-скан, семейство fallback_error/fallback_warning)."""
+    Слоя B (fallback-скан, семейство fallback_error/fallback_warning).
+
+    MNS-TEXT-5 (аддитивно): explanation -- объяснение «почему
+    жёлтый/красный» (спека §5.1/§5.2); появляется ТОЛЬКО когда
+    рекомендация указывает на известную warning-способную остановку
+    с проблемным статусом в той же проекции; None -- процессные
+    правила (стадии без warning-семантики, вне реестра объяснимости)
+    и прежние потребители старого контракта."""
 
     rule_id: str
     stage: str
     message: str
     recommended_action: Optional[str] = None
+    explanation: Optional[MentorExplanationOut] = None
 
 
 class MentorNodeFactOut(BaseModel):
@@ -1908,6 +1954,91 @@ def _node_facts_for_mentor(projection: Any) -> Dict[str, Dict[str, Any]]:
     return facts
 
 
+# Проблемные статусы объяснения (канон-блок §3.1 problem_statuses:
+# инвариант v2 покрывает error и warning).
+_EXPLANATION_PROBLEM_STATUSES: frozenset = frozenset({"error", "warning"})
+
+
+def _explanation_for_recommendation(
+    recommendation: Any,
+    statuses: Any,
+    node_facts: Dict[str, Dict[str, Any]],
+) -> Optional[MentorExplanationOut]:
+    """MNS-TEXT-5: сборка аддитивного объяснения «почему
+    жёлтый/красный» (spec_mentor_next_step.md §5.1/§5.2) -- проект
+    docs/mentor_text5_2026-10-19.md.
+
+    Данные приносит роутер (канон модуля: правила -- чистые функции,
+    хранилища не импортируются): факты -- уже собранный node_facts
+    (та же проекция AUDIT-5B, что сообщение Слоя B и бейджи панели;
+    второй проход по node_states не заводится), статусы -- тот же
+    снапшот projection.node_statuses, что у движка.
+
+    Объяснение появляется ТОЛЬКО когда рекомендация указывает на
+    известную warning-способную остановку (запись реестра
+    объяснимости MNS-REG-2 по составному ключу -- recommended_action
+    несёт "stage.node_id" у ОБОИХ слоёв: у Слоя A это цель правила,
+    у Слоя B -- entry.deep_link) И статус узла в той же проекции
+    проблемный (error/warning) -- «почему жёлтый» к узлу без
+    проблемного статуса неприменимо (защитный инвариант на будущие
+    правила). Иначе None: процессные правила
+    (modeling/forecasting -- стадии без warning-семантики, вне
+    реестра), неизвестные узлы, рекомендации без адресата --
+    объяснение не выдумывается (советы -- не факты, §3.2).
+
+    Методология -- ссылкой (решение Q7): идентичность статьи --
+    help_entry_id записи реестра объяснимости; заголовок -- вербатим
+    статьи артефакта промоушена (load_registry -- lru_cache, одна
+    загрузка на процесс -- ноль нового I/O на запрос); промах статьи
+    -- честный None заголовка, id передаётся как есть (no fabricated
+    results, паттерн find_article). VERBATIM-текст остаётся отчёту
+    (run_report.py::node_methodology) и окну «Метрики и алгоритм»
+    остановки, куда ведёт deep-link.
+
+    Щит фактов -- тот же контракт, что _clean_summary_count/
+    render_stop_explanation: пустая причина и не-счётчик (bool,
+    дробное, строка, отрицательное) -- None, не факт; проекция уже
+    вычищена, щит повторён на границе ответа (belt-and-braces).
+    Объяснение живёт ТОЛЬКО в HTTP-ответе: в трассу и журнал
+    наблюдений не пишется (советы -- не факты, §3.2)."""
+    if recommendation is None:
+        return None
+    action = getattr(recommendation, "recommended_action", None)
+    if not isinstance(action, str) or "." not in action:
+        return None
+    stage, _, node_id = action.partition(".")
+    if not stage or not node_id:
+        return None
+    entry = MENTOR_STOP_EXPLANATIONS_BY_KEY.get((stage, node_id))
+    if entry is None:
+        return None
+    key = f"{stage}/{node_id}"
+    status = statuses.get(key) if hasattr(statuses, "get") else None
+    if status not in _EXPLANATION_PROBLEM_STATUSES:
+        return None
+    facts = node_facts.get(key) or {}
+    raw_reason = facts.get("status_reason")
+    status_reason = (
+        raw_reason.strip() if isinstance(raw_reason, str) and raw_reason.strip() else None
+    )
+    raw_count = facts.get("summary_count")
+    summary_count = (
+        raw_count
+        if isinstance(raw_count, int)
+        and not isinstance(raw_count, bool)
+        and raw_count >= 0
+        else None
+    )
+    article = load_registry().find_article_by_id(entry.help_entry_id)
+    return MentorExplanationOut(
+        status=status,
+        status_reason=status_reason,
+        summary_count=summary_count,
+        help_entry_id=entry.help_entry_id,
+        methodology_title=article.title if article is not None else None,
+    )
+
+
 def _derived_spikes_facts(run: ResearchRun) -> dict[str, Any] | None:
     """PROGR-24-ORIGIN-C: факты для правила Наставника derived_spikes --
     проекция профиля ПРОИЗВОДНОЙ области датафрейма сессии запуска.
@@ -1974,9 +2105,8 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     # MNS-FALLBACK-4: Слой B (fallback-скан) собирает сообщение из
     # реестра объяснимости с подстановкой фактов узла -- из той же
     # проекции, без нового I/O (спека §5.2).
-    recommendation = evaluate_next_step(
-        statuses, node_facts=_node_facts_for_mentor(projection)
-    )
+    node_facts = _node_facts_for_mentor(projection)
+    recommendation = evaluate_next_step(statuses, node_facts=node_facts)
     history_warnings = [
         *evaluate_history_warnings(events),
         # PROGR-24-ORIGIN-C: совет derived_spikes (on_demand_with_session,
@@ -2017,6 +2147,13 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
                 stage=recommendation.stage,
                 message=recommendation.message,
                 recommended_action=recommendation.recommended_action,
+                # MNS-TEXT-5 (аддитивно): объяснение «почему
+                # жёлтый/красный» из трёх уже посчитанных слоёв
+                # (спека §5.1/§5.2); None -- процессные правила и
+                # узлы вне реестра объяснимости.
+                explanation=_explanation_for_recommendation(
+                    recommendation, statuses, node_facts
+                ),
             )
             if recommendation is not None
             else None

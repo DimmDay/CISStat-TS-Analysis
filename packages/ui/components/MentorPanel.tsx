@@ -24,12 +24,21 @@
 // (панель доступна на всех вкладках) -- явным событием GOTO_STOP_EVENT
 // (lib/stopLinks.ts): клиентская навигация Next по якорю не порождает
 // hashchange гарантированно.
+// MNS-TEXT-5 (spec_mentor_next_step.md §5.1/§5.2): под сообщением --
+// аддитивный блок объяснения «почему жёлтый/красный» из трёх уже
+// посчитанных слоёв (status_reason + summary_count -- те же факты, что
+// бейджи панели; методология остановки -- ссылкой, Q7: вербатим целиком
+// остаётся окну «Метрики и алгоритм» остановки и отчёту). None-факты --
+// строка не рисуется и не выдумывается (советы -- не факты, §3.2);
+// рекомендация без explanation (старый контракт/процессные правила) --
+// блок не рендерится. Объяснение -- совет: на бэкенде в трассу не
+// пишется, здесь только рендер.
 // Запросы best-effort: сбой -- честная надпись «недоступен», панель
 // «Прогресс» не падает.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchMentorNextStep, type MentorNextStepInfo, type SanityWarningInfo } from "../lib/mentor";
+import { fetchMentorNextStep, type MentorExplanationInfo, type MentorNextStepInfo, type SanityWarningInfo } from "../lib/mentor";
 import { isKnownNode, nodeLabel, stageLabel } from "../lib/progress";
 import { STAGE_DEFS } from "../lib/stages";
 import {
@@ -107,6 +116,35 @@ function HistoryWarningItem({ warning }: { warning: SanityWarningInfo }) {
   );
 }
 
+/** MNS-TEXT-5: блок объяснения «почему жёлтый/красный» -- структурные
+ * факты рекомендации. None-факты не рендерятся (честное отсутствие,
+ * не выдумываем); методология -- ссылкой на статью реестра знаний
+ * (заголовок -- вербатим, Q7); при explanation == null блок целиком
+ * не рендерится (аддитивность: старый контракт/процессные правила). */
+function RecommendationExplanation({ explanation }: { explanation: MentorExplanationInfo }) {
+  return (
+    <div
+      data-testid="mentor-explanation"
+      className="mt-1.5 rounded bg-white/70 p-1.5 text-[11px] text-neutral-600"
+    >
+      <p className="font-medium text-neutral-700">
+        {explanation.status === "error"
+          ? "Почему остановка красная"
+          : "Почему остановка жёлтая"}
+      </p>
+      {explanation.status_reason && (
+        <p className="mt-0.5">Причина: {explanation.status_reason}</p>
+      )}
+      {typeof explanation.summary_count === "number" && (
+        <p className="mt-0.5">Проблем по бейджу остановки: {explanation.summary_count}</p>
+      )}
+      {explanation.methodology_title && (
+        <p className="mt-0.5">Методология: «{explanation.methodology_title}»</p>
+      )}
+    </div>
+  );
+}
+
 export function MentorPanel({ runId }: MentorPanelProps) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<MentorNextStepInfo | null>(null);
@@ -167,6 +205,11 @@ export function MentorPanel({ runId }: MentorPanelProps) {
             <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2">
               <p className="text-xs font-medium text-neutral-800">Следующий шаг</p>
               <p className="mt-0.5 text-xs text-neutral-700">{data.recommendation.message}</p>
+              {/* MNS-TEXT-5: аддитивное объяснение (None/старый контракт --
+                  блока нет, прежние элементы целы). */}
+              {data.recommendation.explanation && (
+                <RecommendationExplanation explanation={data.recommendation.explanation} />
+              )}
               {link ? (
                 <Link
                   href={link.href}
