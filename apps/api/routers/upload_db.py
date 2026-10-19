@@ -135,6 +135,16 @@ def _server_version(spec, conn_obj) -> "str | None":
     return str(value) if value is not None else None
 
 
+def _release_connection(conn_obj, password: str) -> None:
+    """Every API call owns its engine/client, including failed reads/probes."""
+    closer = getattr(conn_obj, "dispose", None) or getattr(conn_obj, "close", None)
+    if callable(closer):
+        try:
+            closer()
+        except Exception as exc:
+            logger.warning("DB connection cleanup failed: %s", mask_secrets(exc, password))
+
+
 def _register(app_router: APIRouter) -> None:
     @app_router.post("/test", response_model=DbTestResponse)
     def test_db_connection(payload: DbTestRequest) -> DbTestResponse:
@@ -158,16 +168,19 @@ def _register(app_router: APIRouter) -> None:
         except ValueError as exc:  # вкл. HostNotAllowed (подкласс)
             raise HTTPException(status_code=422, detail=mask_secrets(str(exc), password))
         latency_ms = int((time.perf_counter() - started) * 1000)
-        # Версия -- best-effort факт: сбой probe версии не роняет пробу
-        # (соединение уже подтверждено контрольным запросом ядра).
         try:
-            version = _server_version(spec, conn_obj)
-        except Exception as exc:
-            logger.info("DB version probe failed (%s): %s", db_type, exc)
-            version = None
-        return DbTestResponse(
-            ok=True, db_type=db_type, server_version=version, latency_ms=latency_ms
-        )
+            # Версия -- best-effort факт: сбой probe версии не роняет пробу
+            # (соединение уже подтверждено контрольным запросом ядра).
+            try:
+                version = _server_version(spec, conn_obj)
+            except Exception as exc:
+                logger.info("DB version probe failed (%s): %s", db_type, mask_secrets(exc, password))
+                version = None
+            return DbTestResponse(
+                ok=True, db_type=db_type, server_version=version, latency_ms=latency_ms
+            )
+        finally:
+            _release_connection(conn_obj, password)
 
     @app_router.post("/load", response_model=UploadResponse)
     def load_db_dataset(
@@ -194,44 +207,47 @@ def _register(app_router: APIRouter) -> None:
             raise HTTPException(status_code=400, detail=mask_secrets(str(exc), password))
 
         try:
-            result = load_db_dataframe(
-                conn_obj,
-                payload.sql,
-                row_limit=payload.row_limit,
-                secrets=(password,),
-            )
-        except DbQueryRejected as exc:
-            # Read-only guard (DoD: guard -> 422). Сообщение -- про
-            # правило чтения, секретов не содержит (SQL пользователя).
-            raise HTTPException(status_code=422, detail=str(exc))
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=mask_secrets(str(exc), password))
-        except DbLoadError as exc:
-            # Уже маскировано ядром (D4) -- пробрасываем как есть.
-            raise HTTPException(status_code=400, detail=str(exc))
-        except (ConnectionError, FileNotFoundError, ImportError) as exc:
-            raise HTTPException(status_code=400, detail=mask_secrets(str(exc), password))
+            try:
+                result = load_db_dataframe(
+                    conn_obj,
+                    payload.sql,
+                    row_limit=payload.row_limit,
+                    secrets=(password,),
+                )
+            except DbQueryRejected as exc:
+                # Read-only guard (DoD: guard -> 422). Сообщение -- про
+                # правило чтения, секретов не содержит (SQL пользователя).
+                raise HTTPException(status_code=422, detail=str(exc))
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=mask_secrets(str(exc), password))
+            except DbLoadError as exc:
+                # Уже маскировано ядром (D4) -- пробрасываем как есть.
+                raise HTTPException(status_code=400, detail=str(exc))
+            except (ConnectionError, FileNotFoundError, ImportError) as exc:
+                raise HTTPException(status_code=400, detail=mask_secrets(str(exc), password))
 
-        df = result.dataframe
-        # Честная пометка усечения выборки -- технический флаг
-        # parse_warnings (без новых полей схемы и новых событий трассы).
-        extra_warnings = []
-        if result.truncated:
-            extra_warnings.append(
-                f"Выборка ограничена лимитом {result.row_limit} строк "
-                "(источник содержит больше данных)"
+            df = result.dataframe
+            # Честная пометка усечения выборки -- технический флаг
+            # parse_warnings (без новых полей схемы и новых событий трассы).
+            extra_warnings = []
+            if result.truncated:
+                extra_warnings.append(
+                    f"Выборка ограничена лимитом {result.row_limit} строк "
+                    "(источник содержит больше данных)"
+                )
+            # size_label БД-источника -- объём загруженного фрейма в памяти
+            # (размер файла-источника неприменим; честная размерность).
+            size_label = format_size_label(int(df.memory_usage(deep=True).sum()))
+            return register_uploaded_dataframe(
+                df,
+                name=_source_name(connection, spec),
+                size_label=size_label,
+                request=request,
+                response=response,
+                extra_parse_warnings=extra_warnings,
             )
-        # size_label БД-источника -- объём загруженного фрейма в памяти
-        # (размер файла-источника неприменим; честная размерность).
-        size_label = format_size_label(int(df.memory_usage(deep=True).sum()))
-        return register_uploaded_dataframe(
-            df,
-            name=_source_name(connection, spec),
-            size_label=size_label,
-            request=request,
-            response=response,
-            extra_parse_warnings=extra_warnings,
-        )
+        finally:
+            _release_connection(conn_obj, password)
 
 
 _register(router)

@@ -851,9 +851,9 @@ describe("TsAnalysisNavigator", () => {
       // колонки — поэтому getAllByText.
       expect(screen.getAllByText(/drag-and-drop/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/\/v1\/internal\/upload/i).length).toBeGreaterThanOrEqual(1);
-      // Дорожка БД: два поддерживаемых типа.
-      expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-      expect(screen.getByText("ClickHouse")).toBeInTheDocument();
+      // UPLOAD-DB-5/6: the infographic matches all six working form sources.
+      for (const label of ["PostgreSQL / Postgres Pro", "ClickHouse", "MS SQL Server", "MySQL / MariaDB", "DuckDB (встроенная)", "SQLite (встроенная)"])
+        expect(screen.getByText(label)).toBeInTheDocument();
     });
 
     it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {

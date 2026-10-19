@@ -1,81 +1,12 @@
 "use client";
 
-// packages/ui/components/NavigatorSourceFileDbPreview.tsx
-//
-// Статичная информационная блок-схема для окна «Обзор» пункта
-// «Источник: файл или БД» (id="source") секции «Этапы модуля» остановки
-// «Загрузка» на странице Навигатор (Task NAVDET-5).
-//
-// ── Контракт ────────────────────────────────────────────────────────
-//   • Визуализация — СТАТИЧНАЯ информационная блок-схема источника
-//     данных: переключатель «Файл / База данных (SQL)», файловая
-//     дорожка (drag-and-drop → POST /v1/internal/upload →
-//     read_uploaded_file → DataFrame), дорожка БД (PostgreSQL /
-//     ClickHouse, форма подключения, SQL-запрос, тест подключения,
-//     pd.read_sql / query_df), общий результат (датасет в сессии),
-//     ошибки обеих дорожек.
-//   • Схема основана на РЕАЛЬНОЙ логике:
-//       - packages/ui/components/TsAnalysisUpload.tsx (радио-переключатель
-//         «Файл .xlsx, .xls, .csv, .json» / «База данных (SQL)», dropzone,
-//         4 демо-датасета через тот же doUpload)
-//       - app/data/file_loader.py::init_db_connection (PostgreSQL —
-//         SQLAlchemy engine + SELECT 1; ClickHouse — clickhouse_connect +
-//         ping; таймауты: подключение 10 с, запрос 60 с; ConnectionError
-//         «Не удалось подключиться к {db_type}»; ImportError — драйвер)
-//       - app.py (форма подключения: Тип БД, Host, Port 5432/8123,
-//         Database, User, Password, SQL Query «SELECT * FROM your_table
-//         LIMIT 1000»; pd.read_sql / query_df; robust_datetime_detector;
-//         drop_service_columns)
-//       - apps/api/upload_common.py::handle_upload (UploadResponse →
-//         SessionStore)
-//   • Отображается ПРИ ЛЮБЫХ УСЛОВИЯХ — НЕ зависит от useAppShell,
-//     activeDataset, fetch, сети, сессии. Даже если датасет удалён,
-//     блок-схема остаётся на месте (паттерн других остановок).
-//
-// ── Что показывает аналитику ─────────────────────────────────────────
-//
-//   ┌────────────────────────────────────────────────────────────┐
-//   │ Источник данных — переключатель:                           │
-//   │ [Файл .xlsx, .xls, .csv, .json]  [База данных (SQL)]       │
-//   └────────────────────────────┬───────────────────────────────┘
-//        ┌───────────────────────┴───────────────────────┐
-//   ┌────▼─────────────────────┐  ┌──────────────────────▼────────┐
-//   │ ФАЙЛ                     │  │ БАЗА ДАННЫХ (SQL)             │
-//   │ .csv .xls .xlsx .json    │  │ PostgreSQL / ClickHouse       │
-//   │ drag-and-drop, 1 файл    │  │ Host·Port·Database·User·Pwd   │
-//   │ 4 демо-датасета          │  │ SELECT … LIMIT 1000           │
-//   │ → /v1/internal/upload    │  │ Тест: SELECT 1 / ping         │
-//   │ → read_uploaded_file     │  │ pd.read_sql / query_df        │
-//   └────┬─────────────────────┘  └──────────────┬────────────────┘
-//        └───────────────────────┬───────────────┘
-//   ┌────────────────────────────▼───────────────────────────────┐
-//   │ DataFrame → датасет в сессии                               │
-//   │ файл: UploadResponse (preview/columns_info/quality) → Store│
-//   │ БД:   robust_datetime_detector → drop_service_columns      │
-//   └────────────────────────────────────────────────────────────┘
-//   Ошибки: формат/размер/пустой файл; подключение/драйвер/запрос.
-//
-//   Так аналитик мгновенно понимает:
-//     1) какие два источника данных есть у платформы и как выбираются;
-//     2) как устроен каждый путь — от входа до DataFrame;
-//     3) чем заканчивается загрузка (датасет в сессии) и что на отказе.
-//
-// ── Архитектурный выбор ──────────────────────────────────────────────
-//   • Родственник — NavigatorFormatsVolumePreview (статичная
-//     Tailwind/CSS-блок-схема, role="img" + aria-label, без состояния).
-//   • Без recharts и fetch — чистая разметка с lucide-react иконками.
-//   • Честный статус функционала: файловый путь реализован полностью
-//     (включая демо-датасеты); форма подключения к БД на странице
-//     «Загрузка» — заглушка, бэкенд-логика (init_db_connection) готова —
-//     показано в подписи, как примечание о 50MB/4MB у NavigatorFormats-
-//     VolumePreview.
-//
-// ── a11y ────────────────────────────────────────────────────────────
-//   • Корень: role="img" + aria-label со всей цепочкой — скринридер
-//     читает блок-схему как одно изображение.
-//   • Стрелки/иконки — aria-hidden="true" (дублируют текст,
-//     единый паттерн с NavigatorFormatsVolumePreview).
+// Static source diagram for the Navigator's upload stage.
+// Facts come from TsAnalysisUpload/DbConnectionForm, the shared connector
+// registry and apps/api/upload_common.py. Both routes register a DataFrame
+// in the same session; all six SQL sources are available in the form.
+// No requests or state here. The root aria-label describes the whole diagram.
 
+import { DB_SOURCES } from "../lib/upload";
 import {
   ChevronDown,
   Database,
@@ -89,7 +20,7 @@ import {
 
 const SOURCE_FILE_FORMATS = [".csv", ".xls", ".xlsx", ".json"] as const;
 
-// ── Поля формы подключения к БД (app.py, expander «Настройки подключения») ──
+// ── Серверные поля DbConnectionForm (embedded использует path) ──
 
 const DB_FORM_FIELDS = ["Host", "Port", "Database", "User", "Password"] as const;
 
@@ -105,7 +36,7 @@ const FILE_ERROR_ITEMS: string[] = [
 
 const DB_ERROR_ITEMS: string[] = [
   "Не удалось подключиться к {db_type}", // ConnectionError
-  "Требуется драйвер: pip install psycopg2-binary / clickhouse-connect", // ImportError
+  "Требуется драйвер: pip install psycopg[binary] / clickhouse-connect", // ImportError
   "Введите SQL-запрос", // пустой query в app.py
 ];
 
@@ -118,7 +49,7 @@ export function NavigatorSourceFileDbPreview() {
     "Файловая дорожка: drag-and-drop, форматы " +
     SOURCE_FILE_FORMATS.join(" ") +
     ", POST /v1/internal/upload, read_uploaded_file, парсер по расширению. " +
-    "Дорожка БД: PostgreSQL или ClickHouse, форма Host Port Database User Password, " +
+    "Дорожка БД: PostgreSQL / Postgres Pro, ClickHouse, MS SQL Server, MySQL / MariaDB, DuckDB и SQLite. Сервер: Host Port Database User Password TLS; встроенная: путь на сервере API. " +
     "SQL-запрос SELECT * FROM your_table LIMIT 1000, тест подключения SELECT 1 или ping, " +
     "pd.read_sql или query_df. Результат: датасет в сессии. " +
     "Ошибки: сообщение в окне загрузки";
@@ -218,12 +149,7 @@ export function NavigatorSourceFileDbPreview() {
             </span>
           </div>
           <div className="flex flex-wrap gap-1">
-            <code className="text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5">
-              PostgreSQL
-            </code>
-            <code className="text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5">
-              ClickHouse
-            </code>
+            {DB_SOURCES.map(source => <code key={source.id} className="text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5">{source.label}</code>)}
           </div>
           <div className="flex flex-wrap gap-1">
             {DB_FORM_FIELDS.map((f) => (
@@ -237,14 +163,14 @@ export function NavigatorSourceFileDbPreview() {
           </div>
           <ul className="flex flex-col gap-0.5 mt-0.5">
             <li className="text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100">
-              Порты по умолчанию: 5432 (PostgreSQL) / 8123 (ClickHouse)
+              Сервер: 5432 (PostgreSQL) / 8123 (ClickHouse) / 1433 (MSSQL) / 3306 (MySQL). Встроенная БД: путь к файлу на сервере API.
             </li>
             <li className="text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100">
               SQL-запрос:{" "}
               <span className="font-mono text-neutral-700">
                 SELECT * FROM your_table LIMIT 1000
               </span>{" "}
-              — рекомендуется LIMIT для тестов
+              — LIMIT для тестов; MS SQL Server: TOP (1000)
             </li>
             <li className="text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100">
               Тест подключения: <span className="font-mono">SELECT 1</span> (PG) /{" "}
@@ -284,8 +210,7 @@ export function NavigatorSourceFileDbPreview() {
           </div>
           <div className="text-[9.5px] text-neutral-600 leading-snug">
             <span className="font-semibold text-neutral-700">БД:</span>{" "}
-            <span className="font-mono text-neutral-700">robust_datetime_detector</span> →{" "}
-            <span className="font-mono text-neutral-700">drop_service_columns</span> → сессия
+            <span className="font-mono text-neutral-700">register_uploaded_dataframe</span> → UploadResponse → сессия
           </div>
         </div>
       </div>
@@ -316,9 +241,9 @@ export function NavigatorSourceFileDbPreview() {
       <p className="text-[10px] text-neutral-500 mt-1 px-1 leading-snug">
         Выбор источника — переключатель в верхней полосе страницы «Загрузка».
         Файловый путь работает полностью, включая готовые демо-наборы данных.
-        Форма подключения к SQL-базе на странице «Загрузка» — заглушка: логика
-        подключения (init_db_connection) реализована на бэкенде и поддерживает
-        две СУБД; соединение проверяется тестовым запросом до загрузки данных.
+        Форма подключения к SQL-базе реализована для шести типов источников.
+        «Тест» проверяет соединение, «Загрузить» читает SQL-выборку в текущую сессию.
+        SQLite / DuckDB используют путь к файлу на сервере API.
       </p>
     </div>
   );

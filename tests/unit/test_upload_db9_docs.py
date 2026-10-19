@@ -444,9 +444,10 @@ class TestUploadDb9SmokeChecklist:
         assert "INSTALL_MSODBCSQL18" in smoke
 
     def test_smoke_states_ui_status_honestly(self):
-        """Честный статус UI-дорожки (форма — заглушка, UPLOAD-DB-5 — roadmap)."""
+        """UPLOAD-DB-5: smoke describes the implemented browser flow."""
         smoke = _read(SMOKE_DOC)
-        assert re.search(r"(заглушк|UPLOAD-DB-5)", smoke, re.I)
+        assert "UPLOAD-DB-5" in smoke and "Тест" in smoke and "Загрузить" in smoke
+        assert "DbConnectionForm" in smoke
 
 
 # ── 9. Раздел «Обучение»: статья базы знаний ──────────────────────────────
@@ -500,11 +501,11 @@ class TestUploadDb9CrossReferences:
         assert "docs/upload_db_release_smoke_checklist.md" in readme
 
     def test_readme_honest_ui_status(self):
-        """README честно указывает статус UI-формы (заглушка — roadmap)."""
+        """Versioned DB-5/6 update: anchor the status, not unrelated stubs."""
         readme = _read(README)
-        assert re.search(r"(заглушк)", readme, re.I), (
-            "README умалчивает, что UI-форма подключения — заглушка"
-        )
+        section = readme.split("**Статус дорожки**", 1)[1].split("\n##", 1)[0]
+        assert "DbConnectionForm" in section and "реализован" in section
+        assert "заглушк" not in section
 
     def test_readme_states_epic_scope(self):
         """README называет эпик UPLOAD-DB и спеку плана."""

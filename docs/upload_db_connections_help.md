@@ -12,8 +12,8 @@
 файл: превью, справка по колонкам, teaser качества, подтверждение автоопределения. Источник —
 радио-переключатель «Файл / База данных (SQL)» на странице «Загрузка»; для БД задаются
 параметры подключения и SQL-запрос с подсказкой `LIMIT`. Обе встроенные СУБД (DuckDB, SQLite)
-и четыре серверные (PostgreSQL / Postgres Pro, ClickHouse, MS SQL Server, MySQL / MariaDB)
-открываются **только на чтение** — платформа является потребителем данных, а не их владельцем.
+открываются read-only; для серверных (PostgreSQL / Postgres Pro, ClickHouse, MS SQL Server, MySQL / MariaDB)
+используйте пользователя с правами только SELECT. Лексический guard не заменяет серверные права.
 
 ## Матрица поддерживаемых СУБД (реестр `app/data/db_connectors.py`)
 
@@ -157,7 +157,7 @@ EXEC sp_addrolemember 'db_datareader', 'cisstat_ro';   -- только SELECT
 
 - Linux (контейнер apps/api): слой уже собран в `apps/api/Dockerfile`; в закрытом контуре без
   apt-репозитория Microsoft собирайте с `--build-arg INSTALL_MSODBCSQL18=false` и переводите
-  MSSQL на fallback-драйвер `pymssql` (чистый pip, RP2): `pip install pymssql` и env
+  MSSQL на fallback-драйвер `pymssql` (чистый pip, RP2): `pip install "pymssql>=2.2.8"` и env
   `UPLOAD_DB_MSSQL_DRIVER=pymssql`. Резолюция драйвера: явный параметр → env → авто по
   доступности (pyodbc → pymssql), неверное значение env даёт громкий `ValueError`.
 - Windows: установите «ODBC Driver 18 for SQL Server» с сайта Microsoft.
@@ -219,7 +219,7 @@ apps/api (смонтированный том либо путь в образе)
 | Read-only guard | `app/data/db_guard.py::validate_readonly_sql` (D6) | только `SELECT`/`WITH`; запрет мультистейтментов, DML/DDL (вкл. внутри CTE), `FOR UPDATE/SHARE`, опасных функций; нарушение → 422 |
 | Потолок строк | env `UPLOAD_DB_ROW_LIMIT`, дефолт 1 000 000 (S4) | запрос вызывающего жёстко обрезается потолком; усечение честно помечается в `parse_warnings` |
 | Стриминг | env `UPLOAD_DB_CHUNKSIZE`, дефолт 50 000 | чтение чанками, без материализации всего результата |
-| Таймауты | env `UPLOAD_DB_CONNECT_TIMEOUT` = 10 с, `UPLOAD_DB_QUERY_TIMEOUT` = 60 с (S4) | соединение и запрос не зависают; PG — `statement_timeout`, MSSQL — login-таймаут, CH — send/receive |
+| Таймауты | env `UPLOAD_DB_CONNECT_TIMEOUT` = 10 с, `UPLOAD_DB_QUERY_TIMEOUT` = 60 с (S4) | соединение и запрос не зависают; PG — `statement_timeout`, MySQL — read_timeout/write_timeout; MSSQL pyodbc — Connection.timeout и login timeout; pymssql — timeout/login_timeout; CH — send/receive |
 | Белый список хостов | env `UPLOAD_DB_HOST_WHITELIST` (D5/SSRF, S5) | пусто или `*` — off (песочница); список хостов/CIDR через запятую — вне списка отклоняется (`HostNotAllowed` → 422) |
 | Маскирование секретов | `mask_secrets` (D4) | пароль не включается в URL ни для одной СУБД; в ошибках и логах заменяется на `****` |
 | Драйвер MSSQL | env `UPLOAD_DB_MSSQL_DRIVER` (S2/RP2) | `pyodbc` (основной) \| `pymssql` (fallback); авто-резолюция по доступности |
@@ -251,3 +251,35 @@ apps/api (смонтированный том либо путь в образе)
 - Архитектура реестра коннекторов: ARCHITECTURE.md, раздел «Реестр коннекторов БД».
 - Смоук-чеклист релиза: `docs/upload_db_release_smoke_checklist.md`.
 - Спека плана эпика: `spec_database_plan.md` (UPLOAD-DB-PLAN-1, задачи UPLOAD-DB-1…10).
+
+
+## Рабочая форма UPLOAD-DB-5/6 и уточнения драйверов
+
+На странице «Загрузка» выберите «База данных (SQL)». Укажите сервер,
+порт, базу, пользователя, пароль и TLS либо путь встроенной БД на
+**сервере API**. Нажмите «Тест подключения»; ok:false считается отказом
+даже при HTTP 200. Для загрузки задайте SELECT/WITH и лимит, затем
+«Загрузить из БД»: датасет появится в обычном превью и пяти остановках.
+MSSQL использует TOP, другие SQL-диалекты — LIMIT. DuckDB по CSV/Parquet
+формирует начальный SELECT по указанному пути. Лимит формы по умолчанию
+1 000 000 (S4); сервер дополнительно применяет потолок UPLOAD_DB_ROW_LIMIT.
+Пароль хранится только в смонтированной форме; смена типа очищает креды.
+
+В fallback pymssql >=2.2.8 TLS переключает encryption=require/off.
+require запрещает открытое соединение; проверка CA/имени сервера
+настраивается в FreeTDS и не выдумывается этим флагом. Если драйвер не
+поддерживает encryption, запрос завершается ошибкой без TLS downgrade.
+
+UPLOAD_DB_QUERY_TIMEOUT (60 с) передаётся PG через statement_timeout,
+MySQL через read_timeout/write_timeout, pymssql через timeout, а pyodbc
+через DBAPI Connection.timeout на каждом новом соединении (connect
+kwarg timeout отдельно управляет login). Это ограничения драйвера,
+не общий deadline HTTP/всей загрузки. FreeTDS/pymssql может применять
+query/login timeout на уровне процесса; конфигурация задаётся общим env.
+ClickHouse получает лимит+1 для sentinel-проверки усечения; дополнительная
+строка не попадает в датасет. Отсутствие усечения при естественном
+результате ровно на лимите сохраняется. Ошибки version probe маскируются,
+API освобождает собственный engine/client и при успехе, и при ошибке.
+
+Основания: [pymssql reference](https://pymssql.readthedocs.io/en/v2.3.11/ref/pymssql.html),
+[pyodbc Connection.timeout](https://github.com/mkleehammer/pyodbc/wiki/Connection).

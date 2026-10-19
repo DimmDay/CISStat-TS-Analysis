@@ -206,7 +206,9 @@ class TestLoadDbDataFrame:
         result = load_db_dataframe(client, "SELECT * FROM t", row_limit=30)
         client.query_df.assert_called_once()
         _, kwargs = client.query_df.call_args
-        assert kwargs["settings"]["max_result_rows"] == 30
+        # UPLOAD-DB-FIX: one extra row proves truncation at the boundary;
+        # the consumer still receives exactly 30 rows.
+        assert kwargs["settings"]["max_result_rows"] == 31
         assert kwargs["settings"]["result_overflow_mode"] == "break"
         assert result.rows_loaded == 30
         assert result.truncated is True

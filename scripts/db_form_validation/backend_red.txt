@@ -1,0 +1,82 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1
+collected 11 items
+
+tests/unit/test_db_upload_fixes.py FFFFFFFFFFF                           [100%]
+
+=================================== FAILURES ===================================
+__________________ test_pymssql_tls_is_explicit[True-require] __________________
+tests/unit/test_db_upload_fixes.py:17: in test_pymssql_tls_is_explicit
+    assert args["encryption"] == expected
+           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'encryption'
+___________________ test_pymssql_tls_is_explicit[False-off] ____________________
+tests/unit/test_db_upload_fixes.py:17: in test_pymssql_tls_is_explicit
+    assert args["encryption"] == expected
+           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'encryption'
+________________ test_query_timeout_forwarded[mysql-None-keys0] ________________
+tests/unit/test_db_upload_fixes.py:31: in test_query_timeout_forwarded
+    assert args[key] == 7
+           ^^^^^^^^^
+E   KeyError: 'read_timeout'
+______________ test_query_timeout_forwarded[mssql-pymssql-keys1] _______________
+tests/unit/test_db_upload_fixes.py:31: in test_query_timeout_forwarded
+    assert args[key] == 7
+           ^^^^^^^^^
+E   KeyError: 'timeout'
+______________ test_pyodbc_query_timeout_on_new_dbapi_connection _______________
+tests/unit/test_db_upload_fixes.py:44: in test_pyodbc_query_timeout_on_new_dbapi_connection
+    assert len(registrations) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+_____________ test_clickhouse_boundary_uses_one_extra_row[0-False] _____________
+tests/unit/test_db_upload_fixes.py:64: in test_clickhouse_boundary_uses_one_extra_row
+    assert client.requested == 6
+E   assert 5 == 6
+E    +  where 5 = <tests.unit.test_db_upload_fixes.test_clickhouse_boundary_uses_one_extra_row.<locals>.Native object at 0x7fde8653a4e0>.requested
+_____________ test_clickhouse_boundary_uses_one_extra_row[4-False] _____________
+tests/unit/test_db_upload_fixes.py:64: in test_clickhouse_boundary_uses_one_extra_row
+    assert client.requested == 6
+E   assert 5 == 6
+E    +  where 5 = <tests.unit.test_db_upload_fixes.test_clickhouse_boundary_uses_one_extra_row.<locals>.Native object at 0x7fde8653ac30>.requested
+_____________ test_clickhouse_boundary_uses_one_extra_row[5-False] _____________
+tests/unit/test_db_upload_fixes.py:64: in test_clickhouse_boundary_uses_one_extra_row
+    assert client.requested == 6
+E   assert 5 == 6
+E    +  where 5 = <tests.unit.test_db_upload_fixes.test_clickhouse_boundary_uses_one_extra_row.<locals>.Native object at 0x7fde8653b6b0>.requested
+_____________ test_clickhouse_boundary_uses_one_extra_row[6-True] ______________
+tests/unit/test_db_upload_fixes.py:64: in test_clickhouse_boundary_uses_one_extra_row
+    assert client.requested == 6
+E   assert 5 == 6
+E    +  where 5 = <tests.unit.test_db_upload_fixes.test_clickhouse_boundary_uses_one_extra_row.<locals>.Native object at 0x7fde87979c40>.requested
+_____________ test_clickhouse_boundary_uses_one_extra_row[12-True] _____________
+tests/unit/test_db_upload_fixes.py:64: in test_clickhouse_boundary_uses_one_extra_row
+    assert client.requested == 6
+E   assert 5 == 6
+E    +  where 5 = <tests.unit.test_db_upload_fixes.test_clickhouse_boundary_uses_one_extra_row.<locals>.Native object at 0x7fde88709370>.requested
+_____________ test_version_probe_log_redacted_and_engine_released ______________
+tests/unit/test_db_upload_fixes.py:83: in test_version_probe_log_redacted_and_engine_released
+    assert secret not in caplog.text and secret not in response.text
+E   AssertionError: assert ('OWNED_VERSION_PROBE_SECRET' not in 'INFO     ap...OBE_SECRET\n'
+E     
+E     'OWNED_VERSION_PROBE_SECRET' is contained here:
+E        password=OWNED_VERSION_PROBE_SECRET)
+------------------------------ Captured log call -------------------------------
+INFO     apps.api.routers.upload_db:upload_db.py:166 DB version probe failed (postgresql): password=OWNED_VERSION_PROBE_SECRET
+=========================== short test summary info ============================
+FAILED tests/unit/test_db_upload_fixes.py::test_pymssql_tls_is_explicit[True-require]
+FAILED tests/unit/test_db_upload_fixes.py::test_pymssql_tls_is_explicit[False-off]
+FAILED tests/unit/test_db_upload_fixes.py::test_query_timeout_forwarded[mysql-None-keys0]
+FAILED tests/unit/test_db_upload_fixes.py::test_query_timeout_forwarded[mssql-pymssql-keys1]
+FAILED tests/unit/test_db_upload_fixes.py::test_pyodbc_query_timeout_on_new_dbapi_connection
+FAILED tests/unit/test_db_upload_fixes.py::test_clickhouse_boundary_uses_one_extra_row[0-False]
+FAILED tests/unit/test_db_upload_fixes.py::test_clickhouse_boundary_uses_one_extra_row[4-False]
+FAILED tests/unit/test_db_upload_fixes.py::test_clickhouse_boundary_uses_one_extra_row[5-False]
+FAILED tests/unit/test_db_upload_fixes.py::test_clickhouse_boundary_uses_one_extra_row[6-True]
+FAILED tests/unit/test_db_upload_fixes.py::test_clickhouse_boundary_uses_one_extra_row[12-True]
+FAILED tests/unit/test_db_upload_fixes.py::test_version_probe_log_redacted_and_engine_released
+======================== 11 failed, 1 warning in 2.28s =========================

@@ -630,10 +630,13 @@ API о конкретных СУБД не знают.
   SessionStore (5-остановочный пайплайн «Загрузки» без новых типов событий трассы).
   Дискриминированный union профиля по `db_type`: `ServerDbCredentials |
   EmbeddedDbSource` (apps/api/schemas.py).
-- Статус UI-дорожки: форма подключения на странице «Загрузка» — заглушка,
-  блок-схема навигатора описывает БД-дорожку как заглушку (задачи UPLOAD-DB-5/6 —
-  roadmap); тест-стенд docker-compose UPLOAD-DB-8 и legacy-выравнивание
-  UPLOAD-DB-10 — roadmap.
+- Статус UI-дорожки: `packages/ui/components/DbConnectionForm.tsx` и
+  навигатор UPLOAD-DB-5/6 реализованы. Общий wire DTO и UI-метаданные:
+  `packages/ui/lib/upload.ts`; результат БД и файла проходит единый
+  `acceptUploadedData` в TsAnalysisUpload (preview/target/shell/Progress).
+  Креды не сохраняются в storage/URL, duplicate submit блокируется,
+  поздний ответ после unmount игнорируется. Тест-стенд UPLOAD-DB-8 и
+  legacy-выравнивание UPLOAD-DB-10 остаются roadmap.
 
 Гвард соответствия документации коду — `tests/unit/test_upload_db9_docs.py`
 (UPLOAD-DB-9): матрица, драйверы, env-лимиты, маршруты и рекомендации сверяются

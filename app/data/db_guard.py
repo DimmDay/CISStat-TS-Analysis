@@ -339,7 +339,9 @@ def _load_sqlalchemy(conn_obj: Any, sql: str, limit: int, chunksize: int) -> pd.
 
 def _load_clickhouse(conn_obj: Any, sql: str, limit: int) -> pd.DataFrame:
     """Нативный ClickHouse: серверный потолок max_result_rows + break."""
-    settings = {"max_result_rows": limit, "result_overflow_mode": "break"}
+    # One sentinel row distinguishes a natural exact-size result from a
+    # server-truncated one. Only the requested limit reaches the dataset.
+    settings = {"max_result_rows": limit + 1, "result_overflow_mode": "break"}
     df = conn_obj.query_df(sql, settings=settings)
     truncated = len(df) > limit
     if truncated:

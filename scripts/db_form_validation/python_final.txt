@@ -1,0 +1,1184 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1
+collected 3915 items / 7 skipped
+
+tests/api/test_admin_analytics.py ............................           [  0%]
+tests/api/test_admin_progress_api.py .......................             [  1%]
+tests/api/test_cv.py ...................................                 [  2%]
+tests/api/test_dataset_consistency_correction.py ....                    [  2%]
+tests/api/test_dataset_derived_columns.py ..........                     [  2%]
+tests/api/test_dataset_derived_columns_delete.py .................       [  2%]
+tests/api/test_dataset_eda_correlation.py ....                           [  3%]
+tests/api/test_dataset_eda_descriptive.py ....                           [  3%]
+tests/api/test_dataset_eda_distribution.py ...                           [  3%]
+tests/api/test_dataset_eda_feature_selection.py ..                       [  3%]
+tests/api/test_dataset_eda_model_matrix.py ..                            [  3%]
+tests/api/test_dataset_eda_seasonality.py ....                           [  3%]
+tests/api/test_dataset_eda_stationarity.py ....                          [  3%]
+tests/api/test_dataset_eda_structural_breaks.py ..                       [  3%]
+tests/api/test_dataset_eda_validation_strategy.py ..                     [  3%]
+tests/api/test_dataset_format_correction.py ...                          [  3%]
+tests/api/test_dataset_inclusion_correction.py ....                      [  3%]
+tests/api/test_dataset_missing_correction.py .................           [  4%]
+tests/api/test_dataset_outlier_correction.py ........................    [  4%]
+tests/api/test_dataset_passport.py ............................          [  5%]
+tests/api/test_dataset_preprocessing_decomposition.py ....               [  5%]
+tests/api/test_dataset_preprocessing_feature_engineering.py ...          [  5%]
+tests/api/test_dataset_preprocessing_regularity.py .........             [  6%]
+tests/api/test_dataset_preprocessing_scaling.py ...                      [  6%]
+tests/api/test_dataset_preprocessing_smoothing.py .....                  [  6%]
+tests/api/test_dataset_preprocessing_spectral.py ...                     [  6%]
+tests/api/test_dataset_preprocessing_stationarity.py .....               [  6%]
+tests/api/test_dataset_preprocessing_variance.py ....                    [  6%]
+tests/api/test_dataset_profile_detail_level.py ..........                [  6%]
+tests/api/test_dataset_range_correction.py ....                          [  6%]
+tests/api/test_dataset_referential_correction.py ...                     [  6%]
+tests/api/test_dataset_regularity_correction.py ...                      [  7%]
+tests/api/test_dataset_rows.py ...........                               [  7%]
+tests/api/test_dataset_sufficiency_plan.py ...                           [  7%]
+tests/api/test_dataset_text_quality_correction.py ....                   [  7%]
+tests/api/test_dataset_type_conversion.py ....                           [  7%]
+tests/api/test_dataset_type_schema.py ....                               [  7%]
+tests/api/test_dataset_uniqueness_correction.py ...                      [  7%]
+tests/api/test_dataset_validate.py ...............                       [  8%]
+tests/api/test_dataset_validation_rules.py ............                  [  8%]
+tests/api/test_diagnostics.py ......                                     [  8%]
+tests/api/test_diagnostics_internal.py ...                               [  8%]
+tests/api/test_distribution.py ..........                                [  8%]
+tests/api/test_docker_image_layout.py ..FF                               [  9%]
+tests/api/test_egarch_session.py ....                                    [  9%]
+tests/api/test_feature_regressors_api.py .......F...                     [  9%]
+tests/api/test_forecasting_session.py ......................             [ 10%]
+tests/api/test_garch_session.py .....                                    [ 10%]
+tests/api/test_internal_backtest.py ............                         [ 10%]
+tests/api/test_internal_candidates.py .......                            [ 10%]
+tests/api/test_knowledge_api.py ........................................ [ 11%]
+.                                                                        [ 11%]
+tests/api/test_mentor_rules.py ......................................... [ 12%]
+........................................................................ [ 14%]
+........                                                                 [ 14%]
+tests/api/test_missing_manual_editor.py ..............                   [ 15%]
+tests/api/test_modeling_comparison_spec.py ..                            [ 15%]
+tests/api/test_modeling_diagnostics_spec.py .....                        [ 15%]
+tests/api/test_modeling_selection_spec.py ..                             [ 15%]
+tests/api/test_modeling_workflow.py ...F..FF............................ [ 16%]
+....F.....                                                               [ 16%]
+tests/api/test_models_backtest_neural_capacity.py F.                     [ 16%]
+tests/api/test_models_backtest_real.py ...............F.....F.           [ 17%]
+tests/api/test_models_candidates.py ...........................F........ [ 18%]
+..                                                                       [ 18%]
+tests/api/test_node_status_engine.py ................................... [ 19%]
+.................................                                        [ 19%]
+tests/api/test_outlier_manual_editor.py .................                [ 20%]
+tests/api/test_param_space.py ..............                             [ 20%]
+tests/api/test_passport_session_state.py ............                    [ 20%]
+tests/api/test_pipeline_graph.py ....................................... [ 21%]
+........................................................................ [ 23%]
+.....................................                                    [ 24%]
+tests/api/test_progress_audit_1a.py .................................... [ 25%]
+                                                                         [ 25%]
+tests/api/test_progress_audit_2a.py ......................               [ 26%]
+tests/api/test_progress_audit_3.py .........................             [ 26%]
+tests/api/test_progress_audit_4.py ..................................... [ 27%]
+...........                                                              [ 28%]
+tests/api/test_progress_audit_5b.py ....................                 [ 28%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 29%]
+ss                                                                       [ 29%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 30%]
+.............ss                                                          [ 30%]
+tests/api/test_progress_audit_6c.py ..................s.s..............F [ 31%]
+....ss                                                                   [ 31%]
+tests/api/test_progress_audit_7a.py ...................                  [ 32%]
+tests/api/test_progress_audit_7b.py .................................    [ 33%]
+tests/api/test_progress_audit_8.py ...............                       [ 33%]
+tests/api/test_progress_audit_c.py ................................      [ 34%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 34%]
+tests/api/test_progress_audit_h1.py ..........................           [ 35%]
+tests/api/test_progress_audit_s.py ..................................... [ 36%]
+....                                                                     [ 36%]
+tests/api/test_progress_defects_progr13.py ........                      [ 36%]
+tests/api/test_progress_panel.py ...................                     [ 37%]
+tests/api/test_progress_progr13a.py .........................            [ 37%]
+tests/api/test_progress_progr13b.py ...................                  [ 38%]
+tests/api/test_progress_progr13c.py ..................                   [ 38%]
+tests/api/test_progress_progr16.py ...........                           [ 38%]
+tests/api/test_progress_progr17.py .........                             [ 39%]
+tests/api/test_progress_progr18.py .........                             [ 39%]
+tests/api/test_progress_progr23.py .....................                 [ 39%]
+tests/api/test_progress_progr25a.py ................                     [ 40%]
+tests/api/test_progress_progr25c.py ........                             [ 40%]
+tests/api/test_progress_progr25d.py .........                            [ 40%]
+tests/api/test_progress_trace_hook.py .................................. [ 41%]
+..................                                                       [ 42%]
+tests/api/test_research_runs.py ........................................ [ 43%]
+....................                                                     [ 43%]
+tests/api/test_run_report.py ........................................... [ 44%]
+..................                                                       [ 45%]
+tests/api/test_session_store.py ........................................ [ 46%]
+...............................................                          [ 47%]
+tests/api/test_status_original_series.py ............................... [ 48%]
+.                                                                        [ 48%]
+tests/api/test_structure_detection.py .......                            [ 48%]
+tests/api/test_target_column.py ....................                     [ 48%]
+tests/api/test_tasks_causes.py .........                                 [ 49%]
+tests/api/test_timeseries_decomposition.py ...................           [ 49%]
+tests/api/test_trace_events.py ........................                  [ 50%]
+tests/api/test_tune.py ................................................. [ 51%]
+...........                                                              [ 51%]
+tests/api/test_tune_production_dispatch.py ....                          [ 51%]
+tests/api/test_tune_real_models.py ..........                            [ 52%]
+tests/api/test_upload.py .....                                           [ 52%]
+tests/api/test_upload_db.py ...............................              [ 53%]
+tests/unit/test_apply_decomposition.py ........                          [ 53%]
+tests/unit/test_auth.py .......                                          [ 53%]
+tests/unit/test_backtesting_engine.py ..........F                        [ 53%]
+tests/unit/test_catboost_adapter.py .............................FFFFFFF [ 54%]
+FF..........                                                             [ 54%]
+tests/unit/test_catboost_backtest.py FFFFFFF.F                           [ 55%]
+tests/unit/test_chart_timeseries_decomposition.py ................       [ 55%]
+tests/unit/test_classifier.py .........                                  [ 55%]
+tests/unit/test_compare_ts_props.py .........                            [ 56%]
+tests/unit/test_consistency_correction.py ......                         [ 56%]
+tests/unit/test_correlation.py .........                                 [ 56%]
+tests/unit/test_dataset_classifier.py ...........                        [ 56%]
+tests/unit/test_db_connection.py .....                                   [ 56%]
+tests/unit/test_db_connectors.py ....................................... [ 57%]
+.....................                                                    [ 58%]
+tests/unit/test_db_embedded.py .................                         [ 58%]
+tests/unit/test_db_guard.py ............................................ [ 59%]
+.............................                                            [ 60%]
+tests/unit/test_db_upload_fixes.py ...........                           [ 60%]
+tests/unit/test_decomposition_series.py .........                        [ 61%]
+tests/unit/test_deepar_integration_paths.py .....FF...sss.s              [ 61%]
+tests/unit/test_detect_column_frequency.py .........                     [ 61%]
+tests/unit/test_detectors.py .......                                     [ 61%]
+tests/unit/test_detectors_scoring.py ...........                         [ 62%]
+tests/unit/test_distribution_analysis.py ....                            [ 62%]
+tests/unit/test_distributions.py .............                           [ 62%]
+tests/unit/test_eda_autocorrelation.py ...                               [ 62%]
+tests/unit/test_eda_distribution_adapter.py ..                           [ 62%]
+tests/unit/test_eda_feature_selection_adapter.py ...                     [ 62%]
+tests/unit/test_eda_model_matrix.py F...F....                            [ 63%]
+tests/unit/test_eda_seasonality_adapter.py ..                            [ 63%]
+tests/unit/test_eda_stationarity_adapter.py ...                          [ 63%]
+tests/unit/test_eda_structural_breaks_adapter.py ..                      [ 63%]
+tests/unit/test_egarch_adapter.py ................................       [ 64%]
+tests/unit/test_egarch_integration_paths.py ......F......                [ 64%]
+tests/unit/test_export.py .........                                      [ 64%]
+tests/unit/test_feature_plan.py ....................                     [ 65%]
+tests/unit/test_feature_plan_backtest.py ..........                      [ 65%]
+tests/unit/test_feature_plan_folds.py ................................   [ 66%]
+tests/unit/test_feature_regressors.py .....................              [ 66%]
+tests/unit/test_feature_selection_analysis.py ....                       [ 66%]
+tests/unit/test_file_loader.py .......                                   [ 67%]
+tests/unit/test_final_fit.py ............                                [ 67%]
+tests/unit/test_forecasting.py ....................                      [ 67%]
+tests/unit/test_forecasting_contract.py ...............                  [ 68%]
+tests/unit/test_format_correction.py ......                              [ 68%]
+tests/unit/test_garch_adapter.py .........................               [ 69%]
+tests/unit/test_garch_integration_paths.py ......F..............         [ 69%]
+tests/unit/test_ih_analysis.py .............                             [ 69%]
+tests/unit/test_inclusion_correction.py .........                        [ 70%]
+tests/unit/test_jsonstat.py ...............                              [ 70%]
+tests/unit/test_lightgbm_adapter.py ............................FFFFFFFF [ 71%]
+........                                                                 [ 71%]
+tests/unit/test_lightgbm_backtest.py FFFFFFF.F                           [ 71%]
+tests/unit/test_lstm_integration_paths.py ....FF..sss.                   [ 72%]
+tests/unit/test_missing_correction.py ................                   [ 72%]
+tests/unit/test_model_capability_matrix.py F                             [ 72%]
+tests/unit/test_model_execution_contract.py .F...                        [ 72%]
+tests/unit/test_model_execution_contract_v2_compliance.py ...            [ 72%]
+tests/unit/test_model_jobs.py ....                                       [ 72%]
+tests/unit/test_model_readiness_candidates.py FF.F                       [ 73%]
+tests/unit/test_modeling_comparison.py ......                            [ 73%]
+tests/unit/test_modeling_mvp_certification.py F..                        [ 73%]
+tests/unit/test_modeling_selection.py ......                             [ 73%]
+tests/unit/test_modeling_traceability.py ...                             [ 73%]
+tests/unit/test_modeling_tuning_plan.py .....                            [ 73%]
+tests/unit/test_multivariate_contract.py ............................... [ 74%]
+.......................................................                  [ 75%]
+tests/unit/test_nbeats_integration_paths.py ....FF..sss.                 [ 76%]
+tests/unit/test_neural_capacity_guard.py ......................          [ 76%]
+tests/unit/test_neural_contract.py ..................................... [ 77%]
+....................................                                     [ 78%]
+tests/unit/test_nhits_integration_paths.py .....FF...ssss                [ 78%]
+tests/unit/test_outliers_correction.py ...............                   [ 79%]
+tests/unit/test_outliers_module_boundary.py ..                           [ 79%]
+tests/unit/test_passport.py ........................                     [ 80%]
+tests/unit/test_passport_foundation.py .............                     [ 80%]
+tests/unit/test_preprocessing.py EEE...                                  [ 80%]
+tests/unit/test_preprocessing_decomposition.py ......                    [ 80%]
+tests/unit/test_preprocessing_feature_engineering.py .....               [ 80%]
+tests/unit/test_preprocessing_feature_engineering_adapter.py .....       [ 80%]
+tests/unit/test_preprocessing_missing.py ..................              [ 81%]
+tests/unit/test_preprocessing_missing_status.py ...                      [ 81%]
+tests/unit/test_preprocessing_outliers.py .............                  [ 81%]
+tests/unit/test_preprocessing_scaling.py .....                           [ 81%]
+tests/unit/test_preprocessing_scaling_adapter.py .....                   [ 82%]
+tests/unit/test_preprocessing_smoothing.py ..........                    [ 82%]
+tests/unit/test_preprocessing_spectral.py ...                            [ 82%]
+tests/unit/test_preprocessing_spectral_adapter.py ....                   [ 82%]
+tests/unit/test_preprocessing_stationarity.py .....                      [ 82%]
+tests/unit/test_preprocessing_stationarity_adapter.py ....               [ 82%]
+tests/unit/test_prophet_adapter.py F..F.FFFF.                            [ 82%]
+tests/unit/test_prophet_regressors.py F.....F                            [ 83%]
+tests/unit/test_random_forest_adapter.py ............................... [ 83%]
+.......                                                                  [ 84%]
+tests/unit/test_random_forest_backtest.py ..........                     [ 84%]
+tests/unit/test_range_correction.py ......                               [ 84%]
+tests/unit/test_referential_correction.py .......                        [ 84%]
+tests/unit/test_regularity_charts.py .......                             [ 84%]
+tests/unit/test_regularity_correction.py ...........                     [ 85%]
+tests/unit/test_reporter.py ......                                       [ 85%]
+tests/unit/test_rolling.py ....                                          [ 85%]
+tests/unit/test_spectral_seasonality.py ...                              [ 85%]
+tests/unit/test_state.py ...                                             [ 85%]
+tests/unit/test_stationarity_analysis.py ......                          [ 85%]
+tests/unit/test_structural_breaks_analysis.py ......                     [ 85%]
+tests/unit/test_sufficiency.py ...                                       [ 85%]
+tests/unit/test_tbats_adapter.py FF...FFFFFF..                           [ 86%]
+tests/unit/test_text_quality_correction.py .......                       [ 86%]
+tests/unit/test_tft_integration_paths.py ......FF...ssss                 [ 86%]
+tests/unit/test_transforms.py .........                                  [ 87%]
+tests/unit/test_type_conversion.py ....                                  [ 87%]
+tests/unit/test_uniqueness_correction.py .........                       [ 87%]
+tests/unit/test_upload_db9_docs.py ..................................... [ 88%]
+..........................                                               [ 88%]
+tests/unit/test_utils.py ............................                    [ 89%]
+tests/unit/test_validation_checks.py .............................       [ 90%]
+tests/unit/test_validation_regularity.py .......                         [ 90%]
+tests/unit/test_validation_rule_resolver.py ...                          [ 90%]
+tests/unit/test_validation_run_all_checks.py .......................     [ 91%]
+tests/unit/test_validation_strategy_analysis.py ......                   [ 91%]
+tests/unit/test_validation_text.py ..                                    [ 91%]
+tests/unit/test_validation_text_quality.py ....................          [ 92%]
+tests/unit/test_var_adapter.py ............................              [ 92%]
+tests/unit/test_var_backtest.py ...........................              [ 93%]
+tests/unit/test_var_integration_paths.py ............F                   [ 93%]
+tests/unit/test_var_registry_integration.py ................             [ 94%]
+tests/unit/test_variance_stabilization.py ...........                    [ 94%]
+tests/unit/test_varx_exogenous.py ...............................        [ 95%]
+tests/unit/test_vecm_adapter.py ...........................              [ 95%]
+tests/unit/test_vector_tuning.py ...........                             [ 96%]
+tests/unit/test_volatility_contract.py ................................. [ 97%]
+.................................                                        [ 97%]
+tests/unit/test_volatility_engine.py ...........                         [ 98%]
+tests/unit/test_xgboost_adapter.py .........................FFFFFFFF.... [ 99%]
+....                                                                     [ 99%]
+tests/unit/test_xgboost_backtest.py FFFFFFF.F                            [ 99%]
+tests/integration/test_progress_audit_cert.py ...................        [ 99%]
+tests/integration/test_progress_target_column_e2e.py ...                 [100%]
+
+==================================== ERRORS ====================================
+__________________ ERROR at setup of test_diff_first_snapshot __________________
+file /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py, line 22
+  def test_diff_first_snapshot(sample_series, snapshot):
+E       fixture 'snapshot' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, default_rules, df_with_nans, doctest_namespace, empty_df, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, panel_df, platformdirs_isolated, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_panel_df, sample_series, simple_timeseries_df, single_row_df, subtests, timeseries_with_gaps_df, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unsorted_panel_df, unsorted_timeseries_df
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py:22
+________________ ERROR at setup of test_diff_seasonal_snapshot _________________
+file /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py, line 27
+  def test_diff_seasonal_snapshot(sample_series, snapshot):
+E       fixture 'snapshot' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, default_rules, df_with_nans, doctest_namespace, empty_df, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, panel_df, platformdirs_isolated, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_panel_df, sample_series, simple_timeseries_df, single_row_df, subtests, timeseries_with_gaps_df, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unsorted_panel_df, unsorted_timeseries_df
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py:27
+_______________ ERROR at setup of test_diff_fractional_snapshot ________________
+file /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py, line 31
+  def test_diff_fractional_snapshot(sample_series, snapshot):
+E       fixture 'snapshot' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, default_rules, df_with_nans, doctest_namespace, empty_df, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, panel_df, platformdirs_isolated, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_panel_df, sample_series, simple_timeseries_df, single_row_df, subtests, timeseries_with_gaps_df, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unsorted_panel_df, unsorted_timeseries_df
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/tests/unit/test_preprocessing.py:31
+=================================== FAILURES ===================================
+__________________ test_simulated_image_starts_app_after_fix ___________________
+tests/api/test_docker_image_layout.py:156: in test_simulated_image_starts_app_after_fix
+    assert proc.returncode == 0 and "IMPORT_OK" in proc.stdout, (
+E   AssertionError: стартовый импорт упал в имитации исправленного образа:
+E     Traceback (most recent call last):
+E       File "<string>", line 1, in <module>
+E       File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/img-sim-dpx08d3f/app/apps/api/main.py", line 26, in <module>
+E         from fastapi import FastAPI, Request
+E     ModuleNotFoundError: No module named 'fastapi'
+E     
+E   assert (1 == 0)
+E    +  where 1 = CompletedProcess(args=['/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python', '-c', "from apps.ap...", line 26, in <module>\n    from fastapi import FastAPI, Request\nModuleNotFoundError: No module named \'fastapi\'\n').returncode
+___________ test_simulated_image_without_shared_reproduces_incident ____________
+tests/api/test_docker_image_layout.py:175: in test_simulated_image_without_shared_reproduces_incident
+    assert INCIDENT_MSG in stderr, f"нет маркера сообщения инцидента:\n{stderr[-2000:]}"
+E   AssertionError: нет маркера сообщения инцидента:
+E     Traceback (most recent call last):
+E       File "<string>", line 1, in <module>
+E       File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form/img-sim-5pwgbnx1/app/apps/api/main.py", line 26, in <module>
+E         from fastapi import FastAPI, Request
+E     ModuleNotFoundError: No module named 'fastapi'
+E     
+E   assert 'Общий реестр EDA не найден' in 'Traceback (most recent call last):\n  File "<string>", line 1, in <module>\n  File "/workspace/scratch/1e71cf0e34de/C...y", line 26, in <module>\n    from fastapi import FastAPI, Request\nModuleNotFoundError: No module named \'fastapi\'\n'
+_ TestRegressorSessionE2E.test_declared_regressor_enters_cohort_and_prophet_receives_it _
+tests/api/test_feature_regressors_api.py:196: in test_declared_regressor_enters_cohort_and_prophet_receives_it
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+___ test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics ____
+tests/api/test_modeling_workflow.py:151: in test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+    assert "заблокирована матрицей применимости" in response.json()["detail"]
+E   assert 'заблокирована матрицей применимости' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+__ test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates __
+tests/api/test_modeling_workflow.py:203: in test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+__ test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff ___
+tests/api/test_modeling_workflow.py:240: in test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'tbats' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+_________ test_feature_plan_enters_session_cohort_and_gates_regressors _________
+tests/api/test_modeling_workflow.py:1593: in test_feature_plan_enters_session_cohort_and_gates_regressors
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+______ test_backtest_lstm_503_with_honest_message_on_insufficient_memory _______
+tests/api/test_models_backtest_neural_capacity.py:73: in test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+    assert "512 MB" in detail and "1024 MB" in detail
+E   assert ('512 MB' in "Реестр готовности моделей расходится с production backtest dispatch (missing=[], unexpected=['lstm']); исполнение заблокировано (fail-closed, AUDIT-6C)")
+_________ TestRealModelsHandleEdgeCases.test_short_series_does_not_500 _________
+tests/api/test_models_backtest_real.py:373: in test_short_series_does_not_500
+    assert resp.status_code == 200, (
+E   AssertionError: prophet on short series: expected 200, got 422 ({"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"})
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+___ TestBacktestImplementationsRegistry.test_registry_has_19_implementations ___
+tests/api/test_models_backtest_real.py:481: in test_registry_has_19_implementations
+    assert set(impls.keys()) == expected, (
+E   AssertionError: Expected 19 implementations: {'ets', 'mean', 'egarch', 'theta', 'catboost', 'garch', 'naive', 'arima_auto', 'drift', 'xgboost', 'lightgbm', 'tbats', 'seasonal_naive', 'var', 'vecm', 'random_forest', 'ets_damped', 'arima', 'prophet'}, got: {'ets', 'mean', 'var', 'egarch', 'theta', 'vecm', 'random_forest', 'ets_damped', 'garch', 'naive', 'arima_auto', 'drift', 'arima', 'seasonal_naive'}
+E   assert {'arima', 'ar..._damped', ...} == {'arima', 'ar...', 'ets', ...}
+E     
+E     Extra items in the right set:
+E     'xgboost'
+E     'catboost'
+E     'lightgbm'
+E     'prophet'
+E     'tbats'
+E     Use -v to get more diff
+____ TestBacktestNaive.test_unsupported_model_never_returns_penalty_metrics ____
+tests/api/test_models_candidates.py:459: in test_unsupported_model_never_returns_penalty_metrics
+    assert "панель" in response.json()["detail"]
+E   assert 'панель' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+_ TestModelsDispatchDegradation.test_light_env_reload_imports_and_degrades_honestly _
+tests/api/test_progress_audit_6c.py:867: in test_light_env_reload_imports_and_degrades_honestly
+    assert set(state["dropped_by_registry"]) == dropped
+E   AssertionError: assert {'catboost', ... 'tbats', ...} == {'egarch', 'g...'var', 'vecm'}
+E     
+E     Extra items in the left set:
+E     'xgboost'
+E     'catboost'
+E     'lightgbm'
+E     'prophet'
+E     'tbats'
+E     Use -v to get more diff
+_____ test_all_fifteen_production_models_execute_the_same_real_oof_cohort ______
+tests/unit/test_backtesting_engine.py:223: in test_all_fifteen_production_models_execute_the_same_real_oof_cohort
+    assert len(results) == 15
+E   AssertionError: assert 10 == 15
+E    +  where 10 = len({'ets': {'model_id': 'ets', 'model_name': 'ets', 'family_id': 'test', 'metrics': {'mae': 1e-06, 'rmse': 2e-06, 'mape':...'family_id': 'test', 'metrics': {'mae': 3.697384, 'rmse': 4.14445, 'mape': 3.147277, 'mase': 1.027051, ...}, ...}, ...})
+___ TestCbFitPredictHappyPath.test_forecast_is_deterministic_for_fixed_seed ____
+tests/unit/test_catboost_adapter.py:182: in test_forecast_is_deterministic_for_fixed_seed
+    first = _cb_fit_predict(y, 6, params={"iterations": 40, "n_lags": 3}, random_state=42)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+_ TestCbFitPredictHappyPath.test_zero_score_noise_has_no_hidden_stochasticity __
+tests/unit/test_catboost_adapter.py:200: in test_zero_score_noise_has_no_hidden_stochasticity
+    _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+_ TestCbFitPredictHappyPath.test_seed_reaches_the_booster_with_default_score_noise _
+tests/unit/test_catboost_adapter.py:214: in test_seed_reaches_the_booster_with_default_score_noise
+    first = _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+__ TestCbFitPredictHappyPath.test_forecast_shape_and_intervals_contain_point ___
+tests/unit/test_catboost_adapter.py:224: in test_forecast_shape_and_intervals_contain_point
+    payload = _cb_fit_predict(y, 5, params={"iterations": 40, "n_lags": 3}, random_state=42)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+__ TestCbFitPredictHappyPath.test_recursive_period_two_continuation_is_exact ___
+tests/unit/test_catboost_adapter.py:245: in test_recursive_period_two_continuation_is_exact
+    payload = _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+__ TestCbFitPredictHappyPath.test_forecast_stays_within_training_target_range __
+tests/unit/test_catboost_adapter.py:259: in test_forecast_stays_within_training_target_range
+    payload = _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+_ TestCbFitPredictHappyPath.test_constant_target_fails_closed_at_library_level _
+tests/unit/test_catboost_adapter.py:283: in test_constant_target_fails_closed_at_library_level
+    with pytest.raises(Exception, match="All (features|train targets)"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'All (features|train targets)'
+E     Actual message: "No module named 'catboost'"
+___ TestCbFitPredictHappyPath.test_known_regressor_channel_reaches_the_model ___
+tests/unit/test_catboost_adapter.py:304: in test_known_regressor_channel_reaches_the_model
+    forecast_a = run([driver[0], driver[7], driver[11]])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_catboost_adapter.py:298: in <lambda>
+    run = lambda future: _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+_ TestCbFitPredictHappyPath.test_feature_importance_is_normalized_and_bound_to_exact_matrix _
+tests/unit/test_catboost_adapter.py:318: in test_feature_importance_is_normalized_and_bound_to_exact_matrix
+    payload = _cb_fit_predict(
+apps/api/model_impls/catboost.py:263: in _cb_fit_predict
+    from catboost import CatBoostRegressor
+E   ModuleNotFoundError: No module named 'catboost'
+________ TestCatboostRegistry.test_registered_as_supervised_ml_adapter _________
+tests/unit/test_catboost_backtest.py:112: in test_registered_as_supervised_ml_adapter
+    assert descriptor["runtime_available"] is True
+E   assert False is True
+________ TestCatboostRegistry.test_production_actions_include_catboost _________
+tests/unit/test_catboost_backtest.py:116: in test_production_actions_include_catboost
+    assert "catboost" in PRODUCTION_BACKTEST_MODEL_IDS
+E   AssertionError: assert 'catboost' in frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...})
+____________ TestCatboostBacktest.test_run_backtest_plan_end_to_end ____________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_catboost_backtest.py:127: in test_run_backtest_plan_end_to_end
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+___ TestCatboostBacktest.test_folds_record_importance_bound_to_exact_matrix ____
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_catboost_backtest.py:146: in test_folds_record_importance_bound_to_exact_matrix
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+_____________ TestCatboostBacktest.test_backtest_is_deterministic ______________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_catboost_backtest.py:170: in test_backtest_is_deterministic
+    first = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+________ TestCatboostBacktest.test_metrics_are_computed_not_fabricated _________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_catboost_backtest.py:185: in test_metrics_are_computed_not_fabricated
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+________ TestCatboostBacktest.test_run_without_feature_plan_still_works ________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_catboost_backtest.py:201: in test_run_without_feature_plan_still_works
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+_______ TestCatboostTuning.test_tuning_runs_on_same_folds_and_picks_best _______
+tests/unit/test_catboost_backtest.py:240: in test_tuning_runs_on_same_folds_and_picks_best
+    response = execute_tuning_plan(
+apps/api/modeling_tuning.py:270: in execute_tuning_plan
+    return execute_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:247: in execute_tuning_plan_with_artifacts
+    return finalize_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:166: in finalize_tuning_plan_with_artifacts
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: Ни один trial модели 'catboost' не завершился успешно: params={'iterations': 30, 'n_lags': 2}: CatBoost: fold 1 завершился ошибкой: Модель 'catboost' недоступна: отсутствуют зависимости ['catboost']
+___________ test_deepar_registry_requires_related_series_fail_closed ___________
+tests/unit/test_deepar_integration_paths.py:135: in test_deepar_registry_requires_related_series_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="related_series"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'related_series'
+E     Actual message: "Модель 'deepar' недоступна: отсутствуют зависимости ['neuralforecast']"
+____________ test_deepar_readiness_and_stage_matrix_reflect_runtime ____________
+tests/unit/test_deepar_integration_paths.py:157: in test_deepar_readiness_and_stage_matrix_reflect_runtime
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+_ test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readiness _
+tests/unit/test_eda_model_matrix.py:49: in test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readiness
+    assert catboost["platform_status"] == "ready"
+E   AssertionError: assert 'catalog_only' == 'ready'
+E     
+E     - ready
+E     + catalog_only
+________ test_soft_history_window_is_attention_and_model_stays_runnable ________
+tests/unit/test_eda_model_matrix.py:151: in test_soft_history_window_is_attention_and_model_stays_runnable
+    assert {"random_forest", "xgboost", "lightgbm", "catboost"} <= runnable
+E   AssertionError: assert {'catboost', ...t', 'xgboost'} <= {'arima', 'ar..., 'mean', ...}
+E     
+E     Extra items in the left set:
+E     'xgboost'
+E     'lightgbm'
+E     'catboost'
+______________________ test_production_count_is_nineteen _______________________
+tests/unit/test_egarch_integration_paths.py:148: in test_production_count_is_nineteen
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == expected
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+______________________ test_production_count_is_nineteen _______________________
+tests/unit/test_garch_integration_paths.py:134: in test_production_count_is_nineteen
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == expected
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+___ TestLgbFitPredictHappyPath.test_forecast_is_deterministic_for_fixed_seed ___
+tests/unit/test_lightgbm_adapter.py:170: in test_forecast_is_deterministic_for_fixed_seed
+    first = _lgb_fit_predict(y, 6, params={"n_estimators": 40, "n_lags": 3}, random_state=42)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+__ TestLgbFitPredictHappyPath.test_full_sampling_has_no_hidden_stochasticity ___
+tests/unit/test_lightgbm_adapter.py:187: in test_full_sampling_has_no_hidden_stochasticity
+    _lgb_fit_predict(y, 4, params={"n_estimators": 30, "n_lags": 2}, random_state=seed)
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+_ TestLgbFitPredictHappyPath.test_seed_reaches_the_booster_when_sampling_is_stochastic _
+tests/unit/test_lightgbm_adapter.py:194: in test_seed_reaches_the_booster_when_sampling_is_stochastic
+    first = _lgb_fit_predict(
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+__ TestLgbFitPredictHappyPath.test_forecast_shape_and_intervals_contain_point __
+tests/unit/test_lightgbm_adapter.py:208: in test_forecast_shape_and_intervals_contain_point
+    payload = _lgb_fit_predict(y, 5, params={"n_estimators": 40, "n_lags": 3}, random_state=42)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+__ TestLgbFitPredictHappyPath.test_recursive_period_two_continuation_is_exact __
+tests/unit/test_lightgbm_adapter.py:228: in test_recursive_period_two_continuation_is_exact
+    payload = _lgb_fit_predict(
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+_ TestLgbFitPredictHappyPath.test_forecast_stays_within_training_target_range __
+tests/unit/test_lightgbm_adapter.py:241: in test_forecast_stays_within_training_target_range
+    payload = _lgb_fit_predict(
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+__ TestLgbFitPredictHappyPath.test_known_regressor_channel_reaches_the_model ___
+tests/unit/test_lightgbm_adapter.py:272: in test_known_regressor_channel_reaches_the_model
+    forecast_a = run([driver[0], driver[7], driver[11]])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_lightgbm_adapter.py:266: in <lambda>
+    run = lambda future: _lgb_fit_predict(
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+_ TestLgbFitPredictHappyPath.test_feature_importance_is_normalized_and_bound_to_exact_matrix _
+tests/unit/test_lightgbm_adapter.py:286: in test_feature_importance_is_normalized_and_bound_to_exact_matrix
+    payload = _lgb_fit_predict(
+apps/api/model_impls/lightgbm.py:228: in _lgb_fit_predict
+    import lightgbm as lgb
+E   ModuleNotFoundError: No module named 'lightgbm'
+________ TestLightgbmRegistry.test_registered_as_supervised_ml_adapter _________
+tests/unit/test_lightgbm_backtest.py:111: in test_registered_as_supervised_ml_adapter
+    assert descriptor["runtime_available"] is True
+E   assert False is True
+________ TestLightgbmRegistry.test_production_actions_include_lightgbm _________
+tests/unit/test_lightgbm_backtest.py:115: in test_production_actions_include_lightgbm
+    assert "lightgbm" in PRODUCTION_BACKTEST_MODEL_IDS
+E   AssertionError: assert 'lightgbm' in frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...})
+____________ TestLightgbmBacktest.test_run_backtest_plan_end_to_end ____________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_lightgbm_backtest.py:126: in test_run_backtest_plan_end_to_end
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+___ TestLightgbmBacktest.test_folds_record_importance_bound_to_exact_matrix ____
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_lightgbm_backtest.py:145: in test_folds_record_importance_bound_to_exact_matrix
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+_____________ TestLightgbmBacktest.test_backtest_is_deterministic ______________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_lightgbm_backtest.py:169: in test_backtest_is_deterministic
+    first = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+________ TestLightgbmBacktest.test_metrics_are_computed_not_fabricated _________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_lightgbm_backtest.py:184: in test_metrics_are_computed_not_fabricated
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+________ TestLightgbmBacktest.test_run_without_feature_plan_still_works ________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_lightgbm_backtest.py:200: in test_run_without_feature_plan_still_works
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+_______ TestLightgbmTuning.test_tuning_runs_on_same_folds_and_picks_best _______
+tests/unit/test_lightgbm_backtest.py:239: in test_tuning_runs_on_same_folds_and_picks_best
+    response = execute_tuning_plan(
+apps/api/modeling_tuning.py:270: in execute_tuning_plan
+    return execute_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:247: in execute_tuning_plan_with_artifacts
+    return finalize_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:166: in finalize_tuning_plan_with_artifacts
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: Ни один trial модели 'lightgbm' не завершился успешно: params={'n_estimators': 30, 'n_lags': 2}: LightGBM: fold 1 завершился ошибкой: Модель 'lightgbm' недоступна: отсутствуют зависимости ['lightgbm']
+_____ test_lstm_registry_rejects_wrong_objective_and_features_fail_closed ______
+tests/unit/test_lstm_integration_paths.py:115: in test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'lstm' недоступна: отсутствуют зависимости ['neuralforecast']"
+_____________ test_lstm_readiness_and_stage_matrix_reflect_runtime _____________
+tests/unit/test_lstm_integration_paths.py:142: in test_lstm_readiness_and_stage_matrix_reflect_runtime
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+________ test_capability_contract_covers_every_catalog_model_and_stage _________
+tests/unit/test_model_capability_matrix.py:25: in test_capability_contract_covers_every_catalog_model_and_stage
+    assert matrix["prophet"]["backtest"]["status"] == "available"
+E   AssertionError: assert 'not_implemented' == 'available'
+E     
+E     - available
+E     + not_implemented
+______ test_candidates_publish_v2_descriptors_only_for_executable_models _______
+tests/unit/test_model_execution_contract.py:167: in test_candidates_publish_v2_descriptors_only_for_executable_models
+    assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
+E   AssertionError: assert None == {'version': 'model-execution-v2', 'model_id': 'xgboost', 'family_id': 'tree_ml', 'adapter_id': 'xgboost-native', ...}
+E    +  where None = ModelCandidate(model_id='xgboost', model_name='XGBoost', family_id='tree_ml', level='RECOMMENDED', rule_id='P06', mess...se, action=None, reason='Production backtest отсутствует; downstream-артефакты недоступны.')}, execution_contract=None).execution_contract
+E    +  and   {'version': 'model-execution-v2', 'model_id': 'xgboost', 'family_id': 'tree_ml', 'adapter_id': 'xgboost-native', ...} = describe('xgboost')
+E    +    where describe = <apps.api.model_execution.ModelExecutionRegistry object at 0x7f143f839010>.describe
+_ test_candidate_contract_separates_methodological_applicability_from_runtime_readiness _
+tests/unit/test_model_readiness_candidates.py:47: in test_candidate_contract_separates_methodological_applicability_from_runtime_readiness
+    assert candidates[model_id].platform_status == "ready"
+E   AssertionError: assert 'catalog_only' == 'ready'
+E     
+E     - ready
+E     + catalog_only
+_______ test_candidate_statistics_report_runtime_availability_separately _______
+tests/unit/test_model_readiness_candidates.py:113: in test_candidate_statistics_report_runtime_availability_separately
+    assert response.statistics.runnable_candidates == 15
+E   AssertionError: assert 10 == 15
+E    +  where 10 = CandidatesStatistics(total_candidates=19, by_level={'RECOMMENDED': 19}, total_models_in_spec=24, runnable_candidates=10, catalog_only_candidates=10, blocked_candidates=4).runnable_candidates
+E    +    where CandidatesStatistics(total_candidates=19, by_level={'RECOMMENDED': 19}, total_models_in_spec=24, runnable_candidates=10, catalog_only_candidates=10, blocked_candidates=4) = CandidatesResponse(candidates=[ModelCandidate(model_id='naive', model_name='Naive', family_id='baselines', level='RECO..._version='1.3.1', capability_contract_version='model-capabilities-v1', execution_contract_version='model-execution-v2').statistics
+_________ test_not_recommended_soft_window_warns_but_allows_in_catalog _________
+tests/unit/test_model_readiness_candidates.py:177: in test_not_recommended_soft_window_warns_but_allows_in_catalog
+    assert candidate.platform_status == "ready", model_id
+E   AssertionError: xgboost
+E   assert 'catalog_only' == 'ready'
+E     
+E     - ready
+E     + catalog_only
+_ test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog _
+tests/unit/test_modeling_mvp_certification.py:81: in test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
+    assert PRODUCTION_BACKTEST_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
+E   AssertionError: assert frozenset({'a...damped', ...}) == frozenset({'a..., 'ets', ...})
+E     
+E     Extra items in the right set:
+E     'xgboost'
+E     'catboost'
+E     'lightgbm'
+E     'prophet'
+E     'tbats'
+E     Use -v to get more diff
+____ test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed _____
+tests/unit/test_nbeats_integration_paths.py:114: in test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'nbeats' недоступна: отсутствуют зависимости ['neuralforecast']"
+____________ test_nbeats_readiness_and_stage_matrix_reflect_runtime ____________
+tests/unit/test_nbeats_integration_paths.py:140: in test_nbeats_readiness_and_stage_matrix_reflect_runtime
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+_____ test_nhits_registry_rejects_wrong_objective_and_features_fail_closed _____
+tests/unit/test_nhits_integration_paths.py:157: in test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'nhits' недоступна: отсутствуют зависимости ['neuralforecast']"
+____________ test_nhits_readiness_and_stage_matrix_reflect_runtime _____________
+tests/unit/test_nhits_integration_paths.py:183: in test_nhits_readiness_and_stage_matrix_reflect_runtime
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+_______ test_fit_predict_returns_forecast_and_intervals_of_exact_horizon _______
+tests/unit/test_prophet_adapter.py:35: in test_fit_predict_returns_forecast_and_intervals_of_exact_horizon
+    forecast, lower, upper = _prophet_fit_predict(
+apps/api/model_impls/prophet.py:187: in _prophet_fit_predict
+    from prophet import Prophet
+E   ModuleNotFoundError: No module named 'prophet'
+____ test_supported_country_holidays_fold_local_no_leakage_by_construction _____
+tests/unit/test_prophet_adapter.py:73: in test_supported_country_holidays_fold_local_no_leakage_by_construction
+    forecast, _lower, _upper = _prophet_fit_predict(
+apps/api/model_impls/prophet.py:187: in _prophet_fit_predict
+    from prophet import Prophet
+E   ModuleNotFoundError: No module named 'prophet'
+_____ test_registry_descriptor_declares_prophet_as_tunable_with_intervals ______
+tests/unit/test_prophet_adapter.py:111: in test_registry_descriptor_declares_prophet_as_tunable_with_intervals
+    assert descriptor["runtime_available"] is True
+E   assert False is True
+__________ test_registry_execute_requires_train_and_future_timestamps __________
+tests/unit/test_prophet_adapter.py:115: in test_registry_execute_requires_train_and_future_timestamps
+    with pytest.raises(ModelExecutionContractError, match="train_timestamps"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'train_timestamps'
+E     Actual message: "Модель 'prophet' недоступна: отсутствуют зависимости ['prophet']"
+_ test_registry_execute_produces_prediction_interval_containing_point_forecast _
+tests/unit/test_prophet_adapter.py:123: in test_registry_execute_produces_prediction_interval_containing_point_forecast
+    result = MODEL_EXECUTION_REGISTRY.execute("prophet", ModelExecutionRequest(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'prophet' недоступна: отсутствуют зависимости ['prophet']
+_____ test_prophet_runs_through_the_real_eda_backtest_plan_with_real_dates _____
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'prophet' недоступна: отсутствуют зависимости ['prophet']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_prophet_adapter.py:150: in test_prophet_runs_through_the_real_eda_backtest_plan_with_real_dates
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: Prophet: fold 1 завершился ошибкой: Модель 'prophet' недоступна: отсутствуют зависимости ['prophet']
+____ TestRegressorContract.test_regressor_columns_flow_into_fit_and_predict ____
+tests/unit/test_prophet_regressors.py:34: in test_regressor_columns_flow_into_fit_and_predict
+    forecast, lower, upper = _prophet_fit_predict(
+apps/api/model_impls/prophet.py:187: in _prophet_fit_predict
+    from prophet import Prophet
+E   ModuleNotFoundError: No module named 'prophet'
+______ TestBackwardCompatibility.test_no_features_keeps_task_124_behavior ______
+tests/unit/test_prophet_regressors.py:104: in test_no_features_keeps_task_124_behavior
+    forecast, lower, upper = _prophet_fit_predict(
+apps/api/model_impls/prophet.py:187: in _prophet_fit_predict
+    from prophet import Prophet
+E   ModuleNotFoundError: No module named 'prophet'
+_______ test_fit_predict_returns_forecast_and_intervals_of_exact_horizon _______
+tests/unit/test_tbats_adapter.py:28: in test_fit_predict_returns_forecast_and_intervals_of_exact_horizon
+    forecast, lower, upper = _tbats_fit_predict(
+apps/api/model_impls/tbats.py:84: in _tbats_fit_predict
+    from statsforecast.models import TBATS
+E   ModuleNotFoundError: No module named 'statsforecast'
+____ test_multiple_seasonal_periods_from_spectral_handoff_are_used_natively ____
+tests/unit/test_tbats_adapter.py:40: in test_multiple_seasonal_periods_from_spectral_handoff_are_used_natively
+    forecast, _lower, _upper = _tbats_fit_predict(
+apps/api/model_impls/tbats.py:84: in _tbats_fit_predict
+    from statsforecast.models import TBATS
+E   ModuleNotFoundError: No module named 'statsforecast'
+_ test_every_bounded_trend_spec_produces_a_distinct_valid_model[damped_trend] __
+tests/unit/test_tbats_adapter.py:77: in test_every_bounded_trend_spec_produces_a_distinct_valid_model
+    forecast, _lower, _upper = _tbats_fit_predict(
+apps/api/model_impls/tbats.py:84: in _tbats_fit_predict
+    from statsforecast.models import TBATS
+E   ModuleNotFoundError: No module named 'statsforecast'
+_____ test_every_bounded_trend_spec_produces_a_distinct_valid_model[none] ______
+tests/unit/test_tbats_adapter.py:77: in test_every_bounded_trend_spec_produces_a_distinct_valid_model
+    forecast, _lower, _upper = _tbats_fit_predict(
+apps/api/model_impls/tbats.py:84: in _tbats_fit_predict
+    from statsforecast.models import TBATS
+E   ModuleNotFoundError: No module named 'statsforecast'
+_____ test_every_bounded_trend_spec_produces_a_distinct_valid_model[trend] _____
+tests/unit/test_tbats_adapter.py:77: in test_every_bounded_trend_spec_produces_a_distinct_valid_model
+    forecast, _lower, _upper = _tbats_fit_predict(
+apps/api/model_impls/tbats.py:84: in _tbats_fit_predict
+    from statsforecast.models import TBATS
+E   ModuleNotFoundError: No module named 'statsforecast'
+______ test_registry_descriptor_declares_tbats_as_tunable_with_intervals _______
+tests/unit/test_tbats_adapter.py:94: in test_registry_descriptor_declares_tbats_as_tunable_with_intervals
+    assert descriptor["runtime_available"] is True
+E   assert False is True
+___________ test_registry_execute_reads_seasonal_periods_from_params ___________
+tests/unit/test_tbats_adapter.py:99: in test_registry_execute_reads_seasonal_periods_from_params
+    result = MODEL_EXECUTION_REGISTRY.execute("tbats", ModelExecutionRequest(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'tbats' недоступна: отсутствуют зависимости ['statsforecast']
+_ test_tbats_runs_through_the_real_eda_backtest_plan_with_multi_period_handoff _
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'tbats' недоступна: отсутствуют зависимости ['statsforecast']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_tbats_adapter.py:129: in test_tbats_runs_through_the_real_eda_backtest_plan_with_multi_period_handoff
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: TBATS: fold 1 завершился ошибкой: Модель 'tbats' недоступна: отсутствуют зависимости ['statsforecast']
+______ test_tft_registry_rejects_wrong_objective_and_features_fail_closed ______
+tests/unit/test_tft_integration_paths.py:176: in test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'tft' недоступна: отсутствуют зависимости ['neuralforecast']"
+_____________ test_tft_readiness_and_stage_matrix_reflect_runtime ______________
+tests/unit/test_tft_integration_paths.py:199: in test_tft_readiness_and_stage_matrix_reflect_runtime
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+E   AssertionError: assert 14 == 19
+E    +  where 14 = len(frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...}))
+_______ TestRegistrySeesVarAtRuntime.test_dispatch_import_chain_executes _______
+tests/unit/test_var_integration_paths.py:190: in test_dispatch_import_chain_executes
+    assert expected_count in result.stdout, (
+E   AssertionError: Ожидалось 'ok 19 False' production backtest-моделей, получено: ok 14 False
+E   assert 'ok 19 False' in 'ok 14 False\n'
+E    +  where 'ok 14 False\n' = CompletedProcess(args=['/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python', '-c', "from apps.ap...PRODUCTION_BACKTEST_MODEL_IDS), neuralforecast_runtime_available())"], returncode=0, stdout='ok 14 False\n', stderr='').stdout
+___ TestXgbFitPredictHappyPath.test_forecast_is_deterministic_for_fixed_seed ___
+tests/unit/test_xgboost_adapter.py:164: in test_forecast_is_deterministic_for_fixed_seed
+    first = _xgb_fit_predict(y, 6, params={"n_estimators": 40, "n_lags": 3}, random_state=42)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+__ TestXgbFitPredictHappyPath.test_full_sampling_has_no_hidden_stochasticity ___
+tests/unit/test_xgboost_adapter.py:181: in test_full_sampling_has_no_hidden_stochasticity
+    _xgb_fit_predict(y, 4, params={"n_estimators": 30, "n_lags": 2}, random_state=seed)
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+_ TestXgbFitPredictHappyPath.test_seed_reaches_the_booster_when_sampling_is_stochastic _
+tests/unit/test_xgboost_adapter.py:188: in test_seed_reaches_the_booster_when_sampling_is_stochastic
+    first = _xgb_fit_predict(
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+__ TestXgbFitPredictHappyPath.test_forecast_shape_and_intervals_contain_point __
+tests/unit/test_xgboost_adapter.py:202: in test_forecast_shape_and_intervals_contain_point
+    payload = _xgb_fit_predict(y, 5, params={"n_estimators": 40, "n_lags": 3}, random_state=42)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+__ TestXgbFitPredictHappyPath.test_recursive_period_two_continuation_is_exact __
+tests/unit/test_xgboost_adapter.py:222: in test_recursive_period_two_continuation_is_exact
+    payload = _xgb_fit_predict(
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+_ TestXgbFitPredictHappyPath.test_forecast_stays_within_training_target_range __
+tests/unit/test_xgboost_adapter.py:235: in test_forecast_stays_within_training_target_range
+    payload = _xgb_fit_predict(
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+__ TestXgbFitPredictHappyPath.test_known_regressor_channel_reaches_the_model ___
+tests/unit/test_xgboost_adapter.py:258: in test_known_regressor_channel_reaches_the_model
+    forecast_a = run([driver[0], driver[7], driver[11]])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_xgboost_adapter.py:252: in <lambda>
+    run = lambda future: _xgb_fit_predict(
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+_ TestXgbFitPredictHappyPath.test_feature_importance_is_bound_to_exact_matrix __
+tests/unit/test_xgboost_adapter.py:272: in test_feature_importance_is_bound_to_exact_matrix
+    payload = _xgb_fit_predict(
+apps/api/model_impls/xgboost.py:200: in _xgb_fit_predict
+    point_model = _make_booster(hyper, random_state, objective="reg:squarederror")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/model_impls/xgboost.py:145: in _make_booster
+    from xgboost import XGBRegressor
+E   ModuleNotFoundError: No module named 'xgboost'
+_________ TestXgboostRegistry.test_registered_as_supervised_ml_adapter _________
+tests/unit/test_xgboost_backtest.py:111: in test_registered_as_supervised_ml_adapter
+    assert descriptor["runtime_available"] is True
+E   assert False is True
+_________ TestXgboostRegistry.test_production_actions_include_xgboost __________
+tests/unit/test_xgboost_backtest.py:115: in test_production_actions_include_xgboost
+    assert "xgboost" in PRODUCTION_BACKTEST_MODEL_IDS
+E   AssertionError: assert 'xgboost' in frozenset({'arima', 'arima_auto', 'drift', 'egarch', 'ets', 'ets_damped', ...})
+____________ TestXgboostBacktest.test_run_backtest_plan_end_to_end _____________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_xgboost_backtest.py:126: in test_run_backtest_plan_end_to_end
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+____ TestXgboostBacktest.test_folds_record_importance_bound_to_exact_matrix ____
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_xgboost_backtest.py:145: in test_folds_record_importance_bound_to_exact_matrix
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+______________ TestXgboostBacktest.test_backtest_is_deterministic ______________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_xgboost_backtest.py:168: in test_backtest_is_deterministic
+    first = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+_________ TestXgboostBacktest.test_metrics_are_computed_not_fabricated _________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_xgboost_backtest.py:183: in test_metrics_are_computed_not_fabricated
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+________ TestXgboostBacktest.test_run_without_feature_plan_still_works _________
+apps/api/backtesting.py:576: in run_backtest_plan
+    execution_result = MODEL_EXECUTION_REGISTRY.execute(
+apps/api/model_execution.py:379: in execute
+    raise ModelExecutionContractError(
+E   apps.api.model_execution.ModelExecutionContractError: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_xgboost_backtest.py:199: in test_run_without_feature_plan_still_works
+    result = run_backtest_plan(
+apps/api/backtesting.py:624: in run_backtest_plan
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+_______ TestXgboostTuning.test_tuning_runs_on_same_folds_and_picks_best ________
+tests/unit/test_xgboost_backtest.py:238: in test_tuning_runs_on_same_folds_and_picks_best
+    response = execute_tuning_plan(
+apps/api/modeling_tuning.py:270: in execute_tuning_plan
+    return execute_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:247: in execute_tuning_plan_with_artifacts
+    return finalize_tuning_plan_with_artifacts(
+apps/api/modeling_tuning.py:166: in finalize_tuning_plan_with_artifacts
+    raise BacktestExecutionError(
+E   apps.api.backtesting.BacktestExecutionError: Ни один trial модели 'xgboost' не завершился успешно: params={'n_estimators': 30, 'n_lags': 2}: XGBoost: fold 1 завершился ошибкой: Модель 'xgboost' недоступна: отсутствуют зависимости ['xgboost']
+=========================== short test summary info ============================
+FAILED tests/api/test_docker_image_layout.py::test_simulated_image_starts_app_after_fix
+FAILED tests/api/test_docker_image_layout.py::test_simulated_image_without_shared_reproduces_incident
+FAILED tests/api/test_feature_regressors_api.py::TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_modeling_workflow.py::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+FAILED tests/api/test_modeling_workflow.py::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+FAILED tests/api/test_modeling_workflow.py::test_feature_plan_enters_session_cohort_and_gates_regressors
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+FAILED tests/api/test_models_backtest_real.py::TestBacktestImplementationsRegistry::test_registry_has_19_implementations
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+FAILED tests/unit/test_backtesting_engine.py::test_all_fifteen_production_models_execute_the_same_real_oof_cohort
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_forecast_is_deterministic_for_fixed_seed
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_zero_score_noise_has_no_hidden_stochasticity
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_seed_reaches_the_booster_with_default_score_noise
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_forecast_shape_and_intervals_contain_point
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_recursive_period_two_continuation_is_exact
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_forecast_stays_within_training_target_range
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_constant_target_fails_closed_at_library_level
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_known_regressor_channel_reaches_the_model
+FAILED tests/unit/test_catboost_adapter.py::TestCbFitPredictHappyPath::test_feature_importance_is_normalized_and_bound_to_exact_matrix
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostRegistry::test_registered_as_supervised_ml_adapter
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostRegistry::test_production_actions_include_catboost
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostBacktest::test_run_backtest_plan_end_to_end
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostBacktest::test_folds_record_importance_bound_to_exact_matrix
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostBacktest::test_backtest_is_deterministic
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostBacktest::test_metrics_are_computed_not_fabricated
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostBacktest::test_run_without_feature_plan_still_works
+FAILED tests/unit/test_catboost_backtest.py::TestCatboostTuning::test_tuning_runs_on_same_folds_and_picks_best
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_eda_model_matrix.py::test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readiness
+FAILED tests/unit/test_eda_model_matrix.py::test_soft_history_window_is_attention_and_model_stays_runnable
+FAILED tests/unit/test_egarch_integration_paths.py::test_production_count_is_nineteen
+FAILED tests/unit/test_garch_integration_paths.py::test_production_count_is_nineteen
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_forecast_is_deterministic_for_fixed_seed
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_full_sampling_has_no_hidden_stochasticity
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_seed_reaches_the_booster_when_sampling_is_stochastic
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_forecast_shape_and_intervals_contain_point
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_recursive_period_two_continuation_is_exact
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_forecast_stays_within_training_target_range
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_known_regressor_channel_reaches_the_model
+FAILED tests/unit/test_lightgbm_adapter.py::TestLgbFitPredictHappyPath::test_feature_importance_is_normalized_and_bound_to_exact_matrix
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmRegistry::test_registered_as_supervised_ml_adapter
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmRegistry::test_production_actions_include_lightgbm
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmBacktest::test_run_backtest_plan_end_to_end
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmBacktest::test_folds_record_importance_bound_to_exact_matrix
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmBacktest::test_backtest_is_deterministic
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmBacktest::test_metrics_are_computed_not_fabricated
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmBacktest::test_run_without_feature_plan_still_works
+FAILED tests/unit/test_lightgbm_backtest.py::TestLightgbmTuning::test_tuning_runs_on_same_folds_and_picks_best
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_model_capability_matrix.py::test_capability_contract_covers_every_catalog_model_and_stage
+FAILED tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+FAILED tests/unit/test_model_readiness_candidates.py::test_candidate_contract_separates_methodological_applicability_from_runtime_readiness
+FAILED tests/unit/test_model_readiness_candidates.py::test_candidate_statistics_report_runtime_availability_separately
+FAILED tests/unit/test_model_readiness_candidates.py::test_not_recommended_soft_window_warns_but_allows_in_catalog
+FAILED tests/unit/test_modeling_mvp_certification.py::test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_prophet_adapter.py::test_fit_predict_returns_forecast_and_intervals_of_exact_horizon
+FAILED tests/unit/test_prophet_adapter.py::test_supported_country_holidays_fold_local_no_leakage_by_construction
+FAILED tests/unit/test_prophet_adapter.py::test_registry_descriptor_declares_prophet_as_tunable_with_intervals
+FAILED tests/unit/test_prophet_adapter.py::test_registry_execute_requires_train_and_future_timestamps
+FAILED tests/unit/test_prophet_adapter.py::test_registry_execute_produces_prediction_interval_containing_point_forecast
+FAILED tests/unit/test_prophet_adapter.py::test_prophet_runs_through_the_real_eda_backtest_plan_with_real_dates
+FAILED tests/unit/test_prophet_regressors.py::TestRegressorContract::test_regressor_columns_flow_into_fit_and_predict
+FAILED tests/unit/test_prophet_regressors.py::TestBackwardCompatibility::test_no_features_keeps_task_124_behavior
+FAILED tests/unit/test_tbats_adapter.py::test_fit_predict_returns_forecast_and_intervals_of_exact_horizon
+FAILED tests/unit/test_tbats_adapter.py::test_multiple_seasonal_periods_from_spectral_handoff_are_used_natively
+FAILED tests/unit/test_tbats_adapter.py::test_every_bounded_trend_spec_produces_a_distinct_valid_model[damped_trend]
+FAILED tests/unit/test_tbats_adapter.py::test_every_bounded_trend_spec_produces_a_distinct_valid_model[none]
+FAILED tests/unit/test_tbats_adapter.py::test_every_bounded_trend_spec_produces_a_distinct_valid_model[trend]
+FAILED tests/unit/test_tbats_adapter.py::test_registry_descriptor_declares_tbats_as_tunable_with_intervals
+FAILED tests/unit/test_tbats_adapter.py::test_registry_execute_reads_seasonal_periods_from_params
+FAILED tests/unit/test_tbats_adapter.py::test_tbats_runs_through_the_real_eda_backtest_plan_with_multi_period_handoff
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_var_integration_paths.py::TestRegistrySeesVarAtRuntime::test_dispatch_import_chain_executes
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_forecast_is_deterministic_for_fixed_seed
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_full_sampling_has_no_hidden_stochasticity
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_seed_reaches_the_booster_when_sampling_is_stochastic
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_forecast_shape_and_intervals_contain_point
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_recursive_period_two_continuation_is_exact
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_forecast_stays_within_training_target_range
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_known_regressor_channel_reaches_the_model
+FAILED tests/unit/test_xgboost_adapter.py::TestXgbFitPredictHappyPath::test_feature_importance_is_bound_to_exact_matrix
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostRegistry::test_registered_as_supervised_ml_adapter
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostRegistry::test_production_actions_include_xgboost
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostBacktest::test_run_backtest_plan_end_to_end
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostBacktest::test_folds_record_importance_bound_to_exact_matrix
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostBacktest::test_backtest_is_deterministic
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostBacktest::test_metrics_are_computed_not_fabricated
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostBacktest::test_run_without_feature_plan_still_works
+FAILED tests/unit/test_xgboost_backtest.py::TestXgboostTuning::test_tuning_runs_on_same_folds_and_picks_best
+ERROR tests/unit/test_preprocessing.py::test_diff_first_snapshot
+ERROR tests/unit/test_preprocessing.py::test_diff_seasonal_snapshot
+ERROR tests/unit/test_preprocessing.py::test_diff_fractional_snapshot
+= 99 failed, 3755 passed, 65 skipped, 6323 warnings, 3 errors in 202.23s (0:03:22) =

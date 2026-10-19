@@ -1,0 +1,518 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/NavigatorSourceFileDbPreview.test.tsx
+  ● NavigatorSourceFileDbPreview — rendering › renders all six SQL sources from the working form
+
+    TestingLibraryElementError: Unable to find an element with the text: PostgreSQL / Postgres Pro. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Блок-схема источника данных: переключатель Файл или База данных (SQL). Файловая дорожка: drag-and-drop, форматы .csv .xls .xlsx .json, POST /v1/internal/upload, read_uploaded_file, парсер по расширению. Дорожка БД: PostgreSQL или ClickHouse, форма Host Port Database User Password, SQL-запрос SELECT * FROM your_table LIMIT 1000, тест подключения SELECT 1 или ping, pd.read_sql или query_df. Результат: датасет в сессии. Ошибки: сообщение в окне загрузки"[39m
+          [33mclass[39m=[32m"rounded-lg border border-neutral-200 bg-white p-3"[39m
+          [33mrole[39m=[32m"img"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-2 mb-3 px-1"[39m
+          [36m>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-[13px] font-semibold text-neutral-900"[39m
+            [36m>[39m
+              [0mИсточник: файл или БД[0m
+            [36m</h3>[39m
+            [36m<code[39m
+              [33mclass[39m=[32m"text-[10px] text-neutral-500 font-mono"[39m
+            [36m>[39m
+              [0mPOST /v1/internal/upload[0m
+            [36m</code>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-3 py-2 mb-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-2 mb-1.5"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-table2"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"12"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"12"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-[11px] text-neutral-700 leading-tight"[39m
+              [36m>[39m
+                [0mИсточник данных — переключатель на странице «Загрузка»[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-2 gap-2"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mФайл .xlsx, .xls, .csv, .json[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mБаза данных (SQL)[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid grid-cols-2 gap-2 mb-1"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-2 py-2 flex flex-col gap-1.5 min-w-0"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-1.5"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-file-up"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"12"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"12"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M14 2v4a2 2 0 0 0 2 2h4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 12v6"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m15 15-3-3-3 3"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[11px] font-semibold text-neutral-900 leading-tight"[39m
+                [36m>[39m
+                  [0mФайл[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-1"[39m
+              [36m>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.csv[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xls[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xlsx[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.json[0m
+                [36m</code>[39m
+              [36m</div>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"flex flex-col gap-0.5 mt-0.5"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100"[39m
+                [36m>[39m
+                  [0mdrag-and-drop или клик — один файл (...
+
+      93 |     // init_db_connection поддерживает ровно два типа БД.
+      94 |     for (const label of ["PostgreSQL / Postgres Pro", "ClickHouse", "MS SQL Server", "MySQL / MariaDB", "DuckDB (встроенная)", "SQLite (встроенная)"])
+    > 95 |       expect(screen.getByText(label)).toBeInTheDocument();
+         |                     ^
+      96 |   });
+      97 |
+      98 |   it("renders the default ports 5432 / 8123", () => {
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (packages/ui/components/NavigatorSourceFileDbPreview.test.tsx:95:21)
+
+  ● NavigatorSourceFileDbPreview — rendering › renders the actual shared DB dataset registration
+
+    TestingLibraryElementError: Unable to find an element with the text: /register_uploaded_dataframe/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Блок-схема источника данных: переключатель Файл или База данных (SQL). Файловая дорожка: drag-and-drop, форматы .csv .xls .xlsx .json, POST /v1/internal/upload, read_uploaded_file, парсер по расширению. Дорожка БД: PostgreSQL или ClickHouse, форма Host Port Database User Password, SQL-запрос SELECT * FROM your_table LIMIT 1000, тест подключения SELECT 1 или ping, pd.read_sql или query_df. Результат: датасет в сессии. Ошибки: сообщение в окне загрузки"[39m
+          [33mclass[39m=[32m"rounded-lg border border-neutral-200 bg-white p-3"[39m
+          [33mrole[39m=[32m"img"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-2 mb-3 px-1"[39m
+          [36m>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-[13px] font-semibold text-neutral-900"[39m
+            [36m>[39m
+              [0mИсточник: файл или БД[0m
+            [36m</h3>[39m
+            [36m<code[39m
+              [33mclass[39m=[32m"text-[10px] text-neutral-500 font-mono"[39m
+            [36m>[39m
+              [0mPOST /v1/internal/upload[0m
+            [36m</code>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-3 py-2 mb-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-2 mb-1.5"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-table2"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"12"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"12"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-[11px] text-neutral-700 leading-tight"[39m
+              [36m>[39m
+                [0mИсточник данных — переключатель на странице «Загрузка»[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-2 gap-2"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mФайл .xlsx, .xls, .csv, .json[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mБаза данных (SQL)[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid grid-cols-2 gap-2 mb-1"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-2 py-2 flex flex-col gap-1.5 min-w-0"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-1.5"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-file-up"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"12"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"12"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M14 2v4a2 2 0 0 0 2 2h4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 12v6"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m15 15-3-3-3 3"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[11px] font-semibold text-neutral-900 leading-tight"[39m
+                [36m>[39m
+                  [0mФайл[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-1"[39m
+              [36m>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.csv[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xls[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xlsx[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.json[0m
+                [36m</code>[39m
+              [36m</div>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"flex flex-col gap-0.5 mt-0.5"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100"[39m
+                [36m>[39m
+                  [0mdrag-and-drop или клик — один файл (...
+
+      148 |     render(<NavigatorSourceFileDbPreview />);
+      149 |     // app.py: robust_datetime_detector(df_db) + drop_service_columns(df_db).
+    > 150 |     expect(screen.getByText(/register_uploaded_dataframe/i)).toBeInTheDocument();
+          |                   ^
+      151 |   });
+      152 |
+      153 |   it("renders the common result block: dataset lands in the session", () => {
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (packages/ui/components/NavigatorSourceFileDbPreview.test.tsx:150:19)
+
+  ● NavigatorSourceFileDbPreview — rendering › renders error messages of both lanes
+
+    TestingLibraryElementError: Unable to find an element with the text: /psycopg\[binary\]/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Блок-схема источника данных: переключатель Файл или База данных (SQL). Файловая дорожка: drag-and-drop, форматы .csv .xls .xlsx .json, POST /v1/internal/upload, read_uploaded_file, парсер по расширению. Дорожка БД: PostgreSQL или ClickHouse, форма Host Port Database User Password, SQL-запрос SELECT * FROM your_table LIMIT 1000, тест подключения SELECT 1 или ping, pd.read_sql или query_df. Результат: датасет в сессии. Ошибки: сообщение в окне загрузки"[39m
+          [33mclass[39m=[32m"rounded-lg border border-neutral-200 bg-white p-3"[39m
+          [33mrole[39m=[32m"img"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-baseline justify-between gap-2 mb-3 px-1"[39m
+          [36m>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-[13px] font-semibold text-neutral-900"[39m
+            [36m>[39m
+              [0mИсточник: файл или БД[0m
+            [36m</h3>[39m
+            [36m<code[39m
+              [33mclass[39m=[32m"text-[10px] text-neutral-500 font-mono"[39m
+            [36m>[39m
+              [0mPOST /v1/internal/upload[0m
+            [36m</code>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-3 py-2 mb-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-2 mb-1.5"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-table2"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"12"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"12"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-[11px] text-neutral-700 leading-tight"[39m
+              [36m>[39m
+                [0mИсточник данных — переключатель на странице «Загрузка»[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-2 gap-2"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mФайл .xlsx, .xls, .csv, .json[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"rounded border border-brand/20 bg-brand-light/60 px-2 py-1 text-[10px] text-neutral-700 text-center leading-tight"[39m
+              [36m>[39m
+                [0mБаза данных (SQL)[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid grid-cols-2 gap-2 mb-1"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded-md border border-brand/30 bg-white px-2 py-2 flex flex-col gap-1.5 min-w-0"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-1.5"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"flex h-5 w-5 shrink-0 items-center justify-center rounded bg-brand-light text-brand"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-file-up"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"12"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"12"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M14 2v4a2 2 0 0 0 2 2h4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 12v6"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m15 15-3-3-3 3"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[11px] font-semibold text-neutral-900 leading-tight"[39m
+                [36m>[39m
+                  [0mФайл[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-1"[39m
+              [36m>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.csv[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xls[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.xlsx[0m
+                [36m</code>[39m
+                [36m<code[39m
+                  [33mclass[39m=[32m"text-[9.5px] font-mono text-brand bg-brand-light/60 border border-brand/20 rounded px-1 py-0.5"[39m
+                [36m>[39m
+                  [0m.json[0m
+                [36m</code>[39m
+              [36m</div>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"flex flex-col gap-0.5 mt-0.5"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"text-[9.5px] text-neutral-600 leading-snug pl-1 border-l border-neutral-100"[39m
+                [36m>[39m
+                  [0mdrag-and-drop или клик — один файл (...
+
+      166 |     // БД (init_db_connection / app.py):
+      167 |     expect(screen.getByText(/Не удалось подключиться/i)).toBeInTheDocument();
+    > 168 |     expect(screen.getByText(/psycopg\[binary\]/i)).toBeInTheDocument();
+          |                   ^
+      169 |     expect(screen.getByText(/clickhouse-connect/i)).toBeInTheDocument();
+      170 |     expect(screen.getByText(/Введите SQL-запрос/i)).toBeInTheDocument();
+      171 |   });
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (packages/ui/components/NavigatorSourceFileDbPreview.test.tsx:168:19)
+
+  ● NavigatorSourceFileDbPreview — rendering › renders the honest status note for the implemented form
+
+    expect(received).toBeNull()
+
+    Received: <p class="text-[10px] text-neutral-500 mt-1 px-1 leading-snug">Выбор источника — переключатель в верхней полосе страницы «Загрузка». Файловый путь работает полностью, включая готовые демо-наборы данных. Форма подключения к SQL-базе на странице «Загрузка» — заглушка: логика подключения (init_db_connection) реализована на бэкенде и поддерживает две СУБД; соединение проверяется тестовым запросом до загрузки данных.</p>
+
+      175 |     // TsAnalysisUpload.tsx: «(форма подключения к БД — заглушка)».
+      176 |     // Честный статус функционала — часть исчерпывающей информации.
+    > 177 |     expect(screen.queryByText(/заглушка/i)).toBeNull();
+          |                                             ^
+      178 |     expect(screen.getByText(/форма подключения.*реализована/i)).toBeInTheDocument();
+      179 |   });
+      180 |
+
+      at Object.<anonymous> (packages/ui/components/NavigatorSourceFileDbPreview.test.tsx:177:45)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 20 passed, 24 total
+Snapshots:   0 total
+Time:        3.065 s
+Ran all test suites matching packages/ui/components/NavigatorSourceFileDbPreview.test.tsx.

@@ -1,0 +1,19 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/DbConnectionForm.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/DbConnectionForm.test.tsx[0m:[93m3[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module './DbConnectionForm' or its corresponding type declarations.
+
+    [7m3[0m import { DbConnectionForm } from "./DbConnectionForm";
+    [7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        4.889 s
+Ran all test suites matching packages/ui/components/DbConnectionForm.test.tsx.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -1,0 +1,41 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/DbConnectionForm.test.tsx
+  ● sends only path fields for sqlite
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1000000
+    Received: 10000
+
+      90 |   const body = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body);
+      91 |   expect(body.connection).toEqual({ db_type: kind, path: kind === "duckdb" ? "/data/a.csv" : "/data/a.sqlite" });
+    > 92 |   expect(body.row_limit).toBe(1_000_000); // S4: same default as the API.
+         |                          ^
+      93 |   if (kind === "duckdb") expect(body.sql).toContain("'/data/a.csv'");
+      94 | });
+      95 |
+
+      at packages/ui/components/DbConnectionForm.test.tsx:92:26
+
+  ● sends only path fields for duckdb
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1000000
+    Received: 10000
+
+      90 |   const body = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body);
+      91 |   expect(body.connection).toEqual({ db_type: kind, path: kind === "duckdb" ? "/data/a.csv" : "/data/a.sqlite" });
+    > 92 |   expect(body.row_limit).toBe(1_000_000); // S4: same default as the API.
+         |                          ^
+      93 |   if (kind === "duckdb") expect(body.sql).toContain("'/data/a.csv'");
+      94 | });
+      95 |
+
+      at packages/ui/components/DbConnectionForm.test.tsx:92:26
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 10 passed, 12 total
+Snapshots:   0 total
+Time:        3.867 s
+Ran all test suites matching packages/ui/components/DbConnectionForm.test.tsx.

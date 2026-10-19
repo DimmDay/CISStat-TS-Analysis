@@ -1,0 +1,239 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/TsAnalysisUpload.database.test.tsx
+  ● database load enters the existing preview, shell, refresh and progress pipeline
+
+    TestingLibraryElementError: Unable to find a label with the text of: Тип БД
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-5"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"bg-white rounded-lg border border-neutral-200 p-5"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"font-semibold text-neutral-900 inline-flex items-center gap-2"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-upload text-brand"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"18"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"18"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[39m
+                  [36m/>[39m
+                  [36m<polyline[39m
+                    [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+                  [36m/>[39m
+                  [36m<line[39m
+                    [33mx1[39m=[32m"12"[39m
+                    [33mx2[39m=[32m"12"[39m
+                    [33my1[39m=[32m"3"[39m
+                    [33my2[39m=[32m"15"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0mИсточник данных[0m
+              [36m</h2>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-2 gap-4"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"flex items-center gap-2 text-sm cursor-pointer"[39m
+              [36m>[39m
+                [36m<input[39m
+                  [33mchecked[39m=[32m""[39m
+                  [33mclass[39m=[32m"accent-brand"[39m
+                  [33mtype[39m=[32m"radio"[39m
+                [36m/>[39m
+                [0mФайл .xlsx, .xls, .csv, .json[0m
+              [36m</label>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"flex items-center gap-2 text-sm cursor-pointer"[39m
+              [36m>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"accent-brand"[39m
+                  [33mtype[39m=[32m"radio"[39m
+                [36m/>[39m
+                [0mБаза данных (SQL)[0m
+              [36m</label>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-sm text-neutral-500 mb-4 mt-4 bg-neutral-50 rounded p-4"[39m
+            [36m>[39m
+              [0m(форма подключения к БД — заглушка)[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-5 pt-4 border-t border-neutral-200"[39m
+            [36m>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-xs text-neutral-500 mb-2"[39m
+              [36m>[39m
+                [0mНет своего датасета под рукой? Загрузите один из демо-наборов, чтобы познакомиться с платформой:[0m
+              [36m</p>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"grid grid-cols-1 sm:grid-cols-4 gap-2"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"text-left border border-neutral-200 rounded-lg p-3 hover:border-brand hover:bg-brand-light transition-colors"[39m
+                  [33mdata-testid[39m=[32m"demo-dataset-forecast_monitor_n150"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[10px] uppercase tracking-wide text-neutral-400"[39m
+                  [36m>[39m
+                    [0mКросс-отраслевой[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-neutral-800 mt-0.5"[39m
+                  [36m>[39m
+                    [0mМониторинг модуля «Прогнозирование»[0m
+                  [36m</p>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 mt-1"[39m
+                  [36m>[39m
+                    [0mUnivariate TS[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-1.5"[39m
+                  [36m>[39m
+                    [0mМесячный ряд (тренд + годовая сезонность) с выбросами и пропусками -- быстрый прогон до «Прогнозирования» без нейро-моделей.[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-neutral-400 mt-1"[39m
+                  [36m>[39m
+                    [0m150 месяцев[0m
+                  [36m</p>[39m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"text-left border border-neutral-200 rounded-lg p-3 hover:border-brand hover:bg-brand-light transition-colors"[39m
+                  [33mdata-testid[39m=[32m"demo-dataset-retail_revenue"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[10px] uppercase tracking-wide text-neutral-400"[39m
+                  [36m>[39m
+                    [0mРозничная торговля[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-neutral-800 mt-0.5"[39m
+                  [36m>[39m
+                    [0mВыручка розничного магазина[0m
+                  [36m</p>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 mt-1"[39m
+                  [36m>[39m
+                    [0mUnivariate TS[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-1.5"[39m
+                  [36m>[39m
+                    [0mДневная выручка одного магазина за 2 года: тренд, недельная сезонность, редкие промо-всплески.[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-neutral-400 mt-1"[39m
+                  [36m>[39m
+                    [0m730 дней[0m
+                  [36m</p>[39m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"text-left border border-neutral-200 rounded-lg p-3 hover:border-brand hover:bg-brand-light transition-colors"[39m
+                  [33mdata-testid[39m=[32m"demo-dataset-energy_consumption"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[10px] uppercase tracking-wide text-neutral-400"[39m
+                  [36m>[39m
+                    [0mЭнергетика[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-neutral-800 mt-0.5"[39m
+                  [36m>[39m
+                    [0mЭнергопотребление по регионам[0m
+                  [36m</p>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 mt-1"[39m
+                  [36m>[39m
+                    [0mPanel Data — Balanced[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-1.5"[39m
+                  [36m>[39m
+                    [0mМесячное потребление электроэнергии в 5 регионах за 5 лет: зимний пик, сбалансированная панель.[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-neutral-400 mt-1"[39m
+                  [36m>[39m
+                    [0m5 регионов × 60 мес.[0m
+                  [36m</p>[39m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"text-left border border-neutral-200 rounded-lg p-3 hover:border-brand hover:bg-brand-light transition-colors"[39m
+                  [33mdata-testid[39m=[32m"demo-dataset-finance_ohlcv"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[10px] uppercase tracking-wide text-neutral-400"[39m
+                  [36m>[39m
+                    [0mФинансы[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm font-medium text-neutral-800 mt-0.5"[39m
+                  [36m>[39m
+                    [0mКотировки инструмента (OHLCV)[0m
+                  [36m</p>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 mt-1"[39m
+                  [36m>[39m
+                    [0mMultivariate TS[0m
+                  [36m</span>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-1.5"[39m
+                  [36m>[39m
+                    [0mДневные Open/High/Low/Close/Volume синтетического инструмента: случайное блуждание цены.[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-neutral-400 mt-1"[39m
+                  [36m>[39m
+                    [0m500 торговых дней[0m
+                  [36m</p>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      32 |   render(<TsAnalysisUpload />);
+      33 |   fireEvent.click(screen.getByRole("radio", { name: "База данных (SQL)" }));
+    > 34 |   fireEvent.change(screen.getByLabelText("Тип БД"), { target: { value: "sqlite" } });
+         |                           ^
+      35 |   fireEvent.change(screen.getByLabelText("Путь к файлу"), { target: { value: "/data/audit.sqlite" } });
+      36 |   fireEvent.click(screen.getByRole("button", { name: "Загрузить из БД" }));
+      37 |   await waitFor(() => expect(mockSetActiveDataset).toHaveBeenCalledWith(expect.objectContaining({ datasetId: "db-integration", name: "audit.sqlite", rows: 12 })));
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at getAllByLabelText (node_modules/@testing-library/dom/dist/queries/label-text.js:111:38)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (packages/ui/components/TsAnalysisUpload.database.test.tsx:34:27)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        4.584 s
+Ran all test suites matching packages/ui/components/TsAnalysisUpload.database.test.tsx.

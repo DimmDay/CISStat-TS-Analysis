@@ -1,0 +1,4 @@
+BASELINE 103
+FINAL 102
+NEW []
+REMOVED ['FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_module_importable_without_pyodbc_pymysql']

@@ -89,6 +89,8 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "./Button";
+import { DbConnectionForm } from "./DbConnectionForm";
+import type { ColumnInfoOut, UploadApiResponse } from "../lib/upload";
 import { Metric } from "./Metric";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import {
@@ -123,43 +125,7 @@ import { DEMO_DATASETS, demoDatasetToFile } from "../lib/demoDatasets";
 // отдаёт API, без промежуточного camelCase-слоя)
 // ──────────────────────────────────────────────────────────────────────
 
-interface ColumnInfoOut {
-  name: string;
-  dtype: string;
-  type_icon: "numeric" | "datetime" | "categorical" | "text";
-  non_null: number;
-  nulls: number;
-  unique: number;
-}
-
-interface QualityTeaserOut {
-  cols_with_missing: number;
-  cols_with_outliers: number;
-  rows_total: number;
-  duplicates: number;
-  missing_cols: string[];
-  outlier_cols: string[];
-}
-
-interface UploadApiResponse {
-  dataset_id: string;
-  name: string;
-  rows: number;
-  columns: number;
-  preview: { head: string[][]; tail: string[][] };
-  columns_info: ColumnInfoOut[] | null;
-  quality: QualityTeaserOut | null;
-  size_label: string | null;
-  parse_warnings: string[];
-  error?: string | null;
-  detail?: string | { loc: (string | number)[]; msg: string; type: string }[]; // FastAPI: строка (HTTPException) ИЛИ массив (422 validation error)
-  frequency?: string;
-  domain?: string;
-  n_series?: number;
-  has_seasonality?: boolean;
-  is_regular?: boolean;
-}
-
+// File and SQL uploads share the same wire response.
 interface ColumnStatsValues {
   mean: number;
   median: number;
@@ -754,6 +720,45 @@ export function TsAnalysisUpload() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDataset]);
 
+  // One acceptance path: DB loads update all five stops, target, shell and
+  // session exactly like file uploads; no second frontend progress reducer.
+  const acceptUploadedData = useCallback(async (data: UploadApiResponse, fromDatabase = false) => {
+    setUploadData(data);
+    setActiveStop("overview");
+    setOverviewTab("preview");
+    if (data.columns_info) {
+      fetchStructureDetection().then((d) => setDetection(d));
+      refetchTargetColumn();
+    }
+    fetchStats();
+
+    // Автозаполнение профиля для «Моделирования» -- поля из ответа API
+    // имеют приоритет. Раньше был fallback на freqCode из клиентской
+    // эвристики детекции (buildDetectionFromColumns) -- убран вместе
+    // с самой эвристикой (2026-08-14, см. fetchStructureDetection):
+    // детекция теперь асинхронная (реальный запрос к бэкенду), не
+    // может быть готова синхронно в этой точке. Без data.frequency
+    // с бэкенда поле просто остаётся неопределённым, а не подделывается.
+    setActiveDataset({
+      datasetId: data.dataset_id,
+      name: data.name,
+      rows: data.rows,
+      sizeLabel: data.size_label ?? "—",
+      ...(data.frequency && { frequency: data.frequency }),
+      ...(data.domain && { domain: data.domain }),
+      ...(data.n_series != null && { nSeries: data.n_series }),
+      ...(data.has_seasonality != null && { hasSeasonality: data.has_seasonality }),
+      ...(data.is_regular != null && { isRegular: data.is_regular }),
+    });
+
+    try { await refreshSession(); } catch { toast.warning("Данные загружены; не удалось обновить сведения о сессии."); }
+    toast.success(fromDatabase ? "Данные из БД загружены успешно!" : "Файл загружен успешно!");
+
+    if (data.parse_warnings.length > 0) {
+      toast.warning(`${fromDatabase ? "Технические предупреждения при загрузке данных" : "Технические предупреждения при чтении файла"} (${data.parse_warnings.length})`);
+    }
+  }, [setActiveDataset, refreshSession, fetchStats, refetchTargetColumn]);
+
   const doUpload = useCallback(
     async (file: File) => {
       setUploading(true);
@@ -770,40 +775,7 @@ export function TsAnalysisUpload() {
         if (!resp.ok) {
           throw new Error(extractErrorMessage(data) || "Не удалось загрузить файл");
         }
-        setUploadData(data);
-        setActiveStop("overview");
-        setOverviewTab("preview");
-        if (data.columns_info) {
-          fetchStructureDetection().then((d) => setDetection(d));
-          refetchTargetColumn();
-        }
-        fetchStats();
-
-        // Автозаполнение профиля для «Моделирования» -- поля из ответа API
-        // имеют приоритет. Раньше был fallback на freqCode из клиентской
-        // эвристики детекции (buildDetectionFromColumns) -- убран вместе
-        // с самой эвристикой (2026-08-14, см. fetchStructureDetection):
-        // детекция теперь асинхронная (реальный запрос к бэкенду), не
-        // может быть готова синхронно в этой точке. Без data.frequency
-        // с бэкенда поле просто остаётся неопределённым, а не подделывается.
-        setActiveDataset({
-          datasetId: data.dataset_id,
-          name: data.name,
-          rows: data.rows,
-          sizeLabel: data.size_label ?? "—",
-          ...(data.frequency && { frequency: data.frequency }),
-          ...(data.domain && { domain: data.domain }),
-          ...(data.n_series != null && { nSeries: data.n_series }),
-          ...(data.has_seasonality != null && { hasSeasonality: data.has_seasonality }),
-          ...(data.is_regular != null && { isRegular: data.is_regular }),
-        });
-
-        await refreshSession();
-        toast.success("Файл загружен успешно!");
-
-        if (data.parse_warnings.length > 0) {
-          toast.warning(`Технические предупреждения при чтении файла (${data.parse_warnings.length})`);
-        }
+        await acceptUploadedData(data);
       } catch (e) {
         const message = e instanceof Error ? e.message : "Неизвестная ошибка загрузки";
         setUploadError(message);
@@ -812,7 +784,7 @@ export function TsAnalysisUpload() {
         setUploading(false);
       }
     },
-    [setActiveDataset, refreshSession, fetchStats]
+    [acceptUploadedData]
   );
 
   const onDrop = useCallback(
@@ -831,6 +803,7 @@ export function TsAnalysisUpload() {
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     multiple: false,
+    disabled: uploading || hydrating,
     // 4MB, не 50MB -- Vercel Serverless Function ограничивает тело запроса
     // 4.5MB, а с новым server-side rewrite-прокси (apps/standalone/
     // next.config.mjs, нужен для first-party cookie) запрос идёт именно
@@ -1008,7 +981,7 @@ export function TsAnalysisUpload() {
               onClick={handleReset}
               className="text-xs text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1"
             >
-              <RefreshCw size={12} aria-hidden="true" /> Сменить файл
+              <RefreshCw size={12} aria-hidden="true" /> {source === "db" ? "Сменить источник" : "Сменить файл"}
             </button>
           )}
         </div>
@@ -1017,11 +990,11 @@ export function TsAnalysisUpload() {
           <>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" checked={source === "file"} onChange={() => setSource("file")} className="accent-brand" />
+                <input type="radio" checked={source === "file"} disabled={uploading || hydrating} onChange={() => { setSource("file"); setUploadError(null); }} className="accent-brand" />
                 Файл .xlsx, .xls, .csv, .json
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" checked={source === "db"} onChange={() => setSource("db")} className="accent-brand" />
+                <input type="radio" checked={source === "db"} disabled={uploading || hydrating} onChange={() => { setSource("db"); setUploadError(null); }} className="accent-brand" />
                 База данных (SQL)
               </label>
             </div>
@@ -1055,7 +1028,7 @@ export function TsAnalysisUpload() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-neutral-500 mb-4 mt-4 bg-neutral-50 rounded p-4">(форма подключения к БД — заглушка)</p>
+              <DbConnectionForm onLoaded={(data) => acceptUploadedData(data, true)} onBusyChange={setUploading} disabled={hydrating} />
             )}
 
             {/* ── Демо-датасеты (2026-08-19, согласовано с тимлидом) ──
@@ -1066,7 +1039,7 @@ export function TsAnalysisUpload() {
                 см. FC-MON-2). Идут через ТОТ ЖЕ doUpload(file), что и
                 drag-and-drop -- реальный пайплайн парсинга/детекции/
                 валидации, не имитация (см. packages/ui/lib/demoDatasets.ts). */}
-            {!uploading && !hydrating && (
+            {source === "file" && !uploading && !hydrating && (
               <div className="mt-5 pt-4 border-t border-neutral-200">
                 <p className="text-xs text-neutral-500 mb-2">
                   Нет своего датасета под рукой? Загрузите один из демо-наборов, чтобы познакомиться с платформой:

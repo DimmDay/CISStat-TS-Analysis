@@ -88,11 +88,11 @@ describe("NavigatorSourceFileDbPreview — rendering", () => {
     expect(screen.getByText(/демо-датасет/i)).toBeInTheDocument();
   });
 
-  it("renders both supported DB types (PostgreSQL / ClickHouse)", () => {
+  it("renders all six SQL sources from the working form", () => {
     render(<NavigatorSourceFileDbPreview />);
     // init_db_connection поддерживает ровно два типа БД.
-    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-    expect(screen.getByText("ClickHouse")).toBeInTheDocument();
+    for (const label of ["PostgreSQL / Postgres Pro", "ClickHouse", "MS SQL Server", "MySQL / MariaDB", "DuckDB (встроенная)", "SQLite (встроенная)"])
+      expect(screen.getByText(label)).toBeInTheDocument();
   });
 
   it("renders the default ports 5432 / 8123", () => {
@@ -144,18 +144,17 @@ describe("NavigatorSourceFileDbPreview — rendering", () => {
     expect(screen.getByText(/60 с|60s|60 сек/i)).toBeInTheDocument();
   });
 
-  it("renders the DB post-processing steps (date detection, service columns cleanup)", () => {
+  it("renders the actual shared DB dataset registration", () => {
     render(<NavigatorSourceFileDbPreview />);
     // app.py: robust_datetime_detector(df_db) + drop_service_columns(df_db).
-    expect(screen.getByText(/robust_datetime_detector/i)).toBeInTheDocument();
-    expect(screen.getByText(/drop_service_columns/i)).toBeInTheDocument();
+    expect(screen.getByText(/register_uploaded_dataframe/i)).toBeInTheDocument();
   });
 
   it("renders the common result block: dataset lands in the session", () => {
     render(<NavigatorSourceFileDbPreview />);
     // Файловый путь: UploadResponse → SessionStore;
     // БД-путь: датасет в сессии (session_state.df / SessionStore).
-    expect(screen.getByText(/UploadResponse/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/UploadResponse/i)).toHaveLength(2);
     expect(screen.getByText(/SessionStore/i)).toBeInTheDocument();
   });
 
@@ -166,16 +165,17 @@ describe("NavigatorSourceFileDbPreview — rendering", () => {
     expect(screen.getByText(/Неподдерживаемый формат/i)).toBeInTheDocument();
     // БД (init_db_connection / app.py):
     expect(screen.getByText(/Не удалось подключиться/i)).toBeInTheDocument();
-    expect(screen.getByText(/psycopg2-binary/i)).toBeInTheDocument();
+    expect(screen.getByText(/psycopg\[binary\]/i)).toBeInTheDocument();
     expect(screen.getByText(/clickhouse-connect/i)).toBeInTheDocument();
     expect(screen.getByText(/Введите SQL-запрос/i)).toBeInTheDocument();
   });
 
-  it("renders the honest status note: DB form on the Upload page is a placeholder", () => {
+  it("renders the honest status note for the implemented form", () => {
     render(<NavigatorSourceFileDbPreview />);
     // TsAnalysisUpload.tsx: «(форма подключения к БД — заглушка)».
     // Честный статус функционала — часть исчерпывающей информации.
-    expect(screen.getByText(/заглушка/i)).toBeInTheDocument();
+    expect(screen.queryByText(/заглушка/i)).toBeNull();
+    expect(screen.getByText(/форма подключения.*реализована/i)).toBeInTheDocument();
   });
 
   it("renders without loading/empty state — always shows infographic", () => {

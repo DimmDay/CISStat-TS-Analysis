@@ -1,0 +1,771 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      141 |       const card = screen.getByText("График");
+      142 |       const article = card.closest("article")!;
+    > 143 |       fireEvent.click(article);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     it("renders a recharts chart frame when upload + chart is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateChartItem (packages/ui/components/TsAnalysisNavigator.test.tsx:143:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:148:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      141 |       const card = screen.getByText("График");
+      142 |       const article = card.closest("article")!;
+    > 143 |       fireEvent.click(article);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     it("renders a recharts chart frame when upload + chart is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateChartItem (packages/ui/components/TsAnalysisNavigator.test.tsx:143:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:157:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      141 |       const card = screen.getByText("График");
+      142 |       const article = card.closest("article")!;
+    > 143 |       fireEvent.click(article);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     it("renders a recharts chart frame when upload + chart is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateChartItem (packages/ui/components/TsAnalysisNavigator.test.tsx:143:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:165:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      141 |       const card = screen.getByText("График");
+      142 |       const article = card.closest("article")!;
+    > 143 |       fireEvent.click(article);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     it("renders a recharts chart frame when upload + chart is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateChartItem (packages/ui/components/TsAnalysisNavigator.test.tsx:143:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:171:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      141 |       const card = screen.getByText("График");
+      142 |       const article = card.closest("article")!;
+    > 143 |       fireEvent.click(article);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     it("renders a recharts chart frame when upload + chart is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateChartItem (packages/ui/components/TsAnalysisNavigator.test.tsx:143:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:181:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:435:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:435:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:435:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:449:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:449:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:449:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:455:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:455:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:455:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:463:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:463:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:463:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:477:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:477:7)
+
+  console.warn
+    The width(0) and height(0) of chart should be greater than 0,
+           please check the style of container, or the props width(100%) and height(100%),
+           or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+           height and width.
+
+      428 |     function activateDistributionItem() {
+      429 |       const card = screen.getByText("Визуализация распределения");
+    > 430 |       fireEvent.click(card.closest("article")!);
+          |                 ^
+      431 |     }
+      432 |
+      433 |     it("renders the heading when upload + distribution is active", () => {
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:136:24
+      at updateMemo (node_modules/react-dom/cjs/react-dom.development.js:16427:19)
+      at Object.useMemo (node_modules/react-dom/cjs/react-dom.development.js:17067:16)
+      at useMemo (node_modules/react/cjs/react.development.js:1650:21)
+      at node_modules/recharts/lib/component/ResponsiveContainer.js:111:41
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at updateForwardRef (node_modules/react-dom/cjs/react-dom.development.js:19245:20)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21675:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at Object.eventWrapper (node_modules/@testing-library/react/dist/pure.js:106:28)
+      at fireEvent (node_modules/@testing-library/dom/dist/events.js:12:35)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/dom/dist/events.js:110:36)
+      at fireEvent.<computed> [as click] (node_modules/@testing-library/react/dist/fire-event.js:15:52)
+      at activateDistributionItem (packages/ui/components/TsAnalysisNavigator.test.tsx:430:17)
+      at Object.<anonymous> (packages/ui/components/TsAnalysisNavigator.test.tsx:477:7)
+
+Test Suites: 1 passed, 1 total
+Tests:       87 passed, 87 total
+Snapshots:   0 total
+Time:        8.821 s
+Ran all test suites matching packages/ui/components/TsAnalysisNavigator.test.tsx.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -654,6 +654,7 @@ class TestUploadDb7DriverHandoff:
             "import sys\n"
             "sys.modules['pyodbc'] = None\n"
             "sys.modules['pymysql'] = None\n"
+            "sys.modules['pymssql'] = None\n"  # isolate the optional fallback too
             "import app.data.db_connectors as dc\n"
             "assert dc.pyodbc is None and dc.pymssql is None\n"
             "spec = dc.get_connector('mssql')\n"

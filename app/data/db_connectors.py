@@ -33,12 +33,13 @@ from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
 try:
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine, event, text
     from sqlalchemy.engine import URL
     from sqlalchemy.exc import NoSuchModuleError
     from sqlalchemy.sql.elements import TextClause
 except ImportError:  # pragma: no cover — средовой класс (образ apps/api без sqlalchemy)
     create_engine = None
+    event = None
     text = None
     URL = None
     NoSuchModuleError = Exception
@@ -372,6 +373,11 @@ def build_server_url(
             connect_args: dict = {
                 "password": password,
                 "login_timeout": connect_timeout,
+                "timeout": query_timeout,
+                # pymssql >= 2.2.8 / FreeTDS: require must never silently
+                # degrade to an unencrypted connection. CA policy is configured
+                # in FreeTDS, not implied by this encryption switch.
+                "encryption": "require" if ssl else "off",
             }
             return url, connect_args
         # Основной pyodbc-путь (ODBC Driver 18): параметры ODBC — в query
@@ -418,6 +424,8 @@ def build_server_url(
         connect_args["sslmode"] = "require" if ssl else "disable"  # D3
     elif spec.dialect == "mysql+pymysql":
         connect_args["connect_timeout"] = connect_timeout
+        connect_args["read_timeout"] = query_timeout
+        connect_args["write_timeout"] = query_timeout
         if ssl:  # D3: TLS с проверкой сертификата сервера
             connect_args["ssl_verify_cert"] = True
         else:
@@ -438,12 +446,22 @@ def open_server_engine(spec: DbConnectorSpec, url: Any, connect_args: dict) -> A
             'Установите: pip install "sqlalchemy>=2.0"'
         )
     try:
-        return create_engine(
+        engine = create_engine(
             url,
             connect_args=connect_args,
             pool_pre_ping=True,
             pool_recycle=300,
         )
+        if url.drivername == "mssql+pyodbc":
+            # connect(timeout=...) is only the login timeout. Statements use
+            # DBAPI Connection.timeout, copied to new pyodbc cursors.
+            _, query_timeout = get_db_timeouts()
+
+            def configure_statement_timeout(dbapi_connection, _record):
+                dbapi_connection.timeout = query_timeout
+
+            event.listen(engine, "connect", configure_statement_timeout)
+        return engine
     except NoSuchModuleError as exc:
         # D2: дружественная детекция отсутствия драйвера на слое DBAPI.
         raise ImportError(

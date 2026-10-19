@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-form
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1
+collected 260 items
+
+tests/unit/test_db_connectors.py ....................................... [ 15%]
+.....................                                                    [ 23%]
+tests/unit/test_db_guard.py ............................................ [ 40%]
+.............................                                            [ 51%]
+tests/unit/test_db_embedded.py .................                         [ 57%]
+tests/unit/test_db_connection.py .....                                   [ 59%]
+tests/unit/test_db_upload_fixes.py ...........                           [ 63%]
+tests/unit/test_upload_db9_docs.py ..................................... [ 78%]
+..........................                                               [ 88%]
+tests/api/test_upload_db.py ...............................              [100%]
+
+======================== 260 passed, 1 warning in 5.35s ========================

@@ -83,18 +83,17 @@ uvicorn main:app --reload --port 8000
 | `UPLOAD_DB_ROW_LIMIT` | 1 000 000 | принудительный потолок строк выборки |
 | `UPLOAD_DB_CHUNKSIZE` | 50 000 | размер чанка chunksize-стриминга |
 | `UPLOAD_DB_CONNECT_TIMEOUT` | 10 (с) | таймаут подключения |
-| `UPLOAD_DB_QUERY_TIMEOUT` | 60 (с) | таймаут запроса |
+| `UPLOAD_DB_QUERY_TIMEOUT` | 60 (с) | PG statement_timeout; MySQL read/write; MSSQL statement/query; CH send/receive |
 | `UPLOAD_DB_HOST_WHITELIST` | пусто (off) | белый список хостов/CIDR (D5/SSRF; `*` — off) |
 | `UPLOAD_DB_MSSQL_DRIVER` | авто | `pyodbc` \| `pymssql` (S2/RP2: закрытый контур без apt MS) |
 
-**Статус дорожки** (честно, по задачам эпика): ядро Фазы A (реестр,
-безопасность, embedded — UPLOAD-DB-1/2/3/7) и API-контракт Фазы B
-(UPLOAD-DB-4) реализованы и сертифицированы; **форма подключения к БД
-на странице «Загрузка» — заглушка**, а блок-схема навигатора описывает
-дорожку как заглушку (UI-задачи UPLOAD-DB-5/6 — roadmap), тест-стенд
-docker-compose UPLOAD-DB-8 и legacy-выравнивание UPLOAD-DB-10 — roadmap.
-Серверные СУБД «зажигаются» интеграционно на стенде UPLOAD-DB-8;
-SQLite/DuckDB проходят сквозной Test→Load в CI без сервисов.
+**Статус дорожки**: ядро и API UPLOAD-DB реализованы; форма
+`DbConnectionForm` и навигатор UPLOAD-DB-5/6 реализованы для шести типов
+источников. В «Загрузке» выберите «База данных (SQL)», задайте серверные
+параметры либо путь к файлу на сервере API, нажмите «Тест подключения» и
+«Загрузить из БД». Результат идёт в общий пятиостановочный pipeline.
+Тест-стенд docker-compose UPLOAD-DB-8 и legacy-выравнивание UPLOAD-DB-10
+остаются roadmap; успешная локальная проба не сертифицирует все серверы.
 
 ## Что ЗАГЛУШКА и требует вашего решения
 
