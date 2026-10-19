@@ -1,0 +1,552 @@
+{
+  "version": 1,
+  "canon_version": "mns_canon_v2",
+  "comment": "Реестр «объяснимости жёлтого статуса» -- MNS-REG-2 (план docs/mentor_next_step_review_2026-10-19.md §6; контракт spec_mentor_next_step.md §4/§5/§8). Для каждой из 25 warning-способных остановок (upload 5 + validation 10 + preprocessing 10 -- ровно узлы STAGE_NODES трёх стадий, порядок == канон сканирования §3.1): (1) sources -- семантика источника warning классами C1--C4 спеки §4 (C1 -- живой расчёт модуля «Загрузка», отчёт upload_stop_status; C2 -- результат проверки/отчёт модуля: validation_check_status / preprocessing_check_status / профиль-факт outliers_profile_status / payload-override correction_applied «нарушения остались» -- G345 PROGR-23, только у «Выбросов»; C3 -- предпросмотр коррекции correction_previewed без применения; C4 -- включённая вручную проверка без настроенного правила needs_rule, VALFIX-1, только Валидация -- «needs_rule»-аналога в Предобработке нет); (2) explanation_template -- шаблон объяснения с подстановкой {status_reason} и {summary_count} (оба обязательны, чужие плейсхолдеры запрещены; контракты подстановки -- placeholder_contract ниже; рендер -- render_stop_explanation в app/core/mentor_explanations.py, потребитель -- fallback-скан MNS-FALLBACK-4 и explanation MNS-TEXT-5); (3) deep_link -- цель «куда идти», формат stage.node_id (как recommended_action правил §7.1; UI-мэппинг на якорь степпера -- MNS-LINK-3, фолбэк -- вкладка стадии); (4) help_entry_id -- статья help_entries реестра знаний (apps/api/knowledge/registry_data.json; Q7: методология -- ссылкой, вербатим остаётся отчёту run_report.py::node_methodology; для validation/preprocessing -- статья facet=metrics «Метрики и алгоритм: <label>», для upload -- существующая статья модуля upload.module.module_help). Терминология (label) == реестрам модулей (shared/pipeline_nodes/upload_stops.json, TsAnalysisValidation.tsx::CHECK_META, TsAnalysisPreprocessing.tsx::CHECKS) и заголовкам статей; совпадение страхует tests/unit/test_mentor_stop_explanations.py. Изменение реестра -- fail-closed ImportError на импорте загрузчика (паттерн _load_pipeline_node_defs / load_mentor_config); ноль нового I/O: факты для подстановки -- уже посчитанная проекция (projection.node_states, единый редьюсер AUDIT-5B).",
+  "source_classes": {
+    "C1": "Живой расчёт модуля «Загрузка»: stopStatus в TsAnalysisUpload.tsx, отчёт upload_stop_status (payload-статус из CHECK_STATUS_VALUES)",
+    "C2": "Результат проверки/диагностики модуля: отчёты validation_check_status / preprocessing_check_status (map-эндпоинты AUDIT-2A), профиль-факт outliers_profile_status (G345), payload-статусный override correction_applied «нарушения остались» (last-wins, PROGR-23-FIX-G345)",
+    "C3": "Предпросмотр коррекции без применения: семя warning correction_previewed -- решение аналитика ещё не принято",
+    "C4": "Включённая проверка ожидает настройки: displayedStatus = pending + needs_rule -> warning (VALFIX-1), только Валидация"
+  },
+  "placeholder_contract": {
+    "status_reason": "Человекочитаемая причина статуса узла -- уже посчитанный факт (EVENT_NODE_REASON / correction_reason с числами / причина отчёта модуля / reason stage-level событий PROGR-21). Нет отчитанной причины -- честная константа «причина не отчитана», не выдумка.",
+    "summary_count": "Число правого бейджа узла -- то же, что показывает степпер (summary_count проекции; приоритет NODE_SUMMARY_COUNT_KEYS). Число не отчитано -- честная константа «не отчитано»; отрицательное/дробное/bool -- не факт (fail-closed, как _clean_summary_count)."
+  },
+  "stops": [
+    {
+      "stage": "upload",
+      "node_id": "overview",
+      "label": "Превью датасета",
+      "deep_link": "upload.overview",
+      "help_entry_id": "upload.module.module_help",
+      "explanation_template": "Остановка «Превью датасета» модуля «Загрузка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Превью датасета» модуля «Загрузка» и разберите технические предупреждения чтения файла.",
+      "sources": [
+        {
+          "source_class": "C1",
+          "event": "upload_stop_status",
+          "semantics": "Модуль «Загрузка» даёт warning, когда при чтении файла/загрузке из БД есть технические предупреждения (parse_warnings.length > 0: кодировка, сдвинутый заголовок, типы колонок); error -- при падении чтения."
+        }
+      ]
+    },
+    {
+      "stage": "upload",
+      "node_id": "chart",
+      "label": "График",
+      "deep_link": "upload.chart",
+      "help_entry_id": "upload.module.module_help",
+      "explanation_template": "Остановка «График» модуля «Загрузка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «График» модуля «Загрузка» и проверьте авто-определение временной колонки.",
+      "sources": [
+        {
+          "source_class": "C1",
+          "event": "upload_stop_status",
+          "semantics": "Модуль «Загрузка» даёт warning, пока временная колонка не определена или уверенность авто-детекта ниже порога 70 (dateCol.confidence < 70)."
+        }
+      ]
+    },
+    {
+      "stage": "upload",
+      "node_id": "distribution",
+      "label": "Распределение",
+      "deep_link": "upload.distribution",
+      "help_entry_id": "upload.module.module_help",
+      "explanation_template": "Остановка «Распределение» модуля «Загрузка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Распределение» модуля «Загрузка» и разберите отчёт модуля.",
+      "sources": [
+        {
+          "source_class": "C1",
+          "event": "upload_stop_status",
+          "semantics": "Остановка «Распределение» warning не производит (модуль даёт только pending/done; без числовых колонок -- pending). Проблемный статус возможен только отчётом модуля (error при падении расчёта распределения) -- запись честная, не выдуманная."
+        }
+      ]
+    },
+    {
+      "stage": "upload",
+      "node_id": "structure",
+      "label": "Структура",
+      "deep_link": "upload.structure",
+      "help_entry_id": "upload.module.module_help",
+      "explanation_template": "Остановка «Структура» модуля «Загрузка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Структура» модуля «Загрузка» и подтвердите определение даты, группирующей колонки и частоты ряда.",
+      "sources": [
+        {
+          "source_class": "C1",
+          "event": "upload_stop_status",
+          "semantics": "Модуль «Загрузка» даёт warning при сомнительном угадывании даты или группирующей колонки (isStructureDecisionConfident: confidence < 70 без явного выбора аналитика; явный выбор «(нет)»/«(не использовать)» -- уверенное решение, PROGR-14-A)."
+        }
+      ]
+    },
+    {
+      "stage": "upload",
+      "node_id": "quality",
+      "label": "Качество",
+      "deep_link": "upload.quality",
+      "help_entry_id": "upload.module.module_help",
+      "explanation_template": "Остановка «Качество» модуля «Загрузка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Качество» модуля «Загрузка» и разберите счётчики пропусков, выбросов и дубликатов.",
+      "sources": [
+        {
+          "source_class": "C1",
+          "event": "upload_stop_status",
+          "semantics": "Модуль «Загрузка» даёт warning при наличии колонок с пропусками, колонок с выбросами или дубликатов (cols_with_missing > 0 или cols_with_outliers > 0 или duplicates > 0) -- анонс проблем для «Валидации»."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "data_types",
+      "label": "Типы данных",
+      "deep_link": "validation.data_types",
+      "help_entry_id": "validation.data_types.metrics",
+      "explanation_template": "Остановка «Типы данных» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Типы данных» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: найденные нарушения типов -- warning, ошибка выполнения проверки -- error; после применения коррекции -- оставшиеся нарушения (бейдж remaining)."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции типов показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), правило не настроено: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "formats",
+      "label": "Форматы и шаблоны",
+      "deep_link": "validation.formats",
+      "help_entry_id": "validation.formats.metrics",
+      "explanation_template": "Остановка «Форматы и шаблоны» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Форматы и шаблоны» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: значения, не прошедшие regex-проверку шаблонов (email, телефон, ИНН, дата), -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции форматов показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), шаблоны не настроены: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "ranges",
+      "label": "Диапазоны значений",
+      "deep_link": "validation.ranges",
+      "help_entry_id": "validation.ranges.metrics",
+      "explanation_template": "Остановка «Диапазоны значений» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Диапазоны значений» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: значения вне предметных нижней/верхней границ (N_range > 0) -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции диапазонов показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), границы не настроены: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "consistency",
+      "label": "Логика и хронология",
+      "deep_link": "validation.consistency",
+      "help_entry_id": "validation.consistency.metrics",
+      "explanation_template": "Остановка «Логика и хронология» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Логика и хронология» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: нарушение бизнес-правил (close < open, хронология дат, монотонность индекса) -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции логики и хронологии показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), бизнес-правила не настроены: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "uniqueness",
+      "label": "Уникальность",
+      "deep_link": "validation.uniqueness",
+      "help_entry_id": "validation.uniqueness.metrics",
+      "explanation_template": "Остановка «Уникальность» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Уникальность» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: полные/частичные дубликаты строк и временных меток -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции уникальности показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), ключ уникальности не настроен: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "inclusion",
+      "label": "Принадлежность к набору",
+      "deep_link": "validation.inclusion",
+      "help_entry_id": "validation.inclusion.metrics",
+      "explanation_template": "Остановка «Принадлежность к набору» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Принадлежность к набору» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: значения вне допустимых справочников (код региона, категория, единица измерения) -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции принадлежности показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), справочник не настроен: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "referential",
+      "label": "Ссылочная целостность",
+      "deep_link": "validation.referential",
+      "help_entry_id": "validation.referential.metrics",
+      "explanation_template": "Остановка «Ссылочная целостность» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Ссылочная целостность» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: внешние ключи без существующих записей в связанных таблицах -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции ссылочной целостности показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), связи не настроены: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "text_quality",
+      "label": "Целостность текста",
+      "deep_link": "validation.text_quality",
+      "help_entry_id": "validation.text_quality.metrics",
+      "explanation_template": "Остановка «Целостность текста» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Целостность текста» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: мусорные символы, некорректная кодировка, пустые строки, дубликаты пробелов -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции целостности текста показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), шаблоны текста не настроены: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "regularity",
+      "label": "Равномерность шага",
+      "deep_link": "validation.regularity",
+      "help_entry_id": "validation.regularity.metrics",
+      "explanation_template": "Остановка «Равномерность шага» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Равномерность шага» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: нерегулярный временной шаг (пропуски дат, дублирование, сбой частоты) -- warning; ошибка выполнения -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр коррекции равномерности шага показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), целевая частота не настроена: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "node_id": "sufficiency",
+      "label": "Достаточность наблюдений",
+      "deep_link": "validation.sufficiency",
+      "help_entry_id": "validation.sufficiency.metrics",
+      "explanation_template": "Остановка «Достаточность наблюдений» модуля «Валидация»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Достаточность наблюдений» модуля «Валидация», чтобы разобрать статус проверки.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "validation_check_status",
+          "semantics": "Модуль «Валидация» отчитывает статус проверки как на экране: недостаточное число наблюдений для идентификации параметров модели -- warning; ошибка выполнения -- error; после плана решений -- оставшиеся замечания."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр плана решений по достаточности показан при найденных замечаниях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C4",
+          "event": "validation_check_status",
+          "semantics": "Проверка включена вручную (mode=enabled), порог достаточности не настроен: needs_rule -> warning (VALFIX-1) -- требуется настройка правила проверки."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "missing",
+      "label": "Пропуски",
+      "deep_link": "preprocessing.missing",
+      "help_entry_id": "preprocessing.missing.metrics",
+      "explanation_template": "Остановка «Пропуски» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Пропуски» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: пропуски в данных (total_missing > 0) -- warning; ошибка расчёта профиля -- error; после коррекции -- оставшиеся пропуски."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр исправления пропусков показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "outliers",
+      "label": "Выбросы",
+      "deep_link": "preprocessing.outliers",
+      "help_entry_id": "preprocessing.outliers.metrics",
+      "explanation_template": "Остановка «Выбросы» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Выбросы» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: выбросы в данных (total_outliers > 0, шкала карточки iqr-1.5) -- warning; ошибка расчёта профиля -- error; после коррекции -- оставшиеся выбросы."
+        },
+        {
+          "source_class": "C2",
+          "event": "outliers_profile_status",
+          "semantics": "Живой пересчёт карточки «Выбросы» (GET-профиль, всегда на сырых значениях) нашёл выбросы -- warning с бейджем total_outliers; закрытие «окна лжи» Г5 PROGR-22-REPRO (G345)."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр исправления выбросов показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        },
+        {
+          "source_class": "C2",
+          "event": "correction_applied",
+          "semantics": "Частичная коррекция выбросов: payload-статусный override (last-wins, PROGR-23-FIX-G345) честно оставляет warning при оставшихся выбросах (total_outliers_after > 0) -- статус в карточной шкале iqr-1.5."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "regularity",
+      "label": "Регулярность ряда",
+      "deep_link": "preprocessing.regularity",
+      "help_entry_id": "preprocessing.regularity.metrics",
+      "explanation_template": "Остановка «Регулярность ряда» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Регулярность ряда» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: нарушения регулярности временного шага (total_violations > 0 при применимой автодетекции даты) -- warning; ошибка расчёта -- error; после коррекции -- оставшиеся нарушения."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр исправления регулярности показан при найденных нарушениях и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "decomposition",
+      "label": "Декомпозиция ряда",
+      "deep_link": "preprocessing.decomposition",
+      "help_entry_id": "preprocessing.decomposition.metrics",
+      "explanation_template": "Остановка «Декомпозиция ряда» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Декомпозиция ряда» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: диагностические проблемы остатка STL (warnings профиля декомпозиции > 0) -- warning; ошибка расчёта STL -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр преобразования декомпозиции показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "variance_stab",
+      "label": "Стабилизация дисперсии",
+      "deep_link": "preprocessing.variance_stab",
+      "help_entry_id": "preprocessing.variance_stab.metrics",
+      "explanation_template": "Остановка «Стабилизация дисперсии» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Стабилизация дисперсии» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: найденная потребность в стабилизации (needs_stabilization -- гетероскедастичность) -- warning; ошибка расчёта профиля -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр трансформации стабилизации показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "smoothing",
+      "label": "Сглаживание ряда",
+      "deep_link": "preprocessing.smoothing",
+      "help_entry_id": "preprocessing.smoothing.metrics",
+      "explanation_template": "Остановка «Сглаживание ряда» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Сглаживание ряда» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: диагностическая потребность сравнить фильтры (needs_smoothing -- выраженный высокочастотный шум) -- warning; ошибка расчёта профиля -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр сглаживания показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "stationarity",
+      "label": "Стационарность ряда",
+      "deep_link": "preprocessing.stationarity",
+      "help_entry_id": "preprocessing.stationarity.metrics",
+      "explanation_template": "Остановка «Стационарность ряда» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Стационарность ряда» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: потребность в аналитическом решении о преобразовании (needs_transformation -- единичный корень, тренд-стационарность, расходящиеся ADF/KPSS) -- warning; ошибка расчёта -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр преобразования стационарности показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "spectral",
+      "label": "Спектральный анализ",
+      "deep_link": "preprocessing.spectral",
+      "help_entry_id": "preprocessing.spectral.metrics",
+      "explanation_template": "Остановка «Спектральный анализ» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Спектральный анализ» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: спектр -- аналитическая остановка, отсутствие пика не ошибка (warning семантики нет); проблемный статус возможен как error отчёта модуля при падении расчёта FFT/Welch/CWT -- запись честная."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр спектрального отбора показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "feature_eng",
+      "label": "Генерация признаков",
+      "deep_link": "preprocessing.feature_eng",
+      "help_entry_id": "preprocessing.feature_eng.metrics",
+      "explanation_template": "Остановка «Генерация признаков» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Генерация признаков» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: набор признаков рекомендован, но ещё не применён (generated=false) -- warning; ошибка расчёта preview матрицы X -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр генерации признаков показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    },
+    {
+      "stage": "preprocessing",
+      "node_id": "scaling",
+      "label": "Масштабирование",
+      "deep_link": "preprocessing.scaling",
+      "help_entry_id": "preprocessing.scaling.metrics",
+      "explanation_template": "Остановка «Масштабирование» модуля «Предобработка»: {status_reason}. Проблем по бейджу остановки: {summary_count}. Откройте остановку «Масштабирование» модуля «Предобработка», чтобы разобрать её статус.",
+      "sources": [
+        {
+          "source_class": "C2",
+          "event": "preprocessing_check_status",
+          "semantics": "Модуль «Предобработка» отчитывает статус остановки как на экране: рецепт масштабирования ещё не сохранён (configured=false, scaling зависит от модели) -- warning; ошибка расчёта профиля -- error."
+        },
+        {
+          "source_class": "C3",
+          "event": "correction_previewed",
+          "semantics": "Предпросмотр рецепта масштабирования показан и ещё не применён -- решение аналитика не принято (семя warning)."
+        }
+      ]
+    }
+  ]
+}

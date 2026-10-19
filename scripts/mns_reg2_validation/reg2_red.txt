@@ -1,0 +1,4 @@
+=========================== short test summary info ============================
+ERROR tests/unit/test_mentor_stop_explanations.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.18s ===============================
