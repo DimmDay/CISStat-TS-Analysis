@@ -1,0 +1,113 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, syrupy-6.1.1, typeguard-4.6.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 4168 items / 3165 deselected / 7 skipped / 1003 selected
+
+tests/api/test_admin_analytics.py ...                                    [  0%]
+tests/api/test_admin_progress_api.py .......................             [  2%]
+tests/api/test_mentor_rules.py ......................................... [  6%]
+........................................................................ [ 13%]
+........................................................................ [ 21%]
+................                                                         [ 22%]
+tests/api/test_node_status_engine.py ..                                  [ 22%]
+tests/api/test_pipeline_graph.py ..                                      [ 23%]
+tests/api/test_progress_audit_1a.py .................................... [ 26%]
+                                                                         [ 26%]
+tests/api/test_progress_audit_2a.py ......................               [ 28%]
+tests/api/test_progress_audit_3.py .........................             [ 31%]
+tests/api/test_progress_audit_4.py ..................................... [ 34%]
+...........                                                              [ 36%]
+tests/api/test_progress_audit_5b.py ....................                 [ 38%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 41%]
+ss                                                                       [ 41%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 45%]
+.............ss                                                          [ 46%]
+tests/api/test_progress_audit_6c.py ..................s.s..............F [ 50%]
+....ss                                                                   [ 51%]
+tests/api/test_progress_audit_7a.py ...................                  [ 53%]
+tests/api/test_progress_audit_7b.py .................................    [ 56%]
+tests/api/test_progress_audit_8.py ...............                       [ 57%]
+tests/api/test_progress_audit_c.py ................................      [ 61%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 61%]
+tests/api/test_progress_audit_h1.py ..........................           [ 64%]
+tests/api/test_progress_audit_s.py ..................................... [ 68%]
+....                                                                     [ 68%]
+tests/api/test_progress_defects_progr13.py ........                      [ 69%]
+tests/api/test_progress_panel.py ...................                     [ 71%]
+tests/api/test_progress_progr13a.py .........................            [ 73%]
+tests/api/test_progress_progr13b.py ...................                  [ 75%]
+tests/api/test_progress_progr13c.py ..................                   [ 77%]
+tests/api/test_progress_progr16.py ...........                           [ 78%]
+tests/api/test_progress_progr17.py .........                             [ 79%]
+tests/api/test_progress_progr18.py .........                             [ 80%]
+tests/api/test_progress_progr23.py .....................                 [ 82%]
+tests/api/test_progress_progr25a.py ................                     [ 83%]
+tests/api/test_progress_progr25c.py ........                             [ 84%]
+tests/api/test_progress_progr25d.py .........                            [ 85%]
+tests/api/test_progress_trace_hook.py .................................. [ 89%]
+..................                                                       [ 90%]
+tests/api/test_research_runs.py .                                        [ 90%]
+tests/api/test_run_report.py .                                           [ 91%]
+tests/api/test_session_store.py ..                                       [ 91%]
+tests/integration/test_progress_audit_cert.py ...................        [ 93%]
+tests/integration/test_progress_target_column_e2e.py ...                 [ 93%]
+tests/unit/test_mentor_next_step_spec.py ...............                 [ 94%]
+tests/unit/test_mentor_stop_explanations.py ............................ [ 97%]
+......................                                                   [ 99%]
+tests/unit/test_modeling_comparison.py .                                 [100%]
+
+=============================== warnings summary ===============================
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restore_keeps_auto_origin
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restored_session_origin_visible_in_trace_header
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+tests/api/test_progress_defects_progr13.py::test_mentor_phase_stays_upload_after_upload_page_actions
+tests/api/test_progress_defects_progr13.py::test_passport_start_event_attributed_to_upload_stage
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:955: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2*np.log(2*np.pi) - nobs2*np.log(ssr / nobs) - nobs2
+
+tests/api/test_progress_audit_7a.py::TestModelingProducersE2E::test_candidates_event_carries_pool_facts_and_marks_node_done
+  /home/z/.venv/lib/python3.12/site-packages/pandera/_pandas_deprecated.py:144: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    warnings.warn(_future_warning, FutureWarning)
+
+tests/api/test_progress_audit_7a.py: 20 warnings
+tests/api/test_progress_trace_hook.py: 4 warnings
+tests/unit/test_modeling_comparison.py: 3 warnings
+  /home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In future, it will be an error for 'np.bool' scalars to be interpreted as an index
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+=== 1 failed, 962 passed, 47 skipped, 3165 deselected, 35 warnings in 37.15s ===

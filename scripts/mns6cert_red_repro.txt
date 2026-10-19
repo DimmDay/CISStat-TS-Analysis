@@ -1,0 +1,99 @@
+mns6cert RED-воспроизведение на родителе 051b5fc серии v2 (git-worktree, дерево аудита не тронуто)
+
+### Статические факты RED (родитель 051b5fc)
+PASS F1 app.core.mentor_explanations отсутствует
+PASS F2 rules/mentor_stop_explanations.json отсутствует
+PASS F3 FALLBACK_ERROR_RULE_ID отсутствует
+PASS F4 SCAN_STATUS_PRIORITY отсутствует
+PASS F5 _fallback_recommendation отсутствует
+PASS F6 evaluate_next_step без node_facts (TypeError)
+PASS F7 MentorExplanationOut отсутствует
+PASS F8 _explanation_for_recommendation отсутствует
+PASS F9 find_article_by_id отсутствует
+PASS F10 packages/ui/lib/stopLinks.ts отсутствует
+RED-FACTS: ALL-RED
+
+### Оракулы сертификатора на родителе
+pytest rc=1; FAILED=78; PASSED (регресс-пины v1 вне v2)=6
+    TestExplanationAssembly.test_o31_fact_shield_on_response_boundary
+    TestExplanationAssembly.test_o32_gate_non_problem_status
+    TestExplanationAssembly.test_o33_gate_unknown_node_and_actionless
+    TestExplanationAssembly.test_o34_composite_key_join_two_regularities
+    TestLayerAPins.test_o15_layer_b_runs_when_layer_a_silent
+    TestLayerAPins.test_o16_pin_table_specific_rules_unchanged
+    TestLayerAPins.test_o16b_canon_block_matches_own_derivation
+    TestLayerAPins.test_o16c_fallback_family_ids_are_spec_literals
+    TestRegistryOracles.test_o17_registry_covers_canon_exactly_in_order
+    TestRegistryOracles.test_o18_deep_link_targets_the_stop
+    TestRegistryOracles.test_o19_help_entries_exist_and_titles_verbatim
+    TestRegistryOracles.test_o20_templates_both_placeholders_format_safe
+    TestRegistryOracles.test_o21_render_facts_and_honest_constants
+    TestRegistryOracles.test_o22_stop_explanation_fail_closed_and_composite_key
+    TestRegistryOracles.test_o23_labels_match_module_registries
+    TestRestOracles.test_o24_fallback_warning_full_explanation
+    TestRestOracles.test_o25_upload_module_article_verbatim
+    TestRestOracles.test_o26_error_status_end_to_end
+    TestRestOracles.test_o27_process_rule_no_explanation_and_shape
+    TestRestOracles.test_o28_advice_is_not_a_fact
+    TestRestOracles.test_o29_additive_response_shape
+    TestRestOracles.test_o30_message_substitutes_reason_and_count
+    TestScanOrderOracles.test_o01_determinism_same_snapshot
+    TestScanOrderOracles.test_o02_one_recommendation_not_a_list
+    TestScanOrderOracles.test_o03_error_beats_warning_cross_stage
+    TestScanOrderOracles.test_o04_error_beats_warning_same_stage_later_node
+    TestScanOrderOracles.test_o05_canon_order_between_stages
+    TestScanOrderOracles.test_o06_canon_order_within_stage
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/decomposition]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/feature_eng]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/missing]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/outliers]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/regularity]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/scaling]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/smoothing]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/spectral]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/stationarity]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[preprocessing/variance_stab]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[upload/chart]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[upload/distribution]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[upload/overview]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[upload/quality]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[upload/structure]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/consistency]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/data_types]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/formats]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/inclusion]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/ranges]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/referential]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/regularity]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/sufficiency]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/text_quality]
+    TestScanOrderOracles.test_o07_invariant_warning_every_stop[validation/uniqueness]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/decomposition]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/feature_eng]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/missing]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/outliers]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/regularity]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/scaling]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/smoothing]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/spectral]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/stationarity]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[preprocessing/variance_stab]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[upload/chart]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[upload/distribution]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[upload/overview]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[upload/quality]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[upload/structure]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/consistency]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/data_types]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/formats]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/inclusion]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/ranges]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/referential]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/regularity]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/sufficiency]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/text_quality]
+    TestScanOrderOracles.test_o08_invariant_error_every_stop[validation/uniqueness]
+ИТОГ RED-КОМПОЗИЦИИ: ПОЛНАЯ (suite RED)
+
+worktree удалён (cleanup): True
+git diff пуст (дерево аудита чистое): True

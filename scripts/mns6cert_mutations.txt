@@ -1,0 +1,177 @@
+mns6cert мутационный прогон MNS-CERT-6 (свои мутанты, двухканальная схема repo+oracle)
+цели: app/core/mentor_rules.py, app/core/mentor_explanations.py,
+      rules/mentor_stop_explanations.json, apps/api/routers/progress.py
+repo-канал: 266 тестов MNS-контура; oracle-канал: 84 оракула (Северная Двина)
+
+MS-00 no-op-контроль (харнесс достоверен, если переживает оба канала)
+    repo: SURVIVED (======================= 266 passed, 14 warnings in 6.73s =======================)
+    oracle: SURVIVED (============================== 84 passed in 5.91s ==============================)
+
+MS-01 порядок статусов перепутан (warning старше error — решение Q2 нарушено)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_error_beats_warning_across_stages)
+    oracle: KILLED (E   AssertionError: ожидался fallback_error, получен fallback_warning)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_error_beats_warning_across_stages', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_fallback_family_constants']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o03_error_beats_warning_cross_stage', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o04_error_beats_warning_same_stage_later_node']
+
+MS-02 Слой B выключен (инвариант v2 нарушен: жёлтый узел — тишина)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_error_on_any_scan_stop[uploa)
+    oracle: KILLED (E   AssertionError: инвариант v2 нарушен: upload/overview warning — тишина (самопротиворечие §2.2(д)))
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_yellow_outside_eight_rules_gets_fallback_recommendation', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_warning_on_any_scan_stop[upload-overview]']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o01_determinism_same_snapshot', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o02_one_recommendation_not_a_list', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o03_error_beats_warning_cross_stage']
+
+MS-03 канон стадий обращён (reversed SCAN_STAGES — решения Q1/Q5)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_error_pass_uses_stage_canon)
+    oracle: KILLED (E   AssertionError: детерминизм зафиксирован не на канонической первой проблеме)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_error_pass_uses_stage_canon', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_warning_pass_uses_stage_canon']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o01_determinism_same_snapshot', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o02_one_recommendation_not_a_list', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o05_canon_order_between_stages']
+
+MS-04 канон узлов внутри стадии обращён (reversed STAGE_NODES)
+    repo: KILLED (================== 1 failed, 265 passed, 14 warnings in 6.83s ==================)
+    oracle: KILLED (E   AssertionError: assert 'validation.text_quality' == 'validation.data_types')
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_warning_pass_uses_node_canon_within_stage']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o06_canon_order_within_stage']
+
+MS-05 rule_id семейства перепутан (fallback_warning за error)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_error_on_any_scan_stop[uploa)
+    oracle: KILLED (E   AssertionError: ожидался fallback_error, получен fallback_warning)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_yellow_outside_eight_rules_gets_fallback_recommendation', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_error_on_any_scan_stop[upload-overview]']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o03_error_beats_warning_cross_stage', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o04_error_beats_warning_same_stage_later_node', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o07_invariant_warning_every_stop[upload/overview]']
+
+MS-06 deep-link обрезан до стадии (адресность MNS-LINK-3 потеряна)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_error_on_any_scan_stop[uploa)
+    oracle: KILLED (E   AssertionError: детерминизм зафиксирован не на канонической первой проблеме)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_yellow_outside_eight_rules_gets_fallback_recommendation', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_invariant_error_on_any_scan_stop[upload-overview]']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o01_determinism_same_snapshot', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o03_error_beats_warning_cross_stage', 'FAILED scripts/mns6cert_oracles.py::TestScanOrderOracles::test_o04_error_beats_warning_same_stage_later_node']
+
+MS-07 сообщение мимо реестра (статическая строка — §5.2 нарушен)
+    repo: KILLED (================== 6 failed, 260 passed, 14 warnings in 6.91s ==================)
+    oracle: KILLED (E   AssertionError: число бейджа не попало в сообщение Слоя B)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_yellow_outside_eight_rules_gets_fallback_recommendation', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_node_facts_substituted_into_fallback_message']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o24_fallback_warning_full_explanation', 'FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o30_message_substitutes_reason_and_count']
+
+MS-08 node_facts игнорируются (факты не подставляются — §5.2)
+    repo: KILLED (================== 2 failed, 264 passed, 14 warnings in 6.72s ==================)
+    oracle: KILLED (E   AssertionError: число бейджа не попало в сообщение Слоя B)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_node_facts_substituted_into_fallback_message', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_endpoint_fallback_recommendation_with_node_facts']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o24_fallback_warning_full_explanation', 'FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o30_message_substitutes_reason_and_count']
+
+MS-09 Слой B ПЕРЕД Слоем A (пин «специфичные правила старше» нарушен)
+    repo: KILLED (================== 9 failed, 257 passed, 14 warnings in 6.79s ==================)
+    oracle: KILLED (E   AssertionError: Слой B вытеснил специфичное правило — пин «Слой A старше Слоя B» нарушен)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepRules::test_canonical_regularity_before_decomposition', 'FAILED tests/api/test_mentor_rules.py::TestNextStepRules::test_single_recommendation_first_by_priority']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestLayerAPins::test_o11_specific_rule_beats_fallback_same_stage', 'FAILED scripts/mns6cert_oracles.py::TestLayerAPins::test_o12_process_gap_beats_fallback_error', 'FAILED scripts/mns6cert_oracles.py::TestLayerAPins::test_o13_forecast_rule_beats_fallback_warning']
+
+MS-10 tie-break по rule_id снят (сортировка только по priority)
+    repo: SURVIVED (======================= 266 passed, 14 warnings in 7.44s =======================)
+    oracle: KILLED (E   AssertionError: tie-break (priority, rule_id) нарушен)
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestLayerAPins::test_o14_tie_break_priority_then_rule_id']
+
+ME-01 щит bool снят в render (True отчитан счётчиком — выдуманный факт)
+    repo: KILLED (================== 2 failed, 264 passed, 14 warnings in 6.82s ==================)
+    oracle: KILLED (E   AssertionError: щит пропустил не-счётчик True — выдуманный факт в совете)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_untruthworthy_summary_count_not_invented', 'FAILED tests/unit/test_mentor_stop_explanations.py::TestTemplateContract::test_render_rejects_non_countable_summary']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o21_render_facts_and_honest_constants']
+
+ME-02 щит отрицательных снят в render (-3 отчитан счётчиком)
+    repo: KILLED (================== 2 failed, 264 passed, 14 warnings in 6.68s ==================)
+    oracle: KILLED (E   AssertionError: щит пропустил не-счётчик -1 — выдуманный факт в совете)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_untruthworthy_summary_count_not_invented', 'FAILED tests/unit/test_mentor_stop_explanations.py::TestTemplateContract::test_render_rejects_non_countable_summary']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o21_render_facts_and_honest_constants']
+
+ME-03 честная константа причины заменена выдуманной (§3.2)
+    repo: KILLED (================== 3 failed, 263 passed, 14 warnings in 7.10s ==================)
+    oracle: KILLED (E   AssertionError: assert ('причина не отчитана' in 'Остановка «Диапазоны значений» модуля «Валидация»: причи)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_yellow_outside_eight_rules_gets_fallback_recommendation', 'FAILED tests/api/test_mentor_rules.py::TestNextStepFallbackLayerB::test_missing_node_facts_rendered_honestly']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o21_render_facts_and_honest_constants']
+
+ME-04 fail-closed доступ снят (фантом возвращает None без ValueError)
+    repo: KILLED (================== 1 failed, 265 passed, 14 warnings in 7.18s ==================)
+    oracle: KILLED (E   Failed: DID NOT RAISE <class 'ValueError'>)
+    repo-убийцы: ['FAILED tests/unit/test_mentor_stop_explanations.py::TestCoverageInvariant::test_stop_explanation_lookup_fail_closed']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o22_stop_explanation_fail_closed_and_composite_key']
+
+ME-05 SCAN_STAGES расширен EDA (решение Q3 нарушено; fail-closed канона)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MP-01 гейт проблемного статуса снят (объяснение «почему жёлтый» к зелёному узлу)
+    repo: KILLED (================== 1 failed, 265 passed, 14 warnings in 6.70s ==================)
+    oracle: KILLED (E   AssertionError: assert MentorExplanationOut(status='done', status_reason='X', summary_count=1, help_entry_)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_builder_node_without_problem_status_is_none']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestExplanationAssembly::test_o32_gate_non_problem_status']
+
+MP-02 заголовок методологии выдуман из label вместо статьи (no fabricated results)
+    repo: KILLED (================== 5 failed, 261 passed, 14 warnings in 6.87s ==================)
+    oracle: KILLED (E   AssertionError: assert 'Диапазоны значений' == 'Метрики и ал...зоны значений')
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_endpoint_fallback_explanation_fields', 'FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_endpoint_layer_a_rule_explanation']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o24_fallback_warning_full_explanation', 'FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o25_upload_module_article_verbatim']
+
+MP-03 щит фактов снят на границе ответа (bool/дробное/отрицательное пройдёт)
+    repo: KILLED (================== 1 failed, 265 passed, 14 warnings in 6.60s ==================)
+    oracle: KILLED (E   AssertionError: validation/ranges: не-счётчик True прошёл щит)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_builder_fact_shield_not_truthworthy_values']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestExplanationAssembly::test_o31_fact_shield_on_response_boundary']
+
+MP-04 join реестра инвертирован (составной ключ нарушен — чужая статья regularity)
+    repo: KILLED (FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_endpoint_error_status_explanation)
+    oracle: KILLED (E   AssertionError: объяснение §5.2 отсутствует у рекомендации Слоя B)
+    repo-убийцы: ['FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_endpoint_fallback_explanation_fields', 'FAILED tests/api/test_mentor_rules.py::TestNextStepExplanationMNS5::test_endpoint_layer_a_rule_explanation']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o24_fallback_warning_full_explanation', 'FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o25_upload_module_article_verbatim', 'FAILED scripts/mns6cert_oracles.py::TestRestOracles::test_o26_error_status_end_to_end']
+
+MJ-00 no-op-контроль JSON (лишний корневой ключ игнорируется)
+    repo: SURVIVED (======================= 266 passed, 14 warnings in 6.71s =======================)
+    oracle: SURVIVED (============================== 84 passed in 5.25s ==============================)
+
+MJ-01 остановка снята (неполное покрытие канона — fail-closed)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-02 порядок остановок нарушен (канон скана §3.1)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-03 deep_link дрейфовал (цель остановки потеряна)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-04 {summary_count} снят из шаблона (контракт §5.2)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-05 version 1→2 (привязка к контракту потеряна)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-06 неизвестный класс источника C9 (спека §4)
+    repo: KILLED (collected 0 items / 3 errors)
+    oracle: KILLED (collected 0 items / 1 error)
+    repo-убийцы: ['ERROR tests/api/test_mentor_rules.py', 'ERROR tests/unit/test_mentor_stop_explanations.py']
+    oracle-убийцы: ['ERROR scripts/mns6cert_oracles.py']
+
+MJ-07 label дрейфовал против терминологии модуля
+    repo: KILLED (================== 4 failed, 262 passed, 14 warnings in 7.27s ==================)
+    oracle: KILLED (E   AssertionError: validation/ranges: заголовок 'Метрики и алгоритм: Диапазоны значений' не отвечает терминол)
+    repo-убийцы: ['FAILED tests/unit/test_mentor_stop_explanations.py::TestTerminologyAgainstKnowledge::test_check_stages_reference_metrics_article_with_matching_title', 'FAILED tests/unit/test_mentor_stop_explanations.py::TestLabelsMatchModules::test_stop_labels_equal_module_labels']
+    oracle-убийцы: ['FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o19_help_entries_exist_and_titles_verbatim', 'FAILED scripts/mns6cert_oracles.py::TestRegistryOracles::test_o23_labels_match_module_registries']
+
+
+md5 после прогона: ВСЕ СХОДЯТСЯ = True
+git diff пуст (дерево аудита чистое): True
+no-op-контроли пережили оба канала: ['MS-00', 'MJ-00']
+мутантов всего: 28 (боевых: 26)
+DUAL-KILLED (обоими): 25
+REPO-ONLY (убит только repo): 0
+ORACLE-ONLY (убит только oracle): 1
+DUAL-SURVIVORS (пережили оба — дыра сертификации): 0
