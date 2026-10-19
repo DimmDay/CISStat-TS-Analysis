@@ -63,6 +63,7 @@ from app.core.mentor_rules import (
     load_mentor_config,
     phase_text,
 )
+from app.core.pipeline_graph import STAGE_NODES
 from apps.api.trace_events import make_trace_event
 
 
@@ -440,6 +441,296 @@ class TestNextStepRules:
             assert rule.trigger == "on_demand"
             assert rule.explanation_template
             assert isinstance(rule.priority, int)
+
+
+# ── Контур 4b: Слой B -- fallback-скан (MNS-FALLBACK-4, spec_mentor_next_step.md §2/§3) ──
+
+
+# Канон сканирования §3.1 -- РОВНО узлы STAGE_NODES трёх warning-способных
+# стадий в порядке реестров (25 остановок); список НЕ копируется --
+# строится из живого реестра графа.
+_SCAN_STOPS = [
+    (stage, node_id)
+    for stage in ("upload", "validation", "preprocessing")
+    for node_id in STAGE_NODES[stage]
+]
+
+
+class TestNextStepFallbackLayerB:
+    """v2-гибрид (spec_mentor_next_step.md §2, MNS-FALLBACK-4): Слой A --
+    8 специфичных правил -- поверх Слоя B, детерминированного
+    fallback-скана по канону SCAN_STAGES × STAGE_NODES (error-проход,
+    затем warning-проход, решение Q2). Инвариант v2: проблемный узел
+    (error/warning) на warning-способной стадии ⇒ рекомендация != None;
+    тишина честна только без проблемных узлов и неактуальных процессных
+    гэпов. Устраняет задокументированное самопротиворечие §2.2(д)
+    ревью: панель показывает жёлтый узел вне покрытия 8 правил, а ответ
+    next-step давал «тишину» -- один JSON противоречил сам себе."""
+
+    def test_yellow_outside_eight_rules_gets_fallback_recommendation(self):
+        """RED-воспроизведение §2.2(д): validation/ranges -- жёлтый узел
+        вне 8 правил. До v2: recommendation None при жёлтой панели.
+        После v2: Слой B -- рекомендация из реестра объяснимости
+        (MNS-REG-2), deep-link на остановку, честные плейсхолдеры фактов
+        (node_facts не переданы)."""
+        statuses = {"validation/ranges": "warning"}
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None, (
+            "Инвариант v2 нарушен: жёлтый узел вне 8 правил дал тишину"
+        )
+        assert recommendation.rule_id == "fallback_warning"
+        assert recommendation.stage == "validation"
+        assert recommendation.recommended_action == "validation.ranges"
+        # Текст -- из реестра объяснимости: метка терминологии модуля
+        # Валидации; факты не переданы -- честное «не отчитано».
+        assert "Диапазоны значений" in recommendation.message
+        assert "причина не отчитана" in recommendation.message
+        assert "не отчитано" in recommendation.message
+
+    @pytest.mark.parametrize("stage,node_id", _SCAN_STOPS)
+    def test_invariant_warning_on_any_scan_stop(self, stage, node_id):
+        """Инвариант v2 (спека §2/§9.1) по всем 25 warning-способным
+        остановкам: жёлтый узел ⇒ рекомендация != None (Слой A, если
+        правило покрывает; иначе Слой B)."""
+        recommendation = evaluate_next_step({f"{stage}/{node_id}": "warning"})
+        assert recommendation is not None, (
+            f"{stage}/{node_id}: тишина при warning -- инвариант v2 нарушен"
+        )
+
+    @pytest.mark.parametrize("stage,node_id", _SCAN_STOPS)
+    def test_invariant_error_on_any_scan_stop(self, stage, node_id):
+        """error старше warning (Q2): красный узел ⇒ рекомендация.
+        Ни одно из 8 правил Слоя A на error не смотрит (проверено
+        чтением условий) -- это всегда Слой B с семейством fallback_error."""
+        recommendation = evaluate_next_step({f"{stage}/{node_id}": "error"})
+        assert recommendation is not None, (
+            f"{stage}/{node_id}: тишина при error -- инвариант v2 нарушен"
+        )
+        assert recommendation.rule_id == "fallback_error"
+        assert recommendation.stage == stage
+        assert recommendation.recommended_action == f"{stage}.{node_id}"
+
+    def test_error_beats_warning_across_stages(self):
+        """Два прохода (Q2): error на нижележащей стадии старше warning
+        на вышележащей -- сначала весь error-проход, потом warning."""
+        statuses = {"upload/overview": "warning", "preprocessing/scaling": "error"}
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None
+        assert recommendation.rule_id == "fallback_error"
+        assert recommendation.recommended_action == "preprocessing.scaling"
+
+    def test_error_pass_uses_stage_canon(self):
+        """Внутри error-прохода -- канон стадий (Q1): upload раньше
+        preprocessing независимо от порядка ключей statuses."""
+        statuses = {"preprocessing/scaling": "error", "upload/chart": "error"}
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None
+        assert recommendation.rule_id == "fallback_error"
+        assert recommendation.recommended_action == "upload.chart"
+
+    def test_warning_pass_uses_stage_canon(self):
+        statuses = {"validation/data_types": "warning", "upload/quality": "warning"}
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None
+        assert recommendation.rule_id == "fallback_warning"
+        assert recommendation.recommended_action == "upload.quality"
+
+    def test_warning_pass_uses_node_canon_within_stage(self):
+        """Внутри стадии -- порядок STAGE_NODES (канон сканирования,
+        детерминизм; §2.2(в) ревью: порядок реестра -- конвенция скана)."""
+        statuses = {
+            "validation/uniqueness": "warning",
+            "validation/data_types": "warning",
+        }
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None
+        assert recommendation.recommended_action == "validation.data_types"
+
+    def test_layer_a_rule_beats_fallback(self):
+        """Пин «Слой A старше Слоя B» (спека §2): warning на узле из 8
+        правил -- сработавшее специфичное правило, не fallback."""
+        recommendation = evaluate_next_step({"preprocessing/missing": "warning"})
+        assert recommendation is not None
+        assert recommendation.rule_id == "preprocessing_missing_attention"
+
+    def test_process_gap_rule_beats_fallback(self):
+        """Процессные гэпы Слоя A (Q4: modeling/forecasting вне скана)
+        старше fallback-скана."""
+        statuses = {"modeling/selection": "done", "validation/ranges": "warning"}
+        recommendation = evaluate_next_step(statuses)
+        assert recommendation is not None
+        assert recommendation.rule_id == "modeling_selected_without_backtest"
+
+    def test_excluded_stages_are_not_scanned(self):
+        """Q3/Q4: EDA/Моделирование/Прогнозирование вне скана; warning
+        на их узлах без процессных гэпов -- честная тишина."""
+        statuses = {
+            "eda/descriptive": "warning",
+            "modeling/backtest": "warning",
+            "forecasting/forecast_generated": "warning",
+        }
+        assert evaluate_next_step(statuses) is None
+
+    def test_silence_honest_without_problem_nodes(self):
+        """Тишина честна (спека §2): нет error/warning на скан-стадиях,
+        процессные гэпы неактуальны."""
+        assert evaluate_next_step({}) is None
+        statuses = {
+            f"{stage}/{node_id}": "done" for stage, node_id in _SCAN_STOPS
+        }
+        statuses.update(
+            {
+                "modeling/selection": "done",
+                "modeling/backtest": "done",
+                "forecasting/forecast_generated": "pending",
+                "forecasting/forecast_compared": "pending",
+            }
+        )
+        assert evaluate_next_step(statuses) is None
+
+    def test_fallback_recommendation_is_deterministic(self):
+        """Спека §3.1 свойство (1): два вызова на одном снапшоте --
+        один и тот же узел и одно и то же сообщение."""
+        statuses = {
+            "validation/ranges": "warning",
+            "preprocessing/smoothing": "warning",
+        }
+        first = evaluate_next_step(statuses)
+        second = evaluate_next_step(statuses)
+        assert first is not None and second is not None
+        assert (
+            first.rule_id,
+            first.stage,
+            first.recommended_action,
+            first.message,
+        ) == (
+            second.rule_id,
+            second.stage,
+            second.recommended_action,
+            second.message,
+        )
+
+    def test_node_facts_substituted_into_fallback_message(self):
+        """Спека §5.2: сообщение Слоя B -- подстановка уже посчитанных
+        фактов узла (status_reason/summary_count из projection.node_states;
+        роутер приносит факты, движок -- чистая функция)."""
+        statuses = {"validation/ranges": "warning"}
+        node_facts = {
+            "validation/ranges": {
+                "status_reason": "Найдены значения вне предметных границ",
+                "summary_count": 7,
+            }
+        }
+        recommendation = evaluate_next_step(statuses, node_facts=node_facts)
+        assert recommendation is not None
+        assert "Найдены значения вне предметных границ" in recommendation.message
+        assert "7" in recommendation.message
+
+    def test_missing_node_facts_rendered_honestly(self):
+        """node_facts переданы, но поля None (узел без отчёта причины) --
+        честные плейсхолдеры, не выдуманные факты (советы -- не факты,
+        spec_progress.md §3.2)."""
+        recommendation = evaluate_next_step(
+            {"validation/ranges": "warning"},
+            node_facts={"validation/ranges": {"status_reason": None, "summary_count": None}},
+        )
+        assert recommendation is not None
+        assert "причина не отчитана" in recommendation.message
+        assert "не отчитано" in recommendation.message
+
+    def test_untruthworthy_summary_count_not_invented(self):
+        """Щит render_stop_explanation через движок: bool/дробное/строка/
+        отрицательное в summary_count -- не факт (контракт MNS-REG-2),
+        честное «не отчитано»."""
+        for bad in (True, 2.5, "3", -1):
+            recommendation = evaluate_next_step(
+                {"validation/ranges": "warning"},
+                node_facts={"validation/ranges": {"summary_count": bad}},
+            )
+            assert recommendation is not None
+            assert "не отчитано" in recommendation.message
+
+    def test_layer_b_text_from_registry_not_renderer(self):
+        """Текст Слоя B -- render_stop_explanation реестра; renderer
+        (точка расширения LLM §8) на fallback не вызывается -- LLM не
+        решает, есть ли проблема (продолжение пина
+        test_renderer_not_called_when_no_rule_fires на Слой B)."""
+        renderer = _RecordingRenderer()
+        recommendation = evaluate_next_step(
+            {"validation/ranges": "warning"}, renderer=renderer
+        )
+        assert recommendation is not None
+        assert recommendation.message != "РЕНДЕР-СТАБ"
+        assert renderer.calls == []
+
+    def test_fallback_family_constants(self):
+        """Константы семейства (спека §5.1: синтетические rule_id Слоя B,
+        не новые специфичные правила) -- дизъюнкция с NEXT_STEP_RULES;
+        порядок статусов == канон-блоку scan_status_priority."""
+        assert mentor_rules.FALLBACK_RULE_IDS == (
+            "fallback_error",
+            "fallback_warning",
+        )
+        assert mentor_rules.SCAN_STATUS_PRIORITY == ("error", "warning")
+        assert set(mentor_rules.FALLBACK_RULE_IDS).isdisjoint(
+            rule.rule_id for rule in mentor_rules.NEXT_STEP_RULES
+        )
+
+    def test_endpoint_fallback_recommendation_with_node_facts(self, client):
+        """Контур REST (сквозной): событие validation_check_status
+        (warning, счётчик нарушений) на validation/ranges -- узел вне 8
+        правил; ответ next-step несёт рекомендацию Слоя B с фактами узла
+        (status_reason/summary_count той же проекции AUDIT-5B; ноль
+        нового I/O)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "validation_check_status", stage="validation", node_id="ranges",
+                run_id="RUN-AAA00001", status="warning", total_violations=3,
+            ),
+        )
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        recommendation = response.json()["recommendation"]
+        assert recommendation is not None, (
+            "Инвариант v2 нарушен на эндпоинте: жёлтый узел вне 8 правил дал тишину"
+        )
+        assert recommendation["rule_id"] == "fallback_warning"
+        assert recommendation["stage"] == "validation"
+        assert recommendation["recommended_action"] == "validation.ranges"
+        assert "Диапазоны значений" in recommendation["message"]
+        assert (
+            "Статус проверки отчитан модулем «Валидация»"
+            in recommendation["message"]
+        )
+        assert "3" in recommendation["message"]
+
+    def test_endpoint_upload_warning_fallback(self, client):
+        """C1-источник: upload_stop_status warning на upload/overview
+        (технические предупреждения чтения) -- ответ Слоя B с фактом
+        статуса и deep-link на остановку (MNS-LINK-3)."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "upload_stop_status", stage="upload", node_id="overview",
+                run_id="RUN-AAA00001", status="warning",
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        recommendation = data["recommendation"]
+        assert recommendation is not None
+        assert recommendation["rule_id"] == "fallback_warning"
+        assert recommendation["stage"] == "upload"
+        assert recommendation["recommended_action"] == "upload.overview"
+        assert "Превью датасета" in recommendation["message"]
 
 
 # ── Контур 5: derive_node_statuses -- переехал в PROGR-10 ────────────

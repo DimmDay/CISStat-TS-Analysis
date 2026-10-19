@@ -1788,7 +1788,9 @@ class SanityWarningOut(BaseModel):
 
 
 class MentorRecommendationOut(BaseModel):
-    """Одна рекомендация §7.1 (первое сработавшее on_demand-правило)."""
+    """Одна рекомендация §7.1 v2-гибрида (MNS-FALLBACK-4): правило
+    Слоя A (первое сработавшее on_demand-правило) или рекомендация
+    Слоя B (fallback-скан, семейство fallback_error/fallback_warning)."""
 
     rule_id: str
     stage: str
@@ -1888,6 +1890,24 @@ def _record_next_step_observation(run_id: str, recommendation: Any) -> None:
         )
 
 
+def _node_facts_for_mentor(projection: Any) -> Dict[str, Dict[str, Any]]:
+    """MNS-FALLBACK-4: факты узлов для Слоя B fallback-скана
+    (spec_mentor_next_step.md §5.2) -- status_reason/summary_count той
+    же единой проекции AUDIT-5B, что бейджи панели: ноль нового I/O,
+    пересказ уже посчитанного (правила -- чистые функции: хранилища
+    сюда не импортируются, данные приносит роутер). Ключ --
+    "stage/node_id" (тот же формат, что projection.node_statuses)."""
+    facts: Dict[str, Dict[str, Any]] = {}
+    for state in projection.node_states:
+        if not isinstance(state, dict):
+            continue
+        stage = state.get("stage")
+        node_id = state.get("node_id")
+        if stage and node_id:
+            facts[f"{stage}/{node_id}"] = state
+    return facts
+
+
 def _derived_spikes_facts(run: ResearchRun) -> dict[str, Any] | None:
     """PROGR-24-ORIGIN-C: факты для правила Наставника derived_spikes --
     проекция профиля ПРОИЗВОДНОЙ области датафрейма сессии запуска.
@@ -1951,7 +1971,12 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     corpus = canonical_corpus([event.to_dict() for event in events])
     projection = build_projection(corpus, run_meta=run.to_dict())
     statuses = projection.node_statuses
-    recommendation = evaluate_next_step(statuses)
+    # MNS-FALLBACK-4: Слой B (fallback-скан) собирает сообщение из
+    # реестра объяснимости с подстановкой фактов узла -- из той же
+    # проекции, без нового I/O (спека §5.2).
+    recommendation = evaluate_next_step(
+        statuses, node_facts=_node_facts_for_mentor(projection)
+    )
     history_warnings = [
         *evaluate_history_warnings(events),
         # PROGR-24-ORIGIN-C: совет derived_spikes (on_demand_with_session,

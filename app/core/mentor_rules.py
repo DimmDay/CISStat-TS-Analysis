@@ -70,6 +70,11 @@ from typing import Any, Callable, Iterable, Mapping, Protocol, runtime_checkable
 import yaml
 
 from app.core.effective_target import effective_target
+from app.core.mentor_explanations import (
+    SCAN_STAGES,
+    render_stop_explanation,
+    stop_explanation,
+)
 from app.core.node_status import event_to_dict
 from app.core.pipeline_graph import STAGES, STAGE_NODES
 
@@ -608,18 +613,114 @@ NEXT_STEP_RULES: tuple[MentorRule, ...] = (
 )
 
 
+# ── Слой B: fallback-скан (MNS-FALLBACK-4, spec_mentor_next_step.md §2/§3) ──
+
+# Синтетические rule_id семейства fallback (спека §5.1: константы кода,
+# НЕ новые специфичные правила -- в NEXT_STEP_RULES не добавляются,
+# канон-блок спеки не меняется).
+FALLBACK_ERROR_RULE_ID = "fallback_error"
+FALLBACK_WARNING_RULE_ID = "fallback_warning"
+FALLBACK_RULE_IDS: tuple[str, ...] = (
+    FALLBACK_ERROR_RULE_ID,
+    FALLBACK_WARNING_RULE_ID,
+)
+
+# scan_status_priority канон-блока §3.1 (решение Q2): error старше
+# warning -- два прохода скана: сначала первый error, затем первый warning.
+SCAN_STATUS_PRIORITY: tuple[str, ...] = ("error", "warning")
+
+_FALLBACK_RULE_ID_BY_STATUS: dict[str, str] = {
+    "error": FALLBACK_ERROR_RULE_ID,
+    "warning": FALLBACK_WARNING_RULE_ID,
+}
+
+# Fail-closed самопроверка на импорте (паттерн модуля: дубликат rule_id,
+# неизвестный trigger -- ImportError): семейство fallback отделено от
+# специфичных правил и покрывает ровно статусы скана.
+if set(_FALLBACK_RULE_ID_BY_STATUS) != set(SCAN_STATUS_PRIORITY):
+    raise ImportError(
+        "Слой B: карта rule_id покрывает не ровно статусы скана "
+        f"{list(SCAN_STATUS_PRIORITY)}"
+    )
+if set(FALLBACK_RULE_IDS) & {rule.rule_id for rule in NEXT_STEP_RULES}:
+    raise ImportError(
+        "Слой B: rule_id семейства fallback пересекается с "
+        "специфичными правилами NEXT_STEP_RULES (спека §5.1)"
+    )
+
+
+def _fallback_recommendation(
+    statuses: Mapping[str, str],
+    node_facts: Mapping[str, Mapping[str, Any]] | None,
+) -> MentorRecommendation | None:
+    """Слой B v2-гибрида (спека §2/§3, MNS-FALLBACK-4): детерминированный
+    fallback-скан по канону SCAN_STAGES × STAGE_NODES -- сначала первый
+    узел со статусом error, затем первый со статусом warning (решение
+    Q2); канон -- стадии в порядке STAGES, узлы в порядке STAGE_NODES
+    (решения Q1/Q5: глобальный канон, «текущая вкладка» скан не знает);
+    EDA/Моделирование/Прогнозирование вне скана по построению (Q3/Q4).
+
+    Рекомендация собирается из реестра объяснимости MNS-REG-2
+    (stop_explanation -- fail-closed доступ; сообщение --
+    render_stop_explanation с подстановкой уже посчитанных фактов узла
+    из node_facts; недостающий факт честно называется недостающим).
+    Ноль нового I/O: вход -- та же проекция AUDIT-5B, что у панели и
+    отчёта. Возвращает ровно ОДНУ рекомендацию (канон §7.1) или None
+    (честная тишина: проблемных узлов на warning-способных стадиях нет)."""
+    for status in SCAN_STATUS_PRIORITY:
+        for stage in SCAN_STAGES:
+            for node_id in STAGE_NODES[stage]:
+                if _status(statuses, stage, node_id) != status:
+                    continue
+                entry = stop_explanation(stage, node_id)
+                facts = (node_facts or {}).get(f"{stage}/{node_id}") or {}
+                return MentorRecommendation(
+                    rule_id=_FALLBACK_RULE_ID_BY_STATUS[status],
+                    stage=stage,
+                    message=render_stop_explanation(
+                        entry,
+                        status_reason=facts.get("status_reason"),
+                        summary_count=facts.get("summary_count"),
+                    ),
+                    recommended_action=entry.deep_link,
+                )
+    return None
+
+
 def evaluate_next_step(
     statuses: Mapping[str, str],
     *,
+    node_facts: Mapping[str, Mapping[str, Any]] | None = None,
     renderer: MentorTextRenderer | None = None,
 ) -> MentorRecommendation | None:
-    """§7.1: прогон состояния графа через отсортированный по (priority,
-    rule_id) список on_demand-правил, первое сработавшее -- ОДНА
-    рекомендация за раз (не весь список, §7.1 дословно). Текст --
-    renderer.render ПОСЛЕ факта (§8); контекст несёт агрегированные
-    факты (статусы узлов). renderer=None -- дефолтный
-    FormatMentorTextRenderer; подключение LLM -- передачей реализации
-    Protocol, без правки движка."""
+    """§7.1 v2-гибрид (spec_mentor_next_step.md §2, MNS-FALLBACK-4):
+    ОДНА рекомендация за раз (не весь список, §7.1 дословно).
+
+    Слой A -- специфичные правила: прогон состояния графа через
+    отсортированный по (priority, rule_id) список on_demand-правил,
+    первое сработавшее (реестр/приоритеты не меняются -- пин канон-блока
+    спеки и гвара test_mentor_next_step_spec.py). Слой B -- fallback-скан,
+    включается ТОЛЬКО если Слой A не дал рекомендации: первый узел со
+    статусом error, затем первый со статусом warning по канону
+    SCAN_STAGES × STAGE_NODES (решения Q1/Q2/Q5); рекомендация
+    собирается из реестра объяснимости MNS-REG-2 (rule_id -- синтетические
+    константы семейства FALLBACK_*, не новые специфичные правила).
+
+    Инвариант v2: проблемный узел (error/warning) на warning-способной
+    стадии ⇒ рекомендация != None; тишина честна только без проблемных
+    узлов и неактуальных процессных гэпов (устраняет самопротиворечие
+    §2.2(д) ревью: жёлтая панель при «тихом» ответе).
+
+    node_facts -- уже посчитанные факты узлов (status_reason/summary_count
+    из projection.node_states; канон AUDIT-5B: ноль нового I/O, данные
+    приносит роутер); None/неполные поля -- честные плейсхолдеры
+    render_stop_explanation («причина не отчитана»/«не отчитано»).
+
+    Текст -- Слой A: renderer.render ПОСЛЕ факта (§8; renderer=None --
+    дефолтный FormatMentorTextRenderer; подключение LLM -- передачей
+    реализации Protocol, без правки движка); Слой B: render_stop_explanation
+    реестра, renderer на fallback НЕ вызывается (LLM не решает, есть ли
+    проблема -- продолжение пина «сначала правило, потом текст»)."""
     text_renderer = renderer or DEFAULT_TEXT_RENDERER
     for rule in sorted(NEXT_STEP_RULES, key=lambda item: (item.priority, item.rule_id)):
         condition = rule.condition
@@ -630,7 +731,7 @@ def evaluate_next_step(
                 message=text_renderer.render(rule, {"statuses": dict(statuses)}),
                 recommended_action=rule.recommended_action,
             )
-    return None
+    return _fallback_recommendation(statuses, node_facts)
 
 
 # ── §7.2: полный список sanity-предупреждений ────────────────────────
