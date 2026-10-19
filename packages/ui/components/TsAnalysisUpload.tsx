@@ -119,6 +119,9 @@ import { useTargetColumn } from "../hooks/useTargetColumn";
 import { describeNode } from "../lib/knowledge/knowledge";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { DEMO_DATASETS, demoDatasetToFile } from "../lib/demoDatasets";
+// MNS-LINK-3: узловый deep-link Наставника -- якорь #stop=<node_id> и
+// same-route событие (панель «Прогресс» доступна на всех вкладках).
+import { GOTO_STOP_EVENT, stopFromHash, type GotoStopDetail } from "../lib/stopLinks";
 
 // ──────────────────────────────────────────────────────────────────────
 // ТИПЫ (зеркало apps/api/schemas.py -- поля намеренно snake_case, как
@@ -372,6 +375,39 @@ export function TsAnalysisUpload() {
 
   // ── Степпер / 3-колоночный блок ──
   const [activeStop, setActiveStop] = useState<StopId>("overview");
+  // ── MNS-LINK-3: узловый deep-link Наставника (spec_mentor_next_step.md
+  // §5.3, решение Q6). Якорь #stop=<node_id> читается при МОНТИРОВАНИИ
+  // (cross-stage переход, перезагрузка, закладка), на hashchange
+  // (back/forward) и явным событием GOTO_STOP_EVENT (same-route переход
+  // из MentorPanel -- панель доступна на всех вкладках). Парс
+  // fail-closed (stopFromHash): неизвестный/чужой узел -- null, степпер
+  // остаётся на дефолте. Переключение -- с семантикой клика по остановке
+  // (инвариант UI-UPLOAD-HELP-1): Справка закрывается, «Описание»
+  // показывает новую остановку; no-op для уже активной (Справка
+  // сохраняется). Событие/якорь -- совет, не факт: в трассу не пишется.
+  useEffect(() => {
+    const gotoStop = (nodeId: string) => {
+      if (nodeId === activeStop) return;
+      setActiveStop(nodeId as StopId);
+      setDescriptionSection("stop");
+    };
+    const onHashChange = () => {
+      const requested = stopFromHash(window.location.hash, "upload");
+      if (requested) gotoStop(requested);
+    };
+    const onGotoStop = (event: Event) => {
+      const detail = (event as CustomEvent<GotoStopDetail>).detail;
+      if (detail?.stage === "upload" && typeof detail.node_id === "string") gotoStop(detail.node_id);
+    };
+    onHashChange();
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener(GOTO_STOP_EVENT, onGotoStop);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener(GOTO_STOP_EVENT, onGotoStop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStop]);
   // ── Секция окна «Описание» (UI-UPLOAD-HELP-1, паттерн «Валидации»):
   // "stop" -- описание активной остановки (дефолт), "help" -- развёрнутое
   // описание модуля из единого реестра справки (кнопка «Справка»).

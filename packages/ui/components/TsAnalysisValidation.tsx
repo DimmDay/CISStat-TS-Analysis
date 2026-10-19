@@ -81,6 +81,9 @@ import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
 import { DatasetViewEditor } from "./DatasetViewEditor";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
+// MNS-LINK-3: узловый deep-link Наставника -- якорь #stop=<node_id> и
+// same-route событие (панель «Прогресс» доступна на всех вкладках).
+import { GOTO_STOP_EVENT, stopFromHash, type GotoStopDetail } from "../lib/stopLinks";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -184,6 +187,41 @@ const RULE_SOURCE_LABELS: Record<Check["ruleSource"], string> = {
 export function TsAnalysisValidation() {
   const { activeDataset } = useAppShell();
   const [activeCheckId, setActiveCheckId] = useState(CHECK_META[0].id);
+  // ── MNS-LINK-3: узловый deep-link Наставника (spec_mentor_next_step.md
+  // §5.3, решение Q6). Якорь #stop=<node_id> читается при МОНТИРОВАНИИ
+  // (cross-stage переход, перезагрузка, закладка), на hashchange
+  // (back/forward) и явным событием GOTO_STOP_EVENT (same-route переход
+  // из MentorPanel -- панель доступна на всех вкладках). Парс
+  // fail-closed (stopFromHash): неизвестный/чужой узел -- null, степпер
+  // остаётся на дефолте. Переключение -- с семантикой клика по проверке
+  // (инвариант информативности + DATASET-VIEW-EDITOR-1): «Метрики и
+  // алгоритм» новой проверки, «Редактор датасета» закрывается; no-op для
+  // уже активной (открытая Справка/Правила сохраняются). Событие/якорь --
+  // совет, не факт: в трассу не пишется.
+  useEffect(() => {
+    const gotoCheck = (nodeId: string) => {
+      if (nodeId === activeCheckId) return;
+      setActiveCheckId(nodeId);
+      setDescriptionSection("metrics");
+      setDatasetEditorMode(false);
+    };
+    const onHashChange = () => {
+      const requested = stopFromHash(window.location.hash, "validation");
+      if (requested) gotoCheck(requested);
+    };
+    const onGotoStop = (event: Event) => {
+      const detail = (event as CustomEvent<GotoStopDetail>).detail;
+      if (detail?.stage === "validation" && typeof detail.node_id === "string") gotoCheck(detail.node_id);
+    };
+    onHashChange();
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener(GOTO_STOP_EVENT, onGotoStop);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener(GOTO_STOP_EVENT, onGotoStop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCheckId]);
   // Инвариант информативности (2026-09-15): активная остановка степпера
   // АВТОМАТИЧЕСКИ загружает в «Описание» содержимое «Метрики и алгоритм»
   // данной остановки (и делает кнопку активной) — вне зависимости от статуса

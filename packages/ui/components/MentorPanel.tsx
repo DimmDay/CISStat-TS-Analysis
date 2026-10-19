@@ -15,17 +15,28 @@
 // не инлайн в Мастере).
 //
 // N-4: панель «Прогресс» НЕ закрывается -- компонент не имеет onClose;
-// recommended_action («stage.node_id») превращается в deep-link на
-// вкладку стадии (Link на href из STAGE_DEFS -- тот же механизм, что у
-// ProgressStageFlow §6.2 «клик по узлу -- переход на вкладку»).
+// recommended_action («stage.node_id») превращается в deep-link.
+// MNS-LINK-3 (spec_mentor_next_step.md §5.3, Q6): известный узел
+// warning-способной стадии -- якорь остановки степпера «#stop=<node_id>»
+// (resolveRecommendationLink); процессные стадии и неизвестный узел --
+// прежний фолбэк на вкладку стадии (recommendedStageHref, контракт «как
+// сейчас»); неизвестная стадия -- chip без ссылки. Same-route переход
+// (панель доступна на всех вкладках) -- явным событием GOTO_STOP_EVENT
+// (lib/stopLinks.ts): клиентская навигация Next по якорю не порождает
+// hashchange гарантированно.
 // Запросы best-effort: сбой -- честная надпись «недоступен», панель
 // «Прогресс» не падает.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchMentorNextStep, type MentorNextStepInfo, type SanityWarningInfo } from "../lib/mentor";
-import { stageLabel } from "../lib/progress";
+import { isKnownNode, nodeLabel, stageLabel } from "../lib/progress";
 import { STAGE_DEFS } from "../lib/stages";
+import {
+  DEEP_LINK_STOP_STAGES,
+  dispatchGotoStop,
+  stopAnchor,
+} from "../lib/stopLinks";
 
 interface MentorPanelProps {
   runId: string;
@@ -37,6 +48,55 @@ export function recommendedStageHref(recommendedAction: string | null | undefine
   if (!recommendedAction) return null;
   const stage = recommendedAction.split(".")[0];
   return STAGE_DEFS.find((def) => def.key === stage)?.href ?? null;
+}
+
+/** Разрешение ссылки рекомендации v2 (MNS-LINK-3, spec_mentor_next_step.md
+ * §5.3): (1) известный узел warning-способной стадии -- stop-link: якорь
+ * остановки «#stop=<node_id>» + метка остановки (nodeLabel -- единый
+ * реестр с бэкенд-графом); (2) иначе -- фолбэк «как сейчас» через
+ * recommendedStageHref: известная стадия -- вкладка стадии (процессные
+ * стадии modeling/forecasting и рекомендации с неизвестным узлом),
+ * неизвестная -- null (chip без ссылки). Данные для whitelist -- единый
+ * реестр PROGRESS_STAGE_NODES (lib/progress.ts), копий нет. */
+export interface RecommendationLink {
+  /** "stop" -- якорь остановки; "stage" -- фолбэк на вкладку. */
+  kind: "stop" | "stage";
+  href: string;
+  /** Метка цели: остановки (stop) или стадии (фолбэк). */
+  targetLabel: string;
+  stage: string;
+  /** Узел stop-ссылки; у фолбэка -- null. */
+  nodeId: string | null;
+}
+
+export function resolveRecommendationLink(
+  recommendedAction: string | null | undefined,
+): RecommendationLink | null {
+  if (!recommendedAction) return null;
+  // Прежняя семантика стадии -- split(".")[0] (recommendedStageHref):
+  // узел -- всё после первой точки, может быть пустым/составным.
+  const stage = recommendedAction.split(".")[0];
+  const dotIndex = recommendedAction.indexOf(".");
+  const nodeId = dotIndex > 0 ? recommendedAction.slice(dotIndex + 1) : "";
+  if (
+    DEEP_LINK_STOP_STAGES.includes(stage) &&
+    nodeId.length > 0 &&
+    isKnownNode(stage, nodeId)
+  ) {
+    const stageDef = STAGE_DEFS.find((def) => def.key === stage);
+    if (stageDef) {
+      return {
+        kind: "stop",
+        href: `${stageDef.href}${stopAnchor(nodeId)}`,
+        targetLabel: nodeLabel(stage, nodeId),
+        stage,
+        nodeId,
+      };
+    }
+  }
+  const stageHref = recommendedStageHref(recommendedAction);
+  if (!stageHref) return null;
+  return { kind: "stage", href: stageHref, targetLabel: stageLabel(stage), stage, nodeId: null };
 }
 
 function HistoryWarningItem({ warning }: { warning: SanityWarningInfo }) {
@@ -71,7 +131,7 @@ export function MentorPanel({ runId }: MentorPanelProps) {
     void load();
   }, [load]);
 
-  const href = recommendedStageHref(data?.recommendation?.recommended_action);
+  const link = resolveRecommendationLink(data?.recommendation?.recommended_action);
 
   return (
     <section
@@ -107,12 +167,21 @@ export function MentorPanel({ runId }: MentorPanelProps) {
             <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2">
               <p className="text-xs font-medium text-neutral-800">Следующий шаг</p>
               <p className="mt-0.5 text-xs text-neutral-700">{data.recommendation.message}</p>
-              {href ? (
+              {link ? (
                 <Link
-                  href={href}
+                  href={link.href}
+                  // MNS-LINK-3: same-route переход на уже открытой вкладке --
+                  // явным событием (якорь Next не порождает hashchange
+                  // гарантированно); cross-stage переходы читают якорь
+                  // при монтировании новой страницы.
+                  onClick={
+                    link.kind === "stop" && link.nodeId
+                      ? () => dispatchGotoStop(link.stage, link.nodeId as string)
+                      : undefined
+                  }
                   className="mt-1.5 inline-block text-xs font-medium text-brand underline hover:no-underline"
                 >
-                  Перейти: {stageLabel(data.recommendation.stage)} →
+                  Перейти: {link.targetLabel} →
                 </Link>
               ) : (
                 <p className="mt-1.5 text-[11px] text-neutral-500">
