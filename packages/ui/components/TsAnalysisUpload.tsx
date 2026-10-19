@@ -13,9 +13,14 @@
 //   Признак: ▾price       [текстовое поле]             (меняется по
 //   2/4 ██░░               Обзор: {label}                активной
 //   ┌─Обзор──────✓─┐      [таблица/график/карточки]      остановке)
-//   ├─Распределение✓┤      [Metric-карточки]
-//   ├─Структура───⚠┤
-//   └─Качество────⚠┘
+//   ├─График──────✓┤      [Metric-карточки]
+//   ├─Распределение✓┤
+//   ├─Структура───⚠┤      UPLOAD-SEM-1 (2026-10-20): статусы
+//   └─Качество────✓┘      ознакомительных остановок -- done/pending
+//                         по факту просмотра (паттерн EDA PROGR-18);
+//                         только «Структура» факт-обусловленная:
+//                         done/warning/error (PROGR-14-A + error
+//                         «структура не определяется»).
 //
 // Кнопка «Справка» в заголовке колонки «Загрузка» (UI-UPLOAD-HELP-1,
 // паттерн «Валидации») раскрывает в окне «Описание» развёрнутое описание
@@ -25,6 +30,19 @@
 // Верхняя полоса "Источник данных" (dropzone) -- ВНЕ 3-колоночного
 // блока, на всю ширину: она не принадлежит ни одной "остановке", нужна
 // всегда (пере-загрузка файла возможна с любой активной остановки).
+//
+// UPLOAD-SEM-1 (2026-10-20, решение тимлида): семантика статусов
+// остановок переведена на «агентность аналитика» -- warning/error
+// только там, где есть действие in-place. Ознакомительные остановки
+// (Обзор/График/Распределение/Качество) получают done/pending по факту
+// просмотра (монотонное множество, seed трассы + якорь -- паттерн EDA
+// PROGR-18/AUDIT-2B); «Структура» остаётся факт-обусловленной и несёт
+// красный error при невозможности определения структуры (ни одного
+// правдоподобного кандидата даты, аналитик ещё не действовал) --
+// выход: подтвердить вручную или заменить датасет. Факт-контур
+// /upload-stops зеркалит новую семантику; Наставник больше не ведёт
+// аналитика в места, где нечего делать (скан «Загрузки» указывает
+// только на «Структуру»).
 //
 // Контракт вкладки «Загрузка» (по решению тимлида) -- 8 пунктов,
 // распределены по 4 "остановкам" степпера:
@@ -109,7 +127,7 @@ import { StructuralClassSchema } from "./StructuralClassSchema";
 // файл, что читают граф бэкенда и зеркало панели (см. комментарий у STOPS).
 import uploadStopsJson from "../../../shared/pipeline_nodes/upload_stops.json";
 import { useAppShell } from "../context/AppShellContext";
-import { apiUrl, sessionApiUrl } from "../lib/apiClient";
+import { apiUrl, sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -192,6 +210,26 @@ const STOPS: Stop[] = (
     description: string;
   }>
 ).map((stop) => ({ ...stop }));
+
+// UPLOAD-SEM-1: зеркало CheckStatus (StatusIcon.tsx) для фильтра seed'а
+// трассы -- узлы с чужими/мусорными статусами не сеются (журнал -- R3
+// PROGR-1-CERT: событие хранится, фантомного статуса не создаёт).
+const UPLOAD_SEED_STATUSES: ReadonlySet<string> = new Set([
+  "done",
+  "warning",
+  "pending",
+  "skipped",
+  "running",
+  "error",
+]);
+
+/** Канонический снапшот карты остановок для дедупа/якоря AUDIT-2B
+ * (форма совпадает с map, ключи -- реестр upload_stops.json). */
+function buildUploadStopsSnapshot(statuses: Record<StopId, CheckStatus>): string {
+  return JSON.stringify(
+    Object.fromEntries(STOPS.map((s) => [s.id, statuses[s.id] ?? "pending"])),
+  );
+}
 
 const FREQ_OPTIONS = [
   "H — почасовая",
@@ -928,32 +966,219 @@ export function TsAnalysisUpload() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detection, columnsInfo, panelBalance]);
 
-  // ── Статусы остановок степпера (реальные, не моки) ──
+  // ── UPLOAD-SEM-1: просмотры остановок + seed фактов панели ──────────
+  // Статусы ознакомительных остановок стали просмотр-зависимыми и
+  // перестали быть детерминированной функцией данных: remount с пустым
+  // множеством просмотров отправил бы all-pending карту ПОВЕРХ
+  // записанных done-фактов (last-wins -- регресс панели, класс H27).
+  // Паттерн EDA PROGR-18/AUDIT-2B/3: одноразовый GET /v1/progress/trace
+  // на вселенную; done-узлы upload/* (validity=current) сеются в
+  // просмотренные («Структура» не сеется -- она факт-обусловленная);
+  // якорь = снапшот записанных статусов как есть (идентичный снапшот
+  // не доставляется повторно); seed не получен -- отчёт удерживается
+  // (H27), ретрай по новому просмотру; легаси-жёлтые перезаписываются
+  // первым отличающимся снапшотом (миграция §3.4 плана задачи).
+  // Ключ вселенной фактов просмотров -- СОБСТВЕННЫЙ факт модуля:
+  // dataset_id из ответа загрузки/гидратации (uploadData). Контекст
+  // AppShell (activeDataset) ненадёжен для этого: refreshSession внутри
+  // acceptUploadedData перезаписывает его ответом /current -- при
+  // медленном/отказном /current ключ схлопнулся бы в null и сброс
+  // вселенной не срабатывал бы (класс H28).
+  const datasetUniverseKey = uploadData?.dataset_id ?? activeDataset?.datasetId ?? null;
+  const [viewedStops, setViewedStops] = useState<Set<StopId>>(new Set());
+  const [uploadSeedReady, setUploadSeedReady] = useState(false);
+  const [uploadSeedFailed, setUploadSeedFailed] = useState(false);
+  const [uploadSeedAnchor, setUploadSeedAnchor] = useState<string | null>(null);
+  const [uploadSeedRetryTick, setUploadSeedRetryTick] = useState(0);
+  const uploadSeedReadyRef = useRef(false);
+  const uploadSeedFailedRef = useRef(false);
+  // Явное решение аналитика по колонке даты (снимает критерий error:
+  // «(не использовать)»/конкретная колонка -- выбор сделан, см. stopStatus).
+  const [dateColTouched, setDateColTouched] = useState(false);
+
+  // Сброс вселенной фактов -- ДО seed-эффекта (порядок декларации =
+  // порядок запуска, урок PROGR-17): новая вселенная -- чистое
+  // множество просмотров, якорь null, seed перезапускается.
+  useEffect(() => {
+    uploadSeedReadyRef.current = false;
+    uploadSeedFailedRef.current = false;
+    setViewedStops(new Set());
+    setUploadSeedReady(false);
+    setUploadSeedFailed(false);
+    setUploadSeedAnchor(null);
+    setDateColTouched(false);
+  }, [datasetUniverseKey]);
+
+  useEffect(() => {
+    if (!datasetUniverseKey) {
+      uploadSeedReadyRef.current = true;
+      uploadSeedFailedRef.current = false;
+      setUploadSeedReady(true);
+      setUploadSeedFailed(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const knownIds = new Set(STOPS.map((s) => s.id));
+      const seedViewed = new Set<StopId>();
+      const seedStatuses: Partial<Record<StopId, CheckStatus>> = {};
+      let seedOk = false;
+      try {
+        const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
+        if (response.ok) {
+          const data = await response.json();
+          // AUDIT-3 (план §13): seed -- только из ПОЛНОЙ проекции
+          // (projection_complete=false -- историю не выдаёт, отчёт
+          // удерживается); stale/unknown факты не воскрешаются (H28).
+          if (data?.projection_complete !== false) {
+            const nodeStates = Array.isArray(data?.nodes) ? data.nodes : null;
+            if (nodeStates) {
+              for (const state of nodeStates) {
+                if (!state || typeof state !== "object") continue;
+                if (state.stage !== "upload") continue;
+                if (state.validity !== undefined && state.validity !== "current") continue;
+                const nodeId = String(state.node_id) as StopId;
+                if (!knownIds.has(nodeId)) continue;
+                const status = typeof state.status === "string" ? state.status : null;
+                if (!status || !UPLOAD_SEED_STATUSES.has(status)) continue;
+                if (status === "done" && nodeId !== "structure") seedViewed.add(nodeId);
+                seedStatuses[nodeId] = status as CheckStatus;
+              }
+            } else {
+              // Старый бэкенд (поля nodes нет) -- прежний плоский
+              // node_statuses (как в EDA).
+              const statuses = data?.node_statuses;
+              if (statuses && typeof statuses === "object") {
+                for (const [key, status] of Object.entries(statuses as Record<string, unknown>)) {
+                  if (!key.startsWith("upload/")) continue;
+                  const nodeId = key.slice("upload/".length) as StopId;
+                  if (!knownIds.has(nodeId) || typeof status !== "string") continue;
+                  if (!UPLOAD_SEED_STATUSES.has(status)) continue;
+                  if (status === "done" && nodeId !== "structure") seedViewed.add(nodeId);
+                  seedStatuses[nodeId] = status as CheckStatus;
+                }
+              }
+            }
+            seedOk = true;
+          }
+        }
+      } catch {
+        // Seed не получен (сеть/отказ): отчёт удерживается до ретрая (H27).
+      }
+      if (cancelled) return;
+      uploadSeedReadyRef.current = true;
+      uploadSeedFailedRef.current = !seedOk;
+      setViewedStops((prev) => {
+        const merged = new Set(prev);
+        seedViewed.forEach((id) => merged.add(id));
+        return merged;
+      });
+      setUploadSeedReady(true);
+      setUploadSeedFailed(!seedOk);
+      setUploadSeedAnchor(
+        seedOk
+          ? buildUploadStopsSnapshot({
+              overview: seedStatuses.overview ?? "pending",
+              chart: seedStatuses.chart ?? "pending",
+              distribution: seedStatuses.distribution ?? "pending",
+              structure: seedStatuses.structure ?? "pending",
+              quality: seedStatuses.quality ?? "pending",
+            })
+          : null,
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetUniverseKey, uploadSeedRetryTick]);
+
+  // Факт просмотра (UPLOAD-SEM-1, решение тимлида 2026-10-20): остановка
+  // активна И её результат показан модулем (EDA PROGR-18: найденные
+  // особенности результата НЕ мешают факту просмотра; «Распределение»
+  // без числовых колонок и «Качество» без счётчиков результата не
+  // показывают -- просмотров не засчитываются). «Структура» --
+  // факт-решение, просмотром не сеется. Гейт uploadSeedReadyRef отсекает
+  // просмотры мёртвой вселенной в коммите смены датасета (H28). Запись
+  // идемпотентна (множество), монотонна в пределах датасета.
+  useEffect(() => {
+    if (!uploadSeedReadyRef.current) return;
+    if (!isUploaded) return;
+    const stopId: StopId | null =
+      activeStop === "overview"
+        ? "overview"
+        : activeStop === "chart"
+        ? "chart"
+        : activeStop === "distribution"
+        ? numericCols.length > 0
+          ? "distribution"
+          : null
+        : activeStop === "quality"
+        ? uploadData?.quality
+          ? "quality"
+          : null
+        : null;
+    if (!stopId) return;
+    setViewedStops((prev) => (prev.has(stopId) ? prev : new Set(prev).add(stopId)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStop, isUploaded, numericCols.length, uploadData, uploadSeedReady]);
+
+  // AUDIT-3 (H27): новый просмотр при несостоявшемся seed'е -- ретрай
+  // seed'а (успех -- отчёт уходит объединённым снапшотом; неудача --
+  // отчёт остаётся удержанным; без новых просмотров отчёт и не нужен).
+  const viewedStopsCount = viewedStops.size;
+  useEffect(() => {
+    if (uploadSeedFailedRef.current && viewedStopsCount > 0) {
+      setUploadSeedRetryTick((tick) => tick + 1);
+    }
+  }, [viewedStopsCount]);
+
+  // ── Статусы остановок степпера (UPLOAD-SEM-1, 2026-10-20, решение тимлида) ──
+  // Модуль «Загрузка» -- ознакомительный: он ничего не исправляет и не
+  // преобразует (справка модуля), поэтому жёлтый «факт о входных данных»
+  // на степпере создавал тупик Наставника («откройте остановку и
+  // разберите» -- а разбирать нечем). Новый контракт -- «агентность
+  // аналитика»:
+  //   * overview/chart/distribution/quality -- done/pending ПО ФАКТУ
+  //     ПРОСМОТРА (паттерн EDA PROGR-18: «аналитик открыл и результат
+  //     показан»; найденные особенности результата НЕ мешают факту).
+  //     Информация о данных не теряется: parse_warnings -- тост при
+  //     загрузке + баннер на «Обзоре»; счётчики качества -- на
+  //     «Качестве» (честный анонс «Валидации», где есть мастера
+  //     исправлений);
+  //   * structure -- единственная факт-обусловленная остановка: done =
+  //     уверенное решение (PROGR-14-A: явный маркер отсутствия ЛИБО
+  //     raw confidence >= 70), warning = сомнительное угадывание
+  //     конкретной колонки, error = НОВОЕ -- авто-детект не нашёл НИ
+  //     ОДНОГО правдоподобного кандидата временной колонки (реальная
+  //     форма бэкенда: selected="(не использовать)", все score
+  //     нулевые) и аналитик ещё не сделал явного выбора (dateColTouched):
+  //     структура данных не определяется -- подтвердить вручную или
+  //     заменить датасет. Критерий консервативен: сомнительное
+  //     угадывание с ненулевым score (Year@40, прецедент FAO) --
+  //     по-прежнему warning, нерегулярная сетка при уверенной дате --
+  //     done, легитимный однорядный датасет («(нет)») -- не error.
+  const dateStructureImpossible =
+    !!detection &&
+    !dateColTouched &&
+    !detection.dateCol.candidates.some((c) => c.score > 0);
   const stopStatus: Record<StopId, CheckStatus> = {
-    overview: !isUploaded ? "pending" : (uploadData?.parse_warnings.length ?? 0) > 0 ? "warning" : "done",
-    chart: !isUploaded ? "pending" : !detection || detection.dateCol.confidence < 70 ? "warning" : "done",
-    distribution: !isUploaded ? "pending" : numericCols.length === 0 ? "pending" : "done",
-    // PROGR-14-A: «Структура» -- из ФАКТА РЕШЕНИЯ по каждой колонке, не
-    // из raw confidence. Прежняя формула (confidence<70 || confidence<70)
-    // делала остановку вечно-жёлтой для легитимного «(нет)» группирующей
-    // колонки у однорядного/односерийного датасета (entity confidence
-    // = 0% -- замечение тимлида): явный выбор «(нет)»/«(не использовать)»
-    // -- уверенное решение, предупреждение остаётся только для
-    // сомнительного угадывания конкретной колонки
-    // (см. isStructureDecisionConfident). Бейдж 0% на самой остановке
-    // остаётся честным показом оценки авто-детекта.
-    structure:
-      !detection
+    overview: !isUploaded ? "pending" : viewedStops.has("overview") ? "done" : "pending",
+    chart: !isUploaded ? "pending" : viewedStops.has("chart") ? "done" : "pending",
+    distribution:
+      !isUploaded || numericCols.length === 0
         ? "pending"
-        : isStructureDecisionConfident(detection.dateCol) && isStructureDecisionConfident(detection.entityCol)
+        : viewedStops.has("distribution")
         ? "done"
-        : "warning",
-    quality:
-      !uploadData?.quality
-        ? "pending"
-        : uploadData.quality.cols_with_missing > 0 || uploadData.quality.cols_with_outliers > 0 || uploadData.quality.duplicates > 0
-        ? "warning"
-        : "done",
+        : "pending",
+    structure: !detection
+      ? "pending"
+      : dateStructureImpossible
+      ? "error"
+      : isStructureDecisionConfident(detection.dateCol) && isStructureDecisionConfident(detection.entityCol)
+      ? "done"
+      : "warning",
+    quality: !uploadData?.quality ? "pending" : viewedStops.has("quality") ? "done" : "pending",
   };
   const doneCount = STOPS.filter((s) => stopStatus[s.id] === "done").length;
   const progressPct = Math.round((doneCount / STOPS.length) * 100);
@@ -979,11 +1204,17 @@ export function TsAnalysisUpload() {
   //   * поздние/устаревшие ответы изолированы токеном поставки.
   // Статус доставки -- вспомогательный контур (§12 п.8): сбой не ломает
   // модуль и не мешает чтению научного результата; без алертов.
-  const stopsMap = isUploaded ? stopStatus : null;
+  // UPLOAD-SEM-1: карта доставляется ПОСЛЕ seed'а фактов (remount с
+  // пустым множеством просмотров не перезаписывает recorded done);
+  // якорь seed'а (uploadSeedAnchor) -- идентичный записанному снапшоту
+  // не доставляется повторно (семантика EDA-якоря). При seed-отказе
+  // отчёт удерживается (H27) до ретрая по новому просмотру.
+  const stopsMap = isUploaded && uploadSeedReady && !uploadSeedFailed ? stopStatus : null;
   const { redeliver: redeliverStops } = useProgressMapDelivery({
     endpoint: "/upload-stops",
     bodyKey: "stops",
     map: stopsMap,
+    anchorSnapshot: uploadSeedAnchor,
     // Ключ вселенной фактов: новый датасет (в т.ч. одноимённый файл --
     // новый datasetId) -- повторная доставка даже при идентичной картине
     // (план §12 п.4, легаси-фолбэк).
@@ -992,12 +1223,17 @@ export function TsAnalysisUpload() {
 
   // Ре-пост ПОСЛЕ подтверждения структуры: бэкенд пишет свой факт
   // structure_confirmed (узел structure -> done), но модуль может всё ещё
-  // показывать warning (confidence<70) -- панель обязана остаться зеркалом
-  // модуля: хронология решает (последнее событие узла выигрывает в
-  // едином движке node_status). Принудительная повторная поставка
-  // текущего снапшота с НОВЫМ report_id (новое клиентское наблюдение).
+  // показывать warning (сомнительное угадывание) или error -- панель
+  // обязана остаться зеркалом модуля: хронология решает (последнее
+  // событие узла выигрывает в едином движке node_status). Принудительная
+  // повторная поставка текущего снапшота с НОВЫМ report_id (новое
+  // клиентское наблюдение). UPLOAD-SEM-1: якорь seed'а снимается --
+  // принудительная поставка обязана дойти даже при совпадении снапшота
+  // с записанным (после поставки дедуп deliveredKey берёт дубли на себя;
+  // при remount seed установит свежий якорь из трассы).
   const reportUploadStopsNow = useCallback(() => {
     if (!isUploaded) return;
+    setUploadSeedAnchor(null);
     redeliverStops();
   }, [isUploaded, redeliverStops]);
   const selectedStats = stats?.find((s) => s.name === selectedFeature) ?? null;
@@ -1694,7 +1930,7 @@ export function TsAnalysisUpload() {
                     </div>
                     <select
                       value={detection.dateCol.selected}
-                      onChange={(e) => setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } })}
+                      onChange={(e) => { setDateColTouched(true); setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } }); }}
                       className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
                     >
                       {detection.dateCol.candidates.map((c) => (
@@ -1704,6 +1940,11 @@ export function TsAnalysisUpload() {
                       ))}
                       <option value="(не использовать)">(не использовать)</option>
                     </select>
+                    {dateStructureImpossible && (
+                      <p className="mt-2 text-xs bg-red-50 border border-red-200 text-red-700 rounded px-2 py-1.5">
+                        Авто-детект не нашёл ни одного правдоподобного кандидата во временную колонку — подтвердите выбор вручную или замените датасет.
+                      </p>
+                    )}
                     <details className="mt-2 text-xs text-neutral-500">
                       <summary className="cursor-pointer inline-flex items-center gap-1">
                         <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.dateCol.candidates.length})

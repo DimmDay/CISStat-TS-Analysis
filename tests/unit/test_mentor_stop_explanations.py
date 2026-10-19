@@ -552,3 +552,51 @@ class TestContractBoundaries:
         contract = raw.get("placeholder_contract", {})
         assert set(contract) == set(TEMPLATE_PLACEHOLDERS)
         assert contract.get("status_reason") and contract.get("summary_count")
+
+
+# ── 9. UPLOAD-SEM-1: честные записи «Загрузки» и error-семантика «Структуры» ──
+
+
+class TestUploadSem1Semantics:
+    """UPLOAD-SEM-1 (2026-10-20, решение тимлида): остановки «Загрузки»
+    ознакомительные -- статусы done/pending по факту просмотра (паттерн
+    EDA PROGR-18); warning НЕ производят overview/chart/distribution/
+    quality (честные записи реестра), а «Структура» несёт warning
+    (сомнительное угадывание, PROGR-14-A) и error (авто-детект не нашёл
+    ни одного правдоподобного кандидата временной колонки при
+    неактивности аналитика -- данные не определяются как временной ряд).
+    Противоречие «Наставник ведёт в модуль, где нечего делать» снято:
+    скан «Загрузки» может указать только на «Структуру», где у аналитика
+    есть действие (подтвердить вручную или заменить датасет)."""
+
+    VIEWED_DRIVEN = ("overview", "chart", "distribution", "quality")
+
+    def test_viewed_driven_upload_stops_declare_no_warning(self):
+        for node in self.VIEWED_DRIVEN:
+            entry = stop_explanation("upload", node)
+            assert entry.sources, f"upload/{node}: sources пуст"
+            for source in entry.sources:
+                assert "warning не производит" in source.semantics, (
+                    f"upload/{node}: semantics обязан честно декларировать "
+                    f"отсутствие warning (UPLOAD-SEM-1): {source.semantics!r}"
+                )
+
+    def test_structure_declares_warning_and_error_semantics(self):
+        entry = stop_explanation("upload", "structure")
+        text = " ".join(s.semantics for s in entry.sources)
+        assert "warning" in text, (
+            "«Структура» сохраняет warning-семантику сомнительного "
+            "угадывания (PROGR-14-A)"
+        )
+        assert "error" in text, (
+            "«Структура» обязана декларировать error-семантику "
+            "невозможности определения структуры (UPLOAD-SEM-1)"
+        )
+
+    def test_registry_comment_documents_upload_sem1(self):
+        raw = _raw_registry()
+        comment = str(raw.get("comment", ""))
+        assert "UPLOAD-SEM-1" in comment, (
+            "Комментарий реестра обязан фиксировать смену семантики "
+            "статусов «Загрузки» (UPLOAD-SEM-1)"
+        )

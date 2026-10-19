@@ -7,7 +7,7 @@
 // "Структура"/"Качество" сначала кликают по соответствующей кнопке
 // степпера.
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TsAnalysisUpload } from "./TsAnalysisUpload";
 import { AppShellProvider } from "../context/AppShellContext";
@@ -126,16 +126,21 @@ interface DetectionScenario {
 }
 
 function detectionPayload(scenario: DetectionScenario) {
+  // UPLOAD-SEM-1: реальные "("-маркеры бэкенд сопровождает ПОЛНЫМ
+  // списком кандидатов с нулевыми score (session.py::get_structure_detection:
+  // selected="(не использовать)", confidence=0, все колонки score 0) --
+  // именно эта форма несёт факт "невозможности определения структуры".
+  const noneCandidates = [{ name: "value", score: 0 }];
   return {
     date_col: {
       selected: scenario.dateCol.selected,
       confidence: scenario.dateCol.confidence,
-      candidates: scenario.dateCol.selected.startsWith("(") ? [] : [{ name: scenario.dateCol.selected, score: scenario.dateCol.confidence / 100 }],
+      candidates: scenario.dateCol.selected.startsWith("(") ? noneCandidates : [{ name: scenario.dateCol.selected, score: scenario.dateCol.confidence / 100 }],
     },
     entity_col: {
       selected: scenario.entityCol.selected,
       confidence: scenario.entityCol.confidence,
-      candidates: scenario.entityCol.selected.startsWith("(") ? [] : [{ name: scenario.entityCol.selected, score: scenario.entityCol.confidence / 100 }],
+      candidates: scenario.entityCol.selected.startsWith("(") ? noneCandidates : [{ name: scenario.entityCol.selected, score: scenario.entityCol.confidence / 100 }],
     },
   };
 }
@@ -154,8 +159,10 @@ function mockFetchSequence(
   uploadOk = true,
   detectionOverride?: DetectionScenario,
   stopsOkSequence?: boolean[],
+  uploadResultSequence?: unknown[],
 ) {
   let stopsCallsMade = 0;
+  let uploadCallsMade = 0;
   global.fetch = jest.fn((url: string) => {
     if (typeof url === "string" && url.includes("/session/current")) {
       return Promise.resolve({
@@ -169,6 +176,12 @@ function mockFetchSequence(
             updated_at: null,
           }),
       });
+    }
+    // UPLOAD-SEM-1: гидратация после «Сменить файл» (activeDataset без
+    // uploadData) -- в тестах честно not-ok, чтобы generic-фолбэк ({})
+    // не воскрешал фиктивный датасет.
+    if (typeof url === "string" && url.endsWith("/session/dataset")) {
+      return Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
     }
     if (typeof url === "string" && url.includes("/target-column")) {
       // GET и POST -- одинаковый ответ достаточен для теста: значение
@@ -214,7 +227,11 @@ function mockFetchSequence(
       return Promise.resolve({ ok, json: () => Promise.resolve({ reported: 5, run_id: null }) });
     }
     if (typeof url === "string" && url.includes("/upload")) {
-      return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(uploadResult) });
+      const result = uploadResultSequence && uploadResultSequence.length > 0
+        ? uploadResultSequence[Math.min(uploadCallsMade, uploadResultSequence.length - 1)]
+        : uploadResult;
+      uploadCallsMade += 1;
+      return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(result) });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   }) as jest.Mock;
@@ -1299,16 +1316,15 @@ function mockApplicableDecompositionFetch() {
 // text-green-800; активная остановка (bg-brand text-white) сохраняет
 // приоритет индиго при любом её статусе -- как в эталоне.
 //
-// Специфика «Загрузки»: stopStatus выдаёт ровно три статуса -- done /
-// warning / pending, поэтому гарды покрывают warning и pending
-// (skipped/error/running на этой вкладке недостижимы). Кейсы ниже
-// покрывают всю достижимую матрицу статус x активность.
-//
-// Статусы при стандартном моке okUploadResponse: «Превью датасета» --
-// done и активна по умолчанию, «График»/«Распределение» -- done,
-// «Структура» -- done (PROGR-14-A: «(нет)» группирующей колонки --
-// уверенный факт решения «колонки нет», а не сомнительная догадка
-// с confidence 0%), «Качество» -- warning (cols_with_missing = 1).
+// Специфика «Загрузки» (UPLOAD-SEM-1, 2026-10-20): остановки модуля
+// ознакомительные -- статусы done/pending ПО ФАКТУ ПРОСМОТРА (паттерн
+// EDA PROGR-18: «аналитик открыл и результат показан»), и только
+// факт-решение «Структуры» несёт warning (PROGR-14-A) и НОВЫЙ error
+// (невозможность определения структуры). После загрузки просмотрена
+// только дефолтная «Превью датасета»; «График»/«Распределение»/
+// «Качество» -- pending до открытия. Кейсы ниже покрывают матрицу
+// статус x активность для всех пяти остановок; error-критерий --
+// в блоке UPLOAD-SEM-1 «Структуры».
 
 async function renderUploaded(uploadResult: unknown = okUploadResponse) {
   mockFetchSequence(uploadResult);
@@ -1322,70 +1338,44 @@ async function renderUploaded(uploadResult: unknown = okUploadResponse) {
 }
 
 describe("TsAnalysisUpload — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
-  it("colors a passed (done) stop light-green and keeps a warning neighbor uncolored", async () => {
+  it("после загрузки просмотрена только дефолтная «Превью датасета» (активная, индиго); непросмотренные -- белые, «Качество» больше не warning по счётчикам", async () => {
     await renderUploaded();
 
-    // Снимаем активность с дефолтной остановки «Превью датасета» (done):
-    // кликаем на «Структуру» (done, PROGR-14-A: «(нет)» -- уверенный факт).
+    const activeButton = screen.getByRole("button", { name: /^Превью датасета/ });
+    expect(activeButton).toHaveClass("bg-brand", "text-white", "border-brand");
+
+    for (const label of [/^График/, /^Распределение/, /^Качество/]) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+      expect(button).not.toHaveClass("bg-green-50");
+    }
+
+    // «Структура» -- факт-решение (не просмотр): default-мок
+    // (date@95 + «(нет)») -- done сразу, детекция асинхронная.
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50"));
+  });
+
+  it("просмотр засчитывается монотонно: открыл «Качество» -- done, ушёл на «Структуру» -- осталось done", async () => {
+    await renderUploaded();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
 
-    // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
-    // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
-    const doneButton = screen.getByRole("button", { name: /^График/ });
-    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-    expect(doneButton).not.toHaveClass("bg-brand");
-    expect(doneButton).not.toHaveClass("bg-white");
-
-    // Не пройденная (warning) и не активная остановка -> БЕЗ окраски.
-    const warningButton = screen.getByRole("button", { name: /^Качество/ });
-    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
-    expect(warningButton).not.toHaveClass("bg-green-50");
-    expect(warningButton).not.toHaveClass("border-green-200");
-    expect(warningButton).not.toHaveClass("text-green-800");
+    const qualityButton = screen.getByRole("button", { name: /^Качество/ });
+    expect(qualityButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
   });
 
-  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+  it("«Распределение» с числовой колонкой становится done от просмотра", async () => {
     await renderUploaded();
 
-    // «Превью датасета» активна по умолчанию и её статус done ->
-    // приоритет индиго (как в эталоне Моделирования).
-    const activeDoneButton = screen.getByRole("button", { name: /^Превью датасета/ });
-    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
-    expect(activeDoneButton).not.toHaveClass("bg-green-50");
-    expect(activeDoneButton).not.toHaveClass("text-green-800");
+    fireEvent.click(screen.getByRole("button", { name: /^Распределение/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
+
+    const distributionButton = screen.getByRole("button", { name: /^Распределение/ });
+    expect(distributionButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
   });
 
-  it("leaves a non-active warning stop uncolored while done stops are highlighted", async () => {
-    await renderUploaded();
-
-    // Дефолтное состояние: «Качество» -- warning (не активна) -> белая;
-    // контраст: «Распределение» (done, не активна) -- зелёная.
-    const warningButton = screen.getByRole("button", { name: /^Качество/ });
-    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
-    expect(warningButton).not.toHaveClass("bg-green-50");
-    expect(warningButton).not.toHaveClass("border-green-200");
-    expect(warningButton).not.toHaveClass("text-green-800");
-
-    const doneButton = screen.getByRole("button", { name: /^Распределение/ });
-    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-  });
-
-  it("keeps the indigo active styling for an active warning stop (no green, no white)", async () => {
-    await renderUploaded();
-
-    // «Качество» -- warning, после клика активна: активная ветка
-    // приоритетна при ЛЮБОМ статусе -- индиго, без зелёной окраски.
-    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
-
-    const activeWarningButton = screen.getByRole("button", { name: /^Качество/ });
-    expect(activeWarningButton).toHaveClass("bg-brand", "text-white", "border-brand");
-    expect(activeWarningButton).not.toHaveClass("bg-green-50");
-    expect(activeWarningButton).not.toHaveClass("bg-white");
-  });
-
-  it("leaves a pending stop uncolored (distribution without numeric columns)", async () => {
-    // Датасет без числовых колонок: stopStatus(«Распределение») --
-    // pending («Не запускалось»), подсветки быть НЕ должно.
+  it("«Распределение» без числовых колонок остаётся pending даже после открытия (результат не показан -- EDA-правило)", async () => {
     await renderUploaded({
       ...okUploadResponse,
       columns_info: [
@@ -1393,11 +1383,55 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
       ],
     });
 
+    fireEvent.click(screen.getByRole("button", { name: /^Распределение/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
+
     const pendingButton = screen.getByRole("button", { name: /^Распределение/ });
     expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
     expect(pendingButton).not.toHaveClass("bg-green-50");
-    expect(pendingButton).not.toHaveClass("border-green-200");
-    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("активная остановка сохраняет индиго при любом статусе (активная ветка приоритетна)", async () => {
+    await renderUploaded();
+
+    // «Качество» непросмотренная (pending), после клика активна:
+    // индиго, без зелёной окраски и белой фоновой ветки.
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const activeButton = screen.getByRole("button", { name: /^Качество/ });
+    expect(activeButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeButton).not.toHaveClass("bg-green-50");
+    expect(activeButton).not.toHaveClass("bg-white");
+  });
+
+  it("смена датасета -- новая вселенная фактов: просмотры сбрасываются (H28)", async () => {
+    mockFetchSequence(okUploadResponse, true, undefined, undefined, [
+      { ...okUploadResponse, dataset_id: "ds-1" },
+      { ...okUploadResponse, dataset_id: "ds-2" },
+    ]);
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+
+    // Просмотрели «Качество» первого датасета.
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Качество/ })).toHaveClass("bg-green-50"));
+
+    // «Сменить файл» + повторная загрузка -- новый datasetId.
+    fireEvent.click(screen.getByText("Сменить файл"));
+    await waitFor(() => expect(screen.getByTestId("dropzone-input")).toBeInTheDocument());
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test2.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
+
+    // Просмотр прежнего датасета не переживает смену вселенной.
+    const qualityButton = screen.getByRole("button", { name: /^Качество/ });
+    expect(qualityButton).toHaveClass("bg-white", "border-neutral-200");
+    expect(qualityButton).not.toHaveClass("bg-green-50");
   });
 });
 
@@ -1447,7 +1481,7 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     expect(button).not.toHaveClass("bg-white");
   });
 
-  it("«(не использовать)» у даты + «(нет)» у группирующей (оба 0%) -- оба решения явные: done", async () => {
+  it("UPLOAD-SEM-1: бэкенд не нашёл ни одного правдоподобного кандидата даты ((не использовать), все score нулевые) и аналитик ещё не действовал -- красный error (стоп исследования)", async () => {
     await renderStructureStop({
       dateCol: { selected: "(не использовать)", confidence: 0 },
       entityCol: { selected: "(нет)", confidence: 0 },
@@ -1456,8 +1490,38 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
 
     const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(within(button).getByRole("img", { name: "Ошибка" })).toBeInTheDocument();
+    expect(button).not.toHaveClass("bg-green-50");
+  });
+
+  it("UPLOAD-SEM-1: явное решение аналитика снимает error -- повторный выбор «(не использовать)» в селекторе -- done (PROGR-14-A)", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "(не использовать)", confidence: 0 },
+      entityCol: { selected: "(нет)", confidence: 0 },
+    });
+
+    // Явное действие аналитика (touched): error снимается, решение
+    // «временной колонки нет» -- уверенное (PROGR-14-A).
+    fireEvent.change(screen.getByDisplayValue("(не использовать)"), { target: { value: "(не использовать)" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const button = screen.getByRole("button", { name: /^Структура/ });
     expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-    expect(button).not.toHaveClass("bg-white");
+    expect(within(button).queryByRole("img", { name: "Ошибка" })).not.toBeInTheDocument();
+  });
+
+  it("UPLOAD-SEM-1: выбор конкретной колонки после error -- честный warning (сомнительное угадывание, PROGR-14-A)", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "(не использовать)", confidence: 0 },
+      entityCol: { selected: "(нет)", confidence: 0 },
+    });
+
+    fireEvent.change(screen.getByDisplayValue("(не использовать)"), { target: { value: "value" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(within(button).getByRole("img", { name: "Найдены проблемы" })).toBeInTheDocument();
+    expect(within(button).queryByRole("img", { name: "Ошибка" })).not.toBeInTheDocument();
   });
 
   it("ручной выбор «(нет)» на остановке переводит статус в done при низком raw confidence авто-детекта", async () => {
@@ -1584,5 +1648,42 @@ describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта о�
     for (const [url] of stopsCalls()) {
       expect(url).toBe(progressApiUrl("/upload-stops"));
     }
+  });
+});
+
+// ── UPLOAD-SEM-1: тело отчёта /upload-stops несёт новую семантику ──────
+//
+// Решение тимлида (2026-10-20): остановки «Загрузки» ознакомительные --
+// done/pending по факту просмотра; warning по фактам входных данных
+// (parse_warnings, счётчики качества, confidence графика) в факт-контур
+// больше не идёт -- контур зеркалит НОВУЮ семантику модуля. На чистой
+// загрузке (качество с пропуском, parse_warnings пуст) просмотрена
+// только дефолтная «Превью датасета».
+describe("TsAnalysisUpload — UPLOAD-SEM-1: тело отчёта /upload-stops", () => {
+  function stopsCalls(): Array<[string, RequestInit?]> {
+    return (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]: unknown[]) => typeof url === "string" && url.includes("upload-stops"),
+    ) as Array<[string, RequestInit?]>;
+  }
+
+  it("чистая загрузка: quality=pending (было warning по счётчикам), overview=done (просмотрена дефолтная), chart=pending", async () => {
+    mockFetchSequence(okUploadResponse);
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+
+    await waitFor(() => expect(stopsCalls().length).toBeGreaterThan(0));
+    const bodies = stopsCalls().map(([, init]) => String(init?.body ?? ""));
+    expect(bodies.some((b) => b.includes('"quality":"pending"'))).toBe(true);
+    expect(bodies.some((b) => b.includes('"overview":"done"'))).toBe(true);
+    expect(bodies.some((b) => b.includes('"chart":"pending"'))).toBe(true);
+    // Жёлтых отчётов по фактам входных данных быть не должно.
+    expect(bodies.some((b) => b.includes('"quality":"warning"'))).toBe(false);
+    expect(bodies.some((b) => b.includes('"chart":"warning"'))).toBe(false);
+    expect(bodies.some((b) => b.includes('"overview":"warning"'))).toBe(false);
   });
 });
