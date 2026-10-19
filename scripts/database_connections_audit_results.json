@@ -1,0 +1,190 @@
+{
+  "base_commit": "079e352bd924c708ea6d563c1d01b2a5007882d1",
+  "external_db_tests": "not run",
+  "embedded": [
+    {
+      "kind": "sqlite",
+      "extension": ".sqlite",
+      "test_http": 200,
+      "ok": true,
+      "probe_created_no_cookie": true,
+      "load_http": 200,
+      "rows": 5,
+      "warnings": [
+        "Выборка ограничена лимитом 5 строк (источник содержит больше данных)"
+      ],
+      "cookie": true,
+      "upload_event": true,
+      "delete_http": 422
+    },
+    {
+      "kind": "duckdb",
+      "extension": ".duckdb",
+      "test_http": 200,
+      "ok": true,
+      "probe_created_no_cookie": true,
+      "load_http": 200,
+      "rows": 5,
+      "warnings": [
+        "Выборка ограничена лимитом 5 строк (источник содержит больше данных)"
+      ],
+      "cookie": true,
+      "upload_event": true,
+      "delete_http": 422
+    },
+    {
+      "kind": "duckdb",
+      "extension": ".csv",
+      "test_http": 200,
+      "ok": true,
+      "probe_created_no_cookie": true,
+      "load_http": 200,
+      "rows": 5,
+      "warnings": [
+        "Выборка ограничена лимитом 5 строк (источник содержит больше данных)"
+      ],
+      "cookie": true,
+      "upload_event": true,
+      "delete_http": 422
+    },
+    {
+      "kind": "duckdb",
+      "extension": ".parquet",
+      "test_http": 200,
+      "ok": true,
+      "probe_created_no_cookie": true,
+      "load_http": 200,
+      "rows": 5,
+      "warnings": [
+        "Выборка ограничена лимитом 5 строк (источник содержит больше данных)"
+      ],
+      "cookie": true,
+      "upload_event": true,
+      "delete_http": 422
+    }
+  ],
+  "clickhouse_simulated_exact_boundary": {
+    "owned_source_rows": 12,
+    "returned_rows": 5,
+    "truncated": false
+  },
+  "duckdb_query_can_read_other_owned_file": true,
+  "version_error_log": {
+    "probe_ok": true,
+    "fictitious_secret_in_log": true,
+    "fictitious_secret_in_response": false
+  },
+  "driver_kwargs": [
+    {
+      "db_type": "postgresql",
+      "driver": null,
+      "options": [
+        {
+          "ssl": false,
+          "dialect": "postgresql+psycopg",
+          "kwargs": {
+            "password": "<masked>",
+            "connect_timeout": 10,
+            "options": "-c statement_timeout=60000",
+            "sslmode": "disable"
+          },
+          "query": {}
+        },
+        {
+          "ssl": true,
+          "dialect": "postgresql+psycopg",
+          "kwargs": {
+            "password": "<masked>",
+            "connect_timeout": 10,
+            "options": "-c statement_timeout=60000",
+            "sslmode": "require"
+          },
+          "query": {}
+        }
+      ]
+    },
+    {
+      "db_type": "mysql",
+      "driver": null,
+      "options": [
+        {
+          "ssl": false,
+          "dialect": "mysql+pymysql",
+          "kwargs": {
+            "password": "<masked>",
+            "connect_timeout": 10,
+            "ssl_disabled": true
+          },
+          "query": {}
+        },
+        {
+          "ssl": true,
+          "dialect": "mysql+pymysql",
+          "kwargs": {
+            "password": "<masked>",
+            "connect_timeout": 10,
+            "ssl_verify_cert": true
+          },
+          "query": {}
+        }
+      ]
+    },
+    {
+      "db_type": "mssql",
+      "driver": "pyodbc",
+      "options": [
+        {
+          "ssl": false,
+          "dialect": "mssql+pyodbc",
+          "kwargs": {
+            "PWD": "<masked>",
+            "timeout": 10
+          },
+          "query": {
+            "driver": "ODBC Driver 18 for SQL Server",
+            "Encrypt": "no"
+          }
+        },
+        {
+          "ssl": true,
+          "dialect": "mssql+pyodbc",
+          "kwargs": {
+            "PWD": "<masked>",
+            "timeout": 10
+          },
+          "query": {
+            "driver": "ODBC Driver 18 for SQL Server",
+            "Encrypt": "yes",
+            "TrustServerCertificate": "no"
+          }
+        }
+      ]
+    },
+    {
+      "db_type": "mssql",
+      "driver": "pymssql",
+      "options": [
+        {
+          "ssl": false,
+          "dialect": "mssql+pymssql",
+          "kwargs": {
+            "password": "<masked>",
+            "login_timeout": 10
+          },
+          "query": {}
+        },
+        {
+          "ssl": true,
+          "dialect": "mssql+pymssql",
+          "kwargs": {
+            "password": "<masked>",
+            "login_timeout": 10
+          },
+          "query": {}
+        }
+      ]
+    }
+  ],
+  "pyodbc_import_available": false,
+  "pymssql_import_available": true
+}

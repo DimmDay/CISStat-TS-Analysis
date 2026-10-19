@@ -1,181 +1,26 @@
 {
-  "task": "AUDIT-CERT",
-  "base_commit": "2a4cd6cf3cca02e09c9746a5bc7d3ca7b9a1d1b3",
-  "verdict": "NEW LOCAL CONTRACTS PASS; FULL ACCEPTANCE OPEN",
+  "base_commit": "079e352bd924c708ea6d563c1d01b2a5007882d1",
+  "scope": "Audit only; product unchanged",
   "files": [
     {
-      "path": "apps/api/delivery_outbox.py",
-      "status": "updated",
-      "bytes": 37059,
-      "sha256": "acda561581308b2e89cd1e3a2bc49ea3f4955b6362ad4be7464f7ef5f9d8639b"
+      "path": "docs/audit_database_connections_2026-10-19.md",
+      "sha256": "2dbf5499a99fd219eb429f53601af89781530a750e4f20e464a5b82f4bacad59"
     },
     {
-      "path": "apps/api/research_runs.py",
-      "status": "updated",
-      "bytes": 124644,
-      "sha256": "6d591b32f8f45a70a616a774c1d6d7d07e8e2250c4031f34f25e317ac0a5e187"
+      "path": "scripts/database_connections_audit.py",
+      "sha256": "a01c4b07ef5f0c52d37272b3ed26f834411f3489881c7ead1894424a9190ff31"
     },
     {
-      "path": "docs/cert_prograuditcert_2026-10-13.md",
-      "status": "new",
-      "bytes": 19446,
-      "sha256": "4b9d74004c240f7e63aa1abb8f216820b927f50c6b8b2dc931198465431cc653"
+      "path": "scripts/database_connections_audit_pytest.txt",
+      "sha256": "fc6b93490dfb44506abde0d47bcb4a38891fbae58399f1006a7e6cd5107eb70d"
     },
     {
-      "path": "docs/progress_audit_cert_coverage.md",
-      "status": "new",
-      "bytes": 12724,
-      "sha256": "61eaef3bb96f53be0dc17383ae5a6d2c91640974e2f451dbba6e19847d4052ca"
+      "path": "scripts/database_connections_audit_results.json",
+      "sha256": "3e4115a9d49179fb53d36d96f243058e1cffe24b30454c09b087e1d915360b33"
     },
     {
-      "path": "docs/progress_audit_contract.md",
-      "status": "updated",
-      "bytes": 198160,
-      "sha256": "21a81678813a78e0aace6282c576a3e06d4f88103487998ab5dd8997d2f1fb46"
-    },
-    {
-      "path": "packages/ui/hooks/prograuditcert_delivery.test.tsx",
-      "status": "new",
-      "bytes": 3076,
-      "sha256": "29eb858194fa02457a3635d6c2c2484b3859df10a26ee741c6b86534ccf53d1e"
-    },
-    {
-      "path": "scripts/prograuditcert_mutation_results.json",
-      "status": "new",
-      "bytes": 24227,
-      "sha256": "696293e27f06f93c05cf8f9f7cb6b6fd76bb95a5f2d2cb16221daf6522fa49fb"
-    },
-    {
-      "path": "scripts/prograuditcert_mutations.py",
-      "status": "new",
-      "bytes": 7417,
-      "sha256": "c1b5c1486d6cddce7e5707e81ffee9b18ca7e58dc402b8e2db0b33466d316483"
-    },
-    {
-      "path": "scripts/prograuditcert_pg_runner.py",
-      "status": "new",
-      "bytes": 1793,
-      "sha256": "2ceb90dc3da2f23a75846da91c86121bce14ee8b52719302ab0a3b3f64ce2adb"
-    },
-    {
-      "path": "scripts/prograuditcert_protocol.json",
-      "status": "new",
-      "bytes": 26549,
-      "sha256": "51e16de52bf4ccbd0fe585e8b0d13db395fb956f62c4af5378c22a0054739f30"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/api-startup.txt",
-      "status": "new",
-      "bytes": 455,
-      "sha256": "9bde96649fdc34f06d41fbeff230e14d13b2d3504743483e9ed0f1da1ee558b7"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/base.txt",
-      "status": "new",
-      "bytes": 928,
-      "sha256": "036a840e50fcca61127bda6c3f543a38fb8e3da79bbf655affcfd80e1f1e79b3"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/baseline-full.txt",
-      "status": "new",
-      "bytes": 91221,
-      "sha256": "7b6439b646b8d5cc0a00ef957ecb0aa1189c86c5880212b30f0d7db3a17c381f"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/baseline-jest.txt",
-      "status": "new",
-      "bytes": 445,
-      "sha256": "cf4f49664022aa296dbd99a3883a0c3771ff2b49aee6b9a8b5fc4b4831e7c378"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/build-standalone.txt",
-      "status": "new",
-      "bytes": 1616,
-      "sha256": "af7ff8cdc035f95a84af768dc5af00d4394d65ca0d8713c7c7c6d7e8904edb48"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/build.txt",
-      "status": "new",
-      "bytes": 1840,
-      "sha256": "e04443410e894f70e58f4789a739e0a303f0cdbdacfb45547ecf42a126795f64"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/final-full.txt",
-      "status": "new",
-      "bytes": 91381,
-      "sha256": "7a3a33c78f3019700ac5a7836e7d9ea2f3f6f32ef9b38c90887a3fa3959e9a9c"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/final-jest.txt",
-      "status": "new",
-      "bytes": 445,
-      "sha256": "abced1ffe0eae8d2063a2875f51028dedc44894d99c1012b27909a33ad34c4a3"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/final-progress.txt",
-      "status": "new",
-      "bytes": 3880,
-      "sha256": "199abca32598279662a868426fdb9389b64839b58f87fb035647fbafc77939ef"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/green.txt",
-      "status": "new",
-      "bytes": 1029,
-      "sha256": "01ba540c4297754793fa96775fe4800b4fb553a8f8fc82a8e51bbd9630de64d6"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/mutations.txt",
-      "status": "new",
-      "bytes": 416,
-      "sha256": "df08549d91a89fab203ba607feccf48a5abf7dcd39d04fb5ee810e3e9cca8679"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/new-all.txt",
-      "status": "new",
-      "bytes": 548,
-      "sha256": "e017bd2164998e5dac2134097cb5200f4535fd3fb61b46be4871a993eaa96bdb"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/outbox-red.txt",
-      "status": "new",
-      "bytes": 1512,
-      "sha256": "5e46ab52be7af48bf6244a9c8240f8b868a45e465f459a3964dc1826522b1ebc"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/pg.txt",
-      "status": "new",
-      "bytes": 157,
-      "sha256": "187b3233a2f6ff49a992ef7c7e97694941d917974891aa56e0aa5dfa321053b6"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/typecheck.txt",
-      "status": "new",
-      "bytes": 1062,
-      "sha256": "c693fafe1ecb5243a4790cbe6ac26e039e34558b3b29670f1a1293295390a56b"
-    },
-    {
-      "path": "scripts/prograuditcert_protocols/ui-first.txt",
-      "status": "new",
-      "bytes": 284,
-      "sha256": "70fdc44a5199740621122103f81e4587ae9db903c959a6e73c5debdef53b6ded"
-    },
-    {
-      "path": "tests/api/test_progress_audit_cert_store.py",
-      "status": "new",
-      "bytes": 5405,
-      "sha256": "83ba357570279cceb74cf84ff084ebf7e4a769ed90eafb9ae6952f7c23c44598"
-    },
-    {
-      "path": "tests/integration/test_progress_audit_cert.py",
-      "status": "new",
-      "bytes": 21143,
-      "sha256": "829289c71e2bfb2bab74101b4dec077bde9f27cc654c744e46b1df23b59188da"
-    },
-    {
-      "path": "worklog/worklog9.md",
-      "status": "updated",
-      "bytes": 687811,
-      "sha256": "32027e44ae8a81313adba07cefc16bb99da41f97aef79e6498434e0fb594d735"
+      "path": "worklog/worklog10.md",
+      "sha256": "ad21fbfc5bb4db751462ee2775a5bd54072aff456c552941671212181d4fd7d6"
     }
   ]
 }

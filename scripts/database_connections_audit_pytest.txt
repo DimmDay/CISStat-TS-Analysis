@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-db-audit
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1
+collected 249 items
+
+tests/unit/test_db_connectors.py ....................................... [ 15%]
+....................F                                                    [ 24%]
+tests/unit/test_db_guard.py ............................................ [ 41%]
+.............................                                            [ 53%]
+tests/unit/test_db_embedded.py .................                         [ 60%]
+tests/unit/test_db_connection.py .....                                   [ 62%]
+tests/unit/test_upload_db9_docs.py ..................................... [ 77%]
+..........................                                               [ 87%]
+tests/api/test_upload_db.py ...............................              [100%]
+
+=================================== FAILURES ===================================
+___ TestUploadDb7DriverHandoff.test_module_importable_without_pyodbc_pymysql ___
+tests/unit/test_db_connectors.py:671: in test_module_importable_without_pyodbc_pymysql
+    assert result.returncode == 0, f"stderr: {result.stderr}"
+E   AssertionError: stderr: Traceback (most recent call last):
+E       File "<string>", line 5, in <module>
+E     AssertionError
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python', '-c', "import sys\n...de=1, stdout='', stderr='Traceback (most recent call last):\n  File "<string>", line 5, in <module>\nAssertionError\n').returncode
+=========================== short test summary info ============================
+FAILED tests/unit/test_db_connectors.py::TestUploadDb7DriverHandoff::test_module_importable_without_pyodbc_pymysql
+=================== 1 failed, 248 passed, 1 warning in 5.32s ===================
