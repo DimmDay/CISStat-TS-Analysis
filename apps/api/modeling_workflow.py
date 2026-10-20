@@ -367,3 +367,87 @@ def build_modeling_context(session: AnalysisSession, *, horizon: int = 12,
         "runnable_shortlist": matrix.get("runnable_shortlist", []),
         "traceability": {"nodes": nodes, "summary": traceability_summary},
     }
+
+
+# ── PANEL-MODELS-3a: панельный контур (зеркало modeling_entry-гейта) ───────
+
+def build_panel_modeling_context(
+    session: AnalysisSession,
+    *,
+    date_column: str,
+    entity_column: str,
+    value_columns: list[str],
+    target_column: str,
+) -> dict[str, Any]:
+    """Гейт панельного контура: checkpoint ``panel_entry`` + свежесть панели.
+
+    Зеркало checkpoint-гейта ``build_modeling_context``, но для ПАНЕЛИ
+    (R4 спеки PANEL-MODELS-3: однорядный prepare_passport_series /
+    modeling_entry не затрагиваются -- гвард-тест test_panel_contract.py).
+
+    Свежесть проверяется ДВУМЯ честными сравнениями:
+      1. состав колонок паспорта == запрошенный состав (значения разных
+         колонок могут совпадать -- fingerprint их не различает);
+      2. fingerprint ПАНЕЛИ (panel_fingerprint текущего dataframe) ==
+         fingerprint checkpoint'а -- любое изменение контента панели
+         честно истекает checkpoint.
+
+    Возвращает {passport, fingerprint, columns, checkpoint} -- вход этапа
+    3b (панельные экраны «Моделирования»).
+    """
+    from app.preprocessing.panel import PanelContractError, panel_fingerprint
+
+    if session.dataframe is None or not session.target_column:
+        raise ValueError("Для панельного Моделирования нужны dataset и target_column")
+    checkpoint = session.latest_panel_entry_checkpoint()
+    if checkpoint is None:
+        raise ValueError(
+            "Сначала подтвердите checkpoint panel_entry (паспорт панели) "
+            "для панельного контура моделирования"
+        )
+    snapshot = session.panel_passport_snapshot(checkpoint.snapshot_id)
+    if snapshot is None:
+        raise ValueError("Снимок checkpoint panel_entry недоступен")
+    passport = deepcopy(snapshot.passport)
+
+    requested_columns = {
+        "date_column": str(date_column),
+        "entity_column": str(entity_column),
+        "value_columns": [str(column) for column in value_columns],
+        "target_column": str(target_column),
+    }
+    stored_columns = dict(passport.get("columns") or {})
+    if stored_columns and stored_columns != requested_columns:
+        raise ValueError(
+            "Состав колонок не совпадает с подтверждённой панелью: checkpoint "
+            f"зафиксировал {stored_columns}, запрошено {requested_columns}; "
+            "подтвердите panel_entry заново для нового состава"
+        )
+
+    try:
+        fingerprint = panel_fingerprint(
+            session.dataframe,
+            date_column=requested_columns["date_column"],
+            entity_column=requested_columns["entity_column"],
+            value_columns=requested_columns["value_columns"],
+            target_column=requested_columns["target_column"],
+        )
+    except PanelContractError as error:
+        raise ValueError(f"Панель не проходит контракт: {error}") from error
+    if fingerprint != checkpoint.fingerprint:
+        raise ValueError(
+            "Checkpoint panel_entry устарел: панель изменилась после подтверждения"
+        )
+
+    return {
+        "passport": passport,
+        "fingerprint": fingerprint,
+        "columns": requested_columns,
+        "checkpoint": {
+            "checkpoint_id": checkpoint.checkpoint_id,
+            "snapshot_id": checkpoint.snapshot_id,
+            "stage": checkpoint.stage,
+            "confirmed_at": checkpoint.confirmed_at,
+        },
+        "data_source": "session",
+    }

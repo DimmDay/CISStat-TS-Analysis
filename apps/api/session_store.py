@@ -141,6 +141,11 @@ MAX_PIPELINE_TRACE_EVENTS = 1000
 StageStatus = str  # "pending" | "in_progress" | "done"
 PASSPORT_STAGES = ("start", "validation", "exit", "modeling_entry")
 PASSPORT_CHECKPOINT_STAGES = ("modeling_entry",)
+# PANEL-MODELS-3a: панельный контур хранит паспорта/checkpoint'ы в СОБСТВЕННЫХ
+# списках (R4 -- панельный контур не касается однорядного modeling_entry);
+# структура снимков/checkpoint'ов переиспользуется (target/date/fingerprint
+# имеют тот же смысл для панели).
+PANEL_PASSPORT_STAGES = ("panel_entry",)
 def _empty_modeling_pipeline() -> dict[str, StageStatus]:
     return {stage: "pending" for stage in MODELING_STAGE_IDS}
 
@@ -255,6 +260,14 @@ class AnalysisSession:
     # Логические подтверждения этапов хранятся отдельно от рассчитанных
     # снимков, чтобы не дублировать полный passport при том же fingerprint.
     passport_checkpoints: list[PassportCheckpoint] = field(default_factory=list)
+    # ── PANEL-MODELS-3a: панельный контур (отдельная вселенная фактов) ──
+    # Снимки PanelPassport (stage="panel_entry") и checkpoint'ы панельного
+    # входа. Изолированы от однорядного passport_history/passport_checkpoints
+    # (R4 спеки): reset однорядных паспортов не должен уносить панельные
+    # факты и наоборот -- сброс ПРИ смене данных/цели/даты честно чистит
+    # обе вселенные (reset_passports/set_dataset).
+    panel_passport_history: list[PassportSnapshot] = field(default_factory=list)
+    panel_entry_checkpoints: list[PassportCheckpoint] = field(default_factory=list)
     # Пользовательский эталон типов для вкладки «Валидация».
     # Формат: {column_name: integer|float|datetime|string|boolean}.
     # Не выводится автоматически из фактических dtype, иначе проверка
@@ -424,6 +437,9 @@ class AnalysisSession:
         self.date_column = None
         self.passport_history = []
         self.passport_checkpoints = []
+        # PANEL-MODELS-3a: новый датасет = новая панельная вселенная.
+        self.panel_passport_history = []
+        self.panel_entry_checkpoints = []
         self.type_schema = {}
         self.validation_template_id = "system"
         self.validation_rule_overrides = {}
@@ -548,6 +564,91 @@ class AnalysisSession:
             None,
         )
 
+    # ── PANEL-MODELS-3a: панельный контур (зеркало modeling_entry) ──
+
+    def append_panel_passport_snapshot(
+        self,
+        *,
+        passport: dict[str, Any],
+        fingerprint: str,
+    ) -> PassportSnapshot:
+        """Добавить снимок PanelPassport (append-only, вселенная панели).
+
+        Панельный паспорт существует только при выбранной target_column
+        (контракт панели требует target). Структура PassportSnapshot
+        переиспользуется: stage="panel_entry", fingerprint -- fingerprint
+        ПАНЕЛИ (panel_fingerprint), а не однорядного паспорта.
+        """
+        if not self.target_column:
+            raise ValueError("Для панельного паспорта не выбрана target_column")
+        snapshot = PassportSnapshot(
+            snapshot_id=str(uuid.uuid4()),
+            stage="panel_entry",
+            passport=deepcopy(passport),
+            fingerprint=fingerprint,
+            target_column=self.target_column,
+            date_column=self.date_column,
+            captured_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.panel_passport_history.append(snapshot)
+        self.touch()
+        return snapshot
+
+    def latest_panel_passport(self) -> Optional[PassportSnapshot]:
+        """Последний панельный снимок; история остаётся append-only."""
+        return next(
+            (item for item in reversed(self.panel_passport_history)
+             if item.stage == "panel_entry"),
+            None,
+        )
+
+    def panel_passport_snapshot(self, snapshot_id: str) -> Optional[PassportSnapshot]:
+        return next(
+            (item for item in reversed(self.panel_passport_history)
+             if item.snapshot_id == snapshot_id),
+            None,
+        )
+
+    def append_panel_entry_checkpoint(
+        self,
+        snapshot: PassportSnapshot,
+        *,
+        previous_snapshot_id: Optional[str],
+        created_snapshot: bool,
+    ) -> PassportCheckpoint:
+        """Зафиксировать панельный handoff, ссылаясь на снимок панели.
+
+        Зеркало append_passport_checkpoint для stage="panel_entry":
+        подтверждение аналитика на pre-flight панельного контура.
+        Однорядный checkpoint modeling_entry не создаётся и не читается.
+        """
+        stored_snapshot = self.panel_passport_snapshot(snapshot.snapshot_id)
+        if stored_snapshot is None:
+            raise ValueError("Checkpoint должен ссылаться на снимок текущей сессии")
+        snapshot = stored_snapshot
+        checkpoint = PassportCheckpoint(
+            checkpoint_id=str(uuid.uuid4()),
+            stage="panel_entry",
+            snapshot_id=snapshot.snapshot_id,
+            source_stage=snapshot.stage,
+            previous_snapshot_id=previous_snapshot_id,
+            fingerprint=snapshot.fingerprint,
+            target_column=snapshot.target_column,
+            date_column=snapshot.date_column,
+            created_snapshot=created_snapshot,
+            confirmed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.panel_entry_checkpoints.append(checkpoint)
+        self.touch()
+        return checkpoint
+
+    def latest_panel_entry_checkpoint(self) -> Optional[PassportCheckpoint]:
+        return next(
+            (item for item in reversed(self.panel_entry_checkpoints)
+             if item.stage == "panel_entry"),
+            None,
+        )
+
     def passport_snapshot(self, snapshot_id: str) -> Optional[PassportSnapshot]:
         return next(
             (item for item in reversed(self.passport_history) if item.snapshot_id == snapshot_id),
@@ -557,6 +658,10 @@ class AnalysisSession:
     def reset_passports(self) -> None:
         self.passport_history = []
         self.passport_checkpoints = []
+        # PANEL-MODELS-3a: смена данных/цели/даты честно инвалидирует
+        # и панельную вселенную (факты привязаны к прежнему содержимому).
+        self.panel_passport_history = []
+        self.panel_entry_checkpoints = []
         self.eda_validation_strategy = {}
         self.reset_modeling()
         self.touch()
@@ -738,6 +843,10 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "date_column": session.date_column,
         "passport_history": [asdict(item) for item in session.passport_history],
         "passport_checkpoints": [asdict(item) for item in session.passport_checkpoints],
+        # PANEL-MODELS-3a: панельная вселенная переживает персистенцию
+        # (Redis-режим: restore без панельных фактов ломал бы checkpoint).
+        "panel_passport_history": [asdict(item) for item in session.panel_passport_history],
+        "panel_entry_checkpoints": [asdict(item) for item in session.panel_entry_checkpoints],
         "type_schema": dict(session.type_schema),
         "validation_template_id": session.validation_template_id,
         "validation_rule_overrides": dict(session.validation_rule_overrides),
@@ -820,6 +929,17 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         passport_checkpoints=[
             _passport_checkpoint_from_dict(item)
             for item in d.get("passport_checkpoints", [])
+        ],
+        # PANEL-MODELS-3a: [] для старых записей (backcompat rolling-deploy).
+        panel_passport_history=[
+            _passport_snapshot_from_dict(item)
+            for item in d.get("panel_passport_history", []) or []
+            if isinstance(item, dict)
+        ],
+        panel_entry_checkpoints=[
+            _passport_checkpoint_from_dict(item)
+            for item in d.get("panel_entry_checkpoints", []) or []
+            if isinstance(item, dict)
         ],
         type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
         validation_template_id=d.get("validation_template_id", "system"),
