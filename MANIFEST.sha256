@@ -9,6 +9,7 @@ f7ff6e23e96b0039e980d319573aaf63fe6f7b2bf7b4f884633d7b6347c309f7  ./apps/api/rou
 4775455fbd6ca502dc812e9fb820518cb7551f10081048dd1daf077428295757  ./apps/api/schemas.py
 c85ddb6086d4e3ba22de2795aa5a4d44bd5cf8b95b520bc9f3a5f77d267a02e7  ./apps/api/session_store.py
 2c7d00d3b15f8e54f965e342262756469dc12588e120daec7edd111b9ae8342e  ./docs/cert_mentor_next_step_2026-10-19.md
+409c1e3aa1f3f40f63ad88c301a04fe1d0671ed746af31b5f0b70e6e8bc4370f  ./docs/cert_upload_recomp2_2026-10-20.md
 253bdeb70396e05e2a1a566a7e474b69681611e77ab3804df42d3554f9845aba  ./docs/mentor_fallback_2026-10-19.md
 d101190fb6c9a9b72c5155627f54726bed07d701061a68785a23c47531d73f27  ./docs/mentor_stop_deeplink_2026-10-19.md
 b1413a6fd503e155e4a00179c8111dad4bd65783c7149dd113f60348480c905a  ./docs/mentor_text5_2026-10-19.md
@@ -23,6 +24,7 @@ defc4e6aba34fe3fe045daa8bd14f315b241b5b4d4892e84523e11fdf59897ae  ./packages/ui/
 c3f911471585cd88b78c5584eea5d6595e6ed01a5c0a64eae97aa4b0c077bab6  ./packages/ui/components/TsAnalysisValidation.tsx
 8c435de547f66e4f49182bc518049f1531b347320922072d17559a70cea292a6  ./packages/ui/components/mentorStopDeepLink.test.tsx
 de7618c2ce34050c9fc370266b6622ca88617e8e2cf7daa8eac3a55d75a3225c  ./packages/ui/components/structural-class-schema-table.test.tsx
+67bd3e63def02b05b8625101ae11be3cd46c2baef4bc663cde4eb0c9255b40f4  ./packages/ui/components/upload-panel-chart-refresh.cert-oracles.test.tsx
 c678c5d46ca98428e3515f1d38227d226a2c2fff2bbcd64f8ed64a8bd2daffad  ./packages/ui/components/upload-panel-chart-refresh.test.tsx
 bacfd0e922a558432732f72e33a99f0ca178c167b1ea2694d696bf746880f426  ./packages/ui/components/upload-panel-decomposition-after-transform.test.tsx
 18acf52b6a6b05a5766d94472c781ca56be1425290f9b215901cb2ecd834206f  ./packages/ui/components/upload-panel-paths-categorical-dates.test.tsx
@@ -32,9 +34,17 @@ ea322f5e06eb612b3b1a9d9e821792fb67a0e1e4be5f5be54fefa8bee21aab93  ./packages/ui/
 ddaff3eed5b9a3d24ca9433fe55713d0a2e7671b157e1e9b28bf9698162964e2  ./packages/ui/lib/mentor.ts
 020ac993007cf3ab5fc552bd3e61aa869c14aa158c558f6bdfff52e81c57f13f  ./packages/ui/lib/stopLinks.test.ts
 3b8a48c462708a7c1a019cb19aa02a54f43bbd95c6351eaac30ef5ac8fbec96e  ./packages/ui/lib/stopLinks.ts
+5022c6491d767de144529e0b5aaee411576155e5db8290fdca25ea2296332575  ./packages/ui/lib/structuralClass.cert-oracles.test.ts
 808ec5d27ca8c51f6cb1d3b9dbb201a76ac65f94248d2fcf96c2d66175c4b967  ./packages/ui/lib/structuralClass.test.ts
 3b604af5a1f1c059869371c26954b5a542102be516e434de9aac3763b27a4922  ./packages/ui/lib/structuralClass.ts
 7352f88daf27e23596d385adff4f3fd95676ae77913703f826474786c744d70d  ./rules/mentor_stop_explanations.json
+cf5538713ffd681d52b82a2a726f7298c7c02455579e04cceeb4258a3515012b  ./scripts/cert_recomp2/mutations.py
+5d8e4928a69a55416cb92716f4189a15028b16a2f9538d52d85d2e4fea3acb5b  ./scripts/cert_recomp2/mutations_protocol.txt
+8788c1c0e595149809f9dcba8cfc8627765d222dc0b7adb8ac228b3a5b6ce37a  ./scripts/cert_recomp2/oracle_backend.py
+d32a1d9e6d41f3a6412e459151850ce5e793a1c4e45702b0e19d5779a9d81c5b  ./scripts/cert_recomp2/oracles_backend.txt
+520ed4bddf041ef6dc6b237840f9d0af73be0492dd1ea8cce77c203793e6b2da  ./scripts/cert_recomp2/oracles_frontend.txt
+383afba6ffed31d1d3067f20e40030609bf3e5fab37e85159316dbc003611bc5  ./scripts/cert_recomp2/regress_full_jest.txt
+8f780cfe599f7704a2bb619eab2a3edae21ed7e06ef1654c047f650aa5c03780  ./scripts/cert_recomp2/regress_pytest_0ee3ffe.txt
 9becd76f69764ebec09b2eaff4c35c1714cee936ea08ddb320d3033f051f9471  ./scripts/mns6cert_mutations.py
 9b02f494d34b10abfcfebc969eec9769473f8ea831abe0e67059216a4a8ebfa6  ./scripts/mns6cert_mutations.txt
 19b451daa6f88948000cdfc1941007be394000b8e211f3c80a9ac9b5e981db15  ./scripts/mns6cert_oracles.py
@@ -49,4 +59,4 @@ b38c9f8885eb1cee42ed1c421a80b58634e07bff0ee257bce6ca99a587c9bb31  ./tests/api/te
 a0aee1d95c4db91d895939ecdae8b52d79ea6ef791b2af0e6befc269188159cb  ./tests/api/test_session_date_column.py
 087aaf81b24ed757d770adbc070f2ffdff4cf0ff896288a09fbe5f4b25a00d3f  ./tests/unit/test_mentor_stop_explanations.py
 0f61c8cc2e36035d4001529f740e2a60b6cfe1dbe68bdfd0873e26af573670b4  ./tests/unit/test_panel_preprocessing.py
-7430c948097ab864e2f95ca6c60ec40611ed99fd1078b229c06eb277f8b05d79  ./worklog/worklog10.md
+c04a5e36a86541394d9fce4462bd6b90f31398fa1beaed1cc2594912be52a9da  ./worklog/worklog10.md

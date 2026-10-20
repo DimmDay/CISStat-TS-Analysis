@@ -1,0 +1,444 @@
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using orjson library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 404 Not Found"
+PASS O01 entity-filter без датасета -- 404
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 404 Not Found"
+PASS O01b panel-aggregate без датасета -- 404
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 200 OK"
+PASS O02 доступные значения -- [delta, epsilon, zeta]
+PASS O02b опрос без значения: 360 строк, статистики сведения не выдаются
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 200 OK"
+PASS O03 preview applied=false
+PASS O03b preview 360 -> 120 строк
+PASS O03c preview сетка: 120 дат, 2023-01-01..2023-04-30
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O03d preview НЕ мутирует сессию (побайтный паритет строк)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 200 OK"
+PASS O04 apply delta: 120 строк
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O04b в датасете только delta
+PASS O04c значения revenue сохранены точно (100+2i)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset "HTTP/1.1 200 OK"
+PASS O04d apply сохранён в сессии
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 422 Unprocessable Entity"
+PASS O05 неизвестное значение -- 422
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 422 Unprocessable Entity"
+PASS O05b неизвестная entity-колонка -- 422
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:7224]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 422 Unprocessable Entity"
+PASS O05c сущность короче паспортного минимума 30 -- честный 422
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 422 Unprocessable Entity"
+PASS O05d apply короткой сущности тоже 422 (fail-closed)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+PASS O06 mean preview: 120 агрегатов
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O06b mean preview НЕ мутирует
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+PASS O06c mean apply
+PASS O06d summary 360 -> 120, 120 дат
+PASS O06e без пропусков skipped=0
+PASS O06f entity-колонка удалена с пометкой
+PASS O06g числовая mean, нечисловая first
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+PASS O06h company отсутствует в результате
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O06i mean-арифметика точна: (100+2d + 200+2d + 300+2d)/3 = 200+2d
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O07 sum: revenue[3] == 618
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O07 min: revenue[3] == 106
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O07 max: revenue[3] == 306
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1 "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/rows?offset=0&limit=1000 "HTTP/1.1 200 OK"
+PASS O07 median: revenue[3] == 206
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10015]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+PASS O08 дата без единого валидного значения отброшена со счётчиком (1, осталось 119)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 404 Not Found"
+PASS O09 неизвестная date-колонка -- 404
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 422 Unprocessable Entity"
+PASS O09b недопустимая функция -- 422
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:273]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 422 Unprocessable Entity"
+PASS O09c нет числовых колонок -- 422
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:108]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[110:122]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[124:132]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[136:621]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O10 score 0.6 без confirmed -- 422 (прежний контракт)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+PASS O10b факт structure_confirmed не записан после отказа
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+PASS O10c score 0.6 + confirmed=true -- 200 (гейт снят)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+PASS O10d week_log сохранён как date_column
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+PASS O10e трасса: узел upload/structure = done (structure_confirmed)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O11 «(не использовать)» без confirmed -- 422
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+PASS O11b «(не использовать)» + confirmed -- 200, date_column=None
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+PASS O11c «временной колонки нет» -- легитимное подтверждение, узел done
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O12 revenue не приводится к дате -- 422 даже при confirmed
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 404 Not Found"
+PASS O12b несуществующая колонка -- 404
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10768]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O12c одна валидная дата -- 422 даже при confirmed
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:16765]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O12d мусорная колонка при confirmed -- честный 422 (crash-guard, не 500)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:12195]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 422 Unprocessable Entity"
+PASS O12e год-only колонка с «н/д» мусором -- 422 «не приводится» (крэш-путь smart_to_datetime)
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/decomposition?column=revenue&date_column=week "HTTP/1.1 200 OK"
+PASS O13 панель до преобразования: декомпозиция applicable=false
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/entity-filter "HTTP/1.1 200 OK"
+PASS O13b entity-filter apply zeta
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+PASS O13c подтверждение week после фильтра -- 200
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/decomposition?column=revenue&date_column=week "HTTP/1.1 200 OK"
+PASS O13d ПОСЛЕ преобразования декомпозиция applicable=true
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/decomposition-series?column=revenue&date_column=week "HTTP/1.1 200 OK"
+PASS O13e ряды компонент (STL) отдаются
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:106]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[108:120]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[122:130]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[134:10030]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/panel-aggregate "HTTP/1.1 200 OK"
+PASS O13-Aggregate apply mean
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/decomposition?column=revenue&date_column=week "HTTP/1.1 200 OK"
+PASS O13b путь агрегации: декомпозиция applicable=true
+
+ORACLE BACKEND: 53/53 PASS

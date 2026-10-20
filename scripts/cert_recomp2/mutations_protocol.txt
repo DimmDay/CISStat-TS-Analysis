@@ -1,0 +1,64 @@
+=== UPLOAD-RECOMP-2-CERT: мутационная кампания (консолидированный протокол) ===
+База: main@0ee3ffe; восстановление побайтовое (md5-паспорта; финальный git diff --quiet); запуск поканально (--only).
+
+MS-01    repo=killed   oracle=killed     10.9s  DUAL-KILLED                  гейт score<0.7 не снимается confirmed (до-RECOMP-2a контракт)
+MS-02    repo=killed   oracle=killed     11.2s  DUAL-KILLED                  маркер «(не использовать)» принимается без подтверждения
+MS-03    repo=killed   oracle=killed     11.4s  DUAL-KILLED                  entity-filter apply не персистит датасет
+MS-04    repo=killed   oracle=killed     11.4s  DUAL-KILLED                  снят паспортный минимум точек после фильтра
+MS-05    repo=killed   oracle=killed     11.4s  DUAL-KILLED                  фильтр сущности инвертирован (оставляет ЧУЖИЕ строки)
+MS-06    repo=killed   oracle=killed     11.1s  DUAL-KILLED                  агрегация игнорирует выбранную функцию (всегда first)
+MS-07    repo=killed   oracle=killed     12.4s  DUAL-KILLED                  entity-колонка не удаляется из результата агрегации
+MS-08    repo=killed   oracle=killed     11.3s  DUAL-KILLED                  снята честная политика пропусков (all-NaN даты остаются)
+
+MS-06    repo=killed   oracle=killed     11.4s  DUAL-KILLED                  агрегация игнорирует выбранную функцию (всегда first)
+MS-07    repo=killed   oracle=killed     11.0s  DUAL-KILLED                  entity-колонка не удаляется из результата агрегации
+MS-08    repo=killed   oracle=killed     11.0s  DUAL-KILLED                  снята честная политика пропусков (all-NaN даты остаются)
+MS-09    repo=killed   oracle=survived   12.2s  REPO-KILLED (oracle выжил)   снят crash-guard smart_to_datetime (500 вместо 422)
+CTL-BE   repo=survived oracle=survived   11.5s  ALIVE (контроль)             no-op контроль (комментарий) -- обязан ПЕРЕЖИТЬ оба канала
+
+Мутантов: 5 (боевых 4, no-op-контролей 1)
+Убиты: 4; DUAL-SURVIVORS: 0 []
+(--only: MS-06, MS-07, MS-08, MS-09, CTL-BE)
+
+MS-09    repo=killed   oracle=killed     12.2s  DUAL-KILLED                  снят crash-guard smart_to_datetime (500 вместо 422)
+=== ИТОГ ===
+
+MT-01    repo=killed   oracle=killed      9.6s  DUAL-KILLED                  снято исключение date-колонки из иерархической цепочки
+MT-02    repo=killed   oracle=killed     10.0s  DUAL-KILLED                  иерархия снова старше панели (до-DECOMP порядок правил)
+MT-03    repo=survived oracle=killed      9.8s  ORACLE-KILLED (repo выжил)   порог кардинальности 1.5x ослаблен до 0.5x (ложные иерархии)
+MT-04    repo=killed   oracle=killed     10.0s  DUAL-KILLED                  двухуровневые цепочки перестают считаться иерархией
+MT-05    repo=survived oracle=killed      9.9s  ORACLE-KILLED (repo выжил)   одна сущность считается панелью
+CTL-FE1  repo=survived oracle=survived    9.9s  ALIVE (контроль)             no-op контроль (комментарий) -- обязан ПЕРЕЖИТЬ оба канала
+
+Мутантов: 6 (боевых 5, no-op-контролей 1)
+Убиты: 5; DUAL-SURVIVORS: 0 []
+(--only: MT-01, MT-02, MT-03, MT-04, MT-05, CTL-FE1)
+
+MP-01    repo=killed   oracle=killed     22.0s  DUAL-KILLED                  эффект /dataset/timeseries не подписан на transformEpoch (до-FIX)
+MP-02    repo=killed   oracle=killed     18.4s  DUAL-KILLED                  эффект /dataset/distribution не подписан на transformEpoch (до-FIX)
+MP-03    repo=killed   oracle=survived   18.2s  REPO-KILLED (oracle выжил)   сброс декомпозиции не подписан на transformEpoch (до-FIX)
+MP-04    repo=killed   oracle=killed     19.9s  DUAL-KILLED                  кэш «Весь датасет» не учитывает transformEpoch (до-FIX)
+
+Мутантов: 4 (боевых 4, no-op-контролей 0)
+Убиты: 4; DUAL-SURVIVORS: 0 []
+(--only: MP-01, MP-02, MP-03, MP-04)
+
+MP-05    repo=killed   oracle=survived   18.4s  REPO-KILLED (oracle выжил)   вселенная фактов не меняется после преобразования (до-§3.4)
+MP-06    repo=killed   oracle=survived   18.1s  REPO-KILLED (oracle выжил)   done у «Структуры» по факту детекции (до-RECOMP-2a семантика)
+MP-07    repo=killed   oracle=killed     19.6s  DUAL-KILLED                  POST /date-column уходит без confirmed (связка фактов разорвана)
+MP-08    repo=survived oracle=survived   15.8s  DUAL-SURVIVOR !!             после подтверждения не ре-постится карта остановок (панель не узнаёт)
+
+Мутантов: 4 (боевых 4, no-op-контролей 0)
+Убиты: 3; DUAL-SURVIVORS: 1 ['MP-08']
+(--only: MP-05, MP-06, MP-07, MP-08)
+
+MP-09    repo=killed   oracle=killed     27.2s  DUAL-KILLED                  apply не инкрементирует transformEpoch (новой вселенной нет)
+MP-10    repo=killed   oracle=survived   17.4s  REPO-KILLED (oracle выжил)   seed трассы выполняется и после преобразования (чужая вселенная)
+CTL-FE2  repo=survived oracle=survived   16.5s  ALIVE (контроль)             no-op контроль (комментарий) -- обязан ПЕРЕЖИТЬ оба канала
+
+Мутантов: 3 (боевых 2, no-op-контролей 1)
+Убиты: 2; DUAL-SURVIVORS: 0 []
+(--only: MP-09, MP-10, CTL-FE2)
+
+MP-08    repo=survived oracle=survived   16.6s  DUAL-SURVIVOR !!             после подтверждения не ре-постится карта остановок (панель не узнаёт)
+MP-08    repo=survived oracle=survived   16.6s  DUAL-SURVIVOR !!             после подтверждения не ре-постится карта остановок (панель не узнаёт)
