@@ -131,7 +131,7 @@ export interface StructuralClassResult {
 
 export type PanelBalance = "balanced" | "unbalanced" | "unknown";
 
-interface ColumnLike {
+export interface ColumnLike {
   name: string;
   type_icon: "numeric" | "datetime" | "categorical" | "text";
   unique: number;
@@ -144,6 +144,10 @@ interface ClassifyInput {
   isRegularFrequency: boolean; // есть ли уверенно определённая частота (не "(авто, не получилось)")
   columnsInfo: ColumnLike[];
   panelBalance?: PanelBalance; // подтягивается отдельным запросом, см. докстринг выше
+  // UPLOAD-RECOMP-2-DECOMP (2026-10-20): выбранная временная колонка
+  // (detection.dateCol.selected) -- исключается из иерархической цепочки:
+  // время -- ось наблюдений, а не уровень вложенности сущностей.
+  dateColumnName?: string | null;
 }
 
 const LAT_RE = /^(lat|latitude|широта)$/i;
@@ -162,10 +166,20 @@ function detectLatLong(columnsInfo: ColumnLike[]): { latCol: string; lonCol: str
  * полных данных, не только columns_info): категориальные колонки с
  * заметно разной кардинальностью -- кандидат на вложенную иерархию
  * (страна → регион → город). Возвращает от грубой к мелкой.
+ *
+ * UPLOAD-RECOMP-2-DECOMP (2026-10-20): excludeNames -- колонки, НЕ
+ * являющиеся уровнями сущностей (прежде всего ВЫБРАННАЯ временная
+ * колонка). Время -- ось наблюдений, а не уровень вложенности; без
+ * исключения любая панель со строчными датами CSV (type_icon
+ * "categorical") строила ложную цепочку "region -> month"
+ * (кардинальность 2 -> 36 проходит порог 1.5x) и классифицировалась
+ * как Hierarchical, перекрывая Panel Data: панельные микросервисы
+ * не появлялись и путь к декомпозиции был заблокирован (дефект
+ * воспроизведён на живом стеке, см. structuralClass.test.ts R1–R4).
  */
-function detectHierarchyCandidates(columnsInfo: ColumnLike[]): string[] {
+function detectHierarchyCandidates(columnsInfo: ColumnLike[], excludeNames: ReadonlySet<string>): string[] {
   const categorical = columnsInfo
-    .filter((c) => c.type_icon === "categorical" && c.unique > 1)
+    .filter((c) => c.type_icon === "categorical" && c.unique > 1 && !excludeNames.has(c.name))
     .sort((a, b) => a.unique - b.unique);
   if (categorical.length < 2) return [];
   // Кандидат считается валидным, только если кардинальность растёт минимум
@@ -186,12 +200,18 @@ function detectEventColumn(columnsInfo: ColumnLike[]): string | null {
 }
 
 export function classifyStructure(input: ClassifyInput): StructuralClassResult {
-  const { hasDateColumn, hasEntityColumn, entityUniqueCount, isRegularFrequency, columnsInfo, panelBalance } = input;
+  const { hasDateColumn, hasEntityColumn, entityUniqueCount, isRegularFrequency, columnsInfo, panelBalance, dateColumnName } = input;
   const numericCount = columnsInfo.filter((c) => c.type_icon === "numeric").length;
   const isPanel = hasDateColumn && hasEntityColumn && (entityUniqueCount ?? 0) > 1;
   const latLong = detectLatLong(columnsInfo);
-  const hierarchyChain = detectHierarchyCandidates(columnsInfo);
   const eventCol = detectEventColumn(columnsInfo);
+
+  // Временная колонка -- не уровень иерархии сущностей (см.
+  // detectHierarchyCandidates): исключается ДО построения цепочки.
+  const hierarchyChain = detectHierarchyCandidates(
+    columnsInfo,
+    new Set(dateColumnName ? [dateColumnName] : [])
+  );
 
   // ── Event Time Series: самая специфичная ветка, проверяем первой ──
   if (hasDateColumn && eventCol && !isRegularFrequency && numericCount === 0) {
@@ -213,17 +233,17 @@ export function classifyStructure(input: ClassifyInput): StructuralClassResult {
     };
   }
 
-  // ── Hierarchical: вложенная категориальная структура ──
-  if (hierarchyChain.length >= 2) {
-    return {
-      id: "hierarchical",
-      label: "Hierarchical",
-      description: `Похоже на вложенную иерархию: ${hierarchyChain.join(" → ")} (эвристика по росту кардинальности, не проверено группировкой).`,
-      routingHint: "Активны: агрегация/дезагрегация по уровням иерархии, top-down и bottom-up прогнозирование.",
-    };
-  }
-
   // ── Panel Data: дата + группировка ──
+  // UPLOAD-RECOMP-2-DECOMP (2026-10-20): ветка ПЕРЕНЕСЕНА ВЫШЕ
+  // Hierarchical -- порядок правила дерева спеки (§3.2): правило 4
+  // «Есть дата И есть группирующая колонка -> Panel Data» стоит РАНЬШЕ
+  // правила 6 «Обнаружена вложенная иерархия -> Hierarchical».
+  // Код отклонялся от дерева (иерархия проверялась первой), из-за чего
+  // панельный класс крался эвристикой кардинальности на ЛЮБОЙ панели
+  // с категориальной датой (region -> month) -- воспроизведено;
+  // панельная детекция -- явные факты (селекторы даты/группировки +
+  // бэкенд panel-balance), иерархия -- эвристика, чей собственный
+  // routingHint честно говорит «не проверено группировкой».
   if (isPanel) {
     if (panelBalance === "balanced") {
       return {
@@ -246,6 +266,16 @@ export function classifyStructure(input: ClassifyInput): StructuralClassResult {
       label: "Panel Data",
       description: `${entityUniqueCount} сущностей × временной индекс. Проверка Balanced/Unbalanced требует полных данных — считается отдельным запросом.`,
       routingHint: "Balanced/Unbalanced уточнит доступные панельные модели — дождитесь расчёта.",
+    };
+  }
+
+  // ── Hierarchical: вложенная категориальная структура ──
+  if (hierarchyChain.length >= 2) {
+    return {
+      id: "hierarchical",
+      label: "Hierarchical",
+      description: `Похоже на вложенную иерархию: ${hierarchyChain.join(" → ")} (эвристика по росту кардинальности, не проверено группировкой).`,
+      routingHint: "Активны: агрегация/дезагрегация по уровням иерархии, top-down и bottom-up прогнозирование.",
     };
   }
 

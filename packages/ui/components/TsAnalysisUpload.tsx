@@ -1005,6 +1005,15 @@ export function TsAnalysisUpload() {
       isRegularFrequency: detection.freq.selected !== "(авто, не получилось)",
       columnsInfo,
       panelBalance,
+      // UPLOAD-RECOMP-2-DECOMP (2026-10-20): выбранная временная колонка
+      // исключается из иерархической цепочки (время -- не уровень
+      // вложенности сущностей): без этого любая панель со строчными
+      // датами CSV (type_icon "categorical") классифицировалась как
+      // Hierarchical (region -> month), панельные микросервисы не
+      // появлялись и путь «панель -> преобразование -> декомпозиция»
+      // на остановке «График» был заблокирован (дефект воспроизведён
+      // на живом стеке standalone+api, см. structuralClass.test.ts).
+      dateColumnName: detection.dateCol.selected !== "(не использовать)" ? detection.dateCol.selected : null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detection, columnsInfo, panelBalance]);
