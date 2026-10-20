@@ -25,11 +25,9 @@ ddaff3eed5b9a3d24ca9433fe55713d0a2e7671b157e1e9b28bf9698162964e2  ./packages/ui/
 6bbb4e18ad72c5b1fda130645f2be8245e13278730823671bce7e17bb6f04022  ./tests/api/test_mentor_rules.py
 13e5b4bed8cc68994feb1339d52b3e0c154e8734c9ba649f9c65960b3a404522  ./docs/upload_stop_semantics_2026-10-20.md
 49014c1d7404769db8d756205cd430c29235d448be365557ff9ba6415aa431d3  ./packages/ui/components/TsAnalysisUpload.test.tsx
-acd4dffbaf57b25362681a294bbfde490dfa5934eca4502c34d13f34c325addd  ./packages/ui/components/TsAnalysisUpload.tsx
 7352f88daf27e23596d385adff4f3fd95676ae77913703f826474786c744d70d  ./rules/mentor_stop_explanations.json
 008b396591240629227d1035c6345c5bc13da310de4a3287faf79e78cd019432  ./spec_mentor_next_step.md
 087aaf81b24ed757d770adbc070f2ffdff4cf0ff896288a09fbe5f4b25a00d3f  ./tests/unit/test_mentor_stop_explanations.py
-d414b201b2f32509104701f2d9c238459cb22132ac7532a255edd171a3b8eb77  ./worklog/worklog10.md
 02bbffd19eeae60882eb33ca9d0065b85c5fd027cb24e9ba5a7a3342c71b9cc9  ./apps/api/knowledge/registry_data.json
 2f3640589a33d8048ccaee773df92c9cffd277b5a5776a0939b7f3e63d7ad55c  ./apps/api/routers/session.py
 4775455fbd6ca502dc812e9fb820518cb7551f10081048dd1daf077428295757  ./apps/api/schemas.py
@@ -42,3 +40,6 @@ ea322f5e06eb612b3b1a9d9e821792fb67a0e1e4be5f5be54fefa8bee21aab93  ./packages/ui/
 bb54fd807a598b1b8b6a17c50a12cd0a87c7a5eaebacd1d33681c9213370e0b3  ./packages/ui/lib/structuralClass.ts
 b38c9f8885eb1cee42ed1c421a80b58634e07bff0ee257bce6ca99a587c9bb31  ./tests/api/test_panel_transforms.py
 a0aee1d95c4db91d895939ecdae8b52d79ea6ef791b2af0e6befc269188159cb  ./tests/api/test_session_date_column.py
+a1ea8ec508c874d15a5825a128d61e6d3cc54b0fc9c8f82b5c908caba79415b8  ./packages/ui/components/TsAnalysisUpload.tsx
+c678c5d46ca98428e3515f1d38227d226a2c2fff2bbcd64f8ed64a8bd2daffad  ./packages/ui/components/upload-panel-chart-refresh.test.tsx
+e0782850593bd38a21cd318ab044582b015f39c61c29b258f01651391c3c0a85  ./worklog/worklog10.md

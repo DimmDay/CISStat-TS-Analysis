@@ -551,10 +551,27 @@ export function TsAnalysisUpload() {
     }
   }, []);
 
+  // UPLOAD-RECOMP-2 §3.4: панельные преобразования (entity-filter /
+  // panel-aggregate) меняют СОДЕРЖИМОЕ датасета при том же datasetId
+  // (lineage-файл) -- факты просмотров/подтверждения прежнего содержимого
+  // не валидны для нового. Счётчик transformEpoch (+1 на каждый apply)
+  // входит в ключ вселенной факт-контура; снапшоты разных epoch не
+  // смешиваются (H27-безопасно). Смена datasetId продолжает сбрасывать
+  // счётчик косвенно (новая вселенная целиком).
+  // UPLOAD-RECOMP-2-FIX (2026-10-20): счётчик объявлен ДО эффектов
+  // выборки данных (распределение/график/декомпозиция/кэш «Весь
+  // датасет») -- они подписаны на transformEpoch и ре-фетчат
+  // преобразованное содержимое (дефект «график не изменился»).
+  const [transformEpoch, setTransformEpoch] = useState(0);
+
   // ── Загрузка данных для графиков распределения (эндпоинт per-column,
   // не часть общего /dataset/stats -- считать scatter/histogram/KDE для
   // ВСЕХ числовых колонок сразу было бы избыточно, запрашиваем только
   // выбранный признак). apps/api/routers/session.py::get_dataset_distribution ──
+  // UPLOAD-RECOMP-2-FIX (2026-10-20): transformEpoch в зависимостях --
+  // панельное преобразование (entity-filter/panel-aggregate) меняет
+  // СОДЕРЖИМОЕ датасета при том же dataset_id -- распределение старой
+  // панели не должно «залипать» после apply.
   useEffect(() => {
     if (!selectedFeature || !isUploaded) {
       setDistribution(null);
@@ -581,7 +598,7 @@ export function TsAnalysisUpload() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFeature, isUploaded]);
+  }, [selectedFeature, isUploaded, transformEpoch]);
 
   // Уверенно определённая date-колонка (порог 70 -- тот же, что уже
   // используется для статуса остановки «Структура», см. stopStatus ниже)
@@ -603,6 +620,15 @@ export function TsAnalysisUpload() {
   // ── Линейный график (остановка «График», авто при заходе -- в отличие
   // от декомпозиции ниже, LTTB-сэмплинг быстрый, не требует STL) ──
   // apps/api/routers/session.py::get_dataset_timeseries
+  // UPLOAD-RECOMP-2-FIX (2026-10-20): transformEpoch в зависимостях --
+  // после apply панельного микросервиса («Фильтр сущности»/«Агрегация по
+  // времени») содержимое датасета изменилось при том же dataset_id:
+  // график обязан показать преобразованный ряд (сценарий тимлида:
+  // панель -> «Структура» -> микросервис -> «Подтвердить структуру
+  // данных» -> возврат на «График» -- график оставался панельным).
+  // selectedFeature/confidentDateCol при преобразовании не меняются --
+  // без transformEpoch эффект не перезапускается и данные остаются
+  // старыми (дефект воспроизведён тестом upload-panel-chart-refresh).
   useEffect(() => {
     if (!selectedFeature || !confidentDateCol || !isUploaded) {
       setTimeseries(null);
@@ -630,23 +656,29 @@ export function TsAnalysisUpload() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFeature, confidentDateCol, isUploaded]);
+  }, [selectedFeature, confidentDateCol, isUploaded, transformEpoch]);
 
   // Сбрасываем декомпозицию при смене признака -- старый результат для
   // другой колонки не должен "залипать" под новым выбором (пользователь
   // должен нажать кнопку заново -- по решению тимлида, ленивый расчёт).
+  // UPLOAD-RECOMP-2-FIX (2026-10-20): transformEpoch -- панельное
+  // преобразование меняет содержимое датасета; результат декомпозиции
+  // ПАНЕЛИ не переживает apply (ленивый пересчёт той же кнопкой).
   useEffect(() => {
     setDecomposition(null);
     setDecompositionSeries(null);
     setDecompositionRequested(false);
-  }, [selectedFeature, confidentDateCol]);
+  }, [selectedFeature, confidentDateCol, transformEpoch]);
 
   // ── «Весь датасет»: сброс кэша страниц при смене датасета ──
   // Гонка «страницы старого датасета под новым» невозможна: ключ
   // (dataset_id) меняется -- кэш, мета и позиция ползунка обнуляются ДО
   // первого запроса нового окна (fetchFullPage читает ключ из ref).
+  // UPLOAD-RECOMP-2-FIX (2026-10-20): панельное преобразование меняет
+  // содержимое при ТОМ ЖЕ dataset_id -- ключ дополнен transformEpoch,
+  // кэш панельных страниц не переживает apply.
   useEffect(() => {
-    const key = uploadData?.dataset_id ?? null;
+    const key = `${uploadData?.dataset_id ?? null}:${transformEpoch}`;
     if (fullDatasetKeyRef.current !== key) {
       fullDatasetKeyRef.current = key;
       setFullMeta(null);
@@ -655,7 +687,7 @@ export function TsAnalysisUpload() {
       setFullScrollTop(0);
       fullInFlightRef.current = new Set();
     }
-  }, [uploadData?.dataset_id]);
+  }, [uploadData?.dataset_id, transformEpoch]);
 
   // ── «Весь датасет»: загрузка одной страницы строк ──
   // GET /dataset/rows?offset=&limit= (apps/api/routers/session.py::
@@ -996,14 +1028,9 @@ export function TsAnalysisUpload() {
   // медленном/отказном /current ключ схлопнулся бы в null и сброс
   // вселенной не срабатывал бы (класс H28).
   const datasetUniverseKey = uploadData?.dataset_id ?? activeDataset?.datasetId ?? null;
-  // UPLOAD-RECOMP-2 §3.4: панельные преобразования (entity-filter /
-  // panel-aggregate) меняют СОДЕРЖИМОЕ датасета при том же datasetId
-  // (lineage-файл) -- факты просмотров/подтверждения прежнего содержимого
-  // не валидны для нового. Счётчик transformEpoch (+1 на каждый apply)
-  // входит в ключ вселенной факт-контура; снапшоты разных epoch не
-  // смешиваются (H27-безопасно). Смена datasetId продолжает сбрасывать
-  // счётчик косвенно (новая вселенная целиком).
-  const [transformEpoch, setTransformEpoch] = useState(0);
+  // UPLOAD-RECOMP-2 §3.4: счётчик transformEpoch объявлен выше, рядом с
+  // эффектами выборки данных (подписаны на него -- FIX 2026-10-20);
+  // здесь -- ключ вселенной факт-контура просмотров/подтверждений.
   const factsUniverseKey = datasetUniverseKey ? `${datasetUniverseKey}:${transformEpoch}` : null;
   const [viewedStops, setViewedStops] = useState<Set<StopId>>(new Set());
   const [uploadSeedReady, setUploadSeedReady] = useState(false);
