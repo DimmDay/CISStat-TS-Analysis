@@ -36,13 +36,25 @@
 // только там, где есть действие in-place. Ознакомительные остановки
 // (Обзор/График/Распределение/Качество) получают done/pending по факту
 // просмотра (монотонное множество, seed трассы + якорь -- паттерн EDA
-// PROGR-18/AUDIT-2B); «Структура» остаётся факт-обусловленной и несёт
-// красный error при невозможности определения структуры (ни одного
-// правдоподобного кандидата даты, аналитик ещё не действовал) --
-// выход: подтвердить вручную или заменить датасет. Факт-контур
-// /upload-stops зеркалит новую семантику; Наставник больше не ведёт
-// аналитика в места, где нечего делать (скан «Загрузки» указывает
-// только на «Структуру»).
+// PROGR-18/AUDIT-2B).
+//
+// UPLOAD-RECOMP-2 (2026-10-20): «Структура» -- решающе-обусловленная:
+// (2a) зелёный done ТОЛЬКО после явного подтверждения кнопкой
+// «Подтвердить структуру данных» -- связка двух фактов (локальный
+// structureConfirmed + POST /date-column confirmed=true, бэкенд пишет
+// structure_confirmed; reportUploadStopsNow -- зеркальный ре-пост
+// панели); уверенная детекция без подтверждения -- pending «ждёт
+// подтверждения»; warning/error семантика PROGR-14-A/UPLOAD-SEM-1
+// сохранена до подтверждения. (2b) Схема «Определение структуры» --
+// компактная таблица с русскими определениями (RU_DEFINITION) и
+// решаемыми задачами (RU_TASKS) из единого источника structuralClass.ts.
+// (2c) Панельные микросервисы: при классе панели -- блок «три пути
+// исследования» (фильтр сущности / агрегация по времени -- preview/
+// apply по POST /dataset/entity-filter, /dataset/panel-aggregate;
+// пассивный бейдж «Ряд не трансформируем»). После apply --
+// transformEpoch+1: новая вселенная фактов (сброс просмотров/
+// подтверждения, seed не выполняется -- трасса принадлежит прежнему
+// содержимому), re-detection контура детекции, ре-фетч статистик/превью.
 //
 // Контракт вкладки «Загрузка» (по решению тимлида) -- 8 пунктов,
 // распределены по 4 "остановкам" степпера:
@@ -105,6 +117,7 @@ import {
   Loader2,
   Route,
   Info,
+  Layers,
 } from "lucide-react";
 import { Button } from "./Button";
 import { DbConnectionForm } from "./DbConnectionForm";
@@ -910,11 +923,9 @@ export function TsAnalysisUpload() {
     setActiveStop("overview");
   };
 
-  const handleApplyOverride = () => {
-    // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping -- эндпоинт
-    // ещё не реализован на бэкенде. Пока -- локальное подтверждение.
-    if (detection) setDetection({ ...detection });
-  };
+  // (handleApplyOverride -- «локальное подтверждение» -- удалено:
+  // UPLOAD-RECOMP-2a заменил его связкой фактов «Подтвердить структуру
+  // данных» -- handleConfirmStructure.)
 
   // ── Структурный класс (пункт 8) -- вычисляется из detection + columnsInfo ──
   const [panelBalance, setPanelBalance] = useState<PanelBalance>("unknown");
@@ -985,6 +996,15 @@ export function TsAnalysisUpload() {
   // медленном/отказном /current ключ схлопнулся бы в null и сброс
   // вселенной не срабатывал бы (класс H28).
   const datasetUniverseKey = uploadData?.dataset_id ?? activeDataset?.datasetId ?? null;
+  // UPLOAD-RECOMP-2 §3.4: панельные преобразования (entity-filter /
+  // panel-aggregate) меняют СОДЕРЖИМОЕ датасета при том же datasetId
+  // (lineage-файл) -- факты просмотров/подтверждения прежнего содержимого
+  // не валидны для нового. Счётчик transformEpoch (+1 на каждый apply)
+  // входит в ключ вселенной факт-контура; снапшоты разных epoch не
+  // смешиваются (H27-безопасно). Смена datasetId продолжает сбрасывать
+  // счётчик косвенно (новая вселенная целиком).
+  const [transformEpoch, setTransformEpoch] = useState(0);
+  const factsUniverseKey = datasetUniverseKey ? `${datasetUniverseKey}:${transformEpoch}` : null;
   const [viewedStops, setViewedStops] = useState<Set<StopId>>(new Set());
   const [uploadSeedReady, setUploadSeedReady] = useState(false);
   const [uploadSeedFailed, setUploadSeedFailed] = useState(false);
@@ -995,6 +1015,13 @@ export function TsAnalysisUpload() {
   // Явное решение аналитика по колонке даты (снимает критерий error:
   // «(не использовать)»/конкретная колонка -- выбор сделан, см. stopStatus).
   const [dateColTouched, setDateColTouched] = useState(false);
+  // UPLOAD-RECOMP-2 §3.1: решающе-обусловленный статус «Структуры» --
+  // done ТОЛЬКО после явного подтверждения аналитика (кнопка
+  // «Подтвердить структуру данных»): уверенная детекция -- pending
+  // «ждёт подтверждения». Сеется из трассы (узел upload/structure=done
+  // -- исключение «Структура не сеется» снято), сбрасывается сменой
+  // датасета/селекторов/панельным преобразованием (новая вселенная).
+  const [structureConfirmed, setStructureConfirmed] = useState(false);
 
   // Сброс вселенной фактов -- ДО seed-эффекта (порядок декларации =
   // порядок запуска, урок PROGR-17): новая вселенная -- чистое
@@ -1007,14 +1034,27 @@ export function TsAnalysisUpload() {
     setUploadSeedFailed(false);
     setUploadSeedAnchor(null);
     setDateColTouched(false);
-  }, [datasetUniverseKey]);
+    setStructureConfirmed(false);
+  }, [factsUniverseKey]);
 
   useEffect(() => {
-    if (!datasetUniverseKey) {
+    if (!factsUniverseKey) {
       uploadSeedReadyRef.current = true;
       uploadSeedFailedRef.current = false;
       setUploadSeedReady(true);
       setUploadSeedFailed(false);
+      return;
+    }
+    // UPLOAD-RECOMP-2 §3.4: transformEpoch > 0 -- трасса принадлежит
+    // ПРЕЖНЕМУ содержимому датасета (панельное преобразование); seed не
+    // выполняется: честная новая вселенная -- всё pending до новых
+    // просмотров, отчёт доставляется как первое наблюдение (без якоря).
+    if (transformEpoch > 0) {
+      uploadSeedReadyRef.current = true;
+      uploadSeedFailedRef.current = false;
+      setUploadSeedReady(true);
+      setUploadSeedFailed(false);
+      setUploadSeedAnchor(null);
       return;
     }
     let cancelled = false;
@@ -1022,6 +1062,11 @@ export function TsAnalysisUpload() {
       const knownIds = new Set(STOPS.map((s) => s.id));
       const seedViewed = new Set<StopId>();
       const seedStatuses: Partial<Record<StopId, CheckStatus>> = {};
+      // UPLOAD-RECOMP-2 §3.1: seed structureConfirmed -- узел
+      // upload/structure=done (факт structure_confirmed бэкенда) сеется
+      // в локальное подтверждение (исключение «Структура не сеется»
+      // снято: остановка решающе-обусловленная, зелёный = подтверждено).
+      let seedStructureConfirmed = false;
       let seedOk = false;
       try {
         const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
@@ -1042,6 +1087,7 @@ export function TsAnalysisUpload() {
                 const status = typeof state.status === "string" ? state.status : null;
                 if (!status || !UPLOAD_SEED_STATUSES.has(status)) continue;
                 if (status === "done" && nodeId !== "structure") seedViewed.add(nodeId);
+                if (status === "done" && nodeId === "structure") seedStructureConfirmed = true;
                 seedStatuses[nodeId] = status as CheckStatus;
               }
             } else {
@@ -1055,6 +1101,7 @@ export function TsAnalysisUpload() {
                   if (!knownIds.has(nodeId) || typeof status !== "string") continue;
                   if (!UPLOAD_SEED_STATUSES.has(status)) continue;
                   if (status === "done" && nodeId !== "structure") seedViewed.add(nodeId);
+                  if (status === "done" && nodeId === "structure") seedStructureConfirmed = true;
                   seedStatuses[nodeId] = status as CheckStatus;
                 }
               }
@@ -1073,6 +1120,7 @@ export function TsAnalysisUpload() {
         seedViewed.forEach((id) => merged.add(id));
         return merged;
       });
+      if (seedStructureConfirmed) setStructureConfirmed(true);
       setUploadSeedReady(true);
       setUploadSeedFailed(!seedOk);
       setUploadSeedAnchor(
@@ -1091,7 +1139,7 @@ export function TsAnalysisUpload() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetUniverseKey, uploadSeedRetryTick]);
+  }, [factsUniverseKey, transformEpoch, uploadSeedRetryTick]);
 
   // Факт просмотра (UPLOAD-SEM-1, решение тимлида 2026-10-20): остановка
   // активна И её результат показан модулем (EDA PROGR-18: найденные
@@ -1146,22 +1194,33 @@ export function TsAnalysisUpload() {
   //     загрузке + баннер на «Обзоре»; счётчики качества -- на
   //     «Качестве» (честный анонс «Валидации», где есть мастера
   //     исправлений);
-  //   * structure -- единственная факт-обусловленная остановка: done =
-  //     уверенное решение (PROGR-14-A: явный маркер отсутствия ЛИБО
-  //     raw confidence >= 70), warning = сомнительное угадывание
-  //     конкретной колонки, error = НОВОЕ -- авто-детект не нашёл НИ
-  //     ОДНОГО правдоподобного кандидата временной колонки (реальная
-  //     форма бэкенда: selected="(не использовать)", все score
+  //   * structure -- решающе-обусловленная (UPLOAD-RECOMP-2a, 2026-10-20):
+  //     done = ТОЛЬКО явное подтверждение аналитика (structureConfirmed:
+  //     кнопка «Подтвердить структуру данных» + POST /date-column
+  //     confirmed=true -- связка двух фактов, зеркало structure_confirmed
+  //     бэкенда); уверенная детекция БЕЗ подтверждения -- pending «ждёт
+  //     подтверждения» (R3); warning = сомнительное угадывание конкретной
+  //     колонки (PROGR-14-A), error = UPLOAD-SEM-1 -- авто-детект не
+  //     нашёл НИ ОДНОГО правдоподобного кандидата временной колонки
+  //     (реальная форма бэкенда: selected="(не использовать)", все score
   //     нулевые) и аналитик ещё не сделал явного выбора (dateColTouched):
   //     структура данных не определяется -- подтвердить вручную или
   //     заменить датасет. Критерий консервативен: сомнительное
   //     угадывание с ненулевым score (Year@40, прецедент FAO) --
   //     по-прежнему warning, нерегулярная сетка при уверенной дате --
-  //     done, легитимный однорядный датасет («(нет)») -- не error.
+  //     pending до подтверждения, легитимный однорядный датасет
+  //     («(нет)») -- не error.
   const dateStructureImpossible =
     !!detection &&
     !dateColTouched &&
     !detection.dateCol.candidates.some((c) => c.score > 0);
+  // Сомнительное угадывание КОНКРЕТНОЙ колонки (PROGR-14-A, именованное
+  // вычисление -- спека §3.1): явный маркер отсутствия («(нет)»/
+  // «(не использовать)») -- уверенное решение; raw confidence < 70
+  // конкретной колонки -- сомнение.
+  const suspicious =
+    !!detection &&
+    !(isStructureDecisionConfident(detection.dateCol) && isStructureDecisionConfident(detection.entityCol));
   const stopStatus: Record<StopId, CheckStatus> = {
     overview: !isUploaded ? "pending" : viewedStops.has("overview") ? "done" : "pending",
     chart: !isUploaded ? "pending" : viewedStops.has("chart") ? "done" : "pending",
@@ -1173,11 +1232,13 @@ export function TsAnalysisUpload() {
         : "pending",
     structure: !detection
       ? "pending"
+      : structureConfirmed
+      ? "done"
       : dateStructureImpossible
       ? "error"
-      : isStructureDecisionConfident(detection.dateCol) && isStructureDecisionConfident(detection.entityCol)
-      ? "done"
-      : "warning",
+      : suspicious
+      ? "warning"
+      : "pending",
     quality: !uploadData?.quality ? "pending" : viewedStops.has("quality") ? "done" : "pending",
   };
   const doneCount = STOPS.filter((s) => stopStatus[s.id] === "done").length;
@@ -1216,9 +1277,10 @@ export function TsAnalysisUpload() {
     map: stopsMap,
     anchorSnapshot: uploadSeedAnchor,
     // Ключ вселенной фактов: новый датасет (в т.ч. одноимённый файл --
-    // новый datasetId) -- повторная доставка даже при идентичной картине
-    // (план §12 п.4, легаси-фолбэк).
-    universeKey: activeDataset?.datasetId ?? null,
+    // новый datasetId) ИЛИ панельное преобразование (transformEpoch --
+    // UPLOAD-RECOMP-2 §3.4) -- повторная доставка даже при идентичной
+    // картине (план §12 п.4, легаси-фолбэк).
+    universeKey: factsUniverseKey,
   });
 
   // Ре-пост ПОСЛЕ подтверждения структуры: бэкенд пишет свой факт
@@ -1236,6 +1298,238 @@ export function TsAnalysisUpload() {
     setUploadSeedAnchor(null);
     redeliverStops();
   }, [isUploaded, redeliverStops]);
+
+  // ── UPLOAD-RECOMP-2a: подтверждение структуры аналитиком ────────────
+  // Связка двух фактов (спека §3.1): (1) бэкенд -- POST /date-column
+  // confirmed=true пишет structure_confirmed (узел upload/structure ->
+  // done в едином движке node_status); (2) фронт -- setStructureConfirmed
+  // -> done; затем reportUploadStopsNow() (якорь снимается -- зеркальный
+  // ре-пост, хронология решает). Отказ бэкенда честный (инлайн + тост):
+  // локальный done не ставится -- модуль и панель остаются
+  // согласованными. Активность кнопки: конкретная колонка ИЛИ маркер
+  // «(не использовать)» после явного выбора (dateColTouched).
+  const [structureConfirming, setStructureConfirming] = useState(false);
+  const [structureConfirmError, setStructureConfirmError] = useState<string | null>(null);
+  const canConfirmStructure =
+    !!detection &&
+    (detection.dateCol.selected !== "(не использовать)" || dateColTouched);
+  const handleConfirmStructure = useCallback(async () => {
+    if (!detection || !canConfirmStructure || structureConfirmed || structureConfirming) return;
+    setStructureConfirming(true);
+    setStructureConfirmError(null);
+    try {
+      const res = await fetch(sessionApiUrl("/date-column"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ column: detection.dateCol.selected, confirmed: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const message =
+          (data as { detail?: string } | null)?.detail ??
+          `Бэкенд отклонил подтверждение (HTTP ${res.status})`;
+        setStructureConfirmError(message);
+        toast.error(`Подтверждение не принято: ${message}`);
+        return;
+      }
+      setStructureConfirmed(true);
+      reportUploadStopsNow();
+    } catch {
+      const message = "Сеть недоступна -- подтверждение не доставлено на бэкенд";
+      setStructureConfirmError(message);
+      toast.error(message);
+    } finally {
+      setStructureConfirming(false);
+    }
+  }, [detection, canConfirmStructure, structureConfirmed, structureConfirming, reportUploadStopsNow]);
+
+  // ── UPLOAD-RECOMP-2c: панельные микросервисы (остановка «Структура») ──
+  // При структурном классе панели -- блок «Панельные данные: три пути
+  // исследования»: (1) фильтр сущности, (2) агрегация по времени --
+  // preview/apply по сертифицированному паттерну (payload.apply); (3)
+  // пассивный бейдж «Ряд не трансформируем» (дефолт). Молчаливой
+  // агрегации нет: любое изменение данных -- только явная кнопка
+  // «Применить». После apply -- transformEpoch+1 (новая вселенная
+  // фактов), re-detection контура модуля, ре-фетч статистик/превью.
+  const isPanelClass =
+    !!structuralClass &&
+    (structuralClass.id === "panel_balanced" ||
+      structuralClass.id === "panel_unbalanced" ||
+      structuralClass.id === "panel_unknown");
+  const [panelEntityValue, setPanelEntityValue] = useState<string>("");
+  const [panelEntityOptions, setPanelEntityOptions] = useState<string[]>([]);
+  const [panelEntityPreview, setPanelEntityPreview] = useState<{ n_rows_after: number | null; n_dates: number | null; date_min: string | null; date_max: string | null; frequency: string | null } | null>(null);
+  const [panelEntityBusy, setPanelEntityBusy] = useState(false);
+  const [panelEntityError, setPanelEntityError] = useState<string | null>(null);
+  const PANEL_AGG_FUNCS = ["mean", "sum", "median", "min", "max"] as const;
+  const [panelAggFunc, setPanelAggFunc] = useState<(typeof PANEL_AGG_FUNCS)[number]>("mean");
+  const [panelAggPreview, setPanelAggPreview] = useState<{ n_rows_after: number | null; n_dates: number | null; n_dates_skipped: number | null; dropped_columns: string[] } | null>(null);
+  const [panelAggBusy, setPanelAggBusy] = useState(false);
+  const [panelAggError, setPanelAggError] = useState<string | null>(null);
+
+  // Опрос доступных значений сущности (селектор) при появлении блока.
+  useEffect(() => {
+    if (!isPanelClass || !detection) return;
+    let cancelled = false;
+    setPanelEntityValue("");
+    setPanelEntityPreview(null);
+    setPanelEntityError(null);
+    fetch(sessionApiUrl("/dataset/entity-filter"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity_col: detection.entityCol.selected, value: null, apply: false }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((data: { available_values?: string[] }) => {
+        if (cancelled) return;
+        setPanelEntityOptions(Array.isArray(data?.available_values) ? data.available_values : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPanelEntityOptions([]);
+        setPanelEntityError("Не удалось получить список сущностей");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPanelClass, detection?.entityCol.selected]);
+
+  // Preview фильтра по выбранной сущности.
+  useEffect(() => {
+    if (!isPanelClass || !detection || !panelEntityValue) {
+      setPanelEntityPreview(null);
+      return;
+    }
+    let cancelled = false;
+    setPanelEntityBusy(true);
+    setPanelEntityError(null);
+    fetch(sessionApiUrl("/dataset/entity-filter"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity_col: detection.entityCol.selected, date_col: detection.dateCol.selected !== "(не использовать)" ? detection.dateCol.selected : undefined, value: panelEntityValue, apply: false }),
+    })
+      .then((r) => (r.ok ? r.json() : r.json().catch(() => null).then((d) => Promise.reject(Object.assign(new Error(d?.detail ?? String(r.status)), { detail: d?.detail })))))
+      .then((data: { n_rows_after: number | null; n_dates: number | null; date_min: string | null; date_max: string | null; frequency: string | null }) => {
+        if (cancelled) return;
+        setPanelEntityPreview(data);
+      })
+      .catch((ex: Error & { detail?: string }) => {
+        if (cancelled) return;
+        setPanelEntityPreview(null);
+        setPanelEntityError(ex.detail ?? "Превью недоступно");
+      })
+      .finally(() => {
+        if (!cancelled) setPanelEntityBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPanelClass, detection?.entityCol.selected, detection?.dateCol.selected, panelEntityValue]);
+
+  // Preview агрегации по функции.
+  useEffect(() => {
+    if (!isPanelClass || !detection) {
+      setPanelAggPreview(null);
+      return;
+    }
+    let cancelled = false;
+    setPanelAggBusy(true);
+    setPanelAggError(null);
+    fetch(sessionApiUrl("/dataset/panel-aggregate"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date_col: detection.dateCol.selected, entity_col: detection.entityCol.selected !== "(нет)" ? detection.entityCol.selected : undefined, func: panelAggFunc, apply: false }),
+    })
+      .then((r) => (r.ok ? r.json() : r.json().catch(() => null).then((d) => Promise.reject(Object.assign(new Error(d?.detail ?? String(r.status)), { detail: d?.detail })))))
+      .then((data: { n_rows_after: number | null; n_dates: number | null; n_dates_skipped: number | null; dropped_columns: string[] }) => {
+        if (cancelled) return;
+        setPanelAggPreview(data);
+      })
+      .catch((ex: Error & { detail?: string }) => {
+        if (cancelled) return;
+        setPanelAggPreview(null);
+        setPanelAggError(ex.detail ?? "Превью недоступно");
+      })
+      .finally(() => {
+        if (!cancelled) setPanelAggBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPanelClass, detection?.entityCol.selected, detection?.dateCol.selected, panelAggFunc]);
+
+  // Общая точка после apply любого микросервиса: новая вселенная фактов
+  // (transformEpoch+1 -- смена factsUniverseKey сбрасывает просмотры/
+  // подтверждение/якорь), re-detection контура детекции, ре-фетч
+  // статистик и превью датасета (строки/колонки изменились).
+  const handlePanelTransformApplied = useCallback(() => {
+    setTransformEpoch((e) => e + 1);
+    fetchStructureDetection().then((d) => setDetection(d));
+    fetchStats();
+    fetch(sessionApiUrl("/dataset"), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: UploadApiResponse | null) => {
+        if (data && data.columns_info) setUploadData(data);
+      })
+      .catch(() => {
+        // Молча: содержательный результат на остановках после ре-фетча.
+      });
+  }, [fetchStats]);
+
+  const handleApplyEntityFilter = useCallback(async () => {
+    if (!detection || !panelEntityValue || panelEntityBusy) return;
+    setPanelEntityBusy(true);
+    setPanelEntityError(null);
+    try {
+      const res = await fetch(sessionApiUrl("/dataset/entity-filter"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_col: detection.entityCol.selected, date_col: detection.dateCol.selected !== "(не использовать)" ? detection.dateCol.selected : undefined, value: panelEntityValue, apply: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setPanelEntityError((data as { detail?: string } | null)?.detail ?? `Преобразование отклонено (HTTP ${res.status})`);
+        return;
+      }
+      handlePanelTransformApplied();
+    } catch {
+      setPanelEntityError("Сеть недоступна -- преобразование не применено");
+    } finally {
+      setPanelEntityBusy(false);
+    }
+  }, [detection, panelEntityValue, panelEntityBusy, handlePanelTransformApplied]);
+
+  const handleApplyPanelAggregate = useCallback(async () => {
+    if (!detection || panelAggBusy) return;
+    setPanelAggBusy(true);
+    setPanelAggError(null);
+    try {
+      const res = await fetch(sessionApiUrl("/dataset/panel-aggregate"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date_col: detection.dateCol.selected, entity_col: detection.entityCol.selected !== "(нет)" ? detection.entityCol.selected : undefined, func: panelAggFunc, apply: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setPanelAggError((data as { detail?: string } | null)?.detail ?? `Преобразование отклонено (HTTP ${res.status})`);
+        return;
+      }
+      handlePanelTransformApplied();
+    } catch {
+      setPanelAggError("Сеть недоступна -- преобразование не применено");
+    } finally {
+      setPanelAggBusy(false);
+    }
+  }, [detection, panelAggFunc, panelAggBusy, handlePanelTransformApplied]);
   const selectedStats = stats?.find((s) => s.name === selectedFeature) ?? null;
 
   return (
@@ -1930,7 +2224,7 @@ export function TsAnalysisUpload() {
                     </div>
                     <select
                       value={detection.dateCol.selected}
-                      onChange={(e) => { setDateColTouched(true); setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } }); }}
+                      onChange={(e) => { setDateColTouched(true); setStructureConfirmed(false); setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } }); }}
                       className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
                     >
                       {detection.dateCol.candidates.map((c) => (
@@ -1968,7 +2262,7 @@ export function TsAnalysisUpload() {
                     </div>
                     <select
                       value={detection.entityCol.selected}
-                      onChange={(e) => setDetection({ ...detection, entityCol: { ...detection.entityCol, selected: e.target.value } })}
+                      onChange={(e) => { setStructureConfirmed(false); setDetection({ ...detection, entityCol: { ...detection.entityCol, selected: e.target.value } }); }}
                       className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
                     >
                       {detection.entityCol.candidates.map((c) => (
@@ -2001,7 +2295,7 @@ export function TsAnalysisUpload() {
                     </div>
                     <select
                       value={detection.freq.selected}
-                      onChange={(e) => setDetection({ ...detection, freq: { ...detection.freq, selected: e.target.value } })}
+                      onChange={(e) => { setStructureConfirmed(false); setDetection({ ...detection, freq: { ...detection.freq, selected: e.target.value } }); }}
                       className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
                     >
                       {detection.freq.options.map((opt) => (
@@ -2022,6 +2316,113 @@ export function TsAnalysisUpload() {
                       <p className="font-semibold text-neutral-900">{structuralClass.label}</p>
                       <p className="text-sm text-neutral-600 mt-1">{structuralClass.description}</p>
                       <p className="text-xs text-neutral-500 mt-2">{structuralClass.routingHint}</p>
+                    </div>
+                  )}
+
+                  {/* ── UPLOAD-RECOMP-2c: панельные микросервисы ── */}
+                  {isPanelClass && structuralClass && (
+                    <div className="md:col-span-3 border border-neutral-200 rounded-lg p-4" data-testid="panel-paths-block">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Layers size={14} className="text-brand" aria-hidden="true" />
+                        <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Панельные данные: три пути исследования</span>
+                      </div>
+                      <p className="text-xs text-neutral-500 mb-3">
+                        Все преобразования рядов платформа выполняет внутри себя — выберите путь под исследовательский вопрос.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Микросервис 1: Фильтр сущности */}
+                        <div className="border border-neutral-200 rounded-lg p-3 flex flex-col">
+                          <p className="text-sm font-semibold text-neutral-800">Фильтр сущности</p>
+                          <p className="text-xs text-neutral-600 mt-1 mb-2">
+                            Оставить в датасете строки только одной сущности (например, один регион). Панель превращается в обычный временной ряд —
+                            открываются декомпозиция, ACF/PACF, классические модели и прогноз. Используйте, когда исследовательский вопрос про конкретную сущность.
+                          </p>
+                          <select
+                            data-testid="panel-entity-select"
+                            value={panelEntityValue}
+                            onChange={(e) => setPanelEntityValue(e.target.value)}
+                            className="w-full border border-neutral-300 rounded px-2 py-1 text-xs font-medium mb-2"
+                            aria-label="Значение сущности для фильтра"
+                          >
+                            <option value="">— выберите сущность —</option>
+                            {panelEntityOptions.map((v) => (
+                              <option key={v} value={v}>
+                                {v}
+                              </option>
+                            ))}
+                          </select>
+                          {panelEntityError && (
+                            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mb-2">{panelEntityError}</p>
+                          )}
+                          {panelEntityPreview && (
+                            <p className="text-xs text-neutral-500 mb-2" data-testid="panel-entity-preview">
+                              Превью: строк {panelEntityPreview.n_rows_after ?? "—"}
+                              {panelEntityPreview.n_dates != null ? ` · дат ${panelEntityPreview.n_dates}` : ""}
+                              {panelEntityPreview.date_min ? ` · ${panelEntityPreview.date_min} … ${panelEntityPreview.date_max ?? ""}` : ""}
+                              {panelEntityPreview.frequency ? ` · ${panelEntityPreview.frequency}` : ""}
+                            </p>
+                          )}
+                          <Button
+                            data-testid="panel-entity-apply"
+                            onClick={handleApplyEntityFilter}
+                            disabled={!panelEntityValue || panelEntityBusy}
+                            className="mt-auto w-full text-xs"
+                          >
+                            {panelEntityBusy ? "Применяяем…" : "Применить"}
+                          </Button>
+                        </div>
+
+                        {/* Микросервис 2: Агрегация по времени */}
+                        <div className="border border-neutral-200 rounded-lg p-3 flex flex-col">
+                          <p className="text-sm font-semibold text-neutral-800">Агрегация по времени</p>
+                          <p className="text-xs text-neutral-600 mt-1 mb-2">
+                            Для каждой даты усреднить (или просуммировать) значения по всем сущностям. Панель превращается в один агрегированный ряд.
+                            Используйте, когда исследовательский вопрос про совокупность целиком; суммирование — только для аддитивных величин (объёмы),
+                            для уровней (цены, индексы) — среднее.
+                          </p>
+                          <select
+                            data-testid="panel-agg-select"
+                            value={panelAggFunc}
+                            onChange={(e) => setPanelAggFunc(e.target.value as (typeof PANEL_AGG_FUNCS)[number])}
+                            className="w-full border border-neutral-300 rounded px-2 py-1 text-xs font-medium mb-2"
+                            aria-label="Функция агрегации"
+                          >
+                            {PANEL_AGG_FUNCS.map((f) => (
+                              <option key={f} value={f}>
+                                {f === "mean" ? "mean — среднее" : f === "sum" ? "sum — сумма" : f === "median" ? "median — медиана" : f === "min" ? "min — минимум" : "max — максимум"}
+                              </option>
+                            ))}
+                          </select>
+                          {panelAggError && (
+                            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 mb-2">{panelAggError}</p>
+                          )}
+                          {panelAggPreview && (
+                            <p className="text-xs text-neutral-500 mb-2" data-testid="panel-agg-preview">
+                              Превью: дат {panelAggPreview.n_dates ?? "—"}
+                              {panelAggPreview.n_dates_skipped != null ? ` · отброшено без значений: ${panelAggPreview.n_dates_skipped}` : ""}
+                              {panelAggPreview.dropped_columns?.length ? ` · удалены колонки: ${panelAggPreview.dropped_columns.join(", ")}` : ""}
+                            </p>
+                          )}
+                          <Button
+                            data-testid="panel-agg-apply"
+                            onClick={handleApplyPanelAggregate}
+                            disabled={panelAggBusy}
+                            className="mt-auto w-full text-xs"
+                          >
+                            {panelAggBusy ? "Применяяем…" : "Применить"}
+                          </Button>
+                        </div>
+
+                        {/* Альтернатива 3: пассивный бейдж (дефолт) */}
+                        <div className="border border-neutral-200 rounded-lg p-3 bg-neutral-50" data-testid="panel-badge">
+                          <p className="text-sm font-semibold text-neutral-800">Ряд не трансформируем, исследуем панельные данные</p>
+                          <p className="text-xs text-neutral-600 mt-1">
+                            Панель сохраняется как есть. Доступно: по-сущностные проверки «Валидации» (регулярность, достаточность), панельная проверка
+                            баланса. Панельные модели исследования и прогноза — контур PANEL-MODELS-3 (в разработке); классические однорядные модели
+                            к панели неприменимы без сведения к одному ряду.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -2120,13 +2521,43 @@ export function TsAnalysisUpload() {
                   <Calendar size={16} className="text-brand" aria-hidden="true" />
                   <h3 className="text-lg font-semibold text-neutral-800">Подтверждение</h3>
                 </div>
-                <p className="text-sm text-neutral-600 mb-3">
-                  Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) — переживёт F5. Применение
-                  override-эндпоинта на бэкенде — TODO.
-                </p>
-                <Button onClick={handleApplyOverride} className="w-full">
-                  Применить и пересчитать превью
-                </Button>
+                {structureConfirmed ? (
+                  <>
+                    <p
+                      className="text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2 mb-3"
+                      data-testid="structure-confirmed-note"
+                    >
+                      Структура подтверждена — факт structure_confirmed передан панели «Прогресса».
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      Изменение селекторов даты, группировки или частоты сбрасывает подтверждение — подтвердите заново той же кнопкой.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-neutral-600 mb-3">
+                      Подтвердите определение структуры (временная колонка, группировка, частота). Факт пишется на бэкенде (structure_confirmed)
+                      и доставляется панели «Прогресса». Явное подтверждение принимает колонку даже при низкой оценке детектора — ответственность
+                      за выбор остаётся за вами.
+                    </p>
+                    {structureConfirmError && (
+                      <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">{structureConfirmError}</p>
+                    )}
+                    <Button
+                      onClick={handleConfirmStructure}
+                      disabled={!canConfirmStructure || structureConfirming}
+                      className="w-full"
+                      data-testid="confirm-structure-button"
+                    >
+                      {structureConfirming ? "Подтверждаем…" : "Подтвердить структуру данных"}
+                    </Button>
+                    {!canConfirmStructure && (
+                      <p className="text-xs text-neutral-500 mt-2">
+                        Сначала сделайте явный выбор временной колонки (или маркера «(не использовать)») в селекторе слева.
+                      </p>
+                    )}
+                  </>
+                )}
               </article>
             )}
 

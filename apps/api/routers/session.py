@@ -174,8 +174,12 @@ from apps.api.schemas import (
     DateColumnCandidateOut,
     DateColumnRequest,
     DateColumnResponse,
+    EntityFilterRequest,
+    EntityFilterResponse,
     HistogramBin,
     KdePoint,
+    PanelAggregateRequest,
+    PanelAggregateResponse,
     PanelBalanceResponse,
     ScatterPoint,
     SessionStateResponse,
@@ -1208,6 +1212,239 @@ def get_panel_balance(date_col: str, entity_col: str, request: Request, response
         n_entities=n_entities,
         n_distinct_date_sets=int(n_distinct_date_sets),
     )
+
+
+# ── UPLOAD-RECOMP-2 (2026-10-20), §3.3: панельные микросервисы ──────────
+# Платформа корректно классифицирует панель, но не давала ни одного
+# in-place действия: EDA просит «выберите одну сущность», паспорт ряда
+# отказывает на повторяющихся датах. Два preview/apply-преобразования по
+# сертифицированному паттерну (regularity_correction/sufficiency_plan:
+# payload.apply, честный summary) сводят панель к однорядному контуру.
+#
+# Методологические запреты (спека §3.3, без исключений): молчаливая
+# агрегация не выполняется нигде вне явного apply («агрегация меняет
+# статистический объект»); автоматических вызовов из других модулей
+# нет; трасса не расширяется (канон node_status не тронут -- границы
+# задачи), факты модуля -- новая вселенная transformEpoch на фронте.
+
+# Паспортный минимум однорядного контура (app/core/passport.py
+# _MIN_PASSPORT_POINTS): после фильтра сущности панель обязана
+# собираться в честный ряд; меньше -- отказ ДО apply (и preview, и
+# apply), чтобы аналитик не «сжёг» обратимое преобразование.
+ENTITY_FILTER_MIN_ROWS = 30
+# Капа списка доступных значений сущности для селектора UI (честный
+# флаг truncated при переполнении; сущности за капой не теряются для
+# apply -- ограничен только список в ответе).
+ENTITY_FILTER_VALUES_CAP = 1000
+
+
+@router.post("/dataset/entity-filter", response_model=EntityFilterResponse)
+def filter_dataset_by_entity(
+    payload: EntityFilterRequest,
+    request: Request,
+    response: Response,
+):
+    """Микросервис «Фильтр сущности»: оставить строки одной сущности --
+    панель превращается в обычный временной ряд (открываются декомпозиция,
+    ACF/PACF, классические модели и прогноз).
+
+    value=None + apply=False -- опрос доступных значений (селектор UI);
+    value + apply=False -- preview (сессия не мутирует НИ БАЙТОМ);
+    apply=True -- сохранение в сессии (паспорта инвалидируются
+    существующим set_dataframe)."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if payload.entity_col not in df.columns:
+        raise HTTPException(status_code=422, detail=f"Группирующая колонка '{payload.entity_col}' отсутствует в датасете")
+
+    # Значения сущности -- строковое представление ячеек (тот же
+    # принцип паритета представлений, что и /dataset/rows).
+    value_strings = df[payload.entity_col].map(lambda v: "" if pd.isna(v) else str(v))
+    available = sorted(set(value_strings[value_strings != ""].tolist()))
+    truncated = len(available) > ENTITY_FILTER_VALUES_CAP
+    available_out = available[:ENTITY_FILTER_VALUES_CAP]
+
+    n_rows_before = int(len(df))
+    date_col = payload.date_col or session.date_column
+
+    if payload.value is None:
+        return EntityFilterResponse(
+            applied=False,
+            entity_col=payload.entity_col,
+            value=None,
+            available_values=available_out,
+            available_values_truncated=truncated,
+            n_rows_before=n_rows_before,
+            n_rows_after=None,
+        )
+
+    if payload.value not in available_out and payload.value not in available:
+        raise HTTPException(status_code=422, detail=f"Значение '{payload.value}' отсутствует в колонке '{payload.entity_col}'")
+
+    filtered = df[value_strings == payload.value]
+    n_rows_after = int(len(filtered))
+
+    if n_rows_after < ENTITY_FILTER_MIN_ROWS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"После фильтра остаётся {n_rows_after} строк -- меньше паспортного минимума "
+                f"({ENTITY_FILTER_MIN_ROWS}) для однорядного контура; "
+                "выберите сущность с большей историей или используйте агрегацию по времени"
+            ),
+        )
+
+    summary: dict = {
+        "n_dates": None,
+        "date_min": None,
+        "date_max": None,
+        "frequency": None,
+    }
+    if date_col and date_col in filtered.columns:
+        parsed = smart_to_datetime(filtered[date_col])
+        valid = parsed.dropna()
+        if len(valid) > 0:
+            summary["n_dates"] = int(valid.nunique())
+
+            def _fmt_bound(ts: pd.Timestamp) -> str:
+                # Полночь -- дата-only (канон превью), иначе честный ISO с
+                # временем (почасовые/минутные сетки).
+                if ts.hour == 0 and ts.minute == 0 and ts.second == 0:
+                    return ts.strftime("%Y-%m-%d")
+                return ts.isoformat(sep=" ")
+
+            summary["date_min"] = _fmt_bound(valid.min())
+            summary["date_max"] = _fmt_bound(valid.max())
+            freq = detect_column_frequency(filtered[date_col])
+            summary["frequency"] = freq.get("selected")
+
+    if payload.apply:
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента.
+        before_columns = list(df.columns)
+        session.set_dataframe(filtered.copy(), reason="upload:entity_filter")
+        # PROGR-24-ORIGIN-A: фильтр строк не добавляет колонок --
+        # разность списков пуста (no-op регистрации).
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="upload",
+            source=f"entity_filter:{payload.entity_col}",
+        )
+        if session.dataset is not None:
+            session.dataset.rows = n_rows_after
+            session.dataset.columns = len(filtered.columns)
+        session.touch()
+        store.save(session)
+
+    return EntityFilterResponse(
+        applied=payload.apply,
+        entity_col=payload.entity_col,
+        value=payload.value,
+        n_rows_before=n_rows_before,
+        n_rows_after=n_rows_after,
+        **summary,
+    )
+
+
+@router.post("/dataset/panel-aggregate", response_model=PanelAggregateResponse)
+def aggregate_dataset_by_date(
+    payload: PanelAggregateRequest,
+    request: Request,
+    response: Response,
+):
+    """Микросервис «Агрегация по времени»: для каждой даты свести
+    значения всех сущностей агрегатом (mean/sum/median/min/max по
+    числовым колонкам, first по нечисловым) -- панель превращается в
+    один агрегированный ряд. Используйте mean для уровней (цены,
+    индексы), sum -- только для аддитивных величин (объёмы).
+
+    Группировка ТОЛЬКО по date_col; entity-колонка удаляется из
+    результата с честной пометкой. Честная политика пропусков: даты без
+    ни одного валидного значения отбрасываются со счётчиком
+    n_dates_skipped. Preview (apply=False) не мутирует сессию."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if payload.date_col not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{payload.date_col}' отсутствует в датасете")
+
+    parsed = smart_to_datetime(df[payload.date_col])
+    n_rows_dropped_invalid_date = int(len(df) - int(parsed.notna().sum()))
+    if int(parsed.notna().sum()) == 0:
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.date_col}' не содержит ни одной валидной даты")
+
+    numeric_columns = [str(c) for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and str(c) != payload.date_col]
+    if not numeric_columns:
+        raise HTTPException(status_code=422, detail="В датасете нет числовых колонок для агрегации по времени")
+
+    entity_col = payload.entity_col or session.date_column
+    drop_columns = [
+        str(c)
+        for c in df.columns
+        if str(c) == entity_col and str(c) != payload.date_col
+    ]
+    work = df.drop(columns=drop_columns)
+    numeric_in_work = [c for c in numeric_columns if c not in drop_columns]
+    first_columns = [str(c) for c in work.columns if str(c) != payload.date_col and c not in numeric_in_work]
+
+    # groupby по ПАРСЕННОЙ дате: строки с невалидной датой отбрасываются
+    # честным счётчиком, агрегат по валидной сетке.
+    work = work.assign(_agg_date=parsed)
+    work = work[work["_agg_date"].notna()]
+    grouped = work.groupby("_agg_date", sort=True)
+    agg_map = {c: payload.func for c in numeric_in_work}
+    agg_map.update({c: "first" for c in first_columns})
+    aggregated = grouped.agg(agg_map)
+    aggregated = aggregated.reset_index().rename(columns={"_agg_date": payload.date_col})
+
+    # Честная политика пропусков: дата, где ВСЕ числовые значения --
+    # NaN (нет ни одного валидного наблюдения), отбрасывается.
+    if numeric_in_work:
+        keep_mask = aggregated[numeric_in_work].notna().any(axis=1)
+        n_dates_skipped = int((~keep_mask).sum())
+        aggregated = aggregated[keep_mask]
+    else:
+        n_dates_skipped = 0
+    n_dates = int(len(aggregated))
+
+    summary = {
+        "n_rows_before": int(len(df)),
+        "n_rows_after": n_dates,
+        "n_dates": n_dates,
+        "n_dates_skipped": n_dates_skipped,
+        "n_rows_dropped_invalid_date": n_rows_dropped_invalid_date,
+        "dropped_columns": drop_columns,
+        "numeric_columns": numeric_in_work,
+        "first_kept_columns": first_columns,
+    }
+
+    if payload.apply:
+        before_columns = list(df.columns)
+        session.set_dataframe(aggregated.copy(), reason=f"upload:panel_aggregate:{payload.func}")
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="upload",
+            source=f"panel_aggregate:{payload.func}",
+        )
+        if session.dataset is not None:
+            session.dataset.rows = n_dates
+            session.dataset.columns = len(aggregated.columns)
+        session.touch()
+        store.save(session)
+        return PanelAggregateResponse(applied=True, date_col=payload.date_col, func=payload.func, **summary)
+
+    return PanelAggregateResponse(applied=False, date_col=payload.date_col, func=payload.func, **summary)
 
 
 @router.get("/dataset/distribution", response_model=DistributionChartResponse)
@@ -4887,7 +5124,16 @@ def set_date_column(
     request: Request,
     response: Response,
 ):
-    """Сохраняет общую date_column и инвалидирует несопоставимые паспорта."""
+    """Сохраняет общую date_column и инвалидирует несопоставимые паспорта.
+
+    UPLOAD-RECOMP-2 (2026-10-20, §3.1): подтверждение структуры
+    аналитиком. При confirmed=True снимается искусственный гейт
+    score>=0.7 -- аналитик взял ответственность за выбор (семантика
+    PROGR-14-A «явный выбор снимает»); содержательные требования
+    сохраняются всегда (колонка существует, != target, >= 2 валидных
+    даты). column == "(не использовать)" при подтверждении --
+    легитимный выбор «временной колонки нет» (date_column=None).
+    confirmed=False -- прежний контракт (обратная совместимость)."""
     session_id = get_or_create_session_id(request, response)
     store = get_session_store()
     session = store.get_or_create(session_id)
@@ -4898,6 +5144,24 @@ def set_date_column(
         )
     column = payload.column
     df = session.dataframe
+
+    # UPLOAD-RECOMP-2: маркер «(не использовать)» -- подтверждение
+    # отсутствия временной колонки. Допустим ТОЛЬКО при явном
+    # подтверждении аналитика (прежний контракт -- 422).
+    if column == "(не использовать)":
+        if not payload.confirmed:
+            raise HTTPException(
+                status_code=422,
+                detail="Маркер «(не использовать)» требует явного подтверждения аналитика",
+            )
+        passport_history_reset = bool(session.passport_history) and session.date_column is not None
+        session.set_date_column(None)
+        store.save(session)
+        return _date_column_response(
+            session,
+            passport_history_reset=passport_history_reset,
+        )
+
     if column not in [str(item) for item in df.columns]:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' не найдена в датасете")
     if column == session.target_column:
@@ -4913,12 +5177,23 @@ def set_date_column(
         ),
         0.0,
     )
-    if score < 0.7:
+    # UPLOAD-RECOMP-2 §3.1: низкий detector score больше не блокирует
+    # ЯВНОЕ подтверждение аналитика; без confirmed -- прежний контракт.
+    if score < 0.7 and not payload.confirmed:
         raise HTTPException(
             status_code=422,
             detail=f"Колонка '{column}' не распознана как временная",
         )
-    parsed = smart_to_datetime(df[column])
+    # Риск R1 (спека §6): низко-score колонка может быть необратимой к
+    # временному типу (год-only с текстовым мусором) -- crash-guard
+    # прежнего гейта здесь снят, честный 422 вместо 500.
+    try:
+        parsed = smart_to_datetime(df[column])
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не приводится к временному типу: {ex}",
+        ) from ex
     if int(parsed.notna().sum()) < 2:
         raise HTTPException(
             status_code=422,

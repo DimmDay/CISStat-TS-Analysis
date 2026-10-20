@@ -593,6 +593,19 @@ class TestUploadSem1Semantics:
             "невозможности определения структуры (UPLOAD-SEM-1)"
         )
 
+    def test_structure_declares_confirmation_semantics_recomp2(self):
+        """UPLOAD-RECOMP-2 (2026-10-20): done у «Структуры» -- факт
+        явного подтверждения аналитика (кнопка «Подтвердить структуру
+        данных»), а не факт уверенного угадывания детектора; реестр
+        обязан декларировать новую решающе-обусловленную семантику."""
+        entry = stop_explanation("upload", "structure")
+        text = " ".join(s.semantics for s in entry.sources)
+        assert "подтвержд" in text.lower(), (
+            "«Структура» обязана декларировать семантику явного "
+            "подтверждения кнопкой (UPLOAD-RECOMP-2a): done = "
+            "structureConfirmed, а не уверенная детекция"
+        )
+
     def test_registry_comment_documents_upload_sem1(self):
         raw = _raw_registry()
         comment = str(raw.get("comment", ""))

@@ -464,8 +464,13 @@ class AnalysisSession:
         self.target_column = column_name
         self.touch()
 
-    def set_date_column(self, column_name: str) -> None:
-        """Установить дату ряда и инвалидировать несопоставимые паспорта."""
+    def set_date_column(self, column_name: Optional[str]) -> None:
+        """Установить дату ряда и инвалидировать несопоставимые паспорта.
+
+        UPLOAD-RECOMP-2 (2026-10-20, §3.1): column_name=None -- легитимное
+        подтверждение аналитика «временной колонки нет» (маркер
+        «(не использовать)» на остановке «Структура»); паспорта
+        инвалидируются как при любой смене решения."""
         if column_name != self.date_column:
             self.reset_passports()
         self.date_column = column_name

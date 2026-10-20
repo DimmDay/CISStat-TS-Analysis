@@ -154,16 +154,22 @@ function detectionPayload(scenario: DetectionScenario) {
 // список/не задан -- всегда ok). Ветка "upload-stops" объявлена ДО ветки
 // "/upload": подстрока "/upload" ловит и "upload-stops", и именно эта
 // коллизия маскировала URL-дефект PROGR-15-A (мок обслуживал мусорный URL).
+// UPLOAD-RECOMP-2a: тела POST /date-column (подтверждение структуры) --
+// контрактные ассерты confirmed=true; очищается при каждой установке мока.
+const dateColumnBodies: unknown[] = [];
+
 function mockFetchSequence(
   uploadResult: unknown,
   uploadOk = true,
   detectionOverride?: DetectionScenario,
   stopsOkSequence?: boolean[],
   uploadResultSequence?: unknown[],
+  traceResponse?: unknown,
 ) {
   let stopsCallsMade = 0;
   let uploadCallsMade = 0;
-  global.fetch = jest.fn((url: string) => {
+  dateColumnBodies.length = 0;
+  global.fetch = jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/session/current")) {
       return Promise.resolve({
         ok: true,
@@ -225,6 +231,25 @@ function mockFetchSequence(
         : true;
       stopsCallsMade += 1;
       return Promise.resolve({ ok, json: () => Promise.resolve({ reported: 5, run_id: null }) });
+    }
+    if (typeof url === "string" && url.includes("/trace")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(traceResponse ?? { nodes: [] }) });
+    }
+    if (typeof url === "string" && url.includes("/date-column")) {
+      // UPLOAD-RECOMP-2a: подтверждение структуры -- POST /date-column;
+      // тела записываются для контрактных ассертов (confirmed=true).
+      // GET-профиль (панель паспортов грузит текущий выбор) -- мимо
+      // записи: у GET нет тела, контракт -- только на POST.
+      if ((init?.method ?? "GET").toUpperCase() === "POST") {
+        let parsedBody: unknown = {};
+        try {
+          parsedBody = JSON.parse(String(init?.body ?? "{}"));
+        } catch {
+          parsedBody = {};
+        }
+        dateColumnBodies.push(parsedBody);
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ date_column: "date", has_dataset: true }) });
     }
     if (typeof url === "string" && url.includes("/upload")) {
       const result = uploadResultSequence && uploadResultSequence.length > 0
@@ -1350,9 +1375,11 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
       expect(button).not.toHaveClass("bg-green-50");
     }
 
-    // «Структура» -- факт-решение (не просмотр): default-мок
-    // (date@95 + «(нет)») -- done сразу, детекция асинхронная.
-    await waitFor(() => expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50"));
+    // «Структура» -- решающе-обусловленная (UPLOAD-RECOMP-2a): уверенная
+    // детекция (date@95 + «(нет)») -- pending «ждёт подтверждения», НЕ
+    // зелёная до явного действия аналитика (кнопка «Подтвердить»).
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-white"));
+    expect(screen.getByRole("button", { name: /^Структура/ })).not.toHaveClass("bg-green-50");
   });
 
   it("просмотр засчитывается монотонно: открыл «Качество» -- done, ушёл на «Структуру» -- осталось done", async () => {
@@ -1435,23 +1462,31 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
   });
 });
 
-// ── PROGR-14-A: статус «Структуры» -- из факта решения, не raw confidence ──
+// ── UPLOAD-RECOMP-2a: статус «Структуры» решающе-обусловленный ─────────
 //
-// Дефект (замечание тимлида): entity confidence = 0% для легитимного
-// «(нет)» группирующей колонки у однорядного датасета -- зелёным
-// остановке не быть никогда. Формула остановки читала raw confidence
-// авто-детекта как «уверенность в выборе», но «(нет)»/«(не
-// использовать)» -- РЕШАЮЩИЕ выборы («колонки нет»): у автодетекта здесь
-// нечему быть «неуверенным», 0% описывает отсутствие скоринга, а не
-// сомнение. Контракт: решение по колонке уверенное <=> выбран явный
-// маркер отсутствия ЛИБО raw confidence >= 70 (последний сохраняет смысл
-// честного предупреждения о сомнительном угадывании КОНКРЕТНОЙ колонки).
+// Уточнение UPLOAD-SEM-1 постановкой UPLOAD-RECOMP-2 (2026-10-20):
+// зелёный done у «Структуры» -- ТОЛЬКО факт явного подтверждения
+// аналитика (кнопка «Подтвердить структуру данных» со связкой двух
+// фактов: локальный structureConfirmed + POST /date-column
+// confirmed=true, бэкенд пишет structure_confirmed), а не факт
+// уверенного угадывания детектора. PROGR-14-A сохраняется: явные
+// маркеры «(нет)»/«(не использовать)» -- уверенные решения (без raw
+// confidence); сомнительное угадывание конкретной колонки --
+// warning; невозможность определения структуры (ни одного
+// правдоподобного кандидата, аналитик не действовал) -- error.
+//
+// Новая матрица (spec_upload_recompose_2026-10-20.md §3.1):
+//   * уверенная детекция БЕЗ подтверждения   -> pending (ждёт подтверждения);
+//   * сомнительное угадывание до подтверждения -> warning;
+//   * невозможность до явного выбора          -> error;
+//   * после клика «Подтвердить»               -> done (при любой детекции);
+//   * смена селекторов после подтверждения    -> сброс в pending/warning.
 //
 // Классы кнопок степпера: done -> bg-green-50/border-green-200/text-green-800,
-// warning -> bg-white/border-neutral-200/text-neutral-800; активная
+// warning/pending -> bg-white/border-neutral-200/text-neutral-800; активная
 // остановка всегда индиго (приоритет активной ветки) -- поэтому статус
 // утверждается с ЧУЖОЙ активной остановкой («Качество»).
-describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» из факта решения, не raw confidence", () => {
+describe("TsAnalysisUpload — UPLOAD-RECOMP-2a: «Структура» подтверждается кнопкой аналитика", () => {
   async function renderStructureStop(detection: DetectionScenario) {
     mockFetchSequence(okUploadResponse, true, detection);
     render(
@@ -1467,50 +1502,87 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
   }
 
-  it("«(нет)» у группирующей колонки однорядного датасета -- уверенный факт: остановка done (дефект замечания тимлида)", async () => {
+  it("уверенная детекция ((нет) у группирующей) НЕ зелёная -- pending «ждёт подтверждения»; клик «Подтвердить структуру данных» -- done", async () => {
     await renderStructureStop({
       dateCol: { selected: "date", confidence: 95 },
       entityCol: { selected: "(нет)", confidence: 0 },
     });
 
+    // До подтверждения: уверенная детекция -- pending (НЕ done, НЕ warning).
+    // (Кнопка подтверждения живёт в правой колонке АКТИВНОЙ остановки --
+    // проверяем классы степпера с чужой активной остановкой, затем
+    // возвращаемся на «Структуру» для подтверждения.)
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const before = screen.getByRole("button", { name: /^Структура/ });
+    expect(before).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(before).not.toHaveClass("bg-green-50");
 
-    const button = screen.getByRole("button", { name: /^Структура/ });
-    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-    expect(button).not.toHaveClass("bg-brand");
-    expect(button).not.toHaveClass("bg-white");
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+
+    // Подтверждение: кнопка в правой колонке «Подтверждение».
+    const confirmButton = screen.getByTestId("confirm-structure-button");
+    expect(confirmButton).not.toBeDisabled();
+    fireEvent.click(confirmButton);
+
+    // Связка двух фактов: POST /date-column с confirmed=true.
+    await waitFor(() => expect(dateColumnBodies.length).toBeGreaterThan(0));
+    expect(dateColumnBodies[0]).toMatchObject({ column: "date", confirmed: true });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const after = screen.getByRole("button", { name: /^Структура/ });
+    expect(after).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(within(after).queryByRole("img", { name: "Найдены проблемы" })).not.toBeInTheDocument();
   });
 
-  it("UPLOAD-SEM-1: бэкенд не нашёл ни одного правдоподобного кандидата даты ((не использовать), все score нулевые) и аналитик ещё не действовал -- красный error (стоп исследования)", async () => {
+  it("кнопка подтверждения заблокирована при «(не использовать)» без явного выбора аналитика (error-ветка UPLOAD-SEM-1 сохранена)", async () => {
     await renderStructureStop({
       dateCol: { selected: "(не использовать)", confidence: 0 },
       entityCol: { selected: "(нет)", confidence: 0 },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    // Кнопка подтверждения честно заблокирована: аналитик ещё не сделал
+    // явного выбора в селекторе (правая колонка активной «Структуры»).
+    expect(screen.getByTestId("confirm-structure-button")).toBeDisabled();
 
+    // Статус -- error (ни одного кандидата, аналитик не действовал);
+    // чужая активная остановка -- чтобы активная ветка не маскировала
+    // классы статуса.
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
     const button = screen.getByRole("button", { name: /^Структура/ });
     expect(within(button).getByRole("img", { name: "Ошибка" })).toBeInTheDocument();
-    expect(button).not.toHaveClass("bg-green-50");
   });
 
-  it("UPLOAD-SEM-1: явное решение аналитика снимает error -- повторный выбор «(не использовать)» в селекторе -- done (PROGR-14-A)", async () => {
+  it("явное решение аналитика снимает error -- повторный выбор «(не использовать)» -- pending «ждёт подтверждения»; подтверждение -- done", async () => {
     await renderStructureStop({
       dateCol: { selected: "(не использовать)", confidence: 0 },
       entityCol: { selected: "(нет)", confidence: 0 },
     });
 
     // Явное действие аналитика (touched): error снимается, решение
-    // «временной колонки нет» -- уверенное (PROGR-14-A).
+    // «временной колонки нет» -- уверенное (PROGR-14-A), но НЕ зелёное
+    // до подтверждения.
     fireEvent.change(screen.getByDisplayValue("(не использовать)"), { target: { value: "(не использовать)" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
-    const button = screen.getByRole("button", { name: /^Структура/ });
-    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-    expect(within(button).queryByRole("img", { name: "Ошибка" })).not.toBeInTheDocument();
+    const mid = screen.getByRole("button", { name: /^Структура/ });
+    expect(mid).toHaveClass("bg-white");
+    expect(within(mid).queryByRole("img", { name: "Ошибка" })).not.toBeInTheDocument();
+
+    // Кнопка разблокирована явным выбором -- подтверждаем (возврат на
+    // активную «Структуру»: правая колонка -- руль активной остановки).
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+    const confirmButton = screen.getByTestId("confirm-structure-button");
+    expect(confirmButton).not.toBeDisabled();
+    fireEvent.click(confirmButton);
+    await waitFor(() => expect(dateColumnBodies[0]).toMatchObject({ column: "(не использовать)", confirmed: true }));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50");
   });
 
-  it("UPLOAD-SEM-1: выбор конкретной колонки после error -- честный warning (сомнительное угадывание, PROGR-14-A)", async () => {
+  it("UPLOAD-SEM-1: выбор конкретной колонки после error -- честный warning до подтверждения (сомнительное угадывание, PROGR-14-A)", async () => {
     await renderStructureStop({
       dateCol: { selected: "(не использовать)", confidence: 0 },
       entityCol: { selected: "(нет)", confidence: 0 },
@@ -1524,23 +1596,32 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     expect(within(button).queryByRole("img", { name: "Ошибка" })).not.toBeInTheDocument();
   });
 
-  it("ручной выбор «(нет)» на остановке переводит статус в done при низком raw confidence авто-детекта", async () => {
+  it("ручной выбор «(нет)» при низком raw confidence -- warning до подтверждения; после клика -- done (решение аналитика)", async () => {
     await renderStructureStop({
       dateCol: { selected: "date", confidence: 95 },
       entityCol: { selected: "Country", confidence: 25 },
     });
 
     // Решение пользователя -- факт; raw confidence авто-детекта при
-    // onChange НЕ пересчитывается (2026-08-14), статус -- из решения.
+    // onChange НЕ пересчитывается (2026-08-14), статус -- сомнительное
+    // угадывание до подтверждения.
     fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
-    const button = screen.getByRole("button", { name: /^Структура/ });
-    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
-    expect(button).not.toHaveClass("bg-white");
+    const before = screen.getByRole("button", { name: /^Структура/ });
+    expect(before).toHaveClass("bg-white");
+    expect(before).not.toHaveClass("bg-green-50");
+
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("confirm-structure-button"));
+    await waitFor(() => expect(dateColumnBodies[0]).toMatchObject({ column: "date", confirmed: true }));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50");
   });
 
-  it("guard: сомнительное угадывание КОНКРЕТНОЙ колонки (confidence<70) честно остаётся warning", async () => {
+  it("guard: сомнительное угадывание КОНКРЕТНОЙ колонки (confidence<70) честно остаётся warning до подтверждения", async () => {
     await renderStructureStop({
       dateCol: { selected: "Year", confidence: 40 },
       entityCol: { selected: "(нет)", confidence: 0 },
@@ -1554,15 +1635,92 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     expect(button).not.toHaveClass("text-green-800");
   });
 
-  it("guard: уверенные конкретные выборы обеих колонок -- done (прежнее поведение сохранено)", async () => {
+  it("смена селектора после подтверждения сбрасывает done -- повторное подтверждение той же кнопкой", async () => {
     await renderStructureStop({
       dateCol: { selected: "date", confidence: 95 },
-      entityCol: { selected: "Country", confidence: 85 },
+      entityCol: { selected: "(нет)", confidence: 0 },
     });
 
+    // Первое подтверждение.
+    fireEvent.click(screen.getByTestId("confirm-structure-button"));
+    await waitFor(() => expect(dateColumnBodies.length).toBe(1));
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
-    const button = screen.getByRole("button", { name: /^Структура/ });
-    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50");
+
+    // Смена селектора частоты -- подтверждение относится к зафиксированной
+    // конфигурации, сброс в pending.
+    fireEvent.click(screen.getByText("Структура"));
+    fireEvent.change(screen.getByDisplayValue("date"), { target: { value: "date" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const afterChange = screen.getByRole("button", { name: /^Структура/ });
+    expect(afterChange).not.toHaveClass("bg-green-50");
+
+    // Повторное подтверждение той же кнопкой.
+    fireEvent.click(screen.getByText("Структура"));
+    fireEvent.click(screen.getByTestId("confirm-structure-button"));
+    await waitFor(() => expect(dateColumnBodies.length).toBe(2));
+    expect(dateColumnBodies[1]).toMatchObject({ column: "date", confirmed: true });
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50");
+  });
+
+  it("seed трассы: узел upload/structure=done сеется как structureConfirmed -- после remount остановка зелёная (исключение «Структура не сеется» снято)", async () => {
+    mockFetchSequence(okUploadResponse, true, undefined, undefined, undefined, {
+      projection_complete: true,
+      nodes: [
+        { stage: "upload", node_id: "overview", status: "done", validity: "current" },
+        { stage: "upload", node_id: "structure", status: "done", validity: "current" },
+      ],
+    });
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+
+    // Структура зелёная БЕЗ клика подтверждения -- seed из трассы
+    // (бэкенд-факт structure_confirmed уже записан ранее). Пока «Структура»
+    // активна: кнопки подтверждения больше нет -- есть честная пометка.
+    await waitFor(() => expect(screen.getByTestId("structure-confirmed-note")).toBeInTheDocument());
+    expect(screen.queryByTestId("confirm-structure-button")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50"));
+  });
+
+  it("смена датасета -- новая вселенная фактов: подтверждение структуры сбрасывается (H28)", async () => {
+    mockFetchSequence(okUploadResponse, true, undefined, undefined, [
+      { ...okUploadResponse, dataset_id: "ds-1" },
+      { ...okUploadResponse, dataset_id: "ds-2" },
+    ]);
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("confirm-structure-button"));
+    await waitFor(() => expect(dateColumnBodies.length).toBe(1));
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    expect(screen.getByRole("button", { name: /^Структура/ })).toHaveClass("bg-green-50");
+
+    // «Сменить файл» + повторная загрузка -- новый datasetId: подтверждение
+    // прежнего датасета не переживает смену вселенной.
+    fireEvent.click(screen.getByText("Сменить файл"));
+    await waitFor(() => expect(screen.getByTestId("dropzone-input")).toBeInTheDocument());
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test2.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    expect(screen.getByRole("button", { name: /^Структура/ })).not.toHaveClass("bg-green-50");
   });
 });
 
@@ -1613,7 +1771,7 @@ describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта о�
     }
   });
 
-  it("HTTP-неудача отчёта (!ok) не блокирует последующие: смена решения структуры репортит новый снапшот", async () => {
+  it("HTTP-неудача отчёта (!ok) не блокирует последующие: смена решения структуры репортит новый снапшот (UPLOAD-RECOMP-2a: подтверждение кнопкой -- done)", async () => {
     // Первый отчёт принят с ошибкой (ok:false), дальнейшие -- успехом.
     // Сценарий структуры warning: сомнительное угадывание Country (25%).
     mockFetchSequence(
@@ -1632,22 +1790,32 @@ describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта о�
     await waitFor(() => expect(stopsCalls().length).toBeGreaterThanOrEqual(1));
 
     // Открываем остановку «Структура» и меняем решение пользователя:
-    // warning -> done -- новый снапшот, контур обязан повторить отчёт
-    // несмотря на неудачу первого отправления.
+    // warning -> pending «ждёт подтверждения» -- новый снапшот, контур
+    // обязан повторить отчёт несмотря на неудачу первого отправления.
     fireEvent.click(screen.getByText("Структура"));
     await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
     fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
 
-    // Последний отчёт -- уже новый снапшот (structure=done в теле POST),
-    // причём по правильному URL: неудача не «заморозила» контур.
+    // Последний отчёт -- уже новый снапшот (structure=pending: решение
+    // уверенное, но НЕ подтверждено -- UPLOAD-RECOMP-2a), причём по
+    // правильному URL: неудача не «заморозила» контур.
     await waitFor(() => {
       const last = stopsCalls()[stopsCalls().length - 1];
-      expect(String(last?.[1]?.body ?? "")).toContain('"structure":"done"');
+      expect(String(last?.[1]?.body ?? "")).toContain('"structure":"pending"');
     });
     expect(stopsCalls().length).toBeGreaterThanOrEqual(2);
     for (const [url] of stopsCalls()) {
       expect(url).toBe(progressApiUrl("/upload-stops"));
     }
+
+    // Подтверждение кнопкой -- финальный факт: следующий отчёт несёт
+    // structure=done (reportUploadStopsNow после POST /date-column).
+    fireEvent.click(screen.getByTestId("confirm-structure-button"));
+    await waitFor(() => expect(dateColumnBodies.length).toBeGreaterThan(0));
+    await waitFor(() => {
+      const last = stopsCalls()[stopsCalls().length - 1];
+      expect(String(last?.[1]?.body ?? "")).toContain('"structure":"done"');
+    });
   });
 });
 

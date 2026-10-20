@@ -3162,7 +3162,71 @@ PassportStage = Literal["start", "validation", "exit", "modeling_entry"]
 
 
 class DateColumnRequest(BaseModel):
-    column: str = Field(..., min_length=1, description="Имя временной колонки")
+    # UPLOAD-RECOMP-2 (2026-10-20), §3.1: подтверждение структуры
+    # аналитиком -- явное подтверждение снимает искусственный гейт
+    # score>=0.7 (аналитик взял ответственность, семантика PROGR-14-A
+    # «явный выбор снимает»); confirmed=False -- прежний контракт
+    # (обратная совместимость существующих вызовов). column может нести
+    # маркер «(не использовать)» -- легитимное подтверждение отсутствия
+    # временной колонки (date_column=None).
+    column: str = Field(..., min_length=1, description="Имя временной колонки или маркер «(не использовать)»")
+    confirmed: bool = Field(
+        False,
+        description="Явное подтверждение аналитика: True -- снимает гейт score>=0.7; False -- прежний контракт",
+    )
+
+
+class EntityFilterRequest(BaseModel):
+    """UPLOAD-RECOMP-2 §3.3, микросервис 1 «Фильтр сущности»:
+    сведение панели к одному ряду одной сущности. value=None +
+    apply=False -- опрос доступных значений entity-колонки (селектор
+    UI); value + apply=False -- preview результата; apply=True --
+    сохранение в сессии."""
+
+    entity_col: str = Field(..., min_length=1, description="Группирующая колонка (сущность)")
+    date_col: Optional[str] = Field(None, description="Временная колонка для статистик preview (по умолчанию -- session.date_column)")
+    value: Optional[str] = Field(None, description="Значение сущности; None -- только доступные значения")
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class EntityFilterResponse(BaseModel):
+    applied: bool
+    entity_col: str
+    value: Optional[str] = None
+    available_values: List[str] = Field(default_factory=list)
+    available_values_truncated: bool = False
+    n_rows_before: int = 0
+    n_rows_after: Optional[int] = None
+    n_dates: Optional[int] = None
+    date_min: Optional[str] = None
+    date_max: Optional[str] = None
+    frequency: Optional[str] = None
+
+
+class PanelAggregateRequest(BaseModel):
+    """UPLOAD-RECOMP-2 §3.3, микросервис 2 «Агрегация по времени»:
+    панель -> один агрегированный ряд по сущностям. Группировка ТОЛЬКО
+    по date_col: числовые -- func, нечисловые -- first; entity-колонка
+    удаляется из результата с пометкой."""
+
+    date_col: str = Field(..., min_length=1, description="Временная колонка группировки")
+    entity_col: Optional[str] = Field(None, description="Группирующая колонка панели (удаляется из результата)")
+    func: Literal["mean", "sum", "median", "min", "max"] = "mean"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class PanelAggregateResponse(BaseModel):
+    applied: bool
+    date_col: str
+    func: str
+    n_rows_before: int = 0
+    n_rows_after: Optional[int] = None
+    n_dates: int = 0
+    n_dates_skipped: int = 0
+    n_rows_dropped_invalid_date: int = 0
+    dropped_columns: List[str] = Field(default_factory=list)
+    numeric_columns: List[str] = Field(default_factory=list)
+    first_kept_columns: List[str] = Field(default_factory=list)
 
 
 class DateColumnCandidateOut(BaseModel):
