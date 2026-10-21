@@ -1,0 +1,62 @@
+=== Полный pytest tests/api+tests/unit @ bee3f8e (среда сертификации: venv python3.12, requirements + pandera/PyWavelets/psycopg[binary]/statsforecast/tbats/prophet/arch/sqlalchemy/syrupy; pip строго python3 -m pip) ===
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_readiness_and_stage_matrix_reflect_runtime
+FAILED tests/unit/test_var_integration_paths.py::TestRegistrySeesVarAtRuntime::test_dispatch_import_chain_executes
+==== 42 failed, 4125 passed, 66 skipped, 5975 warnings in 474.16s (0:07:54) ====
+
+=== @ fa0cce1 (git worktree, чистая база 3b) ===
+FAILED tests/unit/test_var_integration_paths.py::TestRegistrySeesVarAtRuntime::test_dispatch_import_chain_executes
+==== 42 failed, 4085 passed, 65 skipped, 5965 warnings in 466.25s (0:07:46) ====
+
+=== @ 69ffbc5 (git worktree, чистая база до 3b) ===
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+==== 31 failed, 4038 passed, 65 skipped, 5969 warnings in 455.91s (0:07:35) ====
+
+=== АТРИБУЦИЯ FAILED-ID (одна среда, тройное сравнение) ===
+НОВЫЕ в 3b (fa0cce1 vs 69ffbc5): +11
+  + tests/unit/test_backtesting_engine.py::test_all_fifteen_production_models_execute_the_same_real_oof_cohort
+  + tests/unit/test_deepar_integration_paths.py::test_deepar_readiness_and_stage_matrix_reflect_runtime
+  + tests/unit/test_egarch_integration_paths.py::test_production_count_is_nineteen
+  + tests/unit/test_garch_integration_paths.py::test_production_count_is_nineteen
+  + tests/unit/test_lstm_integration_paths.py::test_lstm_readiness_and_stage_matrix_reflect_runtime
+  + tests/unit/test_model_capability_matrix.py::test_capability_contract_covers_every_catalog_model_and_stage
+  + tests/unit/test_modeling_mvp_certification.py::test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
+  + tests/unit/test_nbeats_integration_paths.py::test_nbeats_readiness_and_stage_matrix_reflect_runtime
+  + tests/unit/test_nhits_integration_paths.py::test_nhits_readiness_and_stage_matrix_reflect_runtime
+  + tests/unit/test_tft_integration_paths.py::test_tft_readiness_and_stage_matrix_reflect_runtime
+  + tests/unit/test_var_integration_paths.py::TestRegistrySeesVarAtRuntime::test_dispatch_import_chain_executes
+исчезнувших (починенных 3b): 0
+дельта 3c (bee3f8e vs fa0cce1): 0 (множества идентичны)
+
+=== предсуществующие 31 (69ffbc5, средовые) ===
+tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_canon_declares_version_marker
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_excluded_stages_are_the_rest
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_existing_rules_pinned_id_stage_priority
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_order_matches_stage_nodes_exactly
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_status_priority_error_over_warning
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_contract_terms_present
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_eight_rule_ids_present
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_q1_to_q7_documented
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_no_silence_with_problem_node_claim
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_one_recommendation_canon_kept
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_warning_capable_stages_named
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_exists_at_repo_root
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_references_review_and_base_commit
+tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1GuardHonesty::test_scan_stops_total_matches_code
+tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed

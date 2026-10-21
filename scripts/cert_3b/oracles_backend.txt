@@ -1,0 +1,110 @@
+O01      PASS  
+O02      PASS  
+O03      PASS  
+O04      PASS  
+O05      PASS  
+O06      PASS  
+O07      PASS  
+O08      PASS  
+O09      PASS  
+O10a     PASS  
+O10b     PASS  
+O10c     PASS  
+O10d     PASS  
+O10e     PASS  
+O10f     PASS  
+O11a     PASS  
+O11b     PASS  
+O11c     PASS  
+O12a     PASS  
+O12b     PASS  
+O13a     PASS  
+O13b     PASS  
+O14      PASS  
+O20a     PASS  
+O20c     PASS  
+O20d     PASS  
+O20e     PASS  
+O20f     PASS  
+O20g     PASS  
+O21a     PASS  
+O21b     PASS  
+O21c     PASS  
+O21d     PASS  
+O22a     PASS  
+O22b     PASS  
+O22c     PASS  
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+O30a     FAIL  A={'v1': {'v1': 0.8049251596716748, 'v2': 0.24530454975821261}, 'v2': {'v1': -0.19014968065664903, 'v2': 1.1906090995164242}} vs manual {'v1': {'v1': 0.5, 'v2': 0.2}, 'v2': {'v1': -0.3, 'v2': 0.4}}
+O30b     FAIL  base {'v1': 0.11605694528301574, 'v2': 0.23211389056603143} vs {'v1': 1.0, 'v2': 2.0}
+O30c     FAIL  entity intercepts vs {'О-1': {'v1': 0.0, 'v2': 0.0}, 'О-2': {'v1': 1.0, 'v2': 2.0}, 'О-3': {'v1': 2.0, 'v2': 4.0}, 'О-4': {'v1': 3.0, 'v2': 6.0}, 'О-5': {'v1': 4.0, 'v2': 8.0}, 'О-6': {'v1': 5.0, 'v2': 10.0}}
+O30d     FAIL  exact DGP => R2=1, got {'v1': 0.9985918657334477, 'v2': 0.990670646370565}
+O31      PASS  
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+O32      FAIL  VAR(2) A=({'v1': {'v1': 0.7420179084185721, 'v2': 1.3442645192027172}, 'v2': {'v1': -0.07899104579070793, 'v2': 1.1471322596013342}}, {'v1': {'v1': 0.3406797497933205, 'v2': -0.1984655018331667}, 'v2': {'v1': 0.0703398748966515, 'v2': -0.27423275091657384}})
+O33      FAIL  forecast ({'step': 1, 'values': {'v1': 42.440063644206624, 'v2': 27.86226171233368}}, {'step': 2, 'values': {'v1': 41.20858563623075, 'v2': 25.528639911523182}}, {'step': 3, 'values': {'v1': 39.64488995887485, 'v2': 22.9843737106006}}) vs manual [{'v1': 31.15755409566837, 'v2': 5.986912026774892}, {'v1': 20.276159453189166, 'v2': 0.047498582009446455}, {'v1': 13.647579442996472, 'v2': 0.9361515968470293}]
+O34      PASS  
+O35      PASS  
+O36a     PASS  
+O36b     PASS  
+O36c     PASS  
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+O37      PASS  
+O38      PASS  
+O40a     PASS  
+O40b     PASS  
+O40c     PASS  
+O41a     PASS  
+O41b     PASS  
+O41c     PASS  
+O42a     PASS  
+O42b     PASS  
+O42c     PASS  
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+O42d     PASS  
+O50a     PASS  
+O50b     PASS  
+O50c     PASS  
+O50d     PASS  
+O50e     PASS  
+O50f     PASS  
+O51a     PASS  
+O51b     PASS  
+O51c     PASS  
+O51d     PASS  
+O51e     PASS  
+O51f     PASS  
+O50g     PASS  
+O51g     PASS  
+O52      PASS  
+O60a     PASS  
+O60b     PASS  
+O60c     PASS  
+O60d     PASS  
+O60e     PASS  
+O61      PASS  
+O62      PASS  
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+/home/z/my-project/CISStat-TS-Analysis/app/modeling/panel_models.py:818: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+  ols = sm.OLS(y_flat, x_flat).fit()
+O63a     PASS  
+O63b     FAIL  VAR engine fold1 vs manual recursion (matched=24/24)
+O64a     PASS  
+O64b     PASS  
+O70a     PASS  
+O70b     PASS  
+O70c     PASS  
+O71      PASS  
+O72a     PASS  
+O72b     PASS  
+O72c     PASS  
+O73      PASS  
+O80      PASS  
+
+TOTAL 95 | PASS 88 | FAIL 7
+FAILED: O30a, O30b, O30c, O30d, O32, O33, O63b

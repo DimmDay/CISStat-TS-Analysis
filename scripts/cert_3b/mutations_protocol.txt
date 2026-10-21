@@ -1,0 +1,50 @@
+PASSPORTS (md5 original): {'panel_models': '405284d895edd4976e71128ab5e39a39', 'backtesting': '9934fb3e10b3aed37ac075e1ecfa1a31', 'model_execution': 'a7436fc7362f9ccdf06295a29a8bf96d', 'panel_entity_impl': 'c320049b1698f2e6aa03d2ce01c38bbe', 'routers_models': '7f26940c2a0d338fbe67990647740989', 'modeling_yaml': 'af5fa7b3e593a9cbb35d6b92ce1789e4'}
+ORACLE BASELINE (clean tree, defect-aware): ['O30a', 'O30b', 'O30c', 'O30d', 'O32', 'O33', 'O63b']
+PM-B01   KILLED channel=REPO            8.1s 
+PM-B02   KILLED channel=REPO            8.2s 
+PM-B03   KILLED channel=REPO            8.3s 
+PM-B04   KILLED channel=REPO           13.6s 
+PM-B05   KILLED channel=REPO            8.8s 
+PM-B06   KILLED channel=ORACLE+REPO    14.6s 
+PM-B07   KILLED channel=ORACLE+REPO    11.7s 
+PM-B08   KILLED channel=ORACLE+REPO    13.0s 
+PM-B09   KILLED channel=ORACLE         15.0s 
+PM-B10   KILLED channel=ORACLE         14.7s 
+PM-B11   KILLED channel=ORACLE         14.9s 
+PM-B12   KILLED channel=ORACLE+REPO    11.7s 
+PM-B13   ALIVE  channel=-              16.1s equivalent (documented)
+PM-B14   KILLED channel=ORACLE         14.9s 
+PM-B15   KILLED channel=ORACLE+REPO    11.6s 
+PM-B16   KILLED channel=ORACLE         15.0s 
+PM-B17   KILLED channel=ORACLE+REPO    13.0s 
+PM-B18   KILLED channel=ORACLE+REPO    13.5s 
+PM-B19   KILLED channel=ORACLE+REPO    13.8s 
+PM-B20   ALIVE  channel=-              15.3s equivalent (documented)
+PM-B29   KILLED channel=ORACLE         14.7s 
+PM-B30   KILLED channel=ORACLE+REPO    13.7s 
+PM-B31   KILLED channel=ORACLE         14.6s 
+PM-B32   KILLED channel=ORACLE         15.3s 
+PM-B33   KILLED channel=ORACLE         15.3s 
+PM-B34   KILLED channel=ORACLE+REPO    14.8s 
+PM-B35   KILLED channel=ORACLE         15.0s 
+PM-B36   KILLED channel=ORACLE         15.6s 
+PM-B37   KILLED channel=ORACLE+REPO    15.7s 
+PM-B38   KILLED channel=ORACLE+REPO    14.1s 
+ME-B40   KILLED channel=ORACLE+REPO    14.4s 
+ME-B41   KILLED channel=ORACLE+REPO    14.6s 
+PE-B42   KILLED channel=ORACLE         15.6s 
+RM-B43   KILLED channel=ORACLE         15.1s 
+YM-B44   KILLED channel=ORACLE+REPO    14.6s 
+YM-B45   KILLED channel=ORACLE         14.6s 
+CTL-B01  ALIVE  channel=-              14.7s control-ALIVE OK
+CTL-B02  ALIVE  channel=-              15.5s control-ALIVE OK
+CTL-B03  ALIVE  channel=-              15.7s control-ALIVE OK
+
+=== SUMMARY ===
+TOTAL 39 | KILLED 34 | ALIVE 5 | BAD 0 | RESTORE-FAIL 0
+  ALIVE: PM-B13 (equivalent (documented))
+  ALIVE: PM-B20 (equivalent (documented))
+  ALIVE: CTL-B01 (control-ALIVE OK)
+  ALIVE: CTL-B02 (control-ALIVE OK)
+  ALIVE: CTL-B03 (control-ALIVE OK)
+TREE RESTORED BYTE-EXACT: True
