@@ -1,0 +1,54 @@
+PANEL-MODELS-3a-CERT (2026-10-20, база main@69ffbc5) -- консолидированный протокол мутационной кампании.
+Схема: двухканальная (REPO -- адресные тесты поставки 3a; ORACLE -- независимые оракулы scripts/cert_3a/oracle_backend.py).
+Харнесс: scripts/cert_3a/mutations.py -- точечная байтовая замена (ровно 1 вхождение), md5-паспорт, побайтовое восстановление (RESTORE-FAIL не зафиксирован), итоговое git diff --quiet -- дерево чистое.
+Итог: боевых мутантов 27 -- УБИТЫ 27 (DUAL 19 + ORACLE-ONLY 8), выживших 0; no-op-контроли 3/3 ALIVE.
+Оракулы на момент кампании: 110 проверок (109 на старте, +O01g в ходе кампании; финальный чистый прогон 110/110 PASS).
+
+== No-op-контроли (ожидался ALIVE -- достоверность харнесса) ==
+CTL-01: ALIVE | комментарий-контроль в panel.py | repo=n/a | oracle=TOTAL=109 PASS=109 FAIL=0
+CTL-02: ALIVE | docstring-контроль в panel.py | repo=n/a | oracle=TOTAL=110 PASS=110 FAIL=0
+CTL-03: ALIVE | константа-контроль в session_store.py | repo=n/a | oracle=TOTAL=110 PASS=110 FAIL=0
+
+== panel.py: контракт build_panel_frame ==
+MP-A01: KILLED-DUAL | отключена проверка дубликатов (entity, date) | repo=1 failed (test_duplicates_entity_date_rejected) | oracle=108/109 (FAIL O03)
+MP-A02: KILLED-DUAL | отключён запрет гэпов внутри сущности | repo=1 failed (test_irregular_entity_rejected) | oracle=109/110 (FAIL O07a)
+MP-A14: KILLED-DUAL | не-числовая value-колонка не отклоняется | repo=1 failed (test_entirely_non_numeric_value_column_rejected) | oracle=108/109 (FAIL O06)
+MP-A05: KILLED-ORACLE | tz-aware даты не нормализуются к naive UTC | repo=n/a (repo-тестов tz нет -- кандидат на пин) | oracle=FAIL O11b
+MP-A15: KILLED-ORACLE | пример сущностей удалён из сообщения о дубликатах | repo=n/a (сообщение не пиннится -- кандидат на пин) | oracle=FAIL O03
+MP-A16: KILLED-DUAL | нормализованная копия не сортируется | repo=1 failed (test_frame_is_sorted_normalized_copy) | oracle=FAIL O01g (добавлен в ходе кампании)
+MP-A13: KILLED-ORACLE | n_valid учитывает inf (| вместо &) | repo=n/a (inf-семантика не пиннится -- кандидат на пин) | oracle=FAIL O22g
+
+== panel.py: преобразования ==
+MP-A03: KILLED-DUAL | panel_lag -> плоский shift (утечка между сущностями) | repo=1 failed, 4 passed (TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected) | oracle=FAIL O13a/O13c
+MP-A16b: KILLED-DUAL | within -> плоское центрирование (общее среднее вместо среднего сущности) | repo=1 failed (test_within_has_zero_mean_per_entity) | oracle=FAIL O12a/O12d
+
+== panel.py: fingerprint ==
+MP-A04: KILLED-DUAL | fingerprint зависит от порядка строк | repo=1 failed, 2 passed (test_stable_to_row_order_and_dtype_noise) | oracle=FAIL O15a
+
+== panel.py: гейты и капы ==
+MP-A06: KILLED-DUAL | гейт сущностей ослаблен 5->1 | repo=1 failed (test_fe_re_gates_fail_on_small_panel) | oracle=FAIL O19h
+MP-A07: KILLED-DUAL | гейт длины ослаблен 10->1 | repo=1 failed (test_fe_re_gates_fail_on_small_panel) | oracle=FAIL O19g
+MP-A08: KILLED-DUAL | PVAR снимает гейт сбалансированности | repo=1 failed (test_panel_var_requires_balance) | oracle=FAIL O19k
+MP-A09: KILLED-ORACLE | warning VAR(2) никогда не срабатывает (RECOMMENDED_BASE 3->2) | repo=n/a (граница warning не пиннится -- кандидат на пин) | oracle=FAIL O19b
+MP-A10: KILLED-DUAL | warning-кап снят (200 -> 10^9) | repo=1 failed (test_capacity_warning_above_200_entities) | oracle=FAIL O21a/O21c
+MP-A11: KILLED-ORACLE (быстро) | жёсткий кап снят (2000 -> 10^9) | repo=n/a в прогоне (repo-тест test_capacity_refusal_above_2000_entities существует, но полон из-за CD на 2001 сущности ~2 мин -- убито оракулом O21d за секунды) | oracle=FAIL O21d
+
+== session_store.py: вселенная panel_entry ==
+MS-01: KILLED-DUAL | снимок панели возможен без target_column | repo=1 failed (test_requires_target_column) | oracle=FAIL O24a
+MS-02: KILLED-ORACLE | checkpoint ссылается на чужой снимок | repo=n/a (repo-теста нет -- кандидат на пин) | oracle=FAIL O24e
+MS-03: KILLED-DUAL | latest возвращает ПЕРВЫЙ checkpoint вместо последнего | repo=1 failed (test_append_only_history) | oracle=FAIL O24b
+MS-04: KILLED-DUAL | reset_passports не чистит панельную вселенную | repo=1 failed (test_reset_passports_clears_panel_universe) | oracle=FAIL O24f/O24g
+MS-05: KILLED-ORACLE | set_dataset не чистит панельную вселенную | repo=n/a (repo-теста нет -- кандидат на пин) | oracle=FAIL O24k
+MS-06: KILLED-DUAL | панельная история не сериализуется | repo=1 failed (test_serialization_roundtrip) | oracle=FAIL O24h
+MS-07: KILLED-DUAL | backcompat-дефолт удалён (KeyError на старых документах) | repo=1 failed (test_legacy_document_backcompat) | oracle=FAIL O24i
+
+== modeling_workflow.py: гейт панельного контура ==
+MW-01: KILLED-DUAL | гейт подтверждённого checkpoint снят | repo=1 failed (test_requires_confirmed_checkpoint) | oracle=FAIL O25a
+MW-02: KILLED-DUAL | fingerprint-истечение отключено | repo=1 failed (test_expired_on_data_change) | oracle=FAIL O25c
+MW-03: KILLED-DUAL | сверка состава колонок отключена | repo=1 failed (test_column_mismatch_rejected) | oracle=FAIL O25d/O25e
+MW-04: KILLED-ORACLE | PanelContractError пробрасывается без честной обёртки ValueError | repo=n/a (обёртка не пиннится -- кандидат на пин) | oracle=FAIL O25f
+
+== Примечания ==
+1. Класс самопроверки поставки M4' (advisory-инвариант «значимый CD не блокирует паспорт») не строковый мутант: мутация требует ДОБАВЛЕНИЯ кода. Поведенческий пин -- оракул O20b (сильная зависимость |CD|>2, гейты FE применимы) на своих данных; авторитет самопроверки поставки сохраняется. Эквиваленты остальных самопроверок поставки покрыты: M1~=MP-A01, M2~=MP-A03, M3~=MW-02, M5~=MP-A06, M6~=MP-A08, M7~=MP-A04 -- все убиты.
+2. ORACLE-ONLY мутанты (8) -- границы repo-покрытия поставки: кандидаты на пины (MS-02, MS-05, MW-04, MP-A05, MP-A09, MP-A13, MP-A15; MP-A11 -- repo-тест есть, но медленный).
+3. Ранние прогоны (O01g отсутствовал): MP-A16 был KILLED-REPO; после усиления оракула -- KILLED-DUAL (записано proto_b4/proto_b4b).

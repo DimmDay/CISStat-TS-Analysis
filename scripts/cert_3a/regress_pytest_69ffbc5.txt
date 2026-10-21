@@ -1,0 +1,52 @@
+PANEL-MODELS-3a-CERT (2026-10-20, база main@69ffbc5) -- протокол регрессов pytest.
+
+== Среда ==
+python 3.12 (/home/z/.venv): pandas 2.2.3, numpy, scipy 1.14.1, statsmodels, pandera, PyWavelets,
+psycopg[binary], statsforecast/tbats/prophet, syrupy (snapshot-плагин), pytest 9.0.2.
+Запуск: python3 -m pytest <цель> -q --no-header -p no:cacheprovider, из корня репозитория.
+
+== Сертифицируемая база main@69ffbc5 ==
+tests/unit : 20 failed / 1892 passed / 24 skipped (264 s)
+tests/api  : 11 failed / 2146 passed / 41 skipped (220 s)
+ИТОГО      : 31 failed / 4038 passed / 65 skipped
+
+Классификация 31 падения (все -- средовые/предсуществующие классы, задокументированные ранее):
+  14 x tests/unit/test_mentor_next_step_spec.py  -- MNS-SPEC-PATH: спеки перемещены в docs/
+      коммитом 8db2d81, пины ждут файл в корне (предсуществующая поломка базы, переносится
+      через все последующие базы; кандидат на мини-постановку);
+   9 x neural (deepar/lstm/nbeats/nhits/tft integration paths + model_execution_contract +
+      models_candidates + neural_capacity + modeling_workflow catalog/naive) --
+      ModelExecutionContractError: отсутствуют зависимости ['neuralforecast'] (средовой класс);
+   8 x psycopg-DSN (7 x test_progress_audit_5b + test_progress_panel hook_writes) --
+      DATABASE_URL песочницы указывает на sqlite-файл, слой durable-стора честно деградирует
+      (средовой класс MANUAL-MISSING-1/UPLOAD-RECOMP-2-CERT).
+
+== Доказательство ДЕЛЬТА=0 против чистой базы (git worktree 8782abd -- родитель коммита 3a) ==
+tests/unit : 20 failed / 1846 passed / 24 skipped
+tests/api  : 11 failed / 2133 passed / 41 skipped
+Побайтовое сравнение наборов FAILED-ID (sort + diff): ИДЕНТИЧНО, дельта 0.
+Учёт: 1846+2133 = 3979 passed на чистой базе; 3979 + 59 = 4038 -- прирост ровно на
+59 тестов поставки 3a (46 юнит + 13 API). Ни одного нового падения.
+
+== Адресные прогоны ==
+Панельный контур поставки: tests/unit/test_panel_preprocessing.py + tests/api/test_panel_contract.py
+  -- 59/59 PASS (совпадает с заявлением ворклога PANEL-MODELS-3a).
+Адресный контур точек изменения (95/95 PASS):
+  tests/api/test_passport_session_state.py, tests/api/test_panel_contract.py,
+  tests/api/test_panel_transforms.py, tests/api/test_session_date_column.py,
+  tests/api/test_dataset_sufficiency_plan.py, tests/api/test_dataset_passport.py,
+  tests/api/test_dataset_regularity_correction.py, tests/unit/test_validation_regularity.py,
+  tests/unit/test_sufficiency.py.
+Импорт apps.api.main -- OK (сборка схем не задета).
+
+== Наблюдения сертификации ==
+N4 (средовое, кандидат на мини-постановку): snapshot-плагин syrupy НЕ декларирован в
+requirements.txt -- на свежем окружении tests/unit/test_preprocessing.py даёт
+"fixture 'snapshot' not found"; при установке pytest-snapshot вместо syrupy --
+TypeError по API (репо написано под syrupy). Аналог класса MNS-SPEC-PATH (окружение
+не воспроизводимо из манифеста зависимостей).
+
+== Границы ==
+Jest/TS-регресс в постановке 3a-CERT не прогонялся: коммит 3a (d257315) не содержит
+изменений TS/TSX (git show --stat d257315 -- 7 файлов, только python/docs/manifest/worklog).
+typecheck:all не требуется по границам задачи (фронт 3a не касается).
