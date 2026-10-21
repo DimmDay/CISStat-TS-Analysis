@@ -53,6 +53,14 @@ MIN_ENTITIES_FE_RE = 5
 MIN_T_PER_ENTITY_FE_RE = 10
 MIN_ENTITIES_PANEL_VAR = 5
 MIN_VARS_PANEL_VAR = 2
+# Гейт DeepAR-панели (PANEL-MODELS-3c, entity-pivot): честный перенос
+# правила Task 142 («DeepAR активируется только для настоящей панели»)
+# на сущностный контур.  MIN_OBS_PER_ENTITY_DEEPAR -- зеркало
+# DEEPAR_MIN_TRAIN=30 адаптера (apps/api/model_impls/deepar.py) --
+# семейный пол нейро-пятёрки; enforced-гейт per fold -- адаптер
+# (fail-closed, max(DEEPAR_MIN_TRAIN, input_size + horizon)).
+MIN_ENTITIES_DEEPAR_PANEL = 5
+MIN_OBS_PER_ENTITY_DEEPAR = 30
 # Эвристика T_common >= 3 * n_vars * (p + 1): VAR(1) -- минимум применимости,
 # VAR(2) -- рекомендованный запас (warning при нехватке).
 PANEL_VAR_MAX_LAG_BASE = 2  # p + 1 при p = 1
@@ -717,6 +725,48 @@ class PanelPassport:
         })
 
 
+def _deepar_panel_computability(frame: PanelFrame, refused: bool) -> Dict[str, Any]:
+    """Гейт вычислимости DeepAR-панели (PANEL-MODELS-3c, entity-pivot).
+
+    Честный перенос правила Task 142 на сущностный контур: настоящая
+    панель >= DEEPAR_PANEL_MIN_ENTITIES (5) сущностей; per-entity длина
+    >= MIN_OBS_PER_ENTITY_DEEPAR (зеркало DEEPAR_MIN_TRAIN=30 адаптера --
+    семейный пол нейро-пятёрки; оконный гейт input_size+horizon
+    пересчитывается адаптером на каждом fold'е fail-closed).
+    Зеркало-константы задокументированы: единый источник enforced-гейта
+    -- адаптер (fail-closed на фите), паспорт -- честный предпросмотр."""
+    reasons: list[str] = []
+    gates = {
+        "n_entities": int(frame.n_entities),
+        "min_entities": int(MIN_ENTITIES_DEEPAR_PANEL),
+        "t_min": int(frame.t_per_entity["min"]),
+        "min_entity_observations": int(MIN_OBS_PER_ENTITY_DEEPAR),
+    }
+    if refused:
+        reasons.append(
+            f"Производственный кап превышен: {frame.n_entities} сущностей > "
+            f"{CAPACITY_REFUSE_ENTITIES} -- честный отказ вместо риска OOM (среда 512MB)"
+        )
+        return {"applicable": False, "reasons": reasons, "gates": gates}
+    if frame.n_entities < MIN_ENTITIES_DEEPAR_PANEL:
+        reasons.append(
+            f"Недостаточно сущностей для глобальной нейромодели: "
+            f"{frame.n_entities} < {MIN_ENTITIES_DEEPAR_PANEL} "
+            "(честный перенос правила Task 142 на настоящую панель)"
+        )
+    if frame.t_per_entity["min"] < MIN_OBS_PER_ENTITY_DEEPAR:
+        reasons.append(
+            f"Недостаточно наблюдений внутри сущностей для нейро-модели: "
+            f"минимальная длина {int(frame.t_per_entity['min'])} < "
+            f"{MIN_OBS_PER_ENTITY_DEEPAR} (семейный пол нейро-пятёрки)"
+        )
+    return {
+        "applicable": not reasons,
+        "reasons": reasons,
+        "gates": gates,
+    }
+
+
 def build_panel_passport(
     df: pd.DataFrame,
     *,
@@ -767,6 +817,7 @@ def build_panel_passport(
         "fixed_effects": _fe_re_computability(frame, "fixed_effects", capacity["refused"]),
         "random_effects": _fe_re_computability(frame, "random_effects", capacity["refused"]),
         "panel_var": _panel_var_computability(frame, capacity["refused"]),
+        "deepar_panel": _deepar_panel_computability(frame, capacity["refused"]),
         "gmm": {
             "applicable": False,
             "reasons": [

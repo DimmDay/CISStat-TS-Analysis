@@ -1127,17 +1127,17 @@ def _panel_entity_executor(request: ModelExecutionRequest) -> ModelExecutionResu
 
     Сущностная панель (entity x время) НЕ представима плоским
     ModelExecutionRequest (related_series -- колонко-параллельная
-    семантика с длиной target). Панельные FE/RE/Panel VAR исполняются
-    ТОЛЬКО панельным движком run_panel_entity_backtest_plan
+    семантика с длиной target). Панельные FE/RE/Panel VAR/DeepAR-panel
+    исполняются ТОЛЬКО панельным движком run_panel_entity_backtest_plan
     (apps/api/backtesting.py), который фита панельные модели
     непосредственно на PanelFrame этапа 3a. Реестр носит
     capability-дескрипторы и cohort-изоляцию.
     """
     raise ModelExecutionContractError(
-        "panel_entity-модели (panel_fe/panel_re/panel_var) исполняются "
-        "ТОЛЬКО панельным движком run_panel_entity_backtest_plan: "
+        "panel_entity-модели (panel_fe/panel_re/panel_var/deepar_panel) "
+        "исполняются ТОЛЬКО панельным движком run_panel_entity_backtest_plan: "
         "сущностная панель не представима плоским ModelExecutionRequest "
-        "(честность PANEL-MODELS-3b)"
+        "(честность PANEL-MODELS-3b/3c)"
     )
 
 
@@ -1582,6 +1582,27 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         input_kind="panel_entity",
         deterministic=True,
         resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    # PANEL-MODELS-3c: entity-pivot -- настоящий DeepAR-ПАНЕЛЬ (этап 3).
+    # Тот же panel_entity-контур, ЧТО И FE/RE/VAR (fail-closed executor,
+    # исполнение ТОЛЬКО панельным движком), но нейро-runtime: deepar_panel
+    # -- ОДИН глобальный фит на всех сущностях (кросс-сущностный трансфер),
+    # по-сущностной прогноз по unique_id и probabilistic-поверхность
+    # (DistributionLoss StudentT -- Task 142a-голова); dependency-группа
+    # "neural" (прецедент Task 137-142: без neural-группы runtime честно
+    # недоступен, readiness/candidates фильтруют).
+    ModelExecutionDefinition(
+        model_id="deepar_panel", family_id="panel",
+        adapter_id="neuralforecast-deepar-panel", executor=_panel_entity_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="neuralforecast",
+        required_packages=("neuralforecast",),
+        input_kind="panel_entity",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="neural",
+        resource_capabilities=ModelResourceCapabilities(
+            memory_class="standard", gpu="optional",
+        ),
     ),
 ])
 

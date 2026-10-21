@@ -29,7 +29,7 @@ from apps.api.schemas import CandidatesRequest, DataProfileRequest
 # "panel" (R2 спеки); исполнение ТОЛЬКО панельным движком
 # run_panel_entity_backtest_plan, dispatch -- честный отказ (прецедент
 # var/vecm/deepar).
-PANEL_ENTITY_IDS = frozenset({"panel_fe", "panel_re", "panel_var"})
+PANEL_ENTITY_IDS = frozenset({"panel_fe", "panel_re", "panel_var", "deepar_panel"})
 CERTIFIED_IDS = frozenset({
     "naive", "seasonal_naive", "drift", "mean", "ets",
     "ets_damped", "theta", "arima", "arima_auto", "prophet", "tbats",
@@ -106,9 +106,11 @@ VOLATILITY_IDS = frozenset({"garch", "egarch"})
 # Task 138/139/140/141/142: neural-адаптеры (dependency_group="neural",
 # единый NeuralForecast-runtime Task 137; исполнители Tasks 138-142;
 # deepar -- пятый исполнитель, panel-постановка min_series=5).
-NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits", "tft", "deepar"})
+NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits", "tft", "deepar", "deepar_panel"})
 # Task 142: panel-носитель (DeepAR) -- честная панель из нескольких
 # рядов; несколько числовых колонок одного объекта не выдаются за панель.
+# PANEL-MODELS-3c: deepar_panel -- сущностная панель (PANEL_ENTITY_IDS),
+# dependency-группа "neural".
 PANEL_IDS = frozenset({"deepar"})
 
 

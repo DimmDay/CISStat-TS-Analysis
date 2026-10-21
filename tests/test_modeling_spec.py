@@ -139,8 +139,10 @@ class TestSpecLoading:
         # Task 145: bump 1.3.0 -> 1.3.1 (калибровка soft-порогов по реальным
         # бэктестам; семантика движка не менялась -- только данные);
         # PANEL-MODELS-3b: bump 1.3.1 -> 1.4.0 (семейство №9 panel --
-        # только данные каталога, семантика движка прежняя)
-        assert spec.metadata.version == "1.4.0"
+        # только данные каталога, семантика движка прежняя);
+        # PANEL-MODELS-3c: bump 1.4.0 -> 1.4.1 (deepar_panel --
+        # entity-pivot глобальных нейромоделей, этап 3)
+        assert spec.metadata.version == "1.4.1"
 
     def test_soft_min_must_be_strictly_below_hard_min(self):
         """Task 144: soft_min_observations >= min_observations отвергается
@@ -165,16 +167,20 @@ class TestSpecLoading:
         # отсутствие поля -- валидно (поведение прежнее)
         assert FamilyModel(**base).soft_min_observations is None
 
-    def test_spec_has_8_families(self, spec):
-        """Ровно 8 семейств моделей."""
-        assert len(spec.families) == 8
+    def test_spec_has_9_families(self, spec):
+        """Ровно 9 семейств моделей (PANEL-MODELS-3b: +panel).
+
+        Рекалибровано PANEL-MODELS-3c: пин «8 семейств» устарел с
+        поставки 3b (семейство №9 panel) -- предсуществующий красный
+        чистой базы baea7c0, приведён к текущей истине каталога."""
+        assert len(spec.families) == 9
 
     def test_family_ids(self, spec):
-        """ID семейств соответствуют спецификации."""
+        """ID семейств соответствуют спецификации (с 3b: +panel)."""
         expected = {
             "baselines", "exponential_smoothing", "arima",
             "multivariate", "volatility", "structural",
-            "tree_ml", "neural",
+            "tree_ml", "neural", "panel",
         }
         actual = {f.id for f in spec.families}
         assert actual == expected
@@ -193,9 +199,12 @@ class TestSpecLoading:
         assert ids == {"naive", "seasonal_naive", "drift", "mean"}
 
     def test_total_model_count(self, spec):
-        """24 модели суммарно."""
+        """28 моделей суммарно (3b: +panel_fe/re/var; 3c: +deepar_panel).
+
+        Пин «24» устарел с 3b (27) -- предсуществующий красный чистой
+        базы, рекалиброван к текущей истине каталога (PANEL-MODELS-3c)."""
         total = spec.total_model_count()
-        assert total == 24
+        assert total == 28
 
     def test_get_model_across_families(self, spec):
         """get_model находит модель по ID среди всех семейств."""
@@ -261,9 +270,12 @@ class TestApplicabilityEngine:
         assert len(engine.preferred) > 0
 
     def test_total_rules_count(self, spec):
-        """Суммарно 24 правила (Task 144: +D07 -- мягкое окно истории)."""
+        """Суммарно 25 правил (Task 144: +D07; 3b: +F06 -- панельный контур).
+
+        Пин «24» устарел с 3b (F06) -- предсуществующий красный чистой
+        базы, рекалиброван к текущей истине каталога (PANEL-MODELS-3c)."""
         total = spec.applicability_engine.total_rules_count()
-        assert total == 24
+        assert total == 25
 
     # ── NOT_APPLICABLE ─────────────────────────────────────
 

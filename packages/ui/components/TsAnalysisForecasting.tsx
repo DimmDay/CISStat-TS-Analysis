@@ -68,6 +68,17 @@ import Link from "next/link";
 // присутствуют в lucide-react 0.427.0 (проверено node-пробой).
 import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Play, RefreshCw, Wand2, TrendingUp, Info, Settings } from "lucide-react";
 import { Button } from "./Button";
+import { getApiBase } from "../lib/apiClient";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { ForecastChart } from "./ForecastChart";
@@ -599,6 +610,13 @@ export function TsAnalysisForecasting() {
             )}
           </>
         )}
+
+        {/* ══ ПАНЕЛЬНЫЙ ПРОГНОЗ (PANEL-MODELS-3c): по-сущностные прогнозы
+            панельного семейства (FE/RE сценарно, Panel VAR рекурсивно,
+            DeepAR entity-pivot с квантильной поверхностью),
+            мульти-сущностный график, экспорт CSV. Изолирован от однорядного
+            карточного прогноза (R4). ══ */}
+        <PanelForecastSection />
       </main>
 
       {/* ══ ПРАВАЯ КОЛОНКА ══ */}
@@ -768,6 +786,343 @@ export function TsAnalysisForecasting() {
           </div>
         </div>
       </aside>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANEL-MODELS-3c: панельная секция «Прогноза» -- по-сущностные прогнозы
+// панельного семейства №9 (этапы 3b/3c). Требует подтверждённый checkpoint
+// panel_entry (Моделирование, панельный контур). FE/RE -- сценарный прогноз
+// (константные пути экзогенных по сущностям, дисклоужено); Panel VAR --
+// рекурсивный; deepar_panel -- по-сущностной прогноз глобальной модели с
+// probabilistic-поверхностью. Таблица (сущность, точка, интервал) +
+// мульти-сущностный график + экспорт CSV.
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface PanelForecastCard {
+  model_id: string;
+  name: string;
+  applicable: boolean;
+  reasons: string[];
+  engine: string | null;
+  runtime_available: boolean;
+  supports_prediction_intervals: boolean;
+}
+
+interface PanelForecastEntityRecord {
+  entity: string;
+  dates: string[];
+  point: number[];
+  lower: number[] | null;
+  upper: number[] | null;
+}
+
+interface PanelForecastResult {
+  model_id: string;
+  model_name: string;
+  horizon: number;
+  panel: Record<string, any>;
+  entities: PanelForecastEntityRecord[];
+  variables: Record<string, { date: string; value: number }[]> | null;
+  warnings: string[];
+  method: string | null;
+}
+
+const PANEL_API_BASE = getApiBase();
+
+function PanelForecastSection() {
+  const [open, setOpen] = useState(false);
+  const [cards, setPanelCards] = useState<PanelForecastCard[] | null>(null);
+  const [gateMessage, setGateMessage] = useState<string | null>(null);
+  const [modelId, setModelId] = useState("");
+  const [horizon, setPanelHorizon] = useState(6);
+  const [result, setResult] = useState<PanelForecastResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [visibleEntities, setVisibleEntities] = useState<string[]>([]);
+
+  const loadCards = useCallback(async () => {
+    setGateMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`${PANEL_API_BASE}/v1/session/modeling/panel/candidates`, {
+        credentials: "include",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setPanelCards(null);
+        setGateMessage(
+          String(body?.detail ?? "Панельный контур недоступен: подтвердите checkpoint panel_entry в «Моделировании»"),
+        );
+        return;
+      }
+      const list = (body?.models ?? []) as PanelForecastCard[];
+      setPanelCards(list);
+      const firstApplicable = list.find((card) => card.applicable);
+      setModelId((current) => (current ? current : firstApplicable?.model_id ?? ""));
+    } catch {
+      setGateMessage("Панельный контур недоступен: API не отвечает");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && cards === null) void loadCards();
+  }, [open, cards, loadCards]);
+
+  const runForecast = useCallback(async () => {
+    if (!modelId) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      // FE/RE -- сценарная постановка: без exog_paths платформа вернёт
+      // честный 422 (статическая панель прогнозирует только сценарно,
+      // GMM-контур в разработке); Panel VAR / deepar_panel прогнозируют
+      // горизонт без путей. JSON-редактор путей -- развитие секции.
+      const payload: Record<string, unknown> = {
+        model_id: modelId,
+        horizon,
+      };
+      const res = await fetch(`${PANEL_API_BASE}/v1/session/modeling/panel/forecast`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail ?? "Панельный прогноз не выполнен");
+      const forecastResult = body as PanelForecastResult;
+      setResult(forecastResult);
+      setVisibleEntities(forecastResult.entities.slice(0, 3).map((r) => r.entity));
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Ошибка панельного прогноза");
+    } finally {
+      setBusy(false);
+    }
+  }, [modelId, horizon]);
+
+  const toggleEntity = useCallback((entity: string) => {
+    setVisibleEntities((previous) =>
+      previous.includes(entity)
+        ? previous.filter((item) => item !== entity)
+        : [...previous, entity],
+    );
+  }, []);
+
+  const exportCsv = useCallback(() => {
+    if (!result) return;
+    const header = "entity,date,point,lower,upper";
+    const lines = result.entities.flatMap((record) =>
+      record.dates.map((date, index) =>
+        [
+          record.entity,
+          date,
+          record.point[index] ?? "",
+          record.lower?.[index] ?? "",
+          record.upper?.[index] ?? "",
+        ].join(","),
+      ),
+    );
+    const blob = new Blob([`${header}\n${lines.join("\n")}\n`], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `panel-forecast-${result.model_id}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [result]);
+
+  const chartData = useMemo(() => {
+    if (!result) return [];
+    const byDate = new Map<string, Record<string, number | null>>();
+    for (const record of result.entities) {
+      if (!visibleEntities.includes(record.entity)) continue;
+      record.dates.forEach((date, index) => {
+        const row = byDate.get(date) ?? {};
+        row[date] = null;
+        row[record.entity] = record.point[index] ?? null;
+        byDate.set(date, row);
+      });
+    }
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, row]) => ({ date, ...row }));
+  }, [result, visibleEntities]);
+
+  const selectedCard = cards?.find((card) => card.model_id === modelId) ?? null;
+  const needsExogPaths = modelId === "panel_fe" || modelId === "panel_re";
+
+  return (
+    <div className="mt-4 rounded-lg border border-neutral-200 bg-white" data-testid="panel-forecast-section">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
+          <TrendingUp size={15} className="text-neutral-500" />
+          Панельный прогноз: по-сущностные прогнозы (PANEL-MODELS-3c)
+        </span>
+        {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 text-xs text-neutral-700">
+          {gateMessage && (
+            <p className="text-[11px] text-amber-700" data-testid="panel-forecast-gate">
+              {gateMessage}
+            </p>
+          )}
+          {cards && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] text-neutral-500">Модель панели</span>
+                  <select
+                    className="border rounded px-2 py-1 text-xs"
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                    data-testid="panel-forecast-model-select"
+                  >
+                    {cards.map((card) => (
+                      <option
+                        key={card.model_id}
+                        value={card.model_id}
+                        disabled={!card.applicable}
+                      >
+                        {card.name}{card.applicable ? "" : " (недоступна)"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] text-neutral-500">Горизонт</span>
+                  <input
+                    type="number" min={1} max={100}
+                    className="border rounded px-2 py-1 text-xs"
+                    value={horizon}
+                    onChange={(e) => setPanelHorizon(Number(e.target.value) || 1)}
+                    data-testid="panel-forecast-horizon"
+                  />
+                </label>
+              </div>
+              {selectedCard && !selectedCard.applicable && (
+                <ul className="space-y-0.5">
+                  {selectedCard.reasons.map((reason) => (
+                    <li key={reason} className="text-[10px] text-amber-700">• {reason}</li>
+                  ))}
+                </ul>
+              )}
+              {needsExogPaths && (
+                <p className="text-[10px] text-neutral-500">
+                  FE/RE -- сценарная постановка: укажите константные пути
+                  экзогенных (JSON-редактор путей по сущностям -- развитие
+                  секции; без путей платформа вернёт честный 422).
+                </p>
+              )}
+              <Button
+                onClick={() => void runForecast()}
+                disabled={busy || !modelId}
+                className="w-full text-xs"
+                data-testid="panel-forecast-run"
+              >
+                {busy ? "Расчёт…" : "Построить по-сущностной прогноз"}
+              </Button>
+            </>
+          )}
+
+          {result && (
+            <div className="space-y-2" data-testid="panel-forecast-result">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-semibold text-neutral-800">
+                  {result.model_name} · h={result.horizon} · сущностей: {result.entities.length}
+                </h4>
+                <Button onClick={exportCsv} className="text-[11px]" data-testid="panel-forecast-export-csv">
+                  Экспорт CSV
+                </Button>
+              </div>
+
+              {/* ── Мульти-сущностный график ── */}
+              {chartData.length > 0 && (
+                <div className="h-56" data-testid="panel-forecast-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                      <YAxis tick={{ fontSize: 9 }} />
+                      <RechartsTooltip />
+                      <RechartsLegend wrapperStyle={{ fontSize: 10 }} />
+                      {visibleEntities.map((entity) => (
+                        <Line
+                          key={entity}
+                          type="monotone"
+                          dataKey={entity}
+                          dot={false}
+                          strokeWidth={1.5}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1" data-testid="panel-forecast-entity-switch">
+                {result.entities.map((record) => (
+                  <button
+                    key={record.entity}
+                    type="button"
+                    onClick={() => toggleEntity(record.entity)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full border ${visibleEntities.includes(record.entity) ? "border-brand text-brand bg-brand/5" : "border-neutral-300 text-neutral-500"}`}
+                  >
+                    {record.entity}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Таблица по-сущностных прогнозов ── */}
+              <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                <table className="text-[10px] w-full" data-testid="panel-forecast-table">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="text-left text-neutral-500">
+                      <th className="pr-2">Сущность</th>
+                      <th className="pr-2">Дата</th>
+                      <th className="pr-2">Точка</th>
+                      <th className="pr-2">Нижняя</th>
+                      <th className="pr-2">Верхняя</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.entities.flatMap((record) =>
+                      record.dates.map((date, index) => (
+                        <tr key={`${record.entity}:${date}`} className="border-t border-neutral-100">
+                          <td className="pr-2 font-medium">{record.entity}</td>
+                          <td className="pr-2">{date}</td>
+                          <td className="pr-2 font-mono">{(record.point[index] ?? 0).toFixed(2)}</td>
+                          <td className="pr-2 font-mono text-neutral-500">
+                            {record.lower?.[index] == null ? "—" : (record.lower[index] as number).toFixed(2)}
+                          </td>
+                          <td className="pr-2 font-mono text-neutral-500">
+                            {record.upper?.[index] == null ? "—" : (record.upper[index] as number).toFixed(2)}
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {result.warnings.map((warning) => (
+                <p key={warning} className="text-[10px] text-amber-700">{warning}</p>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <p className="text-[11px] text-red-600" data-testid="panel-forecast-error">{error}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

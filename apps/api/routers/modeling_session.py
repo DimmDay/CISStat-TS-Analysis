@@ -87,6 +87,7 @@ from apps.api.eda_model_matrix import soft_history_warning
 from apps.api.eda_validation_strategy import build_eda_validation_strategy
 from apps.api.modeling_workflow import (
     build_modeling_context,
+    build_panel_modeling_context,
     honest_system_profile,
 )
 from apps.api.routers.diagnostics import DiagnosticResult, _diagnose
@@ -104,6 +105,16 @@ from apps.api.schemas import (
     DataProfileRequest,
     ModelingComparisonResponse,
     ModelStageCapability,
+    PanelBacktestRequest,
+    PanelBacktestResponse,
+    PanelCandidatesResponse,
+    PanelEntryConfirmResponse,
+    PanelEntityForecast,
+    PanelForecastRequest,
+    PanelForecastResponse,
+    PanelModelCard,
+    PanelPassportBuildRequest,
+    PanelPassportBuildResponse,
     TuneResponse,
     TuneTrialResult,
 )
@@ -3321,3 +3332,591 @@ def get_model_card(card_id: str, request: Request, response: Response):
     if card is None:
         raise HTTPException(status_code=404, detail="Model Card не найден")
     return card
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PANEL-MODELS-3c: панельный сессионный контур (entity-pivot, этап 3).
+#
+# Изоляция от однорядного контура (R4 спеки PANEL-MODELS-3): собственные
+# пути /panel/*, собственный checkpoint panel_entry (гейт
+# build_panel_modeling_context этапа 3a), собственный движок
+# run_panel_entity_backtest_plan; prepare_passport_series /
+# modeling_entry НЕ затрагиваются.  Исполнители: panel_fe / panel_re /
+# panel_var (этап 3b) и deepar_panel -- настоящий DeepAR entity-pivot
+# (этап 3c: long-format unique_id = значение entity-колонки, ОДИН
+# глобальный фит, по-сущностной прогноз, probabilistic-поверхность).
+# ══════════════════════════════════════════════════════════════════════════════
+
+PANEL_ENTITY_MODEL_IDS = ("panel_fe", "panel_re", "panel_var", "deepar_panel")
+
+_PANEL_PASSPORT_MODEL_KEYS = {
+    "panel_fe": "fixed_effects",
+    "panel_re": "random_effects",
+    "panel_var": "panel_var",
+    "deepar_panel": "deepar_panel",
+}
+
+
+def _panel_session_or_422(request: Request, response: Response):
+    store = get_session_store()
+    session = store.get_or_create(get_or_create_session_id(request, response))
+    if session.dataframe is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Для панельного контура нужен датасет в сессии",
+        )
+    return session
+
+
+def _panel_columns_or_422(session) -> dict[str, Any]:
+    columns = (session.modeling_artifacts or {}).get("panel_columns")
+    if not columns:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Панельные колонки не зафиксированы: сначала постройте "
+                "паспорт панели (POST /panel/passport)"
+            ),
+        )
+    return dict(columns)
+
+
+def _panel_frame_or_422(session, columns: dict[str, Any]):
+    from app.preprocessing.panel import PanelContractError, build_panel_frame
+
+    try:
+        return build_panel_frame(
+            session.dataframe,
+            date_column=str(columns["date_column"]),
+            entity_column=str(columns["entity_column"]),
+            value_columns=[str(name) for name in columns["value_columns"]],
+            target_column=str(columns["target_column"]),
+        )
+    except PanelContractError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Панель не проходит контракт: {exc}",
+        ) from exc
+
+
+def _panel_context_or_http(session, columns: dict[str, Any]) -> dict[str, Any]:
+    """Гейт панельного контура: checkpoint panel_entry + свежесть."""
+    from app.preprocessing.panel import PanelContractError
+
+    try:
+        return build_panel_modeling_context(
+            session,
+            date_column=str(columns["date_column"]),
+            entity_column=str(columns["entity_column"]),
+            value_columns=[str(name) for name in columns["value_columns"]],
+            target_column=str(columns["target_column"]),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PanelContractError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Панель не проходит контракт: {exc}",
+        ) from exc
+
+
+def _panel_entity_frequency(dates: pd.Series) -> str:
+    inferred = pd.infer_freq(pd.DatetimeIndex(pd.Series(dates).sort_values()))
+    if inferred is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Частота сетки сущности не распознана (регулярность нарушена)",
+        )
+    return inferred
+
+
+def _panel_future_dates(last_date: pd.Timestamp, frequency: str, horizon: int) -> list[str]:
+    future = pd.date_range(start=last_date, periods=int(horizon) + 1, freq=frequency)
+    return [str(value) for value in future[1:]]
+
+
+@router.post("/panel/passport", response_model=PanelPassportBuildResponse)
+def build_panel_passport_for_session(
+    payload: PanelPassportBuildRequest,
+    request: Request,
+    response: Response,
+):
+    """Построить PanelPassport и зафиксировать снимок (stage="panel_entry").
+
+    Зеркало capture_dataset_passport(modeling_entry), но для ПАНЕЛИ:
+    fail-closed контракт 3a, честная фактура, advisory-факты не блокируют.
+    Однорядный passport-контур не затрагивается (R4)."""
+    from app.preprocessing.panel import (
+        PanelContractError,
+        build_panel_passport as build_passport,
+        panel_fingerprint,
+    )
+
+    session = _panel_session_or_422(request, response)
+    store = get_session_store()
+    columns = payload.model_dump()
+    try:
+        passport = build_passport(
+            session.dataframe,
+            date_column=payload.date_column,
+            entity_column=payload.entity_column,
+            value_columns=list(payload.value_columns),
+            target_column=payload.target_column,
+        )
+    except PanelContractError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Панель не проходит контракт: {exc}",
+        ) from exc
+    fingerprint = panel_fingerprint(
+        session.dataframe,
+        date_column=payload.date_column,
+        entity_column=payload.entity_column,
+        value_columns=list(payload.value_columns),
+        target_column=payload.target_column,
+    )
+    latest = session.latest_panel_passport()
+    if (
+        latest is not None
+        and latest.fingerprint == fingerprint
+        and isinstance(latest.passport, dict)
+        and latest.passport.get("entity_column") == payload.entity_column
+        and latest.passport.get("date_column") == payload.date_column
+        and list(latest.passport.get("value_columns") or []) == list(payload.value_columns)
+        and latest.passport.get("target_column") == payload.target_column
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Свойства панели не изменились с последнего расчёта паспорта",
+        )
+    snapshot = session.append_panel_passport_snapshot(
+        passport=passport.to_dict(), fingerprint=fingerprint,
+    )
+    session.modeling_artifacts["panel_columns"] = columns
+    session.touch()
+    store.save(session)
+    return PanelPassportBuildResponse(
+        snapshot_id=snapshot.snapshot_id,
+        stage=snapshot.stage,
+        passport=snapshot.passport,
+        fingerprint=snapshot.fingerprint,
+        created_at=snapshot.captured_at,
+    )
+
+
+@router.post("/panel/passport/confirm", response_model=PanelEntryConfirmResponse)
+def confirm_panel_entry_checkpoint(
+    request: Request,
+    response: Response,
+):
+    """Подтвердить checkpoint panel_entry (pre-flight панельного контура).
+
+    Свежесть: fingerprint панели пересчитывается в момент подтверждения --
+    изменение данных между построением паспорта и подтверждением честно
+    отклоняется (409)."""
+    from app.preprocessing.panel import panel_fingerprint
+
+    session = _panel_session_or_422(request, response)
+    store = get_session_store()
+    snapshot = session.latest_panel_passport()
+    if snapshot is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Сначала постройте паспорт панели (POST /panel/passport)",
+        )
+    columns = (session.modeling_artifacts or {}).get("panel_columns") or {}
+    if columns:
+        current_fingerprint = panel_fingerprint(
+            session.dataframe,
+            date_column=str(columns["date_column"]),
+            entity_column=str(columns["entity_column"]),
+            value_columns=[str(name) for name in columns["value_columns"]],
+            target_column=str(columns["target_column"]),
+        )
+        if current_fingerprint != snapshot.fingerprint:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Панель изменилась после построения паспорта -- "
+                    "перестройте паспорт (checkpoint panel_entry не подтверждён)"
+                ),
+            )
+    checkpoint = session.latest_panel_entry_checkpoint()
+    if checkpoint is not None and checkpoint.fingerprint == snapshot.fingerprint:
+        raise HTTPException(
+            status_code=409,
+            detail="Checkpoint panel_entry уже подтверждён для текущей панели",
+        )
+    created_checkpoint = session.append_panel_entry_checkpoint(
+        snapshot,
+        previous_snapshot_id=snapshot.snapshot_id,
+        created_snapshot=False,
+    )
+    session.touch()
+    store.save(session)
+    return PanelEntryConfirmResponse(
+        checkpoint_id=created_checkpoint.checkpoint_id,
+        snapshot_id=snapshot.snapshot_id,
+        fingerprint=snapshot.fingerprint,
+        confirmed_at=created_checkpoint.confirmed_at,
+        reused_snapshot=True,
+    )
+
+
+@router.get("/panel/candidates", response_model=PanelCandidatesResponse)
+def panel_candidates(request: Request, response: Response):
+    """Карточки панельного семейства №9 с гейтами паспорта и runtime
+    реестра (UI «Моделирование», панельная секция)."""
+    session = _panel_session_or_422(request, response)
+    columns = _panel_columns_or_422(session)
+    context = _panel_context_or_http(session, columns)
+    passport = context["passport"]
+    models_block = passport.get("models") or {}
+    spec = _get_spec()
+    spec_models: dict[str, Any] = {}
+    for family in spec.families:
+        if family.id != "panel":
+            continue
+        for model in family.models:
+            spec_models[model.id] = model
+    cards: list[PanelModelCard] = []
+    for model_id in PANEL_ENTITY_MODEL_IDS:
+        gate = models_block.get(_PANEL_PASSPORT_MODEL_KEYS[model_id]) or {}
+        spec_model = spec_models.get(model_id)
+        try:
+            descriptor = MODEL_EXECUTION_REGISTRY.describe(model_id)
+            runtime_available = bool(descriptor.get("runtime_available"))
+            engine = descriptor.get("engine")
+        except Exception:  # noqa: BLE001 -- карточка честно отражает отсутствие
+            runtime_available = False
+            engine = None
+        applicable = bool(gate.get("applicable")) and runtime_available
+        reasons = list(gate.get("reasons") or [])
+        if gate.get("applicable") and not runtime_available:
+            reasons.append(
+                "Нейро-runtime недоступен: dependency-группа neural не "
+                "установлена (apps/api/requirements-neural.txt)"
+                if model_id == "deepar_panel"
+                else "Исполнитель недоступен в этой среде"
+            )
+        cards.append(PanelModelCard(
+            model_id=model_id,
+            name=getattr(spec_model, "name", model_id),
+            applicable=applicable,
+            reasons=reasons,
+            gates=gate.get("gates") or {},
+            engine=engine,
+            runtime_available=runtime_available,
+            supports_prediction_intervals=bool(
+                getattr(spec_model, "supports_prediction_intervals", False)
+            ),
+            description=getattr(spec_model, "description", "") or "",
+        ))
+    warnings: list[str] = []
+    capacity = passport.get("capacity") or {}
+    if capacity.get("warning"):
+        warnings.append(str(capacity["warning"]))
+    return PanelCandidatesResponse(
+        panel={
+            "n_entities": passport.get("n_entities"),
+            "balance": passport.get("balance"),
+            "n_dates_common": passport.get("n_dates_common"),
+            "t_per_entity": passport.get("t_per_entity"),
+            "n_valid": passport.get("n_valid"),
+            "sufficiency": passport.get("sufficiency"),
+            "cross_sectional_dependence": passport.get("cross_sectional_dependence"),
+            "capacity": capacity,
+        },
+        checkpoint={
+            "checkpoint_id": context["checkpoint"]["checkpoint_id"],
+            "fingerprint": context["fingerprint"],
+            "confirmed_at": context["checkpoint"]["confirmed_at"],
+        },
+        models=cards,
+        warnings=warnings,
+    )
+
+
+@router.post("/panel/backtest", response_model=PanelBacktestResponse)
+def panel_backtest(
+    payload: PanelBacktestRequest,
+    request: Request,
+    response: Response,
+):
+    """Панельный бэктест (run_panel_entity_backtest_plan): fold-local фиты
+    на train-префиксах, per-entity + pooled метрики, cohort panel_entity."""
+    from apps.api.backtesting import BacktestExecutionError, run_panel_entity_backtest_plan
+
+    session = _panel_session_or_422(request, response)
+    store = get_session_store()
+    try:
+        descriptor = MODEL_EXECUTION_REGISTRY.describe(payload.model_id)
+    except Exception as exc:  # noqa: BLE001 -- неизвестная модель
+        raise HTTPException(
+            status_code=422,
+            detail=f"Модель '{payload.model_id}' не зарегистрирована: {exc}",
+        ) from exc
+    if descriptor.get("input_kind") != "panel_entity":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Модель '{payload.model_id}' не относится к панельному "
+                "сущностному контуру (input_kind != panel_entity)"
+            ),
+        )
+    if not descriptor.get("runtime_available"):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Исполнитель '{payload.model_id}' недоступен в этой среде "
+                "(dependency-группа не установлена)"
+            ),
+        )
+    columns = _panel_columns_or_422(session)
+    context = _panel_context_or_http(session, columns)
+    frame = _panel_frame_or_422(session, columns)
+    model_name, _ = _resolve_model_info(payload.model_id)
+    validation = payload.validation.model_dump()
+    try:
+        result = run_panel_entity_backtest_plan(
+            model_id=payload.model_id,
+            model_name=model_name,
+            family_id="panel",
+            frame=frame,
+            validation=validation,
+            seasonal_period=int(payload.seasonal_period),
+            params=payload.params,
+        )
+    except BacktestExecutionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    session.modeling_artifacts.setdefault("panel_backtests", {})[payload.model_id] = result
+    session.touch()
+    store.save(session)
+    return PanelBacktestResponse(**result)
+
+
+@router.post("/panel/forecast", response_model=PanelForecastResponse)
+def panel_forecast(
+    payload: PanelForecastRequest,
+    request: Request,
+    response: Response,
+):
+    """Прогноз панельной модели на ПОЛНОЙ панели.
+
+    FE/RE -- сценарный (пути экзогенных по каждой сущности; горизонт =
+    длина сценария); Panel VAR -- рекурсивный по общей сетке;
+    deepar_panel -- по-сущностной прогноз глобальной модели с
+    probabilistic-поверхностью (DistributionLoss, native quantiles)."""
+    from app.modeling.panel_models import (
+        PanelModelError,
+        fit_fixed_effects,
+        fit_panel_var,
+        fit_random_effects,
+        panel_fe_re_scenario_forecast,
+        panel_var_forecast,
+    )
+    from apps.api.model_impls.deepar import (
+        NeuralRuntimeCapacityError,
+        _deepar_panel_fit_predict,
+    )
+    from apps.api.neural_contract import NeuralContractError
+
+    session = _panel_session_or_422(request, response)
+    store = get_session_store()
+    try:
+        descriptor = MODEL_EXECUTION_REGISTRY.describe(payload.model_id)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=422,
+            detail=f"Модель '{payload.model_id}' не зарегистрирована: {exc}",
+        ) from exc
+    if descriptor.get("input_kind") != "panel_entity":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Модель '{payload.model_id}' не относится к панельному "
+                "сущностному контуру (input_kind != panel_entity)"
+            ),
+        )
+    if not descriptor.get("runtime_available"):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Исполнитель '{payload.model_id}' недоступен в этой среде "
+                "(dependency-группа не установлена)"
+            ),
+        )
+    columns = _panel_columns_or_422(session)
+    context = _panel_context_or_http(session, columns)
+    frame = _panel_frame_or_422(session, columns)
+    model_name, _ = _resolve_model_info(payload.model_id)
+    data = frame.frame
+    entities = sorted(data[frame.entity_column].astype(str).unique().tolist())
+    warnings: list[str] = []
+    entity_records: list[PanelEntityForecast] = []
+    variables_block: dict[str, list[dict[str, Any]]] | None = None
+    method: str | None = None
+
+    try:
+        if payload.model_id in {"panel_fe", "panel_re"}:
+            exog_columns = [
+                str(name) for name in frame.value_columns
+                if name != frame.target_column
+            ]
+            if not exog_columns:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Статическая панель FE/RE прогнозирует ТОЛЬКО сценарно: "
+                        "нужны экзогенные колонки в панели; без них -- "
+                        "динамические панели это контур GMM (PANEL-GMM-4, в "
+                        "разработке)"
+                    ),
+                )
+            paths = payload.exog_paths or {}
+            missing = [entity for entity in entities if str(entity) not in paths]
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Сценарные пути экзогенных обязательны для КАЖДОЙ "
+                        f"сущности; отсутствуют: {missing[:5]}"
+                    ),
+                )
+            scenario_lengths = {
+                len(values)
+                for entity in entities
+                for values in paths[str(entity)].values()
+            }
+            if len(scenario_lengths) != 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Длины сценарных путей должны совпадать по всем сущностям",
+                )
+            horizon = scenario_lengths.pop()
+            fit = (
+                fit_fixed_effects(frame)
+                if payload.model_id == "panel_fe"
+                else fit_random_effects(frame)
+            )
+            for entity in entities:
+                entity_rows = data[
+                    data[frame.entity_column].astype(str) == str(entity)
+                ].sort_values(frame.date_column)
+                frequency = _panel_entity_frequency(entity_rows[frame.date_column])
+                last_date = pd.Timestamp(entity_rows[frame.date_column].iloc[-1])
+                scenario = panel_fe_re_scenario_forecast(
+                    fit,
+                    frame=frame,
+                    entity=str(entity),
+                    exog_paths={
+                        str(name): [float(value) for value in values]
+                        for name, values in paths[str(entity)].items()
+                    },
+                    confidence=payload.confidence,
+                )
+                entity_records.append(PanelEntityForecast(
+                    entity=str(entity),
+                    dates=_panel_future_dates(last_date, frequency, horizon),
+                    point=[float(value) for value in scenario.point],
+                    lower=[float(value) for value in scenario.lower],
+                    upper=[float(value) for value in scenario.upper],
+                ))
+            warnings.extend(fit.warnings)
+            warnings.append(
+                "Сценарный прогноз: пути экзогенных заданы аналитиком "
+                "(what-if); статическая панель без сценариев не прогнозирует "
+                "(динамика -- GMM-контур, PANEL-GMM-4)"
+            )
+            method = scenario.method
+        elif payload.model_id == "panel_var":
+            fit = fit_panel_var(frame, lags=1)
+            var_forecast = panel_var_forecast(
+                fit, frame=frame, horizon=payload.horizon,
+            )
+            variables_block = {}
+            common_dates = sorted(data[frame.date_column].unique())
+            frequency = _panel_entity_frequency(pd.Series(common_dates))
+            last_date = pd.Timestamp(common_dates[-1])
+            future_dates = _panel_future_dates(last_date, frequency, payload.horizon)
+            for name in frame.value_columns:
+                variables_block[str(name)] = [
+                    {
+                        "date": future_dates[step_index],
+                        "value": float(step["values"][name]),
+                    }
+                    for step_index, step in enumerate(var_forecast.steps)
+                    if step_index < len(future_dates)
+                ]
+            warnings.append(
+                "Panel VAR: рекурсивный прогноз общей сетки от популяционного "
+                "уровня последних состояний; IRF -- вне задачи (PANEL-GMM-4)"
+            )
+            warnings.extend(fit.warnings)
+            method = "recursive_panel_var"
+        else:
+            try:
+                deepar_payload = _deepar_panel_fit_predict(
+                    frame,
+                    horizon=payload.horizon,
+                    params=payload.params,
+                    random_state=42,
+                )
+            except NeuralRuntimeCapacityError as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Нейро-runtime недоступен: {exc}",
+                ) from exc
+            except NeuralContractError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"DeepAR (panel): {exc}",
+                ) from exc
+            for entity in entities:
+                entity_rows = data[
+                    data[frame.entity_column].astype(str) == str(entity)
+                ].sort_values(frame.date_column)
+                frequency = _panel_entity_frequency(entity_rows[frame.date_column])
+                last_date = pd.Timestamp(entity_rows[frame.date_column].iloc[-1])
+                block = deepar_payload["forecasts"][str(entity)]
+                entity_records.append(PanelEntityForecast(
+                    entity=str(entity),
+                    dates=_panel_future_dates(last_date, frequency, payload.horizon),
+                    point=block["point"],
+                    lower=block["lower"],
+                    upper=block["upper"],
+                ))
+            warnings.append(
+                "DeepAR-панель: ОДИН глобальный фит на всех сущностях "
+                "(кросс-сущностный трансфер); интервалы -- нативные квантили "
+                "DistributionLoss (StudentT), НЕ conformal"
+            )
+            method = "entity_pivot_global_neural"
+    except PanelModelError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    response_model = PanelForecastResponse(
+        model_id=payload.model_id,
+        model_name=model_name,
+        horizon=int(payload.horizon),
+        panel={
+            "n_entities": frame.n_entities,
+            "balance": frame.balance,
+            "n_dates_common": frame.n_dates_common,
+            "t_per_entity": dict(frame.t_per_entity),
+            "target_column": frame.target_column,
+        },
+        entities=entity_records,
+        variables=variables_block,
+        warnings=warnings,
+        method=method,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        fingerprint=context["fingerprint"],
+        checkpoint_id=context["checkpoint"]["checkpoint_id"],
+    )
+    session.modeling_artifacts.setdefault("panel_forecasts", {})[payload.model_id] = (
+        response_model.model_dump(mode="json")
+    )
+    session.touch()
+    store.save(session)
+    return response_model

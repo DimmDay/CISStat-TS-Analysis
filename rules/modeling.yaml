@@ -1,9 +1,12 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
-# Версия: 1.4.0 (PANEL-MODELS-3b: семейство №9 "panel" -- панельный контур
-#          моделирования сущностной панели entity x время; FE/RE/Panel VAR
-#          с input_kind="panel_entity" и F06-маршрутизацией однорядного
-#          каталога; спека spec_panel_models_2026-10-20.md §3b)
+# Версия: 1.4.1 (PANEL-MODELS-3c: deepar_panel -- entity-pivot
+#          глобальных нейромоделей, настоящий DeepAR-панель -- этап 3
+#          3c-цепочки; базис 1.4.0 -- PANEL-MODELS-3b: семейство №9
+#          "panel" -- панельный контур моделирования сущностной панели
+#          entity x время; FE/RE/Panel VAR с input_kind="panel_entity"
+#          и F06-маршрутизацией однорядного каталога;
+#          спека spec_panel_models_2026-10-20.md §3b/§3c)
 # Дата:   2026-10-20
 # ══════════════════════════════════════════════════════════════════════════════
 #
@@ -20,7 +23,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
   last_updated: "2026-10-20"
   author: "CISStat TS Analysis Team"
   description: >-
@@ -786,6 +789,30 @@ families:
         supports_prediction_intervals: false
         libraries: ["statsmodels"]
         training_time: "seconds"
+
+      - id: "deepar_panel"
+        name: "DeepAR (panel, entity-pivot)"
+        description: >-
+          Настоящий DeepAR на сущностной панели (PANEL-MODELS-3c,
+          entity-pivot): long-format unique_id = значение entity-колонки
+          (через сертифицированный to_long_format, fail-closed на
+          дубликаты (unique_id, ds)); ОДИН глобальный фит на ВСЕХ
+          сущностях (кросс-сущностный трансфер -- суть DeepAR);
+          прогноз ПО-СУЩНОСТНОЙ (извлечение по unique_id, НЕ series_i
+          колонко-параллельного Task 142); probabilistic-поверхность
+          DistributionLoss (StudentT, native quantiles, НЕ conformal).
+          Гейты: настоящая панель (панельный класс, checkpoint
+          panel_entry), n_entities >= 5 (честный перенос правила Task
+          142), per-entity длина >= 30 (семейный пол нейро-пятёрки;
+          оконный минимум input_size+horizon -- на фите), общая частота
+          сущностных сеток. Детерминизм: seed доходит до конструктора
+          (ресертификация Task 137).
+        min_observations: 150      # 5 сущностей x 30 наблюдений (пол нейро-пятёрки)
+        min_series: 5              # минимум сущностей настоящей панели
+        supports_exogenous: false
+        supports_prediction_intervals: true
+        libraries: ["neuralforecast"]
+        training_time: "minutes"
 
 
 # ══════════════════════════════════════════════════════════════════════════════

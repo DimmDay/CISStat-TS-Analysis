@@ -4084,3 +4084,149 @@ class ForecastCompareResponse(BaseModel):
 
 class CardListResponse(BaseModel):
     cards: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PANEL-MODELS-3c: панельный сессионный контур (passport / candidates /
+# backtest / forecast).  Изолирован от однорядного контура (R4 спеки):
+# собственные checkpoint panel_entry, движок и по-сущностные ответы.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class PanelColumnsPayload(BaseModel):
+    """Состав колонок сущностной панели (контракт этапа 3a)."""
+
+    date_column: str = Field(..., min_length=1)
+    entity_column: str = Field(..., min_length=1)
+    value_columns: List[str] = Field(..., min_length=1)
+    target_column: str = Field(..., min_length=1)
+
+
+class PanelPassportBuildRequest(PanelColumnsPayload):
+    """POST /panel/passport: построить PanelPassport и зафиксировать снимок."""
+
+
+class PanelPassportBuildResponse(BaseModel):
+    snapshot_id: str
+    stage: str
+    passport: Dict[str, Any]
+    fingerprint: str
+    created_at: Optional[str] = None
+
+
+class PanelEntryConfirmResponse(BaseModel):
+    checkpoint_id: str
+    snapshot_id: str
+    fingerprint: str
+    confirmed_at: str
+    reused_snapshot: bool = False
+
+
+class PanelModelCard(BaseModel):
+    """Карточка панельной модели: паспорт-гейт + runtime реестра."""
+
+    model_id: str
+    name: str
+    applicable: bool
+    reasons: List[str] = Field(default_factory=list)
+    gates: Dict[str, Any] = Field(default_factory=dict)
+    engine: Optional[str] = None
+    runtime_available: bool = True
+    supports_prediction_intervals: bool = False
+    description: str = ""
+
+
+class PanelCandidatesResponse(BaseModel):
+    """GET /panel/candidates: карточки панельного семейства №9 с гейтами."""
+
+    panel: Dict[str, Any]
+    checkpoint: Dict[str, Any]
+    models: List[PanelModelCard] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class PanelValidationPayload(BaseModel):
+    """Валидационная стратегия панельного бэктеста (folds по датам панели)."""
+
+    strategy: Literal["expanding", "sliding", "single"] = "expanding"
+    horizon: int = Field(4, ge=1, le=10000)
+    n_folds: int = Field(3, ge=1, le=20)
+    gap: int = Field(0, ge=0, le=10000)
+
+
+class PanelBacktestRequest(BaseModel):
+    """POST /panel/backtest: панельный бэктест model_entity-исполнителя."""
+
+    model_id: str
+    validation: PanelValidationPayload = Field(default_factory=PanelValidationPayload)
+    params: Optional[Dict[str, Any]] = None
+    seasonal_period: int = Field(12, ge=1, le=1000)
+
+
+class PanelBacktestResponse(BaseModel):
+    """Ответ панельного движка (run_panel_entity_backtest_plan).
+
+    Полный payload движка широк (per-entity метрики, OOF, folds) --
+    ключевые поля типизированы, остальное проходит через extra=allow
+    (аудируемая фактура движка без урезания)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    model_id: str
+    model_name: str
+    family_id: str
+    status: str
+    metrics: Dict[str, Any]
+    panel: Dict[str, Any]
+    cohort_contract: Dict[str, Any] = Field(default_factory=dict)
+    folds: List[Dict[str, Any]] = Field(default_factory=list)
+    oof_predictions: List[Dict[str, Any]] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    horizon: int = 0
+    n_folds: int = 0
+    n_train: int = 0
+    n_test: int = 0
+    duration_ms: float = 0.0
+    cohort_id: Optional[str] = None
+    strategy: Optional[str] = None
+
+
+class PanelForecastRequest(BaseModel):
+    """POST /panel/forecast: прогноз панельной модели на полной панели.
+
+    FE/RE -- сценарный (горизонт = длина путей экзогенных по КАЖДОЙ
+    сущности); Panel VAR -- рекурсивный; deepar_panel -- по-сущностной
+    глобальной модели с probabilistic-поверхностью."""
+
+    model_id: str
+    horizon: int = Field(6, ge=1, le=10000)
+    exog_paths: Optional[Dict[str, Dict[str, List[float]]]] = None
+    params: Optional[Dict[str, Any]] = None
+    confidence: float = Field(0.95, gt=0.0, lt=1.0)
+
+
+class PanelEntityForecast(BaseModel):
+    """По-сущностной прогноз: даты, точка, интервал."""
+
+    entity: str
+    dates: List[str] = Field(default_factory=list)
+    point: List[float] = Field(default_factory=list)
+    lower: Optional[List[float]] = None
+    upper: Optional[List[float]] = None
+
+
+class PanelForecastResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    model_id: str
+    model_name: str
+    family_id: str = "panel"
+    horizon: int
+    panel: Dict[str, Any]
+    entities: List[PanelEntityForecast] = Field(default_factory=list)
+    variables: Optional[Dict[str, List[Dict[str, Any]]]] = None
+    warnings: List[str] = Field(default_factory=list)
+    method: Optional[str] = None
+    generated_at: str
+    fingerprint: Optional[str] = None
+    checkpoint_id: Optional[str] = None

@@ -63,14 +63,16 @@ requires_neural = pytest.mark.skipif(
 def test_neural_dispatch_registration_convention():
     """Условная регистрация neural-записей в dispatch прижимается с ОБЕИХ
     сторон: без runtime ни одна запись не появляется, с runtime --
-    появляются все ПЯТЬ (Tasks 138-142)."""
+    появляются все ШЕСТЬ (Tasks 138-142 + PANEL-MODELS-3c)."""
     without: dict = {}
     _register_neural_dispatch(without, runtime_available=False)
     assert without == {}
 
     with_runtime: dict = {}
     _register_neural_dispatch(with_runtime, runtime_available=True)
-    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft", "deepar"}
+    # PANEL-MODELS-3c: +deepar_panel (сущностная панель, честный отказ
+    # legacy-эндпоинта -- прецедент panel_fe/re/var 3b).
+    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft", "deepar", "deepar_panel"}
 
 
 def test_dispatch_gate_consistency_in_this_environment():

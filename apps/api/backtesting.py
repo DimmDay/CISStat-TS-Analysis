@@ -1975,9 +1975,10 @@ def run_panel_entity_backtest_plan(
     НЕ колонко-параллельная "panel":
 
     - гейт: модели, объявившие input_kind="panel_entity" (panel_fe /
-      panel_re / panel_var); сущностная панель не представима плоским
-      ModelExecutionRequest -- панельные модели фита непосредственно
-      на PanelFrame (реестр -- capability-дескрипторы);
+      panel_re / panel_var / deepar_panel); сущностная панель не
+      представима плоским ModelExecutionRequest -- панельные модели
+      фита непосредственно на PanelFrame (реестр -- capability-
+      дескрипторы);
     - folds: раскладка дат ОДИНАКОВА для всех сущностей, внутри
       сущности train строго раньше test (кластерная честность §3b);
       Panel VAR -- по общей сетке (сбалансированность -- гейт);
@@ -2005,6 +2006,11 @@ def run_panel_entity_backtest_plan(
         build_panel_frame,
         panel_fingerprint,
     )
+    from apps.api.model_impls.deepar import (
+        DEEPAR_PANEL_MIN_ENTITIES,
+        NeuralRuntimeCapacityError,
+        _deepar_panel_fit_predict,
+    )
 
     if plan_objective := "level_forecast":
         pass  # objective сущностного контура фиксирован (см. cohort_contract)
@@ -2016,7 +2022,7 @@ def run_panel_entity_backtest_plan(
         raise BacktestExecutionError(
             f"Модель '{model_id}' не объявила input_kind=panel_entity: "
             "панельный движок сущностного контура исполняет только "
-            "panel_fe / panel_re / panel_var"
+            "panel_fe / panel_re / panel_var / deepar_panel"
         )
 
     strategy = str(validation.get("strategy", "expanding"))
@@ -2031,10 +2037,20 @@ def run_panel_entity_backtest_plan(
 
     parameters = dict(params or {})
     is_var = model_id == "panel_var"
+    is_deepar_panel = model_id == "deepar_panel"
     mode = "common_grid" if is_var else "dates"
     fit_model = fit_panel_var if is_var else (
         fit_fixed_effects if model_id == "panel_fe" else fit_random_effects
     )
+    if is_deepar_panel and frame.n_entities < DEEPAR_PANEL_MIN_ENTITIES:
+        # 5c-2: fail-fast ДО fold'ов -- честный перенос правила Task 142
+        # на настоящую сущностную панель (без затрат на нейро-фит).
+        raise BacktestExecutionError(
+            f"{model_name}: DeepAR-панель требует настоящую панель из "
+            f"min_entities={DEEPAR_PANEL_MIN_ENTITIES} сущностей, "
+            f"доступно n_entities={frame.n_entities} (честный перенос "
+            "правила Task 142 на сущностный контур; fail-closed)"
+        )
 
     try:
         folds_plan = build_panel_entity_folds(
@@ -2054,6 +2070,15 @@ def run_panel_entity_backtest_plan(
         warnings: list[str] = [
             "Panel VAR: рекурсивный прогноз общей сетки; OOF-точки -- "
             "по-переменные (факт по-сущностный против системного прогноза)"
+        ]
+    elif is_deepar_panel:
+        warnings: list[str] = [
+            "DeepAR-панель (entity-pivot, PANEL-MODELS-3c): ОДИН глобальный "
+            "фит на ВСЕХ сущностях train-префикса (кросс-сущностный трансфер "
+            "-- суть DeepAR); OOF-прогноз по-сущностный (извлечение по "
+            "unique_id = значению entity-колонки, НЕ series_i Task 142); "
+            "интервалы -- нативные квантили DistributionLoss (StudentT), "
+            "НЕ conformal"
         ]
     else:
         warnings: list[str] = [
@@ -2106,16 +2131,81 @@ def run_panel_entity_backtest_plan(
                 f"{model_name}: fold {fold.fold} train не проходит панельный "
                 f"контракт: {exc}"
             ) from exc
-        try:
-            model_result = fit_model(sub_frame, lags=1) if is_var else fit_model(sub_frame)
-        except PanelModelError as exc:
-            raise BacktestExecutionError(
-                f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
-            ) from exc
+        if is_deepar_panel:
+            # Fold-local глобальный фит на train-префиксе (leakage-safe);
+            # NeuralRuntimeCapacityError идёт НАСКВОЗЬ (Task 138c),
+            # ValueError адаптера -- честная обёртка fold'а.
+            try:
+                panel_payload = _deepar_panel_fit_predict(
+                    sub_frame,
+                    horizon=horizon,
+                    params=parameters,
+                    random_state=42,
+                )
+            except NeuralRuntimeCapacityError:
+                raise
+            except ValueError as exc:
+                raise BacktestExecutionError(
+                    f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+                ) from exc
+        else:
+            try:
+                model_result = (
+                    fit_model(sub_frame, lags=1) if is_var else fit_model(sub_frame)
+                )
+            except PanelModelError as exc:
+                raise BacktestExecutionError(
+                    f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+                ) from exc
 
-        warnings.extend(model_result.warnings)
+        if not is_deepar_panel:
+            warnings.extend(model_result.warnings)
         predictions: list[dict[str, Any]] = []
-        if is_var:
+        if is_deepar_panel:
+            # По-сущностное извлечение прогноза (unique_id = значение
+            # entity-колонки); шаги 1..h сопоставляются test-датам сущности
+            # по порядку её собственной регулярной сетки; probabilistic-
+            # поверхность -- в каждой OOF-точке (lower/upper).
+            test_df = data[
+                data[date_column].isin(fold.test_dates)
+            ].sort_values([entity_column, date_column])
+            for entity in entities:
+                entity_test = test_df[
+                    test_df[entity_column].astype(str) == str(entity)
+                ].sort_values(date_column)
+                if entity_test.empty:
+                    continue
+                block = panel_payload["forecasts"].get(str(entity))
+                if block is None:
+                    raise BacktestExecutionError(
+                        f"{model_name}: fold {fold.fold}: прогноз не содержит "
+                        f"сущность '{entity}' (по-сущностное извлечение; "
+                        "fail-closed)"
+                    )
+                for step_index, (_, row) in enumerate(entity_test.iterrows()):
+                    if step_index >= horizon:
+                        break
+                    actual_value = float(row[target_column])
+                    predicted_value = float(block["point"][step_index])
+                    predictions.append({
+                        "fold": fold.fold,
+                        "entity": str(entity),
+                        "date": str(row[date_column]),
+                        "actual": actual_value,
+                        "predicted": predicted_value,
+                        "residual": round(actual_value - predicted_value, 12),
+                        "lower": float(block["lower"][step_index]),
+                        "upper": float(block["upper"][step_index]),
+                    })
+                    entity_series[str(entity)]["actual"].append(actual_value)
+                    entity_series[str(entity)]["predicted"].append(predicted_value)
+                entity_train = train_df[
+                    train_df[entity_column].astype(str) == str(entity)
+                ].sort_values(date_column)
+                entity_series[str(entity)]["train_target"] = [
+                    float(value) for value in entity_train[target_column]
+                ]
+        elif is_var:
             var_forecast = panel_var_forecast(
                 model_result, frame=sub_frame, horizon=horizon,
             )

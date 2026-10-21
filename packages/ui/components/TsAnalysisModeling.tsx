@@ -1312,6 +1312,12 @@ export function TsAnalysisModeling() {
           </p>
         )}
         </>)}
+
+        {/* ══ ПАНЕЛЬНЫЙ КОНТУР (PANEL-MODELS-3c): entity-pivot, checkpoint
+            panel_entry, карточки панельного семейства №9 с гейтами,
+            панельный бэктест (per-entity + pooled метрики). Изолирован от
+            однорядного контура (R4): собственные эндпоинты /panel/*. ══ */}
+        {hasDataset && <PanelContourSection />}
       </section>
 
       {/* ══ ПРАВАЯ КОЛОНКА: панель управления ══ */}
@@ -1631,6 +1637,440 @@ export function TsAnalysisModeling() {
           )}
         </div>
       </aside>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANEL-MODELS-3c: панельный контур «Моделирования» (entity-pivot).
+// Pre-flight: паспорт панели -> карточки семейства №9 с гейтами ->
+// подтверждение checkpoint panel_entry -> панельный бэктест
+// (run_panel_entity_backtest_plan: per-entity + pooled метрики).
+// Изолирован от однорядного контура: prepare_passport_series /
+// modeling_entry не затрагиваются (R4 спеки).
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface PanelModelCardInfo {
+  model_id: string;
+  name: string;
+  applicable: boolean;
+  reasons: string[];
+  gates: Record<string, unknown>;
+  engine: string | null;
+  runtime_available: boolean;
+  supports_prediction_intervals: boolean;
+  description: string;
+}
+
+interface PanelCandidatesInfo {
+  panel: Record<string, unknown>;
+  checkpoint: Record<string, unknown>;
+  models: PanelModelCardInfo[];
+  warnings: string[];
+}
+
+interface PanelPassportInfo {
+  snapshot_id: string;
+  stage: string;
+  passport: Record<string, any>;
+  fingerprint: string;
+}
+
+interface PanelBacktestInfo {
+  model_id: string;
+  model_name: string;
+  status: string;
+  metrics: Record<string, any>;
+  panel: Record<string, any>;
+  warnings: string[];
+  horizon: number;
+  n_folds: number;
+  n_test: number;
+  cohort_contract: Record<string, any>;
+}
+
+function PanelContourSection() {
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [datasetColumns, setDatasetColumns] = useState<
+    { name: string; dtype: string }[]
+  >([]);
+  const [dateColumn, setDateColumn] = useState("");
+  const [entityColumn, setEntityColumn] = useState("");
+  const [targetColumnPanel, setTargetColumnPanel] = useState("");
+  const [passport, setPassport] = useState<PanelPassportInfo | null>(null);
+  const [candidates, setCandidates] = useState<PanelCandidatesInfo | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [backtest, setBacktest] = useState<PanelBacktestInfo | null>(null);
+  const [backtestModel, setBacktestModel] = useState<string>("");
+  const [horizon, setHorizon] = useState(4);
+  const [nFolds, setNFolds] = useState(2);
+  const [seasonalPeriod, setSeasonalPeriod] = useState(12);
+
+  const loadColumns = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/session/dataset`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const body = await res.json();
+      const columnsInfo = (body?.columns_info ?? []) as {
+        column?: string;
+        name?: string;
+        dtype?: string;
+      }[];
+      const names = columnsInfo
+        .map((item) => String(item.column ?? item.name ?? ""))
+        .filter(Boolean)
+        .map((name) => ({
+          name,
+          dtype: String(
+            columnsInfo.find(
+              (item) => String(item.column ?? item.name ?? "") === name,
+            )?.dtype ?? "",
+          ),
+        }));
+      setDatasetColumns(names);
+    } catch {
+      // колонки недоступны -- секция честно покажет пустые селекторы
+    }
+  }, []);
+
+  useEffect(() => {
+    if (panelOpen && datasetColumns.length === 0) void loadColumns();
+  }, [panelOpen, datasetColumns.length, loadColumns]);
+
+  const buildPassport = useCallback(async () => {
+    setBusy("passport");
+    setError(null);
+    setBacktest(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/session/modeling/panel/passport`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date_column: dateColumn,
+          entity_column: entityColumn,
+          value_columns: [targetColumnPanel],
+          target_column: targetColumnPanel,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail ?? "Не удалось построить паспорт панели");
+      setPassport(body as PanelPassportInfo);
+      setConfirmed(false);
+      setCandidates(null);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Ошибка построения паспорта");
+    } finally {
+      setBusy(null);
+    }
+  }, [dateColumn, entityColumn, targetColumnPanel]);
+
+  const confirmEntry = useCallback(async () => {
+    setBusy("confirm");
+    setError(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/v1/session/modeling/panel/passport/confirm`,
+        { method: "POST", credentials: "include" },
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail ?? "Не удалось подтвердить panel_entry");
+      setConfirmed(true);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Ошибка подтверждения");
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  const loadCandidates = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/session/modeling/panel/candidates`, {
+        credentials: "include",
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail ?? "Панельные кандидаты недоступны");
+      setCandidates(body as PanelCandidatesInfo);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Ошибка загрузки кандидатов");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (confirmed) void loadCandidates();
+  }, [confirmed, loadCandidates]);
+
+  const runPanelBacktest = useCallback(
+    async (modelId: string) => {
+      setBusy(`backtest:${modelId}`);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v1/session/modeling/panel/backtest`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model_id: modelId,
+            validation: { strategy: "expanding", horizon, n_folds: nFolds, gap: 0 },
+            seasonal_period: seasonalPeriod,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.detail ?? "Панельный бэктест не выполнен");
+        setBacktest(body as PanelBacktestInfo);
+        setBacktestModel(modelId);
+      } catch (exc) {
+        setError(exc instanceof Error ? exc.message : "Ошибка панельного бэктеста");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [horizon, nFolds, seasonalPeriod],
+  );
+
+  const panelFacture = candidates?.panel ?? passport?.passport ?? null;
+  const capacityWarning = (panelFacture as any)?.capacity?.warning;
+
+  return (
+    <div className="mt-4 rounded-lg border border-neutral-200 bg-white" data-testid="panel-contour-section">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        onClick={() => setPanelOpen((v) => !v)}
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
+          <FlaskConical size={15} className="text-neutral-500" />
+          Панельный контур: сущностная панель (PANEL-MODELS-3c)
+        </span>
+        {panelOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+      </button>
+      {panelOpen && (
+        <div className="px-4 pb-4 space-y-3 text-xs text-neutral-700">
+          <p className="text-[11px] text-neutral-500">
+            Панель entity x время: FE/RE/Panel VAR (этап 3b) и DeepAR
+            entity-pivot -- глобальная нейромодель с по-сущностным прогнозом
+            (этап 3c). Checkpoint panel_entry изолирован от однорядного
+            modeling_entry.
+          </p>
+
+          {/* ── Состав панели ── */}
+          <div className="grid grid-cols-3 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-neutral-500">Дата</span>
+              <select
+                className="border rounded px-2 py-1 text-xs"
+                value={dateColumn}
+                onChange={(e) => setDateColumn(e.target.value)}
+                data-testid="panel-date-select"
+              >
+                <option value="">--</option>
+                {datasetColumns.map((column) => (
+                  <option key={column.name} value={column.name}>{column.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-neutral-500">Сущность</span>
+              <select
+                className="border rounded px-2 py-1 text-xs"
+                value={entityColumn}
+                onChange={(e) => setEntityColumn(e.target.value)}
+                data-testid="panel-entity-select"
+              >
+                <option value="">--</option>
+                {datasetColumns.map((column) => (
+                  <option key={column.name} value={column.name}>{column.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] text-neutral-500">Target</span>
+              <select
+                className="border rounded px-2 py-1 text-xs"
+                value={targetColumnPanel}
+                onChange={(e) => setTargetColumnPanel(e.target.value)}
+                data-testid="panel-target-select"
+              >
+                <option value="">--</option>
+                {datasetColumns.map((column) => (
+                  <option key={column.name} value={column.name}>{column.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <Button
+            onClick={() => void buildPassport()}
+            disabled={!dateColumn || !entityColumn || !targetColumnPanel || busy !== null}
+            className="w-full text-xs"
+            data-testid="panel-passport-build"
+          >
+            {busy === "passport" ? "Расчёт паспорта…" : "Построить паспорт панели"}
+          </Button>
+
+          {/* ── Фактура паспорта ── */}
+          {(passport || panelFacture) && (
+            <div className="rounded border border-neutral-200 p-2 space-y-1" data-testid="panel-passport-facts">
+              <div className="flex flex-wrap gap-3 text-[11px]">
+                <span>Сущностей: <b>{String((panelFacture as any)?.n_entities ?? "—")}</b></span>
+                <span>Баланс: <b>{String((panelFacture as any)?.balance ?? "—")}</b></span>
+                <span>Общих дат: <b>{String((panelFacture as any)?.n_dates_common ?? "—")}</b></span>
+                <span>
+                  T (min/med/max):{" "}
+                  <b>
+                    {(() => {
+                      const t = (panelFacture as any)?.t_per_entity;
+                      return t ? `${t.min}/${t.median}/${t.max}` : "—";
+                    })()}
+                  </b>
+                </span>
+              </div>
+              {capacityWarning && (
+                <p className="text-[10px] text-amber-700">{capacityWarning}</p>
+              )}
+              {passport && !confirmed && (
+                <Button
+                  onClick={() => void confirmEntry()}
+                  disabled={busy !== null}
+                  className="w-full text-xs"
+                  data-testid="panel-entry-confirm"
+                >
+                  {busy === "confirm" ? "Подтверждение…" : "Подтвердить checkpoint panel_entry"}
+                </Button>
+              )}
+              {confirmed && (
+                <p className="text-[11px] text-emerald-700" data-testid="panel-entry-confirmed">
+                  Checkpoint panel_entry подтверждён.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Карточки панельного семейства ── */}
+          {candidates && (
+            <div className="space-y-2" data-testid="panel-model-cards">
+              {candidates.models.map((card) => (
+                <div
+                  key={card.model_id}
+                  className={`rounded border p-2 ${card.applicable ? "border-emerald-300 bg-emerald-50/40" : "border-neutral-200 bg-neutral-50"}`}
+                  data-testid={`panel-card-${card.model_id}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-[11px] text-neutral-800">{card.name}</span>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded-full border ${card.applicable ? "border-emerald-300 text-emerald-700" : "border-neutral-300 text-neutral-500"}`}
+                    >
+                      {card.applicable ? "Применима" : "Недоступна"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">
+                    engine: {card.engine ?? "—"} · интервалы: {card.supports_prediction_intervals ? "да" : "нет"}
+                    {" "}· runtime: {card.runtime_available ? "готов" : "нет"}
+                  </p>
+                  {card.reasons.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {card.reasons.map((reason) => (
+                        <li key={reason} className="text-[10px] text-amber-700">• {reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {card.applicable && confirmed && (
+                    <Button
+                      onClick={() => void runPanelBacktest(card.model_id)}
+                      disabled={busy !== null}
+                      className="mt-1 w-full text-[11px]"
+                      data-testid={`panel-run-backtest-${card.model_id}`}
+                    >
+                      {busy === `backtest:${card.model_id}` ? "Расчёт…" : "Бэктест панели"}
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Параметры валидации ── */}
+          {confirmed && (
+            <div className="grid grid-cols-3 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-neutral-500">Horizon</span>
+                <input
+                  type="number" min={1} max={100} className="border rounded px-2 py-1 text-xs"
+                  value={horizon} onChange={(e) => setHorizon(Number(e.target.value) || 1)}
+                  data-testid="panel-horizon-input"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-neutral-500">Folds</span>
+                <input
+                  type="number" min={1} max={10} className="border rounded px-2 py-1 text-xs"
+                  value={nFolds} onChange={(e) => setNFolds(Number(e.target.value) || 1)}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-neutral-500">Сезон</span>
+                <input
+                  type="number" min={1} max={366} className="border rounded px-2 py-1 text-xs"
+                  value={seasonalPeriod} onChange={(e) => setSeasonalPeriod(Number(e.target.value) || 1)}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* ── Результат панельного бэктеста ── */}
+          {backtest && (
+            <div className="rounded border border-neutral-300 p-2 space-y-1" data-testid="panel-backtest-result">
+              <h4 className="text-[11px] font-semibold text-neutral-800">
+                Бэктест: {backtest.model_name} · {backtest.status}
+              </h4>
+              <div className="flex flex-wrap gap-3 text-[11px]">
+                <span>Pooled MAE: <b>{backtest.metrics?.mae?.toFixed?.(3) ?? "—"}</b></span>
+                <span>RMSE: <b>{backtest.metrics?.rmse?.toFixed?.(3) ?? "—"}</b></span>
+                <span>MASE: <b>{backtest.metrics?.mase == null ? "—" : backtest.metrics.mase.toFixed(2)}</b></span>
+                <span>OOF: <b>{backtest.n_test}</b></span>
+                <span>Folds: <b>{backtest.n_folds}</b> · h={backtest.horizon}</span>
+              </div>
+              {backtest.panel?.entity_metrics && (
+                <div className="overflow-x-auto">
+                  <table className="text-[10px] w-full" data-testid="panel-entity-metrics">
+                    <thead>
+                      <tr className="text-left text-neutral-500">
+                        <th className="pr-2">Сущность</th>
+                        <th className="pr-2">MAE</th>
+                        <th className="pr-2">RMSE</th>
+                        <th className="pr-2">MASE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(backtest.panel.entity_metrics as Record<string, any>).map(
+                        ([entity, metrics]) => (
+                          <tr key={entity} className="border-t border-neutral-100">
+                            <td className="pr-2 font-medium">{entity}</td>
+                            <td className="pr-2">{metrics?.mae?.toFixed?.(3) ?? "—"}</td>
+                            <td className="pr-2">{metrics?.rmse?.toFixed?.(3) ?? "—"}</td>
+                            <td className="pr-2">{metrics?.mase == null ? "—" : metrics.mase.toFixed(2)}</td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {backtest.warnings.map((warning) => (
+                <p key={warning} className="text-[10px] text-amber-700">{warning}</p>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <p className="text-[11px] text-red-600" data-testid="panel-error">{error}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

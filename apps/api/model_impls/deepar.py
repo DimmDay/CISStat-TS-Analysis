@@ -584,6 +584,283 @@ def _require_neuralforecast():
     return require_neuralforecast()
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PANEL-MODELS-3c: entity-pivot -- настоящий DeepAR-ПАНЕЛЬ (этап 3)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# ЧЕСТНОЕ ОТЛИЧИЕ ОТ Task 142 (колонко-параллельный "panel"): Task 142
+# строит панель из target + related РЯДОВ одного датафрейма (позиционные
+# unique_id "series_i", общая длина = длина target -- колонко-параллельная
+# семантика).  Сущностная панель (этап 3a, entity x время) -- ДРУГАЯ
+# постановка: unique_id = ЗНАЧЕНИЕ entity-колонки, каждая сущность --
+# собственная регулярно-сеточная история (несбалансированность
+# легитимна).  Обе ветки живут (R2 спеки PANEL-MODELS-3); исполняются
+# РАЗНЫМИ движками (run_panel_backtest_plan vs run_panel_entity_backtest_plan)
+# и разными input_kind ("panel" vs "panel_entity").
+
+DEEPAR_PANEL_ADAPTER_ID = "neuralforecast-deepar-panel"
+
+#: Минимум сущностей настоящей панели (честный перенос правила Task 142
+#: «DeepAR активируется только для настоящей панели» на сущностный
+#: контур; yaml::deepar_panel min_series=5).
+DEEPAR_PANEL_MIN_ENTITIES = DEEPAR_MIN_SERIES
+
+
+def _panel_entity_long_frame(frame) -> pd.DataFrame:
+    """Entity-pivot сущностной панели (этап 3a) в long-format
+    unique_id/ds/y через сертифицированный конвертер Task 137.
+
+    ``frame`` -- PanelFrame (app/preprocessing/panel.py, duck-typed:
+    .frame/.date_column/.entity_column/.target_column).  unique_id --
+    СТРОКОВОЕ ЗНАЧЕНИЕ entity-колонки (значения сущностей, НЕ series_i);
+    ds -- datetime-ось панели (контракт 3a нормализует к datetime);
+    y -- target.  Fail-closed конвертера: дубликаты (unique_id, ds)
+    (= нарушение per-entity регулярности), NaN/Inf в y, не-датовая ось
+    -- все требования уже покрыты тестами neural_contract.
+    """
+    from apps.api.neural_contract import to_long_format
+
+    data = frame.frame
+    wide = pd.DataFrame({
+        "unique_id": data[frame.entity_column].astype(str).reset_index(drop=True),
+        "ds": pd.Series(data[frame.date_column]).reset_index(drop=True),
+        "y": pd.Series(data[frame.target_column]).reset_index(drop=True),
+    })
+    try:
+        return to_long_format(
+            wide, value_column="y", time_column="ds", series_column="unique_id",
+        )
+    except NeuralContractError as exc:
+        raise ValueError(f"DeepAR (panel): {exc}") from exc
+
+
+def _panel_entity_common_frequency(long: pd.DataFrame) -> str:
+    """Честный гейт ОБЩЕЙ частоты сущностных сеток.
+
+    Панельный контракт 3a гарантирует per-entity регулярность, но НЕ
+    одинаковую частоту между сущностями.  Единый NeuralForecast-runtime
+    требует один freq для всей long-таблицы: расхождение частот сущностей
+    -- честный отказ (молчаливая пересборка сеток запрещена)."""
+    frequency_by_entity: dict[str, str] = {}
+    for entity, group in long.groupby("unique_id", sort=True):
+        entity_dates = pd.DatetimeIndex(pd.Series(group["ds"]).sort_values())
+        if len(entity_dates) < 3:
+            raise ValueError(
+                f"DeepAR (panel): сущность '{entity}' короче 3 точек -- "
+                "частота сетки неопределима (fail-closed)"
+            )
+        inferred = pd.infer_freq(entity_dates)
+        if inferred is None:
+            raise ValueError(
+                f"DeepAR (panel): частота сетки сущности '{entity}' не "
+                "распознана (регулярность нарушена; fail-closed)"
+            )
+        frequency_by_entity[str(entity)] = inferred
+    unique_frequencies = sorted(set(frequency_by_entity.values()))
+    if len(unique_frequencies) > 1:
+        raise ValueError(
+            "DeepAR (panel): сущностные сетки имеют РАЗНЫЕ частоты "
+            f"({unique_frequencies}) -- единый NeuralForecast-runtime "
+            "требует общую частоту панели; молчаливая пересборка сеток "
+            "запрещена (fail-closed)"
+        )
+    return unique_frequencies[0]
+
+
+def _deepar_panel_fit_predict(
+    frame,
+    horizon: int,
+    *,
+    params: Optional[Mapping[str, Any]] = None,
+    random_state: int = 42,
+) -> dict[str, Any]:
+    """Fit/forecast НАСТОЯЩЕГО DeepAR-панели (PANEL-MODELS-3c, entity-pivot).
+
+    ``frame`` -- PanelFrame train-среза панели (этап 3a; движок 3b
+    передаёт fold-local train-префикс, leakage-safe).  Гейты ДО фита
+    (fail-closed, перенос правила Task 142 на сущностный контур):
+    n_entities >= DEEPAR_PANEL_MIN_ENTITIES (5); per-entity длина >=
+    max(DEEPAR_MIN_TRAIN, input_size + horizon) -- семейный пол нейро-
+    пятёрки и неосуществимое окно, отказ С ИМЕНЕМ сущности; общая
+    частота сеток; NaN/Inf (сертифицированный to_long_format).
+
+    Фит -- ОДИН глобальный на ВСЕЙ панели (кросс-сущностный трансфер --
+    суть DeepAR; та же голова Task 142a: DistributionLoss StudentT +
+    robust-скейлер, seed доходит до КОНСТРУКТОРА -- ресертификация
+    Task 137).  Прогноз -- ПО-СУЩНОСТНОЙ: извлечение по unique_id для
+    КАЖДОЙ сущности train-панели (fail-closed на отсутствие сущности в
+    отклике), point = медиана MC-квантилей, lower/upper -- нативные
+    квантили уровня alpha; clamp-инвариант per entity.
+
+    Возвращает payload: ``forecasts`` {entity: {point, lower, upper}},
+    ``entities`` -- все сущности train-панели, панельная фактура
+    (n_entities/nobs_total/horizon), ``intervals`` (origin честно
+    дисклоужен), ``seed``/``deterministic``.
+    """
+    if isinstance(horizon, bool) or not isinstance(horizon, (int, np.integer)):
+        raise ValueError(
+            f"DeepAR (panel): horizon должен быть целым >= 1, получено {horizon!r}"
+        )
+    horizon = int(horizon)
+    if horizon < 1:
+        raise ValueError(
+            f"DeepAR (panel): horizon должен быть положительным, получено {horizon}"
+        )
+    normalized = validate_deepar_params(params)
+
+    # ── Гейт n_entities -- перенос правила Task 142 на настоящую панель ──
+    data = frame.frame
+    entities = sorted(data[frame.entity_column].astype(str).unique().tolist())
+    n_entities = len(entities)
+    if n_entities < DEEPAR_PANEL_MIN_ENTITIES:
+        raise ValueError(
+            "DeepAR (panel): требуется настоящая панель из min_entities="
+            f"{DEEPAR_PANEL_MIN_ENTITIES} сущностей, доступно n_entities="
+            f"{n_entities} (честный перенос правила Task 142 на "
+            "сущностный контур; несколько числовых колонок одного "
+            "объекта не выдаются за панель, fail-closed)"
+        )
+
+    # ── Гейт per-entity длины (семейный пол + неосуществимое окно) ──────
+    input_size = int(normalized["input_size"])
+    t_min_required = max(DEEPAR_MIN_TRAIN, input_size + horizon)
+    grouped = data.groupby(data[frame.entity_column].astype(str), sort=True)
+    for entity, group in grouped:
+        t_entity = int(len(group))
+        if t_entity < t_min_required:
+            raise ValueError(
+                f"DeepAR (panel): сущность '{entity}' имеет {t_entity} "
+                f"наблюдений -- меньше минимума {t_min_required} "
+                f"(max(DEEPAR_MIN_TRAIN={DEEPAR_MIN_TRAIN}, "
+                f"input_size={input_size} + horizon={horizon})); "
+                "молчаливое выбрасывание коротких сущностей и ужатие "
+                "окна запрещены (fail-closed)"
+            )
+
+    long = _panel_entity_long_frame(frame)
+    freq = _panel_entity_common_frequency(long)
+
+    config = NeuralTrainingConfig(
+        seed=int(random_state), max_steps=_resolve_max_steps(),
+    )
+    plan = _quantile_plan(normalized["alpha"])
+    # Контрактный гейт Task 137 (тот же, что у Task 142): probabilistic-
+    # функция потерь требует объявленного плана уровней (DEEPAR_LOSS_KEY
+    # -- distribution-голова).
+    resolve_probabilistic_loss(DEEPAR_LOSS_KEY, levels=plan["levels"])
+
+    nf_module = _require_neuralforecast()
+    model_cls = nf_module.models.DeepAR
+    distribution_loss_cls = nf_module.losses.pytorch.DistributionLoss
+    mae_cls = nf_module.losses.pytorch.MAE
+
+    def _factory(budget: Mapping[str, Any]):
+        quantiles = list(plan["quantiles"])
+        return model_cls(
+            h=int(horizon),
+            input_size=input_size,
+            lstm_hidden_size=normalized["lstm_hidden_size"],
+            alias="DeepAR",
+            # Голова Task 142a (DistributionLoss StudentT + robust) --
+            # семейная сертифицированная поверхность; MC-трейекторный
+            # бюджет DEEPAR_TRAJECTORY_SAMPLES (стабильность хвостов).
+            loss=distribution_loss_cls(
+                distribution="StudentT", quantiles=quantiles,
+            ),
+            valid_loss=mae_cls(),
+            scaler_type="robust",
+            trajectory_samples=DEEPAR_TRAJECTORY_SAMPLES,
+            **dict(budget),
+        )
+
+    try:
+        # levels=() -- conformal НЕ активируется: квантили нативны
+        # DistributionLoss (прецедент Task 142).
+        preds = train_and_forecast(
+            model_factory=_factory,
+            freq=freq,
+            train_long=long,
+            horizon=horizon,
+            config=config,
+            levels=(),
+            fold_index=0,
+        )
+    except NeuralRuntimeCapacityError:
+        # Task 138c: ресурсный отказ идёт НАСКВОЗЬ (HTTP-слой видит
+        # честный статус, не теряет его в ValueError-обёртке).
+        raise
+    except NeuralContractError as exc:
+        raise ValueError(f"DeepAR (panel): {exc}") from exc
+
+    if "unique_id" not in preds.columns:
+        raise ValueError(
+            "DeepAR (panel): отклик NeuralForecast без колонки unique_id "
+            "(по-сущностной прогноз; fail-closed)"
+        )
+
+    forecasts: dict[str, dict[str, list[float]]] = {}
+    for entity in entities:
+        rows = preds[preds["unique_id"].astype(str) == entity]
+        if len(rows) != horizon:
+            raise ValueError(
+                f"DeepAR (panel): прогноз обязан содержать КАЖДУЮ сущность "
+                f"train-панели: для '{entity}' получено {len(rows)} строк "
+                f"вместо horizon={horizon} (по-сущностное извлечение по "
+                "unique_id; fail-closed)"
+            )
+        rows = rows.sort_values("ds", kind="stable").reset_index(drop=True)
+        width = _width_suffix(rows)
+        point = _median_column(rows)
+        lower = _quantile_column(rows, "lo", width)
+        upper = _quantile_column(rows, "hi", width)
+        if not (np.isfinite(point).all() and np.isfinite(lower).all()
+                and np.isfinite(upper).all()):
+            raise ValueError(
+                f"DeepAR (panel): прогноз сущности '{entity}' содержит "
+                "NaN/Inf -- отказ без clamp-подмен (fail-closed)"
+            )
+        lower_arr = np.asarray(lower, dtype=float)
+        upper_arr = np.asarray(upper, dtype=float)
+        point_arr = np.asarray(point, dtype=float)
+        # Clamp-инвариант per entity (урок НАХОДКИ-3/M10; defense-in-depth
+        # поверх MC-квантилей StudentT).
+        if not ((lower_arr <= point_arr).all()
+                and (point_arr <= upper_arr).all()):
+            raise NeuralContractError(
+                f"DeepAR (panel): нарушен инвариант lower <= point <= upper "
+                f"для сущности '{entity}' (fail-closed)"
+            )
+        forecasts[entity] = {
+            "point": [float(value) for value in point_arr],
+            "lower": [float(value) for value in lower_arr],
+            "upper": [float(value) for value in upper_arr],
+        }
+
+    return {
+        "adapter_id": DEEPAR_PANEL_ADAPTER_ID,
+        "entities": entities,
+        "forecasts": forecasts,
+        "n_entities": int(n_entities),
+        "nobs_total": int(len(data)),
+        "horizon": int(horizon),
+        "params": dict(normalized),
+        "freq": {"kind": "datetime", "value": str(freq)},
+        "intervals": {
+            "method": "neural_quantile_outputs",
+            "loss": DEEPAR_LOSS_KEY,
+            "distribution": "StudentT",
+            "trajectory_samples": int(DEEPAR_TRAJECTORY_SAMPLES),
+            "alpha": float(normalized["alpha"]),
+            "quantiles": [float(q) for q in plan["quantiles"]],
+            "levels": [float(level) for level in plan["levels"]],
+        },
+        "seed": int(config.seed),
+        "max_steps": int(config.max_steps),
+        "random_state": int(random_state),
+        "deterministic": True,
+    }
+
+
 def run_deepar_backtest(
     series: Sequence[float],
     train_ratio: float,
@@ -609,11 +886,16 @@ __all__ = [
     "DEEPAR_MAX_STEPS",
     "DEEPAR_MIN_SERIES",
     "DEEPAR_MIN_TRAIN",
+    "DEEPAR_PANEL_ADAPTER_ID",
+    "DEEPAR_PANEL_MIN_ENTITIES",
     "DEEPAR_TRAJECTORY_SAMPLES",
     "INPUT_SIZE_BOUNDS",
     "LSTM_HIDDEN_SIZE_BOUNDS",
     "_quantile_plan",
     "_deepar_fit_predict",
+    "_deepar_panel_fit_predict",
+    "_panel_entity_long_frame",
+    "_panel_entity_common_frequency",
     "_resolve_max_steps",
     "run_deepar_backtest",
     "validate_deepar_params",

@@ -112,12 +112,16 @@ def test_candidate_statistics_report_runtime_availability_separately():
     if _HAS_NEURAL:
         assert response.statistics.runnable_candidates == 19
         assert response.statistics.catalog_only_candidates == 0
-        assert response.statistics.blocked_candidates == 8
+        # PANEL-MODELS-3c: deepar_panel (neural-группа установлена) --
+        # production-ready, но F06 блокирует на однорядном профиле: 9.
+        assert response.statistics.blocked_candidates == 9
     else:
         assert response.statistics.runnable_candidates == 15
-        assert response.statistics.catalog_only_candidates == 5
+        # PANEL-MODELS-3c: deepar_panel без neural-группы -- честный
+        # catalog-only (шестой недоступный исполнитель).
+        assert response.statistics.catalog_only_candidates == 6
         assert response.statistics.blocked_candidates == 7
-    assert response.statistics.total_models_in_spec == 27  # PANEL-MODELS-3b: +3 панельные
+    assert response.statistics.total_models_in_spec == 28  # PANEL-MODELS-3c: +deepar_panel
 
 
 def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
@@ -129,7 +133,7 @@ def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
     candidate_ids = {item.model_id for item in response.candidates}
     catalog = {item.model_id: item for item in response.catalog}
 
-    assert len(response.catalog) == response.statistics.total_models_in_spec == 27
+    assert len(response.catalog) == response.statistics.total_models_in_spec == 28
     assert len(response.candidates) < len(response.catalog)
     assert "var" not in candidate_ids
     assert catalog["var"].level == "NOT_APPLICABLE"

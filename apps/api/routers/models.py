@@ -348,9 +348,11 @@ def _register_neural_dispatch(
     одномерные level-модели: в отличие от VAR/VECM/GARCH/EGARCH однорядный
     synthetic-эндпоинт для них ПРИМЕНИМ, поэтому записи dispatch --
     реальное исполнение (прецедент random_forest), а не честный отказ.
-    DeepAR (Task 142, panel-постановка min_series=5) -- наоборот: на
-    одиночном synthetic-ряде исполнение НЕВОЗМОЖНО без подмены, запись
-    dispatch -- честный отказ (прецедент var/vecm).  Регистрация
+    DeepAR (Task 142, panel-постановка min_series=5) и DeepAR-панель
+    (PANEL-MODELS-3c, panel_entity-постановка min_entities=5) --
+    наоборот: на одиночном synthetic-ряде исполнение НЕВОЗМОЖНО без
+    подмены, записи dispatch -- честный отказ (прецедент var/vecm;
+    deepar_panel -- прецедент panel_fe/re/var 3b).  Регистрация
     УСЛОВНА: без установленной группы записи не появляются --
     readiness реестра честно фильтрует модели, и строгий gate
     реестр<->dispatch ниже остаётся точным в ОБЕИХ средах (иначе
@@ -362,6 +364,12 @@ def _register_neural_dispatch(
         implementations["nhits"] = run_nhits_backtest
         implementations["tft"] = run_tft_backtest
         implementations["deepar"] = run_deepar_backtest
+        # PANEL-MODELS-3c: сущностная панель не выводима из одиночного
+        # ряда -- честный отказ на legacy synthetic-эндпоинте (исполнение
+        # ТОЛЬКО run_panel_entity_backtest_plan после checkpoint
+        # panel_entry); паритет dispatch <-> production-реестра сохранён
+        # (deepar_panel -- dependency_group="neural").
+        implementations["deepar_panel"] = run_panel_entity_backtest_refusal
 
 
 _register_neural_dispatch(
@@ -592,7 +600,12 @@ def _resolve_model_info(model_id: str) -> tuple[str, str]:
         for fam in spec.families:
             for m in fam.models:
                 if m.id == model_id:
-                    found = (m.name, fam.family_id)
+                    # PANEL-MODELS-3c: латентный баг fallback-пути -- поле
+                    # Family называется id (fam.family_id не существует);
+                    # путь не срабатывал, пока все модели жили в кэше
+                    # _MODEL_INFO (панельные модели 3b/3c -- первые, кто
+                    # законно использует fallback).
+                    found = (m.name, fam.id)
                     break
             if found:
                 break
