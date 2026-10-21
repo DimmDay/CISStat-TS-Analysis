@@ -66,6 +66,12 @@ from apps.api.model_impls.tft import run_tft_backtest
 # честно отказывает, прецедент var/vecm).
 from apps.api.model_impls.deepar import run_deepar_backtest
 
+# PANEL-MODELS-3b: панельное семейство №9 (сущностный контур,
+# input_kind="panel_entity"); legacy synthetic-эндпоинт честно отказывает
+# (прецедент var/vecm/deepar) -- исполнение ТОЛЬКО панельным движком
+# run_panel_entity_backtest_plan.
+from apps.api.model_impls.panel_entity import run_panel_entity_backtest_refusal
+
 
 __all__ = [
     "run_ets_backtest",
@@ -88,4 +94,5 @@ __all__ = [
     "run_nhits_backtest",
     "run_tft_backtest",
     "run_deepar_backtest",
+    "run_panel_entity_backtest_refusal",
 ]

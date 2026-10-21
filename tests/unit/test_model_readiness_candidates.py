@@ -105,15 +105,19 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # neural-воркере runnable 19 (deepar на n_series=1 excluded правилом
     # F05) / catalog-only 0 / blocked 5 (var, vecm, garch, egarch,
     # deepar); без опциональной группы -- честные 15/5/4 (Task 136).
+    # PANEL-MODELS-3b: панельное семейство №9 -- NOT_APPLICABLE (F06) на
+    # однорядном профиле: blocked +3 (panel_fe/panel_re/panel_var); панельные
+    # модели -- production-ready в реестре, в candidates не входят (F06),
+    # catalog_only не меняется.
     if _HAS_NEURAL:
         assert response.statistics.runnable_candidates == 19
         assert response.statistics.catalog_only_candidates == 0
-        assert response.statistics.blocked_candidates == 5
+        assert response.statistics.blocked_candidates == 8
     else:
         assert response.statistics.runnable_candidates == 15
         assert response.statistics.catalog_only_candidates == 5
-        assert response.statistics.blocked_candidates == 4
-    assert response.statistics.total_models_in_spec == 24
+        assert response.statistics.blocked_candidates == 7
+    assert response.statistics.total_models_in_spec == 27  # PANEL-MODELS-3b: +3 панельные
 
 
 def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
@@ -125,7 +129,7 @@ def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
     candidate_ids = {item.model_id for item in response.candidates}
     catalog = {item.model_id: item for item in response.catalog}
 
-    assert len(response.catalog) == response.statistics.total_models_in_spec == 24
+    assert len(response.catalog) == response.statistics.total_models_in_spec == 27
     assert len(response.candidates) < len(response.catalog)
     assert "var" not in candidate_ids
     assert catalog["var"].level == "NOT_APPLICABLE"
@@ -230,4 +234,5 @@ def test_not_recommended_soft_window_warns_but_allows_in_catalog():
                 "фиктивные метрики запрещены."
             ), model_id
         # Только var/vecm/garch/egarch остаются ready-but-blocked
-        assert response.statistics.blocked_candidates == 4
+        # PANEL-MODELS-3b: панельные -- NOT_APPLICABLE (F06): blocked +3.
+        assert response.statistics.blocked_candidates == 7

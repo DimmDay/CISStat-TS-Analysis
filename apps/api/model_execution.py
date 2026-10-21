@@ -23,7 +23,7 @@ MODEL_EXECUTION_CONTRACT_VERSION = "model-execution-v2"
 ExecutionAction = Literal["backtest", "tune", "diagnostics"]
 ModelObjective = Literal["level_forecast", "multivariate", "volatility"]
 ExecutionInputKind = Literal[
-    "univariate", "supervised", "multivariate", "panel",
+    "univariate", "supervised", "multivariate", "panel", "panel_entity",
 ]
 ExecutionOutputKind = Literal["point", "distribution", "volatility"]
 GpuCapability = Literal["unsupported", "optional", "required"]
@@ -234,7 +234,9 @@ class ModelExecutionDefinition:
             raise ModelExecutionContractError("executor должен быть callable")
         if self.objective not in {"level_forecast", "multivariate", "volatility"}:
             raise ModelExecutionContractError(f"Неподдерживаемый objective: {self.objective}")
-        if self.input_kind not in {"univariate", "supervised", "multivariate", "panel"}:
+        if self.input_kind not in {
+            "univariate", "supervised", "multivariate", "panel", "panel_entity",
+        }:
             raise ModelExecutionContractError(f"Неподдерживаемый input_kind: {self.input_kind}")
         if self.dependency_group not in {"classical", "ml", "volatility", "neural"}:
             raise ModelExecutionContractError(
@@ -1119,6 +1121,26 @@ _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
 
+
+def _panel_entity_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """PANEL-MODELS-3b: fail-closed исполнитель panel_entity-моделей.
+
+    Сущностная панель (entity x время) НЕ представима плоским
+    ModelExecutionRequest (related_series -- колонко-параллельная
+    семантика с длиной target). Панельные FE/RE/Panel VAR исполняются
+    ТОЛЬКО панельным движком run_panel_entity_backtest_plan
+    (apps/api/backtesting.py), который фита панельные модели
+    непосредственно на PanelFrame этапа 3a. Реестр носит
+    capability-дескрипторы и cohort-изоляцию.
+    """
+    raise ModelExecutionContractError(
+        "panel_entity-модели (panel_fe/panel_re/panel_var) исполняются "
+        "ТОЛЬКО панельным движком run_panel_entity_backtest_plan: "
+        "сущностная панель не представима плоским ModelExecutionRequest "
+        "(честность PANEL-MODELS-3b)"
+    )
+
+
 MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
     ModelExecutionDefinition(
         model_id=model_id, family_id="baselines",
@@ -1520,6 +1542,46 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         resource_capabilities=ModelResourceCapabilities(
             memory_class="standard", gpu="optional",
         ),
+    ),
+] + [
+    # ── PANEL-MODELS-3b: панельное семейство №9 (сущностный контур) ──
+    # input_kind="panel_entity" ЯВНО отличает сущностную панель
+    # (entity x время, этап 3a build_panel_frame) от колонко-параллельной
+    # "panel" Task 142 (target + related-ряды) -- R2 спеки: обе ветки
+    # живут, постановка каждой честно зафиксирована. FE/RE/Panel VAR
+    # исполняются ТОЛЬКО панельным движком run_panel_entity_backtest_plan
+    # (прецедент Task 134/142: отдельный движок под input_kind):
+    # сущностная панель НЕ представима плоским ModelExecutionRequest
+    # (related_series требует длину target -- колонко-параллельная
+    # семантика), поэтому executor -- честный fail-closed отказ, а
+    # реестр носит capability-дескрипторы (cohort-изоляция существующим
+    # гейтом «Cohort contracts моделей не совпадают»).
+    ModelExecutionDefinition(
+        model_id="panel_fe", family_id="panel",
+        adapter_id="panel-within-ols", executor=_panel_entity_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        required_packages=("statsmodels",),
+        input_kind="panel_entity",
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="panel_re", family_id="panel",
+        adapter_id="panel-gls-re", executor=_panel_entity_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        required_packages=("statsmodels",),
+        input_kind="panel_entity",
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="panel_var", family_id="panel",
+        adapter_id="panel-var-pooled", executor=_panel_entity_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        required_packages=("statsmodels",),
+        input_kind="panel_entity",
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])
 

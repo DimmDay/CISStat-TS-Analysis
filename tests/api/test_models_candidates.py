@@ -109,7 +109,8 @@ class TestCandidatesResponse:
             headers=PRO_HEADERS,
         )
         data = resp.json()
-        assert len(data["catalog"]) == data["statistics"]["total_models_in_spec"] == 24
+        # PANEL-MODELS-3b: семейство №9 panel (+3 модели) -- 24 -> 27.
+        assert len(data["catalog"]) == data["statistics"]["total_models_in_spec"] == 27
         assert len(data["candidates"]) < len(data["catalog"])
         assert {item["level"] for item in data["catalog"]} >= {
             "RECOMMENDED", "NOT_APPLICABLE",

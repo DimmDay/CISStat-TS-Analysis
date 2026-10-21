@@ -1946,3 +1946,376 @@ def run_volatility_backtest_plan(
         },
         "execution_contract": execution_contract,
     }
+
+
+# ---------------------------------------------------------------------------
+# PANEL-MODELS-3b: панельный движок сущностного контура (input_kind=
+# "panel_entity") -- зеркало Task 142-движка run_panel_backtest_plan.
+# ---------------------------------------------------------------------------
+
+def _panel_entity_fold_metrics(
+    actual: list[float], predicted: list[float],
+    mase_scale: Optional[float], rmsse_scale: Optional[float],
+) -> BacktestMetrics:
+    return compute_forecast_metrics(
+        actual, predicted, mase_scale=mase_scale, rmsse_scale=rmsse_scale,
+    )
+
+
+def run_panel_entity_backtest_plan(
+    *, model_id: str, model_name: str, family_id: str,
+    frame: "Any",  # PanelFrame (app.preprocessing.panel)
+    validation: Mapping[str, Any],
+    seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    """Панельное исполнение сущностного контура (PANEL-MODELS-3b).
+
+    Зеркало run_panel_backtest_plan (Task 142) под input_kind=
+    "panel_entity" -- сущностная панель (entity x время) этапа 3a,
+    НЕ колонко-параллельная "panel":
+
+    - гейт: модели, объявившие input_kind="panel_entity" (panel_fe /
+      panel_re / panel_var); сущностная панель не представима плоским
+      ModelExecutionRequest -- панельные модели фита непосредственно
+      на PanelFrame (реестр -- capability-дескрипторы);
+    - folds: раскладка дат ОДИНАКОВА для всех сущностей, внутри
+      сущности train строго раньше test (кластерная честность §3b);
+      Panel VAR -- по общей сетке (сбалансированность -- гейт);
+    - fold-local: модель фита ТОЛЬКО на train-префиксе (leakage-safe);
+      OOF FE/RE -- сценарная постановка (экзогенные test-дат берутся
+      из факта как сценарий аналитика; y test-дат в фит не входит);
+      Panel VAR -- рекурсивный прогноз от конца train;
+    - метрики: по-сущностные (per-entity MASE/RMSSE scale -- train-only
+      префикс сущности) + pooled micro-average через сертифицированную
+      compute_forecast_metrics (pooled MASE-скейл -- медиана
+      по-сущностных, дисклоужено);
+    - никакого доступа к тестовым y со стороны модели.
+    """
+    from app.modeling.panel_models import (
+        PanelModelError,
+        build_panel_entity_folds,
+        fit_fixed_effects,
+        fit_panel_var,
+        fit_random_effects,
+        panel_fe_re_scenario_forecast,
+        panel_var_forecast,
+    )
+    from app.preprocessing.panel import (
+        PanelContractError,
+        build_panel_frame,
+        panel_fingerprint,
+    )
+
+    if plan_objective := "level_forecast":
+        pass  # objective сущностного контура фиксирован (см. cohort_contract)
+    try:
+        execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
+    except ValueError as exc:
+        raise BacktestExecutionError(str(exc)) from exc
+    if execution_contract.get("input_kind") != "panel_entity":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила input_kind=panel_entity: "
+            "панельный движок сущностного контура исполняет только "
+            "panel_fe / panel_re / panel_var"
+        )
+
+    strategy = str(validation.get("strategy", "expanding"))
+    horizon = int(validation.get("horizon") or 0)
+    n_folds = int(validation.get("n_folds") or validation.get("effective_splits") or 0)
+    gap = int(validation.get("gap") or 0)
+    if horizon < 1 or n_folds < 1:
+        raise BacktestExecutionError(
+            "Панельная валидационная стратегия не содержит исполнимых folds "
+            "(нужны horizon >= 1 и n_folds >= 1)"
+        )
+
+    parameters = dict(params or {})
+    is_var = model_id == "panel_var"
+    mode = "common_grid" if is_var else "dates"
+    fit_model = fit_panel_var if is_var else (
+        fit_fixed_effects if model_id == "panel_fe" else fit_random_effects
+    )
+
+    try:
+        folds_plan = build_panel_entity_folds(
+            frame, horizon=horizon, n_folds=n_folds, strategy=strategy,
+            mode=mode, gap=gap,
+        )
+    except PanelModelError as exc:
+        raise BacktestExecutionError(f"{model_name}: {exc}") from exc
+
+    data = frame.frame
+    entity_column = frame.entity_column
+    date_column = frame.date_column
+    target_column = frame.target_column
+    exog_columns = [name for name in frame.value_columns if name != target_column]
+    entities = sorted(data[entity_column].unique().tolist())
+    if is_var:
+        warnings: list[str] = [
+            "Panel VAR: рекурсивный прогноз общей сетки; OOF-точки -- "
+            "по-переменные (факт по-сущностный против системного прогноза)"
+        ]
+    else:
+        warnings: list[str] = [
+            "OOF FE/RE -- сценарная постановка: экзогенные факты test-периода "
+            "используются как сценарий аналитика (what-if); y test-периода "
+            "в фит не входит (leakage-safe); без экзогенных путей статическая "
+            "панель не прогнозирует (динамика -- GMM-контур, PANEL-GMM-4)"
+        ]
+
+    fingerprint = panel_fingerprint(
+        data,
+        date_column=date_column,
+        entity_column=entity_column,
+        value_columns=list(frame.value_columns),
+        target_column=target_column,
+    )
+    cohort_id = f"panel_entity:{fingerprint[:16]}"
+
+    folds: list[dict[str, Any]] = []
+    oof: list[dict[str, Any]] = []
+    entity_series: dict[str, dict[str, list[float]]] = {
+        entity: {"actual": [], "predicted": [], "train_target": []}
+        for entity in entities
+    }
+    var_variable_series: dict[str, dict[str, list[float]]] = {
+        name: {"actual": [], "predicted": [], "train_target": []}
+        for name in frame.value_columns
+    }
+    started = time.monotonic()
+    last_train_rows = 0
+    for fold in folds_plan:
+        fold_started = time.monotonic()
+        if max(fold.train_dates) >= min(fold.test_dates):
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: train-даты пересекают test-даты -- "
+                "кластерная честность нарушена"
+            )
+        train_mask = data[date_column].isin(fold.train_dates)
+        train_df = data[train_mask]
+        try:
+            sub_frame = build_panel_frame(
+                train_df,
+                date_column=date_column,
+                entity_column=entity_column,
+                value_columns=list(frame.value_columns),
+                target_column=target_column,
+            )
+        except PanelContractError as exc:
+            raise BacktestExecutionError(
+                f"{model_name}: fold {fold.fold} train не проходит панельный "
+                f"контракт: {exc}"
+            ) from exc
+        try:
+            model_result = fit_model(sub_frame, lags=1) if is_var else fit_model(sub_frame)
+        except PanelModelError as exc:
+            raise BacktestExecutionError(
+                f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+            ) from exc
+
+        warnings.extend(model_result.warnings)
+        predictions: list[dict[str, Any]] = []
+        if is_var:
+            var_forecast = panel_var_forecast(
+                model_result, frame=sub_frame, horizon=horizon,
+            )
+            test_df = data[
+                data[date_column].isin(fold.test_dates)
+            ].sort_values([entity_column, date_column])
+            # Рекурсивный прогноз -- ШАГИ 1..h от конца train; сопоставление
+            # шаг -> test-дата -- по ПОРЯДКУ отсортированных общих дат.
+            test_dates_sorted = sorted(fold.test_dates)
+            step_by_date = {
+                str(test_dates_sorted[index]): step["values"]
+                for index, step in enumerate(var_forecast.steps)
+                if index < len(test_dates_sorted)
+            }
+            for _, row in test_df.iterrows():
+                values = step_by_date.get(str(row[date_column]))
+                if values is None:
+                    continue
+                for name in frame.value_columns:
+                    actual_value = float(row[name])
+                    predicted_value = float(values[name])
+                    predictions.append({
+                        "fold": fold.fold,
+                        "entity": str(row[entity_column]),
+                        "variable": name,
+                        "date": str(row[date_column]),
+                        "actual": actual_value,
+                        "predicted": predicted_value,
+                        "residual": round(actual_value - predicted_value, 12),
+                    })
+                    var_series = var_variable_series[name]
+                    var_series["actual"].append(actual_value)
+                    var_series["predicted"].append(predicted_value)
+                    entity_key = str(row[entity_column])
+                    if name == target_column:
+                        entity_series[entity_key]["actual"].append(actual_value)
+                        entity_series[entity_key]["predicted"].append(predicted_value)
+        else:
+            test_df = data[data[date_column].isin(fold.test_dates)]
+            for entity in entities:
+                entity_test = test_df[
+                    test_df[entity_column] == entity
+                ].sort_values(date_column)
+                if entity_test.empty:
+                    continue
+                exog_paths = {
+                    name: [float(value) for value in entity_test[name]]
+                    for name in exog_columns
+                }
+                scenario = panel_fe_re_scenario_forecast(
+                    model_result,
+                    frame=sub_frame,
+                    entity=str(entity),
+                    exog_paths=exog_paths,
+                )
+                for step_index, (_, row) in enumerate(entity_test.iterrows()):
+                    actual_value = float(row[target_column])
+                    predicted_value = float(scenario.point[step_index])
+                    predictions.append({
+                        "fold": fold.fold,
+                        "entity": str(entity),
+                        "date": str(row[date_column]),
+                        "actual": actual_value,
+                        "predicted": predicted_value,
+                        "residual": round(actual_value - predicted_value, 12),
+                    })
+                    entity_series[str(entity)]["actual"].append(actual_value)
+                    entity_series[str(entity)]["predicted"].append(predicted_value)
+                entity_train = train_df[
+                    train_df[entity_column] == entity
+                ].sort_values(date_column)
+                entity_series[str(entity)]["train_target"] = [
+                    float(value) for value in entity_train[target_column]
+                ]
+        last_train_rows = len(train_df)
+        fold_actual = [point["actual"] for point in predictions]
+        fold_predicted = [point["predicted"] for point in predictions]
+        fold_metrics = _panel_entity_fold_metrics(
+            fold_actual, fold_predicted, mase_scale=None, rmsse_scale=None,
+        )
+        folds.append({
+            "fold": fold.fold, "status": "success",
+            "mode": fold.mode,
+            "train_start_label": str(fold.train_dates[0]),
+            "train_end_label": str(fold.train_dates[-1]),
+            "test_start_label": str(fold.test_dates[0]),
+            "test_end_label": str(fold.test_dates[-1]),
+            "n_train_dates": len(fold.train_dates),
+            "n_test_dates": len(fold.test_dates),
+            "n_train": int(train_mask.sum()),
+            "n_test": len(predictions),
+            "metrics": fold_metrics.model_dump(mode="json"),
+            "predictions": predictions,
+            "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
+            "error": None,
+        })
+        oof.extend(predictions)
+
+    # По-сущностные метрики (per-entity MASE/RMSSE scale -- train-only).
+    entity_metrics: dict[str, Any] = {}
+    mase_scales: list[float] = []
+    rmsse_scales: list[float] = []
+    for entity, series in entity_series.items():
+        if not series["actual"]:
+            continue
+        mase_scale, rmsse_scale = compute_metric_scales(
+            series["train_target"], seasonal_period,
+        )
+        if mase_scale is not None and mase_scale > 0:
+            mase_scales.append(mase_scale)
+        if rmsse_scale is not None and rmsse_scale > 0:
+            rmsse_scales.append(rmsse_scale)
+        entity_metrics[entity] = _panel_entity_fold_metrics(
+            series["actual"], series["predicted"],
+            mase_scale=mase_scale, rmsse_scale=rmsse_scale,
+        ).model_dump(mode="json")
+
+    # По-переменные метрики Panel VAR (per-variable scale -- медиана
+    # по-сущностных train-only префиксов той же переменной).
+    variable_metrics: dict[str, Any] = {}
+    if is_var:
+        for name, series in var_variable_series.items():
+            train_prefixes = []
+            for entity in entities:
+                entity_train = data[
+                    (data[entity_column] == entity)
+                    & data[date_column].isin(folds_plan[-1].train_dates)
+                ].sort_values(date_column)
+                train_prefixes.append(
+                    [float(value) for value in entity_train[name]]
+                )
+            scales = [
+                compute_metric_scales(prefix, seasonal_period)[0]
+                for prefix in train_prefixes
+                if prefix
+            ]
+            scales = [scale for scale in scales if scale is not None and scale > 0]
+            variable_scale = float(np.median(scales)) if scales else None
+            variable_metrics[name] = _panel_entity_fold_metrics(
+                series["actual"], series["predicted"],
+                mase_scale=variable_scale, rmsse_scale=variable_scale,
+            ).model_dump(mode="json")
+
+    # Pooled micro-average: конкатенация по-сущностных OOF; MASE-скейл --
+    # медиана по-сущностных скейлов (дисклоужено).
+    pooled_actual = [point["actual"] for point in oof]
+    pooled_predicted = [point["predicted"] for point in oof]
+    pooled_mase_scale = float(np.median(mase_scales)) if mase_scales else None
+    pooled_rmsse_scale = float(np.median(rmsse_scales)) if rmsse_scales else None
+    pooled_metrics = _panel_entity_fold_metrics(
+        pooled_actual, pooled_predicted,
+        mase_scale=pooled_mase_scale, rmsse_scale=pooled_rmsse_scale,
+    )
+
+    aggregate = _aggregate_metrics(folds)
+    warnings.append(
+        f"Pooled MASE/RMSSE-скейл -- медиана по-сущностных train-only "
+        f"скейлов ({pooled_mase_scale}); per-entity метрики -- собственные "
+        "скейлы сущностей"
+    )
+    if aggregate.mape is None:
+        warnings.append("MAPE не определена: во всех OOF-фактах нулевые значения.")
+
+    return {
+        "model_id": model_id, "model_name": model_name, "family_id": family_id,
+        "metrics": pooled_metrics.model_dump(mode="json"),
+        "n_train": last_train_rows,
+        "n_test": len(oof),
+        "train_ratio": round(last_train_rows / len(data), 12) if len(data) else 0.0,
+        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+        "data_source": "session", "status": "success",
+        "strategy": strategy, "cohort_id": cohort_id,
+        "objective": "level_forecast", "cohort_contract": {
+            "panel_entity": True,
+            "input_kind": "panel_entity",
+            "n_entities": frame.n_entities,
+            "min_entities": 5,
+            "balance": frame.balance,
+            "fingerprint": fingerprint,
+        },
+        "horizon": horizon, "n_folds": len(folds_plan), "gap": gap,
+        "folds": folds, "oof_predictions": oof, "warnings": warnings,
+        "preprocessing": {
+            "fit_policy": "panel_entity_fold_local",
+            "evaluation_scale": target_column,
+            "source_column": target_column,
+            "target_column": target_column,
+        },
+        "execution_contract": execution_contract,
+        "panel": {
+            "n_entities": frame.n_entities,
+            "balance": frame.balance,
+            "n_dates_common": frame.n_dates_common,
+            "target_column": target_column,
+            "entity_columns_order": entities,
+            "entity_metrics": entity_metrics,
+            "pooled_metrics": pooled_metrics.model_dump(mode="json"),
+            "pooled_mase_scale": pooled_mase_scale,
+            "pooled_rmsse_scale": pooled_rmsse_scale,
+            "pooled_mase_scale_method": "median of per-entity train-only scales",
+            **({"variable_metrics": variable_metrics} if is_var else {}),
+        },
+    }

@@ -27,8 +27,9 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
 
     assert result["applicable"] is True
     assert result["spec_version"]
-    assert len(result["models"]) == 24
-    assert len(result["families"]) == 8
+    # PANEL-MODELS-3b: семейство №9 panel (+3 модели) -- 24 -> 27, 8 -> 9.
+    assert len(result["models"]) == 27
+    assert len(result["families"]) == 9
 
     naive = _by_id(result, "naive")
     assert naive["compatibility"] == "candidate"

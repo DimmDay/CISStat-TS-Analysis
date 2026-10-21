@@ -54,6 +54,7 @@ from apps.api.model_impls import (
     run_nhits_backtest,
     run_tft_backtest,
     run_deepar_backtest,
+    run_panel_entity_backtest_refusal,
 )
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.neural_contract import NeuralRuntimeCapacityError
@@ -323,6 +324,15 @@ _BACKTEST_IMPLEMENTATIONS = {
     # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
     # var/vecm); тот же честный отказ на одиночном synthetic-ряде.
     "egarch": run_egarch_backtest,
+    # PANEL-MODELS-3b: панельное семейство №9 (panel_fe/panel_re/panel_var,
+    # input_kind="panel_entity") -- сущностная панель не выводима из
+    # одиночного ряда; dispatch-записи -- честный отказ (прецедент
+    # var/vecm), исполнение ТОЛЬКО панельным движком
+    # run_panel_entity_backtest_plan (session-контур) после checkpoint
+    # panel_entry. Паритет dispatch <-> production-реестра сохранён.
+    "panel_fe": run_panel_entity_backtest_refusal,
+    "panel_re": run_panel_entity_backtest_refusal,
+    "panel_var": run_panel_entity_backtest_refusal,
 }
 
 

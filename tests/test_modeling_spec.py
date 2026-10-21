@@ -137,8 +137,10 @@ class TestSpecLoading:
         """Спецификация загружается без ошибок."""
         assert spec is not None
         # Task 145: bump 1.3.0 -> 1.3.1 (калибровка soft-порогов по реальным
-        # бэктестам; семантика движка не менялась -- только данные)
-        assert spec.metadata.version == "1.3.1"
+        # бэктестам; семантика движка не менялась -- только данные);
+        # PANEL-MODELS-3b: bump 1.3.1 -> 1.4.0 (семейство №9 panel --
+        # только данные каталога, семантика движка прежняя)
+        assert spec.metadata.version == "1.4.0"
 
     def test_soft_min_must_be_strictly_below_hard_min(self):
         """Task 144: soft_min_observations >= min_observations отвергается

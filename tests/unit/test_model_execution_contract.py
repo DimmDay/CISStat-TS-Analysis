@@ -23,6 +23,13 @@ from apps.api.routers.models import _compute_candidates
 from apps.api.schemas import CandidatesRequest, DataProfileRequest
 
 
+
+# PANEL-MODELS-3b: панельное семейство №9 -- СУЩНОСТНЫЙ контур
+# (input_kind="panel_entity"), ЯВНО отличный от колонко-параллельного
+# "panel" (R2 спеки); исполнение ТОЛЬКО панельным движком
+# run_panel_entity_backtest_plan, dispatch -- честный отказ (прецедент
+# var/vecm/deepar).
+PANEL_ENTITY_IDS = frozenset({"panel_fe", "panel_re", "panel_var"})
 CERTIFIED_IDS = frozenset({
     "naive", "seasonal_naive", "drift", "mean", "ets",
     "ets_damped", "theta", "arima", "arima_auto", "prophet", "tbats",
@@ -78,7 +85,7 @@ CERTIFIED_IDS = frozenset({
     # MQLoss целевого ряда; loss/valid_loss с одинаковыми quantiles --
     # проб Task 142).
     "deepar",
-})
+}) | PANEL_ENTITY_IDS
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
 SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm", "catboost"})
@@ -128,6 +135,9 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
             expected_input_kind = "supervised"
         elif model_id in PANEL_IDS:
             expected_input_kind = "panel"
+        elif model_id in PANEL_ENTITY_IDS:
+            # PANEL-MODELS-3b: сущностный панельный контур (entity x время).
+            expected_input_kind = "panel_entity"
         else:
             expected_input_kind = "univariate"
         assert descriptor["input_kind"] == expected_input_kind

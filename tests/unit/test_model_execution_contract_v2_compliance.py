@@ -24,7 +24,7 @@ def test_descriptor_covers_objective_lifecycle_resources_and_runtime_lineage():
 
     assert descriptor["objective"] == "level_forecast"
     assert set(get_args(ExecutionInputKind)) == {
-        "univariate", "supervised", "multivariate", "panel",
+        "univariate", "supervised", "multivariate", "panel", "panel_entity",
     }
     assert descriptor["lifecycle_capabilities"] == {
         "fit": True, "predict": True, "tuning": True, "diagnostics": True,

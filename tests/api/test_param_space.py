@@ -103,9 +103,11 @@ class TestParamSpaceYamlLoading:
     def test_spec_loads_without_errors(self, spec):
         """Базовая проверка — спецификация парсится."""
         assert spec is not None
-        # Task 145: bump 1.3.0 -> 1.3.1 (калибровка soft-порогов по
-        # реальным бэктестам; только данные, семантика движка прежняя)
-        assert spec.metadata.version == "1.3.1"
+        # Task 145: bump 1.3.0 -> 1.3.1 (калибровка soft-порогов);
+        # PANEL-MODELS-3b: bump 1.3.1 -> 1.4.0 (семейство №9 panel,
+        # input_kind="panel_entity" -- только данные каталога, семантика
+        # движка прежняя)
+        assert spec.metadata.version == "1.4.0"
 
     def test_ets_has_param_space(self, spec):
         """ETS (Auto) имеет непустой param_space для тюнинга."""

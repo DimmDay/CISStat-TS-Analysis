@@ -1,10 +1,10 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
-# Версия: 1.3.1 (Task 145: калибровка soft_min_observations по первым
-#          реальным бэктестам 50/40 -> 60/60 -- парный end-anchored sliding
-#          на 10 реальных рядах платформы; см.
-#          docs/task145_soft_history_calibration.md)
-# Дата:   2026-09-17
+# Версия: 1.4.0 (PANEL-MODELS-3b: семейство №9 "panel" -- панельный контур
+#          моделирования сущностной панели entity x время; FE/RE/Panel VAR
+#          с input_kind="panel_entity" и F06-маршрутизацией однорядного
+#          каталога; спека spec_panel_models_2026-10-20.md §3b)
+# Дата:   2026-10-20
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Архитектура: 8 семейств моделей → движок применимости → пайплайн моделирования
@@ -20,8 +20,8 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 metadata:
-  version: "1.3.1"
-  last_updated: "2026-09-17"
+  version: "1.4.0"
+  last_updated: "2026-10-20"
   author: "CISStat TS Analysis Team"
   description: >-
     Формальная спецификация модуля «Моделирование»:
@@ -711,6 +711,82 @@ families:
           lstm_hidden_size: [32, 64]
           input_size: [24, 48]
 
+  # ── 9. PANEL (PANEL-MODELS-3b) ──────────────────────────────────────────────
+  # Панельный контур моделирования: сущностная панель entity x время
+  # (контракт app/preprocessing/panel.py, этап 3a). Исполнители -- ТОЛЬКО
+  # панельный движок run_panel_entity_backtest_plan с input_kind=
+  # "panel_entity" (ЯВНО отличен от колонко-параллельного "panel" Task
+  # 142 -- R2 спеки; обе ветки живут). Гейты §3b вычисляет паспорт панели
+  # (checkpoint panel_entry, этап 3a); однорядный каталог панель НЕ
+  # маршрутизирует (правило F06) -- этот блок несёт методологическую
+  # фактуру панельного контура для Model Card и справки.
+  - id: "panel"
+    name: "Панельные модели (Panel)"
+    priority: 9
+    required: false
+    description: >-
+      Панельные модели на сущностной панели (entity x время):
+      Fixed Effects / Random Effects / Panel VAR. Гейты применимости:
+      FE/RE -- n_entities >= 5, t_per_entity.min >= 10, n_exog >= 1
+      (статическая панель прогнозирует ТОЛЬКО сценарно -- при путях
+      экзогенных факторов; без экзогенных -- honest limitation
+      «динамические панели -- GMM-контур, в разработке»); Panel VAR --
+      сбалансированность общей сетки + n_entities >= 5 +
+      T_common >= 3*n_vars*(p+1) + предупреждение при малом T.
+      Производственные капы: предупреждение при n_entities > 200
+      (render 512MB), честный отказ при n_entities > 2000. Спецификация
+      FE/RE -- advisory тест Хаусмана (форма Мундлака; при малом числе
+      сущностей -- honest note о ненадёжности кластерного вывода);
+      решение за аналитиком.
+    models:
+      - id: "panel_fe"
+        name: "Fixed Effects (within)"
+        description: >-
+          Within-оценщик: OLS на within-преобразованных данных с
+          поглощением сущностных интерсептов (groupby(entity), R5);
+          кластерно-робастные SE по сущностям; артефакты: коэффициенты,
+          SE, R2 within/between/overall, по-сущностные эффекты.
+          Кросс-валидация против OLS с C(entity)-dummies в допуске 1e-8
+          (R3: без внешних библиотек). Сценарный прогноз: точечный +
+          SE-интервалы (нормальная аппроксимация, метод дисклоужен).
+        min_observations: 50       # 5 сущностей x 10 наблюдений (гейты §3b)
+        min_series: 5              # минимум сущностей панели
+        supports_exogenous: true
+        supports_prediction_intervals: true
+        libraries: ["statsmodels"]
+        training_time: "seconds"
+
+      - id: "panel_re"
+        name: "Random Effects (GLS)"
+        description: >-
+          Quasi-demeaning GLS: компоненты дисперсии Swamy-Arora,
+          квази-детрендирование theta_i по фактическим T_i сущности
+          (несбалансированные панели легитимны, R7); артефакты те же +
+          компоненты дисперсии. SE -- модельные GLS (дисклоужено).
+          Отрицательная sigma_u2 -- честный clamp с warning.
+        min_observations: 50
+        min_series: 5
+        supports_exogenous: true
+        supports_prediction_intervals: true
+        libraries: ["statsmodels"]
+        training_time: "seconds"
+
+      - id: "panel_var"
+        name: "Panel VAR (pooled)"
+        description: >-
+          Pooled VAR(1..2) на СБАЛАНСИРОВАННОМ пересечении сеток (гейт;
+          несбалансированная панель -- честный отказ «Panel VAR требует
+          общей сетки»), entity-фиксированные эффекты dummies'ами в
+          матрице регрессоров; по-переменные OOF-метрики; рекурсивный
+          h-шаговый прогноз всех переменных сетки. IRF -- вне задачи
+          (PANEL-GMM-4).
+        min_observations: 60       # 5 сущностей x 2 переменные x 6
+        min_series: 5
+        supports_exogenous: false
+        supports_prediction_intervals: false
+        libraries: ["statsmodels"]
+        training_time: "seconds"
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. УРОВНИ ПРИМЕНИМОСТИ
@@ -769,6 +845,20 @@ applicability_engine:
   # ── 3.1. ЗАПРЕЩАЮЩИЕ УСЛОВИЯ → NOT_APPLICABLE ─────────────────────────────
   # Структурные противоречия: модель НЕ МОЖЕТ быть запущена.
   forbidden:
+    # F06 ПЕРВЫМ: панельные модели маршрутизируются в панельный контур
+    # ДО generic-правил однорядного каталога (первое совпадение определяет
+    # уровень -- честная маршрутизация панельного семейства №9).
+    - id: "F06"
+      description: "Панельные модели -- панельный контур (PANEL-MODELS-3b)"
+      condition: "model.family == 'panel'"
+      result: "NOT_APPLICABLE"
+      message: >-
+        {model.name} исполняется только в панельном контуре: паспорт панели
+        (checkpoint panel_entry) + панельный движок
+        run_panel_entity_backtest_plan; однорядный каталог панель не
+        маршрутизирует (гейты -- в паспорте панели).
+
+
     - id: "F01"
       description: "Многомерная модель (VAR/VECM/DeepAR) при одном ряде"
       condition: "n_series == 1 AND model.requires_multiple_series"
@@ -806,6 +896,8 @@ applicability_engine:
       condition: "model.id == 'deepar' AND n_series < model.min_series"
       result: "NOT_APPLICABLE"
       message: "DeepAR требует минимум {model.min_series} рядов для глобальной модели"
+
+
 
   # ── 3.2. НЕЖЕЛАТЕЛЬНЫЕ УСЛОВИЯ → NOT_RECOMMENDED ──────────────────────────
   # Модель МОЖЕТ быть запущена, но результаты ненадёжны.
