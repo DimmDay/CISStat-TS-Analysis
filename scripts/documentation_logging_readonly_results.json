@@ -1,0 +1,297 @@
+{
+  "base_commit": "bee3f8e300e6d2f5de6f8c9d9e4d6bc6e4091065",
+  "method": "static AST and source inspection",
+  "product_imported": false,
+  "http_calls": 0,
+  "database_calls": 0,
+  "product_files_changed": false,
+  "findings": [
+    {
+      "id": "F01",
+      "level": "source_fact",
+      "fact": "Six canonical stages; session TTL 30d; short trace cap 1000; four single-series passport points and separate panel_entry.",
+      "evidence": [
+        {
+          "path": "apps/api/session_store.py",
+          "line": 133,
+          "anchor": "STAGES = [\"upload\""
+        },
+        {
+          "path": "apps/api/session_store.py",
+          "line": 86,
+          "anchor": "SESSION_TTL_SECONDS ="
+        },
+        {
+          "path": "apps/api/session_store.py",
+          "line": 139,
+          "anchor": "MAX_PIPELINE_TRACE_EVENTS ="
+        },
+        {
+          "path": "apps/api/session_store.py",
+          "line": 142,
+          "anchor": "PASSPORT_STAGES ="
+        },
+        {
+          "path": "apps/api/session_store.py",
+          "line": 148,
+          "anchor": "PANEL_PASSPORT_STAGES ="
+        }
+      ]
+    },
+    {
+      "id": "F02",
+      "level": "source_fact",
+      "fact": "TraceEvent v2 has context/result/method/operation refs; required and advisory producer guarantees differ.",
+      "evidence": [
+        {
+          "path": "apps/api/trace_events.py",
+          "line": 611,
+          "anchor": "class TraceEvent:"
+        },
+        {
+          "path": "apps/api/delivery_outbox.py",
+          "line": 13,
+          "anchor": "ADVISORY_PRODUCERS"
+        }
+      ]
+    },
+    {
+      "id": "F03",
+      "level": "source_fact",
+      "fact": "Existing MD/HTML report reads durable events and current knowledge; v2 preserves event refs and current/stale/unknown validity.",
+      "evidence": [
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 2185,
+          "anchor": "def get_run_report("
+        },
+        {
+          "path": "app/core/run_report.py",
+          "line": 734,
+          "anchor": "REPORT_VERSION = \"2\""
+        },
+        {
+          "path": "app/core/run_report.py",
+          "line": 940,
+          "anchor": "ТЕКСТ ТЕКУЩЕЙ версии реестра знаний"
+        }
+      ]
+    },
+    {
+      "id": "F04",
+      "level": "source_fact",
+      "fact": "Report forecast links use a session-relative export URL, not a frozen artifact.",
+      "evidence": [
+        {
+          "path": "app/core/run_report.py",
+          "line": 195,
+          "anchor": "href = f\"/v1/session/modeling/forecast/{fid}/export.json\""
+        }
+      ]
+    },
+    {
+      "id": "F05",
+      "level": "source_fact",
+      "fact": "Both forecast GET export functions call _record_export; it touches and saves session state.",
+      "evidence": [
+        {
+          "path": "apps/api/routers/forecasting_session.py",
+          "line": 393,
+          "anchor": "def _record_export("
+        },
+        {
+          "path": "apps/api/routers/forecasting_session.py",
+          "line": 408,
+          "anchor": "def export_forecast_csv("
+        },
+        {
+          "path": "apps/api/routers/forecasting_session.py",
+          "line": 421,
+          "anchor": "def export_forecast_json("
+        }
+      ]
+    },
+    {
+      "id": "F06",
+      "level": "source_fact",
+      "fact": "Forecast UI implements CSV/JSON/PNG; PDF is explicitly unavailable in v1.",
+      "evidence": [
+        {
+          "path": "packages/ui/components/ForecastExportMenu.tsx",
+          "line": 9,
+          "anchor": "PDF сознательно не реализован"
+        },
+        {
+          "path": "packages/ui/components/ForecastExportMenu.tsx",
+          "line": 20,
+          "anchor": "downloadChartPng"
+        }
+      ]
+    },
+    {
+      "id": "F07",
+      "level": "source_fact",
+      "fact": "AdminProgressDashboard is aggregate monitoring, with ADMIN API-key auth; no technical log browser was found in the inspected UI.",
+      "evidence": [
+        {
+          "path": "packages/ui/components/AdminProgressDashboard.tsx",
+          "line": 32,
+          "anchor": "fetchAdminOverview"
+        },
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 2420,
+          "anchor": "principal: Any = Depends(require_admin_role)"
+        }
+      ]
+    },
+    {
+      "id": "F08",
+      "level": "source_fact",
+      "fact": "Local report handler has no principal/ownership dependency; _require_run only looks up existence. This is a source-level gap, not a live exposure proof.",
+      "evidence": [
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 233,
+          "anchor": "router = APIRouter()"
+        },
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 1124,
+          "anchor": "def _require_run("
+        },
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 2185,
+          "anchor": "def get_run_report("
+        }
+      ]
+    },
+    {
+      "id": "F09",
+      "level": "source_fact",
+      "fact": "Root API logging defaults to DEBUG; a safe_error helper exists, but some paths log raw exception info.",
+      "evidence": [
+        {
+          "path": "apps/api/main.py",
+          "line": 24,
+          "anchor": "logging.basicConfig(level=logging.DEBUG)"
+        },
+        {
+          "path": "apps/api/storage_diagnostics.py",
+          "line": 94,
+          "anchor": "def safe_error("
+        },
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 1144,
+          "anchor": "\"Progress: долговременный слой недоступен (%s)\", exc, exc_info=True"
+        }
+      ]
+    },
+    {
+      "id": "F10",
+      "level": "source_fact",
+      "fact": "Checkpoint DataFrames are CSV on local filesystem; checkpoint retention currently keeps the last five.",
+      "evidence": [
+        {
+          "path": "apps/api/research_runs.py",
+          "line": 2249,
+          "anchor": "def save_checkpoint_snapshot("
+        },
+        {
+          "path": "apps/api/routers/progress.py",
+          "line": 1439,
+          "anchor": "store.list_checkpoints(run_id)][-5:]"
+        }
+      ]
+    },
+    {
+      "id": "F11",
+      "level": "source_fact",
+      "fact": "Monitoring task UI is a ModulePlaceholder; implemented Causes returns existing artifacts and marks unavailable methods not_computed.",
+      "evidence": [
+        {
+          "path": "apps/standalone/app/tasks/monitoring/page.tsx",
+          "line": 7,
+          "anchor": "ModulePlaceholder title=\"Мониторинг прогноза\""
+        },
+        {
+          "path": "apps/api/routers/tasks_session.py",
+          "line": 36,
+          "anchor": "\"method_id\": \"fold_importance\""
+        }
+      ]
+    },
+    {
+      "id": "F12",
+      "level": "source_fact",
+      "fact": "Entity-panel passports/backtests/forecasts are a separate contour; documentation must preserve panel lineage.",
+      "evidence": [
+        {
+          "path": "apps/api/routers/modeling_session.py",
+          "line": 3438,
+          "anchor": "\"/panel/passport\""
+        },
+        {
+          "path": "apps/api/routers/modeling_session.py",
+          "line": 3640,
+          "anchor": "\"/panel/backtest\""
+        },
+        {
+          "path": "apps/api/routers/modeling_session.py",
+          "line": 3698,
+          "anchor": "\"/panel/forecast\""
+        }
+      ]
+    },
+    {
+      "id": "F13",
+      "level": "source_fact",
+      "fact": "Legacy Excel exporter hardcodes an institution-verification footer; it is not evidence of approval.",
+      "evidence": [
+        {
+          "path": "app/core/export.py",
+          "line": 122,
+          "anchor": "Верифицировано СтатКомитетом СНГ"
+        },
+        {
+          "path": "app.py",
+          "line": 3148,
+          "anchor": "from app.core.export import export_passport_to_excel"
+        }
+      ]
+    },
+    {
+      "id": "F14",
+      "level": "source_fact",
+      "fact": "Database upload defaults to an empty source-file fingerprint; data-version evidence needs a separate typed snapshot/digest.",
+      "evidence": [
+        {
+          "path": "apps/api/upload_common.py",
+          "line": 133,
+          "anchor": "dataset_fingerprint: str = \"\""
+        }
+      ]
+    }
+  ],
+  "source_sha256": {
+    "apps/api/session_store.py": "c85ddb6086d4e3ba22de2795aa5a4d44bd5cf8b95b520bc9f3a5f77d267a02e7",
+    "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
+    "apps/api/delivery_outbox.py": "acda561581308b2e89cd1e3a2bc49ea3f4955b6362ad4be7464f7ef5f9d8639b",
+    "apps/api/routers/progress.py": "f7ff6e23e96b0039e980d319573aaf63fe6f7b2bf7b4f884633d7b6347c309f7",
+    "app/core/run_report.py": "2a6767fa17f972855ea03ecfb0dc8fcf6d284d4f33a92f6e9d80a300c30537b0",
+    "apps/api/routers/forecasting_session.py": "802e4b93e85c7975fc63167993173bef4874aa75d78fc1348d8719dddd05eba2",
+    "packages/ui/components/ForecastExportMenu.tsx": "1612cbe71acfcfb29c79d861701b1eef3af4fcc716616c17dee47b3ff31fa48b",
+    "packages/ui/components/AdminProgressDashboard.tsx": "b2c788b8f4d1295c80d9bf175b34a18eee4fef43dc33b047a42bb009ecdb35e5",
+    "apps/api/main.py": "83a8d3ca1bae805c8f7e402f7533a4667ad1eafb103a89cb072816069d5705e1",
+    "apps/api/storage_diagnostics.py": "8bd4d011347b48ba8e5b882f465c08b038f2dd8bab5ec590b55b6d4b27c5a947",
+    "apps/api/research_runs.py": "6d591b32f8f45a70a616a774c1d6d7d07e8e2250c4031f34f25e317ac0a5e187",
+    "apps/standalone/app/tasks/monitoring/page.tsx": "af870b85aa3f2d73d75d8f97967a4fb0a1c4f8c4079d6cd39877e61c7b23b9f0",
+    "apps/api/routers/tasks_session.py": "5769622a5e3c8aafa9ab38e903d7b752fbf5723fbebcf594b902348dd2edfea5",
+    "apps/api/routers/modeling_session.py": "6a084f9763d2a83b77c2f0ec65ef1fdc8f3709713eb36185e6306503ae92b75c",
+    "app/core/export.py": "4fd76c0b4217e4fdd73362ce6127b1eb0182c84985aaf259ed4d2049a4dbc8d8",
+    "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
+    "apps/api/upload_common.py": "c49b8d24dac11bf7966afed063fc4843e211551899fed42e994f09b3040fa3dd"
+  }
+}

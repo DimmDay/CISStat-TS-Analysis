@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-doclog
+configfile: pytest.ini
+plugins: anyio-4.15.1, typeguard-4.6.0, platformdirs-4.13.0
+collected 61 items / 10 deselected / 51 selected
+
+tests/api/test_run_report.py ........................................... [ 84%]
+........                                                                 [100%]
+
+================= 51 passed, 10 deselected, 1 warning in 1.84s =================
