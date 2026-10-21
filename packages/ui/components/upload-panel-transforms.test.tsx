@@ -304,6 +304,22 @@ describe("UPLOAD-RECOMP-2c: блок «Панельные данные: три �
   });
 });
 
+describe("PANEL-MODELS-3d (спека spec_panel_models §3.4): бейдж после поставки 3b/3c", () => {
+  it("пояснение бейджа обновлено после приёмки 3b/3c: «панельные модели ... доступны в Моделировании», статус «в разработке» снят (титул бейджа не меняется)", async () => {
+    await renderPanelDataset();
+    await waitFor(() => expect(screen.getByText("Panel Data — Balanced")).toBeInTheDocument());
+
+    const badge = screen.getByTestId("panel-badge");
+    // Титул UPLOAD-RECOMP-2c не меняется (пины cert-oracles остаются).
+    expect(badge).toHaveTextContent("Ряд не трансформируем, исследуем панельные данные");
+    // 3d: однострочная правка пояснения -- статус синхронизирован с фактом
+    // поставки панельного контура (3a/3b/3c приняты в main).
+    expect(badge.textContent).toContain("доступны в «Моделировании»");
+    expect(badge.textContent).toContain("PANEL-MODELS-3");
+    expect(badge.textContent).not.toContain("в разработке");
+  });
+});
+
 describe("UPLOAD-RECOMP-2c: микросервис «Фильтр сущности»", () => {
   it("селектор заполнен значениями entity-колонки с бэкенда (preview без value)", async () => {
     const { entityFilterBodies } = await renderPanelDataset();
