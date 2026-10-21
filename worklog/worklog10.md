@@ -1440,3 +1440,35 @@ app/modeling/panel_models.py:804-806: `dummies[:, index - 1] = 1.0` заполн
 ### Вердикт и поставка
 
 **НЕ СЕРТИФИЦИРОВАНО.** Один блокирующий продуктовый дефект (fit_panel_var, §дефект) + 11 контентных пин-регрессов поставки (CF-1) + опровергнутое заявление о дельте. FE/RE/Хаусман/сценарные прогнозы/folds/движок FE-RE/гейты/капы/контур/каталог/R4 -- подтверждены оракулами и мутантами, дефектов нет. Кандидаты на постановки: (1) фикс dummy-блока fit_panel_var + пин восстановления A на гетерогенной панели + снятие SingularMatrixWarning + мутационная валидация VAR-внутренностей и повторная сертификация VAR-контура; (2) рекалибровка 11 пинов + адаптация sweep-теста; (3) мёртвый walrus `if plan_objective := "level_forecast"` в движке; (4) усиление test_var_entity_dummies_in_regressors. Deliverable: ZIP cisstat-panel-3b-cert.zip -> открытый контейнер сессии (download + upload): docs/cert_panel_3b_2026-10-20.md (акт), scripts/cert_3b/{oracle_backend.py, oracle_corpus.py, oracles_backend.txt, mutations.py, mutations_protocol.txt, regress_pytest_bee3f8e.txt}, worklog/worklog10.md, MANIFEST.sha256 (объединён с bee3f8e: 104 записи, sha256sum -c -- все валидны). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PANEL-MODELS-3b-FIX (2026-10-21) — Fix of Stage 3b implementation defects per cert 3b plan + re-certification (baseline main@2c2e53e)
+
+Постановка: «Синхронизируйся до 2c2e53e. Работаем без манифеста, целостность гарантирует git. Исправь ошибки реализации PANEL-MODELS-3b по твоему плану и пересертифицируй задачу. Следуй правилам AGENTS.md. По завершении работы выложи в открытый контейнер сессии zip новых/обновлённых файлов для скачивания».
+
+### Синхронизация и среда
+
+Checkout 2c2e53e (detached, чистое дерево). Режим «без манифеста» подтверждён практикой тимлида: 2c2e53e содержит только артефакты сертификации; `git diff bee3f8e 2c2e53e -- app/ apps/ tests/ rules/ src/` = 0 строк — атрибуция FAILED-ID акта 3b-CERT переносится. Контейнер пересоздан: базовый venv без опциональных пакетов; среда восстановлена по requirements.txt + requirements-dev + pandera/PyWavelets/psycopg[binary]/statsforecast/tbats/prophet/arch/sqlalchemy/syrupy (pip строго `python3 -m pip`); statsmodels 0.14.5 → 0.15.0 по требованию репо (путь `simulate(rng=...)`; на 0.14.5 — 4 внесистемных падения test_forecasting). Реестр сверен: PRODUCTION_BACKTEST_MODEL_IDS = 22 — совпадает с базой bee3f8e.
+
+### Фикс по плану акта 3b-CERT §6 (TDD)
+
+(1) **Блокирующий дефект fit_panel_var устранён одной строкой** (panel_models.py:806): `dummies[index, index - 1] = 1.0` — ячейковая запись (drop_first) вместо колонковой. TDD: RED 4/4 на дефектном коде (A: 0.7119 vs 0.6; рекурсия 4.414 vs 4.167) → фикс → GREEN 38/38. Новый пин `_make_var_panel_heterogeneous` (N=6, T=18, дизъюнктен repo-фикстуре и NS-VAR): бесшумная панель — точное восстановление A/base/эффектов (1e-9), R2==1, warnings==(); шумовой (0.3, seed 41) — допуски откалиброваны двусторонне на дефектной/исправленной реализациях (0.0504/0.2478 → 0.11); прогноз — точная независимая numpy-рекурсия. (2) **N1**: мёртвый walrus `if plan_objective := "level_forecast": pass` (backtesting.py:2015, единственное вхождение имени) удалён. (3) **N2**: test_var_entity_dummies_in_regressors усилен идентификацией эффектов (не только флаг).
+
+### Рекалибровка 11 пинов CF-1
+
+Все 11 воспроизведены (11 failed) и устранены честной рекалибровкой (имена-историзмы сохранены, семантика задокументирована): egarch/garch production-count (24|19)+3; var dispatch-chain «ok 22 False»; capability matrix 24→28; mvp-certification каталог 28 + EXPECTED_PRODUCTION += panel_fe/re/var (+deepar_panel при neural) + PREDICTORS += 4 панельных; 5 readiness-матриц 24/19→27/22; sweep-тест — panel_* исключены с честным документированием + добавлен assert отказа level-движка для panel_fe (паритет с garch-прецедентом), len(results)==15 сохранён.
+
+### Оракулы на своих данных — 95/95 PASS (было 88/95)
+
+После фикса перевёрнуты все 7 проверок дефект-базы (O30a-d, O32, O33, O63b). S-фиксы СВОЕЙ инфраструктуры (продукт не менялся): S-1 — O30a/O32/O33 сравнивали продукт с посторонними литералами матриц вместо корпусных VAR1_A/VAR2_A (в кампании 3b были инертно-красными — нулевой вклад канала); S-2 — approx() переведена на гибридный допуск numpy.allclose-семантики (чистая rel с полом 1e-12 ложно краснела на точных нулях корпусных констант против float-шума OLS ~1e-15; для ненулевых значений порядка 1 не слабее прежней).
+
+### Мутационная кампания VAR-внутренностей — 26 боевых + 3 контроля (mutations_var.py)
+
+Зона, исключённая в 3b, валидирована полностью. Каналы: ORACLE (база all-green) + REPO (61 тест). md5-паспорт 7bf49422…, побайтовое восстановление: RESTORE-FAIL 0, TREE RESTORED BYTE-EXACT (запуск частями MUT_RANGE в лимитах песочницы, паспорта/дерево общие). **Итог: 26/26 KILLED, 0 выживших, контроли CTL-V01/02/03 ALIVE 3/3.** PMV-07 — трипвайр исторического дефекта — убит ORACLE+REPO (находка Cert 3b §4 покрыта регрессионно). PMV-16/17 (выжившие первого прогона) вскрыли разрыв покрытия: residual_variance_by_equation VAR не была пиннута → добавлен пин с независимой ручной OLS-пересборкой (np.linalg.lstsq, точная df-семантика SS_res/(n_obs−n_params), 1e-9) → перепрогон: KILLED. PMV-09: оценки инвариантны к нулевому столбцу (pinv аннигилирует), но df_res по числу колонок → убит df-пином (история: выживший до пина, убит после).
+
+### Регрессия и вердикт
+
+Полный pytest @ fixed tree: **31 failed / 4139 passed / 66 skipped** — множество FAILED сверено по-ID с документированной средовой базой (14 MNS-SPEC-PATH + 9 neural + 8 psycopg-DSN): diff обоих множеств (unit 20, api 11) ПУСТОЙ. Против pre-fix (42F/4125P @ bee3f8e): −11 пинов CF-1, +14 passed. Панельный контур: 38/38 unit, 23/23 api, оракулы 95/95. **ВЕРДИКТ: СЕРТИФИЦИРОВАНО.** Инфраструктурный инцидент честности: первый запуск кампании в отсоединённой сессии пережил вызов и был убит посреди PMV-02 с невосстановленным файлом; дерево восстановлено обратной заменой + оракулы 95/95; финальные протоколы порождены контрольными прогонами целиком.
+
+Deliverable: ZIP cisstat-panel-3b-fix.zip → открытый контейнер сессии (download + upload): docs/cert_panel_3b_fix_2026-10-21.md (акт), app/modeling/panel_models.py (фикс), apps/api/backtesting.py (N1), tests/unit/{test_panel_models,test_backtesting_engine,test_model_capability_matrix,test_modeling_mvp_certification,test_{egarch,garch,deepar,lstm,nbeats,nhits,tft,var}_integration_paths}.py, scripts/cert_3b/{oracle_backend.py (S-фиксы), mutations_var.py, mutations_var_protocol.txt, oracles_backend_postfix.txt, regress_pytest_2c2e53e_postfix.txt}, worklog/worklog10.md (эта секция). Без commit/push (AGENTS.md).

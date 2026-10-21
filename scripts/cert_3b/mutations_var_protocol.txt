@@ -1,0 +1,56 @@
+=== PANEL-MODELS-3b-FIX: мутационная кампания VAR-внутренностей (scripts/cert_3b/mutations_var.py) ===
+=== База: fixed tree md5 7bf494222d4e54d6f1e6b07f0dc6be55, оракул 95/95 (all-green), REPO 61 тест ===
+=== Запуск частями (MUT_RANGE) в лимитах песочницы; паспорта и дерево общие ===
+RANGE 0:10 -> 10 mutants
+PASSPORTS (md5 original, FIXED tree): {'panel_models': '7bf494222d4e54d6f1e6b07f0dc6be55'}
+ORACLE BASELINE (fixed tree, all-green): []
+PMV-01   KILLED channel=ORACLE+REPO    13.9s md5=d45a30fc 
+PMV-02   KILLED channel=ORACLE         16.4s md5=98e0a6de 
+PMV-03   KILLED channel=ORACLE         16.5s md5=28676e5c 
+PMV-04   KILLED channel=ORACLE+REPO    13.3s md5=52e6dacb 
+PMV-05   KILLED channel=ORACLE+REPO    12.9s md5=428441f9 
+PMV-06   KILLED channel=ORACLE+REPO    12.6s md5=bffa3bf2 
+PMV-07   KILLED channel=ORACLE+REPO    14.0s md5=50fa6ef2 
+PMV-08   KILLED channel=ORACLE+REPO    13.6s md5=ebaac995 
+PMV-09   KILLED channel=REPO           13.8s md5=aa93a410 
+PMV-10   KILLED channel=ORACLE+REPO    14.0s md5=6d2feecf 
+
+=== SUMMARY ===
+TOTAL 10 | KILLED 10 | ALIVE 0 | BAD 0 | RESTORE-FAIL 0
+TREE RESTORED BYTE-EXACT: True
+RANGE 10:20 -> 10 mutants
+PASSPORTS (md5 original, FIXED tree): {'panel_models': '7bf494222d4e54d6f1e6b07f0dc6be55'}
+ORACLE BASELINE (fixed tree, all-green): []
+PMV-11   KILLED channel=ORACLE+REPO    14.1s md5=57dd08a7 
+PMV-12   KILLED channel=ORACLE+REPO    13.6s md5=7cd42f18 
+PMV-13   KILLED channel=REPO           14.7s md5=fb9951c8 
+PMV-14   KILLED channel=ORACLE+REPO    14.2s md5=37df4bec 
+PMV-15   KILLED channel=ORACLE+REPO    13.9s md5=6932bbfc 
+PMV-16   KILLED channel=REPO           14.2s md5=720398f3 
+PMV-17   KILLED channel=REPO           14.2s md5=b77a90f4 
+PMV-18   KILLED channel=ORACLE+REPO    13.2s md5=dc0d7196 
+PMV-19   KILLED channel=ORACLE+REPO    14.3s md5=6d70ffa9 
+PMV-20   KILLED channel=ORACLE         14.9s md5=6c310bb1 
+
+=== SUMMARY ===
+TOTAL 10 | KILLED 10 | ALIVE 0 | BAD 0 | RESTORE-FAIL 0
+TREE RESTORED BYTE-EXACT: True
+RANGE 20:29 -> 9 mutants
+PASSPORTS (md5 original, FIXED tree): {'panel_models': '7bf494222d4e54d6f1e6b07f0dc6be55'}
+ORACLE BASELINE (fixed tree, all-green): []
+PMV-21   KILLED channel=ORACLE         14.7s md5=f269274e 
+PMV-22   KILLED channel=ORACLE+REPO    14.5s md5=7c88c362 
+PMV-23   KILLED channel=ORACLE+REPO    13.7s md5=79bfb28d 
+PMV-24   KILLED channel=ORACLE+REPO    13.7s md5=df098647 
+PMV-25   KILLED channel=ORACLE+REPO    14.7s md5=ae7224b8 
+PMV-26   KILLED channel=ORACLE+REPO    14.3s md5=115a56a6 
+CTL-V01  ALIVE  channel=-              14.9s md5=3ebfc051 control-ALIVE OK
+CTL-V02  ALIVE  channel=-              15.6s md5=f6983ca6 control-ALIVE OK
+CTL-V03  ALIVE  channel=-              16.0s md5=a01c63db control-ALIVE OK
+
+=== SUMMARY ===
+TOTAL 9 | KILLED 6 | ALIVE 3 | BAD 0 | RESTORE-FAIL 0
+  ALIVE: CTL-V01 (control-ALIVE OK)
+  ALIVE: CTL-V02 (control-ALIVE OK)
+  ALIVE: CTL-V03 (control-ALIVE OK)
+TREE RESTORED BYTE-EXACT: True

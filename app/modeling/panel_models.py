@@ -803,7 +803,7 @@ def fit_panel_var(frame: PanelFrame, *, lags: int = 1) -> PanelVarResult:
     ]
     dummies = np.zeros((n, max(n - 1, 0)))
     for index in range(1, n):
-        dummies[:, index - 1] = 1.0
+        dummies[index, index - 1] = 1.0  # ячейковая запись (drop_first): строка сущности index, колонка index-1
     dummy_block = np.repeat(dummies[:, None, :], t_common - lags, axis=1)
     const_block = np.ones((n, t_common - lags, 1))
 

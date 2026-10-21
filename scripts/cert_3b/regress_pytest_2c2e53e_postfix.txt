@@ -1,0 +1,33 @@
+=== Полный pytest tests/unit+tests/api @ 2c2e53e + PANEL-MODELS-3b-FIX (среда: venv python3.12, requirements + pandera/PyWavelets/psycopg[binary]/statsforecast/tbats/prophet/arch/sqlalchemy/syrupy/duckdb/streamlit; statsmodels 0.15.0; pip строго python3 -m pip) ===
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_exists_at_repo_root
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_references_review_and_base_commit
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_order_matches_stage_nodes_exactly
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_excluded_stages_are_the_rest
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_status_priority_error_over_warning
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_existing_rules_pinned_id_stage_priority
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_canon_declares_version_marker
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_contract_terms_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_q1_to_q7_documented
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_eight_rule_ids_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_warning_capable_stages_named
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_one_recommendation_canon_kept
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_no_silence_with_problem_node_claim
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1GuardHonesty::test_scan_stops_total_matches_code
+FAILED tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+FAILED tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+==== 31 failed, 4139 passed, 66 skipped, 5972 warnings in 479.10s (0:07:59) ====

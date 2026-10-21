@@ -52,7 +52,13 @@ def rel(a: float, b: float) -> float:
 
 
 def approx(a: float, b: float, tol: float = 1e-9) -> bool:
-    return rel(a, b) <= tol
+    # S-ФИКС (PANEL-MODELS-3b-FIX): гибридный допуск (семантика
+    # numpy.allclose): |a-b| <= atol + rtol*max(|a|,|b|). Прежняя чистая
+    # rel-метрика с полом 1e-12 ложно краснела на точных нулях корпусных
+    # констант (VAR2_A["v2"]["v1"]=0.0) против float-шума OLS ~1e-15.
+    # Для ненулевых значений порядка 1 гибрид >= прежней rel-метрики --
+    # ни одна проходившая проверка не ослаблена.
+    return abs(float(a) - float(b)) <= tol + tol * max(abs(float(a)), abs(float(b)))
 
 
 def expect_error(oid: str, fn, *parts: str) -> None:
@@ -276,9 +282,12 @@ def o20_o22_re() -> None:
 def o30_o38_var() -> None:
     fr = frame(oc.nsvar_frame(), "v1", values=["v1", "v2"])
     res = fit_panel_var(fr, lags=1)
-    exp = oc.var_expected(
-        [{"v1": {"v1": 0.5, "v2": 0.2}, "v2": {"v1": -0.3, "v2": 0.4}}],
-        oc.VAR_C, oc.VAR_ALPHAS)
+    # S-ФИКС (PANEL-MODELS-3b-FIX): ручная сторона обязана ссылаться на
+    # корпусную константу VAR1_A (0.85/0.1/-0.1/0.9), а не на посторонний
+    # литерал (0.5/0.2/-0.3/0.4) -- в кампании 3b это делало O30a/O33
+    # инертно-красными (сравнение с чужой матрицей) -- дефект СВОЕЙ
+    # инфраструктуры, продуктовый код не менялся.
+    exp = oc.var_expected([oc.VAR1_A], oc.VAR_C, oc.VAR_ALPHAS)
     A = res.a_matrices[0]
     check("O30a", all(approx(A[eq][var], exp["a_matrices"][0][eq][var], 1e-9)
                       for eq in ("v1", "v2") for var in ("v1", "v2")),
@@ -298,20 +307,20 @@ def o30_o38_var() -> None:
                      for v in ("v1", "v2")),
           f"last_states {res.last_states[0]} vs {last[0]}")
 
-    # O32: VAR(2) восстановление
+    # O32: VAR(2) восстановление -- ручная сторона = корпусная VAR2_A
+    # (S-ФИКС: прежний литерал {0.4,...} не совпадал с корпусом nsvar2_frame).
     fr2 = frame(oc.nsvar2_frame(), "v1", values=["v1", "v2"])
     res2 = fit_panel_var(fr2, lags=2)
-    exp2_A = [{"v1": {"v1": 0.4, "v2": 0.1}, "v2": {"v1": -0.2, "v2": 0.3}},
-              {"v1": {"v1": 0.1, "v2": 0.0}, "v2": {"v1": 0.0, "v2": -0.1}}]
+    exp2_A = [oc.VAR2_A[0], oc.VAR2_A[1]]
     ok = all(approx(res2.a_matrices[ell][eq][var], exp2_A[ell][eq][var], 1e-9)
              for ell in (0, 1) for eq in ("v1", "v2") for var in ("v1", "v2"))
     check("O32", ok, f"VAR(2) A={res2.a_matrices}")
 
-    # O33: рекурсивный прогноз -- ручная рекурсия
+    # O33: рекурсивный прогноз -- ручная рекурсия от корпусной VAR1_A
+    # (S-ФИКС: см. комментарий к O30a).
     fc = panel_var_forecast(res, frame=fr, horizon=3)
     manual = oc.var_manual_forecast(
-        [{"v1": {"v1": 0.5, "v2": 0.2}, "v2": {"v1": -0.3, "v2": 0.4}}],
-        oc.VAR_C, oc.VAR_ALPHAS, last, 3)
+        [oc.VAR1_A], oc.VAR_C, oc.VAR_ALPHAS, last, 3)
     ok = all(approx(fc.steps[s]["values"][v], manual[s][v], 1e-9)
              for s in range(3) for v in ("v1", "v2"))
     check("O33", ok and fc.horizon == 3,

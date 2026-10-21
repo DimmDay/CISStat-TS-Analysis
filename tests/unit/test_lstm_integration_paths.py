@@ -137,11 +137,14 @@ def test_lstm_readiness_and_stage_matrix_reflect_runtime():
         # tft -- 23-я, Task 142: deepar -- 24-я модель (исполнители
         # контракта Task 137); без опциональной группы все нейро-модели
         # честно вне readiness (19).
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 24
+        # PANEL-MODELS-3b (fa0cce1): + panel_fe/panel_re/panel_var --
+        # панельные production-модели; рекалибровка пина
+        # PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 27
     else:
         assert actions == []
         assert capabilities["backtest"]["status"] == "not_implemented"
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 22
 
 
 # ── yaml: bounded param_space и честная альтернатива LSTM/GRU ────────────

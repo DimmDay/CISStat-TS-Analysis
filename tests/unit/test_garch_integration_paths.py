@@ -127,10 +127,14 @@ def test_production_count_is_nineteen() -> None:
     neural-runtime -- опциональная
     dependency-группа (requirements-neural.txt): членство lstm/nbeats/
     nhits/tft в readiness честно зависит от прога
-    neuralforecast_runtime_available()."""
+    neuralforecast_runtime_available().
+    PANEL-MODELS-3b (fa0cce1): + panel_fe/panel_re/panel_var -- панельные
+    production-модели (input_kind=panel_entity, движок сущностного
+    контура) -- легитимный рост каталога; рекалибровка пина
+    PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b)."""
     from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 
-    expected = 24 if neuralforecast_runtime_available() else 19
+    expected = (24 if neuralforecast_runtime_available() else 19) + 3
     assert len(PRODUCTION_BACKTEST_MODEL_IDS) == expected
 
 

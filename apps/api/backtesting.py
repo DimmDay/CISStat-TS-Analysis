@@ -2012,8 +2012,6 @@ def run_panel_entity_backtest_plan(
         _deepar_panel_fit_predict,
     )
 
-    if plan_objective := "level_forecast":
-        pass  # objective сущностного контура фиксирован (см. cohort_contract)
     try:
         execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
     except ValueError as exc:

@@ -333,6 +333,38 @@ def _make_var_panel(*, n_entities=15, t_common=60, seed=13):
     return pd.DataFrame(rows), a
 
 
+def _make_var_panel_heterogeneous(*, n_entities=6, t_common=18, noise=0.0, seed=41):
+    """VAR(1) с ГЕТЕРОГЕННЫМИ сущностными эффектами (пин PANEL-MODELS-3b-FIX).
+
+    y_{i,t} = c + alpha_i + A y_{i,t-1} + eps, eps ~ N(0, noise^2).
+    При noise=0 -- вырожденно точный случай: OLS обязан восстановить
+    A, c и alpha_i - alpha_0 БЕЗ ошибок (R2 == 1). Дизъюнктен с
+    _make_var_panel (однородные сущности, E[y]=0) по DGP, колонкам
+    (y1/y2 vs v1/v2), именам сущностей и временно́й сетке.
+    """
+    rng = np.random.default_rng(seed)
+    a = np.array([[0.6, -0.2], [0.15, 0.7]])
+    c = np.array([0.5, -0.75])
+    alphas = np.column_stack([0.3 * np.arange(n_entities),
+                              -0.2 * np.arange(n_entities)])
+    rows = []
+    dates = pd.date_range("2023-01-31", periods=t_common, freq="ME")
+    for i in range(n_entities):
+        y = np.zeros((t_common, 2))
+        y[0] = c + alphas[i]
+        for t in range(1, t_common):
+            y[t] = c + alphas[i] + a @ y[t - 1]
+            if noise > 0:
+                y[t] = y[t] + rng.normal(0.0, noise, size=2)
+        entity = f"s{i:02d}"
+        for t in range(t_common):
+            rows.append({
+                "entity": entity, "date": dates[t],
+                "y1": float(y[t, 0]), "y2": float(y[t, 1]),
+            })
+    return pd.DataFrame(rows), a, c, alphas
+
+
 class TestPanelVar:
     def test_var_recovers_coefficients(self):
         df, a_true = _make_var_panel()
@@ -395,6 +427,116 @@ class TestPanelVar:
         result = fit_panel_var(frame, lags=1)
         assert result.entity_dummies is True
         assert len(result.entity_intercepts) == frame.n_entities
+        # Пин PANEL-MODELS-3b-FIX (N2): флаг обязан подтверждаться
+        # ИДЕНТИФИКАЦИЕЙ эффектов, а не только длиной словаря: на
+        # гетерогенной панели без шума интерсепты сущностей восстанавливаются
+        # точно как alpha_i - alpha_0 (drop_first), а не артефакты pinv.
+        df_h, _, c_h, alphas_h = _make_var_panel_heterogeneous()
+        frame_h = build_panel_frame(
+            df_h, date_column="date", entity_column="entity",
+            value_columns=["y1", "y2"], target_column="y1",
+        )
+        result_h = fit_panel_var(frame_h, lags=1)
+        assert result_h.entity_dummies is True
+        for i in range(frame_h.n_entities):
+            expected = alphas_h[i] - alphas_h[0]
+            got = result_h.entity_intercepts[f"s{i:02d}"]
+            for j, eq in enumerate(("y1", "y2")):
+                assert abs(got[eq] - expected[j]) < 1e-9, (i, eq, got[eq])
+
+    def test_var_identifies_entity_effects_on_heterogeneous_panel(self):
+        """Пин PANEL-MODELS-3b-FIX (блокирующий дефект акта Cert 3b §4).
+
+        Дефект был: dummies[:, index-1] = 1.0 заполнял КОЛОНКУ целиком --
+        все N-1 dummy-колонок коллинеарны константе, сущностные эффекты
+        не идентифицируемы (pooled VAR c артефактами pinv, смещённые A).
+        На бесшумной гетерогенной панели честный ячейковый dummy-блок
+        обязан восстановить A, базовый интерсепт и разности эффектов
+        ТОЧНО (R2 == 1)."""
+        df, a_true, c_true, alphas = _make_var_panel_heterogeneous()
+        frame = build_panel_frame(
+            df, date_column="date", entity_column="entity",
+            value_columns=["y1", "y2"], target_column="y1",
+        )
+        result = fit_panel_var(frame, lags=1)
+        # A восстановлена точно.
+        a1 = result.a_matrices[0]
+        for eq in ("y1", "y2"):
+            for var in ("y1", "y2"):
+                assert abs(a1[eq][var] - a_true[
+                    {"y1": 0, "y2": 1}[eq], {"y1": 0, "y2": 1}[var]
+                ]) < 1e-9, (eq, var, a1[eq][var])
+        # Базовый интерсепт == c (не артефакт коллинеарности).
+        for j, eq in enumerate(("y1", "y2")):
+            assert abs(result.base_intercept[eq] - c_true[j]) < 1e-9, (
+                eq, result.base_intercept[eq])
+        # Интерсепты сущностей == alpha_i - alpha_0 (drop_first).
+        for i in range(frame.n_entities):
+            expected = alphas[i] - alphas[0]
+            got = result.entity_intercepts[f"s{i:02d}"]
+            for j, eq in enumerate(("y1", "y2")):
+                assert abs(got[eq] - expected[j]) < 1e-9, (i, eq, got[eq])
+        # Бесшумная панель: R2 каждого уравнения == 1 (полная подгонка).
+        for eq in ("y1", "y2"):
+            assert abs(result.r2_by_equation[eq] - 1.0) < 1e-12
+        # Сингулярности дизайна больше нет: продуктовых предупреждений нет
+        # (гейты на этой панели не срабатывают).
+        assert result.warnings == ()
+
+    def test_var_recovers_coefficients_with_entity_effects_and_noise(self):
+        # Шумовой вариант пина: стационарный VAR(1) + гетерогенные эффекты
+        # + шум 0.3 -- A восстанавливается в допуске, эффекты не "стекаются"
+        # в лаговые коэффициенты.
+        # Допуски откалиброваны на этой DGP-конфигурации (seed=41) двусторонне
+        # (scripts/cert_3bfix/calibrate_noisy_pin.py): исправленная реализация
+        # даёт max err(A)=0.0504, дефектная -- 0.2478; допуск 0.11 -- геометрическая
+        # середина. Интерсепты: исправленная max err=0.194, допуск 0.35.
+        # Точная идентификация закреплена бесшумным тестом выше (1e-9).
+        df, a_true, _, _ = _make_var_panel_heterogeneous(noise=0.3, seed=41)
+        frame = build_panel_frame(
+            df, date_column="date", entity_column="entity",
+            value_columns=["y1", "y2"], target_column="y1",
+        )
+        result = fit_panel_var(frame, lags=1)
+        a1 = result.a_matrices[0]
+        for eq in ("y1", "y2"):
+            for var in ("y1", "y2"):
+                assert abs(a1[eq][var] - a_true[
+                    {"y1": 0, "y2": 1}[eq], {"y1": 0, "y2": 1}[var]
+                ]) < 0.11, (eq, var, a1[eq][var])
+        # Эффекты идентифицированы и в шуме (T=18 на сущность -- широкий допуск).
+        for i in range(1, frame.n_entities):
+            got = result.entity_intercepts[f"s{i:02d}"]
+            assert abs(got["y1"] - 0.3 * i) < 0.35, (i, got["y1"])
+            assert abs(got["y2"] + 0.2 * i) < 0.35, (i, got["y2"])
+        # Пин остаточной дисперсии (PANEL-MODELS-3b-FIX; закрывает выживших
+        # PMV-16/PMV-17 мутационной кампании VAR-внутренностей): независимая
+        # ручная OLS-пересборка дизайна -- residual_variance_by_equation ==
+        # SS_res / (n_obs - n_params). Точная семантика df (не df-1, не 0).
+        wide_n = np.stack([
+            df.sort_values(["entity", "date"])["y1"].to_numpy().reshape(6, 18),
+            df.sort_values(["entity", "date"])["y2"].to_numpy().reshape(6, 18),
+        ], axis=2)  # (n_entities, T_common, K)
+        lags_n = 1
+        targets_n = wide_n[:, lags_n:, :]
+        blocks_n = [wide_n[:, lags_n - ell: 18 - ell, :] for ell in range(1, lags_n + 1)]
+        dummies_n = np.zeros((6, 5))
+        for index_n in range(1, 6):
+            dummies_n[index_n, index_n - 1] = 1.0
+        dummy_block_n = np.repeat(dummies_n[:, None, :], 18 - lags_n, axis=1)
+        const_block_n = np.ones((6, 18 - lags_n, 1))
+        x_full_n = np.concatenate([*blocks_n, const_block_n, dummy_block_n], axis=2)
+        x_flat_n = x_full_n.reshape(-1, x_full_n.shape[2])
+        y_flat_n = targets_n.reshape(-1, 2)
+        params_n, _, _, _ = np.linalg.lstsq(x_flat_n, y_flat_n, rcond=None)
+        resid_n = y_flat_n - x_flat_n @ params_n
+        df_n = len(y_flat_n) - x_flat_n.shape[1]
+        assert result.n_obs == len(y_flat_n)
+        for j, eq in enumerate(("y1", "y2")):
+            expected_var = float(np.sum(resid_n[:, j] ** 2)) / df_n
+            assert expected_var > 0.0
+            assert abs(result.residual_variance_by_equation[eq] - expected_var) < 1e-9, (
+                eq, result.residual_variance_by_equation[eq], expected_var)
 
 
 # ── Прогнозы: сценарный (FE/RE) и рекурсивный (Panel VAR) ───────────────────
@@ -457,6 +599,36 @@ class TestForecasts:
         amp1 = max(abs(v) for v in forecast.steps[0]["values"].values())
         amp4 = max(abs(v) for v in forecast.steps[3]["values"].values())
         assert amp4 <= amp1 + 0.1
+
+    def test_var_population_forecast_exact_on_heterogeneous_panel(self):
+        """Пин PANEL-MODELS-3b-FIX: рекурсия на гетерогенной панели точна.
+
+        Ожидание считается НЕЗАВИСИМОЙ numpy-рекурсией от популяционного
+        уровня: c_pop = c + mean(alpha_i); старт -- популяционное среднее
+        последней общей даты. Дефект 3b (коллинеарный dummy-блок) делал
+        и интерсепты, и A смещёнными -- рекурсия не совпадала."""
+        df, a_true, c_true, alphas = _make_var_panel_heterogeneous()
+        frame = build_panel_frame(
+            df, date_column="date", entity_column="entity",
+            value_columns=["y1", "y2"], target_column="y1",
+        )
+        result = fit_panel_var(frame, lags=1)
+        forecast = panel_var_forecast(result, frame=frame, horizon=3)
+        # Независимая ручная рекурсия (numpy, без продуктовых функций).
+        wide = np.stack([
+            df.sort_values(["entity", "date"])["y1"].to_numpy().reshape(6, 18),
+            df.sort_values(["entity", "date"])["y2"].to_numpy().reshape(6, 18),
+        ], axis=2)  # (n_entities, T_common, K)
+        c_pop = c_true + alphas.mean(axis=0)
+        state = wide[:, -1, :].mean(axis=0)  # последняя общая дата
+        expected_steps = []
+        for _ in range(3):
+            state = c_pop + a_true @ state
+            expected_steps.append(state.copy())
+        for k, step in enumerate(forecast.steps):
+            for j, eq in enumerate(("y1", "y2")):
+                assert abs(step["values"][eq] - expected_steps[k][j]) < 1e-9, (
+                    k, eq, step["values"][eq], expected_steps[k][j])
 
 
 # ── Folds: сущность не рвётся хронологически, даты выровнены ────────────────

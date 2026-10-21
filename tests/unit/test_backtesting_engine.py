@@ -206,10 +206,16 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     # / test_tft_integration_paths.py / test_deepar_integration_paths.py
     # на укороченном бюджете.  deepar -- panel-постановка (Task 142):
     # вдобавок требует related_series и исполняется панельным движком.
+    # PANEL-MODELS-3b (fa0cce1): panel_fe/panel_re/panel_var --
+    # panel_entity-исполнители; исполняются ТОЛЬКО панельным движком
+    # run_panel_entity_backtest_plan и не входят в одномерный OOF cohort
+    # (honest fail-closed, отказ проверяется ниже). Рекалибровка пина
+    # PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
     univariate_model_ids = (
         PRODUCTION_BACKTEST_MODEL_IDS
         - {"var", "vecm", "garch", "egarch"}
         - {"lstm", "nbeats", "nhits", "tft", "deepar"}
+        - {"panel_fe", "panel_re", "panel_var"}
     )
     results = {
         model_id: run_backtest_plan(
@@ -226,6 +232,14 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     with pytest.raises(BacktestExecutionError, match="volatility"):
         run_backtest_plan(
             model_id="garch", model_name="GARCH(p,q)", family_id="volatility",
+            series=series, labels=[value.isoformat() for value in dates],
+            plan=plan, seasonal_period=12,
+        )
+    # PANEL-MODELS-3b: честный отказ level-движка для panel_entity-исполнителя
+    # (паритет с volatility-прецедентом: отказ -- часть контракта, а не дефект).
+    with pytest.raises(BacktestExecutionError, match="run_panel_entity_backtest_plan"):
+        run_backtest_plan(
+            model_id="panel_fe", model_name="panel_fe", family_id="panel",
             series=series, labels=[value.isoformat() for value in dates],
             plan=plan, seasonal_period=12,
         )
