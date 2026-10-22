@@ -19,6 +19,7 @@ access): знание snapshot_id НЕ является правом (T7/T15). �
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from datetime import datetime, timezone
@@ -838,6 +839,316 @@ class TestSnapshotRegistry:
         pins = peek_snapshot_registry() and None
         # pins проверяются отдельным классом; здесь -- формат manifest
         assert isinstance(deps, list)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 4b. Postgres-зеркало реестра снимков -- гвард класса F-D2C1
+#     (DOCLOG-2-FIX; перенос из корпуса сертификации DOCLOG-2-CERT,
+#      scripts/doclog2cert, корпус RUN-D2C*; здесь свой корпус
+#      d2-mirror). SQL<->row раундтрип БЕЗ живого сервера: fake-psycopg
+#      по прецеденту fakeredis; строка SELECT собирается ИЗ параметров
+#      INSERT (паритет реального Postgres: JSONB -> список, TIMESTAMPTZ
+#      -> datetime). Дефект F-D2C1 (_record_from_row передавала в
+#      конструктор ReportSnapshot несуществующее поле created_at ->
+#      TypeError на каждом чтении Postgres-реестра) Memory-only корпус
+#      не ловил. Оракул migration-catalog сюда НЕ дублируется: уже
+#      покрыт пинами TestSnapshotRegistry (test_migration_catalog_
+#      contains_0008 / test_migration_file_parity_with_catalog /
+#      test_unique_constraints_in_ddl).
+# ══════════════════════════════════════════════════════════════════════
+
+MIRROR_SNAPSHOT_ID = "rs-" + "c2" * 16
+MIRROR_TS = "2026-10-22T09:30:00+00:00"
+
+
+class _MirrorCursor:
+    """Минимальный курсор: перехват execute/executemany,
+    fetchone/fetchall по предзагруженным строкам; rowcount из
+    insert_rowcount конна (ON CONFLICT DO NOTHING -> 0, INSERT -> 1)."""
+
+    def __init__(self, conn):
+        self.conn = conn
+        self.rowcount = 1
+        self._rows: list[tuple] = []
+
+    def execute(self, sql, params=None):
+        self.conn.last_sql = sql
+        self.conn.last_params = params
+        if "INSERT INTO" in sql:
+            # INSERT результат-строк не возвращает; очередь SELECT-строк
+            # НЕ расходуется (ON CONFLICT DO NOTHING -> rowcount 0/1)
+            if params and "INSERT INTO report_snapshots" in sql:
+                self.conn.insert_params.append(tuple(params))
+                self.rowcount = getattr(self.conn, "insert_rowcount", 1)
+            return
+        self._rows = list(self.conn.result_queue)
+        self.conn.result_queue = []
+
+    def executemany(self, sql, seq):
+        self.conn.executemany_sql = sql
+        self.conn.executemany_params = list(seq)
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self):
+        return list(self._rows)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _MirrorConn:
+    def __init__(self, result_queue=None):
+        self.result_queue = list(result_queue or [])
+        self.insert_params: list[tuple] = []
+        self.executemany_params: list[tuple] = []
+        self.last_sql = ""
+        self.last_params = None
+        self.committed = False
+
+    def cursor(self):
+        return _MirrorCursor(self)
+
+    def commit(self):
+        self.committed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _mirror_row_from_insert_params(params: tuple) -> tuple:
+    """Строка SELECT-порядка из параметров INSERT (что вернул бы
+    реальный Postgres: JSONB -> распарсенный список, TIMESTAMPTZ ->
+    datetime). Порядок колонок INSERT == _SELECT_COLUMNS (сверяется
+    статическим оракулом test_static_column_alignment)."""
+    (snapshot_id, run_id, schema_version, kinds, template_id,
+     template_version, locale, display_timezone, classification,
+     redaction_profile, knowledge_version, cutoff_last_seq, cutoff_count,
+     ordering_quality, context_id, data_revision, data_ref,
+     digest_alg, digest_value, payload_sha256, size_bytes, storage_key,
+     completeness_status, completeness_missing, reproducibility_status,
+     reproducibility_reasons, dependencies, idempotency_key,
+     request_fingerprint, created_by, created_at) = params
+    return (
+        snapshot_id, run_id, schema_version, json.loads(kinds),
+        template_id, template_version, locale, display_timezone,
+        classification, redaction_profile, knowledge_version,
+        cutoff_last_seq, cutoff_count, ordering_quality, context_id,
+        data_revision, data_ref, digest_alg, digest_value, payload_sha256,
+        size_bytes, storage_key, completeness_status,
+        json.loads(completeness_missing), reproducibility_status,
+        json.loads(reproducibility_reasons), json.loads(dependencies),
+        idempotency_key, request_fingerprint, created_by,
+        datetime.fromisoformat(created_at),
+    )
+
+
+class TestPostgresMirrorRegistry:
+    """Гвард F-D2C1: Postgres-ветка чтения реестра снимков
+    (get_snapshot_record / find_idempotent / конфликт-ветка
+    register_snapshot) проверяется раундтрипом на СВОИХ данных
+    (корпус d2-mirror)."""
+
+    def _snapshot_full(self):
+        from apps.api.report_snapshot import ReportSnapshot
+
+        return ReportSnapshot(
+            snapshot_id=MIRROR_SNAPSHOT_ID,
+            research_run_id=RUN_ID,
+            context_id="ctx-d2-mirror",
+            data_revision=7,
+            data_ref="artifact:art-d2-mirror",
+            data_digest={"algorithm": "cisstat-data-v1", "value": "d" * 64},
+            source_cutoff={"last_sequence": 12, "event_count": 9,
+                           "ordering_quality": "legacy",
+                           "event_id_manifest": ["ev-m-1", "ev-m-2"]},
+            captured_at=MIRROR_TS,
+            knowledge_version="sha256:" + "k" * 64,
+            completeness={"status": "partial",
+                          "missing_refs": ["artifact:x"]},
+            reproducibility={"status": "limited",
+                             "reasons": ["missing_oof_artifact"]},
+            sections=[{"code": "D02", "kind": "source_passport",
+                       "title": "Паспорт источника",
+                       "methodology_stage": "upload",
+                       "claims": [{"text": "зеркальное утверждение",
+                                   "event_refs": ["event:ev-m-1"],
+                                   "result_refs": [],
+                                   "validity": "current",
+                                   "evidence_level": "server_result"}]}],
+            dependencies=["artifact:art-d2-mirror"],
+            payload_sha256="a" * 64,
+            size_bytes=555,
+            storage_key="objects/aa/bb",
+            kinds=["D02"],
+            idempotency_key="client-d2-mirror-1",
+            request_fingerprint="fp-d2-mirror-1",
+            created_by="subj-d2a-owner",
+        )
+
+    def test_static_column_alignment(self):
+        """СТАТИЧЕСКИЙ факт: |колонок INSERT| == |%s| == |колонок
+        SELECT| == 31; имена и порядок совпадают попарно."""
+        from apps.api.report_snapshot import PostgresSnapshotRegistry
+
+        src = (
+            Path(__file__).resolve().parents[2]
+            / "apps" / "api" / "report_snapshot.py"
+        ).read_text("utf-8")
+        insert_cols = re.search(
+            r"INSERT INTO report_snapshots\s*\((.*?)\)", src, re.S
+        ).group(1)
+        insert_names = [
+            c.strip() for c in insert_cols.replace("\n", " ").split(",")
+        ]
+        select_cols = PostgresSnapshotRegistry._SELECT_COLUMNS.replace(
+            "\n", " "
+        )
+        select_names = [c.strip() for c in select_cols.split(",")]
+        assert len(insert_names) == len(select_names) == 31
+        assert insert_names == select_names
+        values_placeholders = re.search(
+            r"VALUES \((.*?)\)", src, re.S
+        ).group(1)
+        assert values_placeholders.count("%s") == 31
+
+    def test_register_then_get_roundtrip(self, monkeypatch):
+        """РАУНДТРИП (ядро гварда F-D2C1): register_snapshot пишет 31
+        параметр; чтение по snapshot_id возвращает запись со ВСЕМИ
+        полями, согласованными с сохранённым снимком. На дефектном коде
+        -- TypeError (created_at не поле ReportSnapshot). captured_at
+        раундтрипится через колонку created_at (INSERT пишет
+        snapshot.captured_at). event_id_manifest в metadata-пути --
+        None (честная граница N2: manifest живёт в канонических
+        байтах снимка)."""
+        from apps.api.report_snapshot import PostgresSnapshotRegistry
+
+        reg = PostgresSnapshotRegistry(dsn="postgresql://d2-mirror-fake")
+        snap = self._snapshot_full()
+        deps = [{"ref_kind": "artifact", "ref_id": "art-d2-mirror",
+                 "reason": "snapshot:" + snap.snapshot_id}]
+        conn = _MirrorConn()
+        monkeypatch.setattr(reg, "_connect", lambda: conn)
+
+        stored, created = reg.register_snapshot(snap, deps)
+        assert created is True
+        assert conn.committed
+        assert len(conn.insert_params) == 1
+        assert stored.snapshot_id == snap.snapshot_id
+
+        # чтение: строка, собранная из параметров INSERT (паритет DB)
+        row = _mirror_row_from_insert_params(conn.insert_params[0])
+        conn2 = _MirrorConn(result_queue=[row])
+        monkeypatch.setattr(reg, "_connect", lambda: conn2)
+        got = reg.get_snapshot_record(snap.snapshot_id)
+        assert got is not None, "чтение Postgres-реестра сломано"
+        assert isinstance(got.captured_at, str)
+        assert got.captured_at == MIRROR_TS       # F-D2C1: раундтрип ts
+        assert got.snapshot_id == MIRROR_SNAPSHOT_ID
+        assert got.research_run_id == RUN_ID
+        assert got.kinds == ["D02"]
+        assert got.payload_sha256 == "a" * 64
+        assert got.size_bytes == 555
+        assert got.storage_key == "objects/aa/bb"
+        assert got.idempotency_key == "client-d2-mirror-1"
+        assert got.request_fingerprint == "fp-d2-mirror-1"
+        assert got.created_by == "subj-d2a-owner"
+        assert got.knowledge_version == "sha256:" + "k" * 64
+        assert got.context_id == "ctx-d2-mirror"
+        assert got.data_revision == 7
+        assert got.data_ref == "artifact:art-d2-mirror"
+        assert got.data_digest == {"algorithm": "cisstat-data-v1",
+                                   "value": "d" * 64}
+        assert got.completeness == {"status": "partial",
+                                    "missing_refs": ["artifact:x"]}
+        assert got.reproducibility == {"status": "limited",
+                                       "reasons": ["missing_oof_artifact"]}
+        assert got.dependencies == ["artifact:art-d2-mirror"]
+        assert got.template == {"id": "research-report", "version": "1.0"}
+        # асимметричный cutoff ловит индексные сдвиги row[11]/row[12]/row[13]
+        assert got.source_cutoff["last_sequence"] == 12
+        assert got.source_cutoff["event_count"] == 9
+        assert got.source_cutoff["ordering_quality"] == "legacy"
+        assert got.source_cutoff["event_id_manifest"] is None  # граница N2
+
+    def test_find_idempotent_returns_existing_with_same_fingerprint(
+        self, monkeypatch,
+    ):
+        """§10.3/AC09 durable-путь: find_idempotent возвращает запись с
+        тем же request_fingerprint; чужой ключ -- None (не исключение).
+        На дефектном коде -- TypeError вместо записи."""
+        from apps.api.report_snapshot import PostgresSnapshotRegistry
+
+        reg = PostgresSnapshotRegistry(dsn="postgresql://d2-mirror-fake")
+        snap = self._snapshot_full()
+        conn = _MirrorConn()
+        monkeypatch.setattr(reg, "_connect", lambda: conn)
+        reg.register_snapshot(snap, [])
+
+        row = _mirror_row_from_insert_params(conn.insert_params[0])
+        conn2 = _MirrorConn(result_queue=[row])
+        monkeypatch.setattr(reg, "_connect", lambda: conn2)
+        found = reg.find_idempotent(RUN_ID, "client-d2-mirror-1")
+        assert found is not None
+        assert found.request_fingerprint == "fp-d2-mirror-1"
+        assert found.captured_at == MIRROR_TS
+
+        conn3 = _MirrorConn(result_queue=[])
+        monkeypatch.setattr(reg, "_connect", lambda: conn3)
+        assert reg.find_idempotent(RUN_ID, "client-d2-mirror-other") is None
+
+    def test_conflict_replay_path_raises_409_semantics(self, monkeypatch):
+        """Конфликт-путь register_snapshot: ON CONFLICT DO NOTHING ->
+        перечитывание -> сравнение fingerprint -> 409-исключение. На
+        дефектном коде TypeError от _record_from_row маскировал
+        контрактную семантику."""
+        from apps.api.report_snapshot import (
+            PostgresSnapshotRegistry,
+            SnapshotIdempotencyConflictError,
+        )
+
+        reg = PostgresSnapshotRegistry(dsn="postgresql://d2-mirror-fake")
+        snap = self._snapshot_full()
+        conn = _MirrorConn()
+        monkeypatch.setattr(reg, "_connect", lambda: conn)
+        reg.register_snapshot(snap, [])
+
+        row = _mirror_row_from_insert_params(conn.insert_params[0])
+        # повтор: INSERT конфликтует (rowcount=0 -> очередь пуста),
+        # SELECT возвращает существующую строку
+        conn2 = _MirrorConn(result_queue=[row])
+        conn2.insert_rowcount = 0
+        monkeypatch.setattr(reg, "_connect", lambda: conn2)
+        other = dataclasses.replace(
+            snap,
+            snapshot_id="rs-" + "8" * 32,
+            request_fingerprint="fp-d2-mirror-OTHER",
+        )
+        with pytest.raises(SnapshotIdempotencyConflictError):
+            reg.register_snapshot(other, [])
+
+    def test_list_dependencies_contract(self, monkeypatch):
+        """deps-таблица: чтение причин пинов в контракте
+        {ref_kind, ref_id, reason} (SELECT-порядок ref_kind, ref_id,
+        reason)."""
+        from apps.api.report_snapshot import PostgresSnapshotRegistry
+
+        reg = PostgresSnapshotRegistry(dsn="postgresql://d2-mirror-fake")
+        row = ("artifact", "art-d2-mirror",
+               "snapshot:" + MIRROR_SNAPSHOT_ID)
+        conn = _MirrorConn(result_queue=[row])
+        monkeypatch.setattr(reg, "_connect", lambda: conn)
+        deps = reg.list_dependencies(MIRROR_SNAPSHOT_ID)
+        assert deps == [{"ref_kind": "artifact",
+                         "ref_id": "art-d2-mirror",
+                         "reason": "snapshot:" + MIRROR_SNAPSHOT_ID}]
 
 
 # ══════════════════════════════════════════════════════════════════════

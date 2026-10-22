@@ -1,0 +1,167 @@
+{
+ "baseline": {
+  "repo_green": true,
+  "oracle_green": true,
+  "repo_tail": [
+   "============================== 73 passed in 1.03s =============================="
+  ],
+  "oracle_tail": [
+   "============================== 79 passed in 3.48s =============================="
+  ]
+ },
+ "results": [
+  {
+   "id": "S01",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "фикс-строка: captured_at=None (метка времени потеряна)",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S02",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "фикс-строка: str(datetime) вместо isoformat (пробел вместо T)",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S03",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "cutoff.last_sequence читает event_count (индексный сдвиг)",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S04",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "cutoff.event_count читает last_sequence (индексный сдвиг)",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S05",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "ordering_quality захардкожен (legacy теряется)",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S06",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "knowledge_version теряется при чтении",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S07",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "payload_sha256 читает size_bytes (индексный сдвиг)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "S08",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "size_bytes читает sha-строку (ValueError)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "S09",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "completeness.missing_refs читает reproducibility_status",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "S10",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "created_by теряется при чтении",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "S11",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "INSERT: перестановка параметров sha/size (INSERT<->SELECT разъезд)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "S12",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "INSERT: колонка created_at получает now() вместо captured_at",
+   "status": "REPO-ONLY",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 0
+  },
+  {
+   "id": "S13",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "конфликт-ветка: сравнение fingerprint инвертировано (AC09)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "CTL-S1",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "no-op: двойной пробел в docstring",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  },
+  {
+   "id": "CTL-S2",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "no-op: двойной пробел в SQL-строке (fake не парсит WHERE)",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  },
+  {
+   "id": "CTL-S3",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "no-op: литерал 00 == 0",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  }
+ ],
+ "tree_restored": true,
+ "git_diff_empty": false,
+ "summary": {
+  "total": 16,
+  "killed": 6,
+  "survived": 0,
+  "controls_alive": 3,
+  "restore_fail": 0
+ }
+}

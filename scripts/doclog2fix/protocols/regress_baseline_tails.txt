@@ -1,0 +1,4 @@
+== BASELINE (чистый a6175d0), chunked: unit/api/root ==
+==== 26 failed, 1950 passed, 24 skipped, 210 warnings in 264.65s (0:04:24) =====
+==== 14 failed, 2478 passed, 42 skipped, 5779 warnings in 224.63s (0:03:44) ====
+======================= 130 passed, 34 warnings in 6.74s =======================

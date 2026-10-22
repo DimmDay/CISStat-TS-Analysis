@@ -608,7 +608,7 @@ class PostgresSnapshotRegistry(SnapshotRegistry):
             idempotency_key=str(row[27] or ""),
             request_fingerprint=str(row[28] or ""),
             created_by=(str(row[29]) if row[29] else None),
-            created_at=(
+            captured_at=(
                 row[30].isoformat() if hasattr(row[30], "isoformat") else str(row[30])
             ),
         )
