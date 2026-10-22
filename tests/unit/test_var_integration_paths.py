@@ -190,7 +190,7 @@ class TestRegistrySeesVarAtRuntime:
         # панельные production-модели (input_kind=panel_entity);
         # рекалибровка пина PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
         base = 24 if neuralforecast_runtime_available() else 19
-        expected_count = f"ok {base + 3} {neuralforecast_runtime_available()}"
+        expected_count = f"ok {base + 4} {neuralforecast_runtime_available()}"  # PANEL-GMM-4: +panel_gmm
         assert expected_count in result.stdout, (
             f"Ожидалось '{expected_count}' production backtest-моделей, "
             f"получено: {result.stdout.strip()}"

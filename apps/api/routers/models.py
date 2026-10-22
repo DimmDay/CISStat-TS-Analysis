@@ -333,6 +333,11 @@ _BACKTEST_IMPLEMENTATIONS = {
     "panel_fe": run_panel_entity_backtest_refusal,
     "panel_re": run_panel_entity_backtest_refusal,
     "panel_var": run_panel_entity_backtest_refusal,
+    # PANEL-GMM-4: динамические панели (Arellano-Bond difference GMM) --
+    # тот же panel_entity-контур: сущностная панель не выводима из
+    # одиночного ряда; dispatch-запись -- честный отказ, исполнение
+    # ТОЛЬКО панельным движком (паритет dispatch <-> production-реестра).
+    "panel_gmm": run_panel_entity_backtest_refusal,
 }
 
 

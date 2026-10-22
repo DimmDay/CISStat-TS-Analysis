@@ -199,12 +199,14 @@ class TestSpecLoading:
         assert ids == {"naive", "seasonal_naive", "drift", "mean"}
 
     def test_total_model_count(self, spec):
-        """28 моделей суммарно (3b: +panel_fe/re/var; 3c: +deepar_panel).
+        """29 моделей суммарно (3b: +panel_fe/re/var; 3c: +deepar_panel;
+        GMM-4: +panel_gmm).
 
         Пин «24» устарел с 3b (27) -- предсуществующий красный чистой
-        базы, рекалиброван к текущей истине каталога (PANEL-MODELS-3c)."""
+        базы, рекалиброван к текущей истине каталога (PANEL-MODELS-3c;
+        PANEL-GMM-4)."""
         total = spec.total_model_count()
-        assert total == 28
+        assert total == 29
 
     def test_get_model_across_families(self, spec):
         """get_model находит модель по ID среди всех семейств."""

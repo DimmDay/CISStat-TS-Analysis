@@ -1,8 +1,12 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
-# Версия: 1.4.1 (PANEL-MODELS-3c: deepar_panel -- entity-pivot
-#          глобальных нейромоделей, настоящий DeepAR-панель -- этап 3
-#          3c-цепочки; базис 1.4.0 -- PANEL-MODELS-3b: семейство №9
+# Версия: 1.4.2 (PANEL-GMM-4: panel_gmm -- динамические панели, difference
+#          GMM Arellano-Bond: collapsed/полная инструментальная матрица,
+#          1-step robust / 2-step, AR(1)/AR(2)/Sargan-Hansen, по-сущностной
+#          динамический прогноз без обязательных экзогенных, IRF GMM и
+#          Panel VAR; базис 1.4.1 -- PANEL-MODELS-3c: deepar_panel --
+#          entity-pivot глобальных нейромоделей, настоящий DeepAR-панель --
+#          этап 3 3c-цепочки; базис 1.4.0 -- PANEL-MODELS-3b: семейство №9
 #          "panel" -- панельный контур моделирования сущностной панели
 #          entity x время; FE/RE/Panel VAR с input_kind="panel_entity"
 #          и F06-маршрутизацией однорядного каталога;
@@ -729,13 +733,15 @@ families:
     required: false
     description: >-
       Панельные модели на сущностной панели (entity x время):
-      Fixed Effects / Random Effects / Panel VAR. Гейты применимости:
-      FE/RE -- n_entities >= 5, t_per_entity.min >= 10, n_exog >= 1
-      (статическая панель прогнозирует ТОЛЬКО сценарно -- при путях
-      экзогенных факторов; без экзогенных -- honest limitation
-      «динамические панели -- GMM-контур, в разработке»); Panel VAR --
-      сбалансированность общей сетки + n_entities >= 5 +
-      T_common >= 3*n_vars*(p+1) + предупреждение при малом T.
+      Fixed Effects / Random Effects / Panel VAR / Arellano-Bond GMM.
+      Гейты применимости: FE/RE -- n_entities >= 5, t_per_entity.min >= 10,
+      n_exog >= 1 (статическая панель прогнозирует ТОЛЬКО сценарно -- при
+      путях экзогенных факторов; без экзогенных прогноз строит динамический
+      контур GMM -- panel_gmm); Panel VAR -- сбалансированность общей сетки +
+      n_entities >= 5 + T_common >= 3*n_vars*(p+1) + предупреждение при
+      малом T; GMM -- n_entities >= 5, t_per_entity.min >= lags + 3
+      (динамическая панель прогнозирует от собственной динамики, экзогенные
+      НЕ обязательны; диагностика AR(1)/AR(2)/Sargan-Hansen).
       Производственные капы: предупреждение при n_entities > 200
       (render 512MB), честный отказ при n_entities > 2000. Спецификация
       FE/RE -- advisory тест Хаусмана (форма Мундлака; при малом числе
@@ -813,6 +819,30 @@ families:
         supports_prediction_intervals: true
         libraries: ["neuralforecast"]
         training_time: "minutes"
+
+      - id: "panel_gmm"
+        name: "Arellano-Bond GMM (difference)"
+        description: >-
+          Динамические панели (PANEL-GMM-4): difference GMM Arellano-Bond
+          (1991) -- y_it = alpha*y_i,t-1 + beta*x_it + mu_i + e_it
+          оценивается в первых разностях (groupby(entity), R5);
+          инструменты -- уровни y_{i,s}, s <= t-lags-1; collapsed-матрица
+          по умолчанию (контроль инструментальной пролиферации, warning
+          при L > N), полная gmm-матрица -- опция; 1-step W=(ΣZ'HZ)^-1 с
+          робастным сэндвичем SE (кластеризация по сущностям), 2-step --
+          опция с честным warning «без Windmeijer-поправки»; диагностика
+          AR(1)/AR(2) + Sargan/Hansen J. По-сущностной динамический
+          прогноз: панель БЕЗ экзогенных прогнозирует от собственной
+          динамики (замыкание honest limitation FE/RE); IRF --
+          динамические мультипликаторы beta*psi. Гейты: n_entities >= 5,
+          t_per_entity.min >= lags + 3 (не менее двух разностных
+          наблюдений на сущность); lags 1..2; капы семейства 200/2000.
+        min_observations: 20       # 5 сущностей x 4 наблюдений (t_min >= lags+3)
+        min_series: 5              # минимум сущностей панели
+        supports_exogenous: true
+        supports_prediction_intervals: true
+        libraries: ["statsmodels"]
+        training_time: "seconds"
 
 
 # ══════════════════════════════════════════════════════════════════════════════

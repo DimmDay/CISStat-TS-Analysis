@@ -111,7 +111,7 @@ class TestCandidatesResponse:
         data = resp.json()
         # PANEL-MODELS-3b: семейство №9 panel (+3 модели) -- 24 -> 27;
         # PANEL-MODELS-3c: deepar_panel (entity-pivot, этап 3) -- 27 -> 28.
-        assert len(data["catalog"]) == data["statistics"]["total_models_in_spec"] == 28
+        assert len(data["catalog"]) == data["statistics"]["total_models_in_spec"] == 29  # PANEL-GMM-4
         assert len(data["candidates"]) < len(data["catalog"])
         assert {item["level"] for item in data["catalog"]} >= {
             "RECOMMENDED", "NOT_APPLICABLE",

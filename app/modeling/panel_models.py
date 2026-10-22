@@ -37,6 +37,36 @@
 - ``panel_var_forecast`` -- рекурсивный h-шаговый прогноз всех переменных
   общей сетки.
 
+PANEL-GMM-4 (динамические панели, спека spec_panel_models_2026-10-20.md:
+классификатор маршрутизирует класс GMM; FE/RE honest limitation
+«динамические панели -- GMM-контур»; Panel VAR: «IRF -- вне задачи
+(PANEL-GMM-4)»):
+
+- ``fit_panel_gmm`` -- difference GMM Arellano-Bond (1991): модель уровней
+  y_it = alpha*y_i,t-1 + beta*x_it + mu_i + e_it оценивается в первых
+  разностях (mu_i устранён), инструменты -- уровни y_{i,s}, s <= t-lags-1
+  (gmm-формат); collapsed-матрица по умолчанию (одна колонка на
+  лаг-дистанцию -- контроль инструментальной пролиферации), полная
+  AB-матрица -- опция collapse=False; 1-step весовая W = (Σ Z'HZ)^-1 с
+  H = tridiag(2,-1) по-сущностно, SE -- робастный сэндвич с кластеризацией
+  по сущностям; two_step -- опционально с честным warning «без Windmeijer-
+  поправки SE смещены вниз -- вывод по 1-step robust»; диагностика
+  AR(1)/AR(2) (кластерная адаптация формулы AB, дисклоужено) + J-тест
+  (Sargan-форма при 1-step / Hansen при 2-step, df = L - K, warning при
+  L > N -- пролиферация); экзогенные инструментируются собственными
+  разностями (предпосылка строгой экзогенности, дисклоужено).
+- ``panel_gmm_forecast`` -- по-сущностной динамический прогноз: рекурсия
+  по AR-структуре от последних lags наблюдений сущности; панель БЕЗ
+  экзогенных прогнозирует от собственной динамики (ЗАМЫКАНИЕ honest
+  limitation FE/RE, R6); с путями экзогенных -- сценарный + динамический;
+  интервалы -- нормальная аппроксимация через импульсные отклики
+  AR-полинома (+ коэффициентная неопределённость экзогенной части).
+- ``panel_gmm_irf`` -- динамические мультипликаторы beta_j * psi_{h-1}
+  (отклик y на единичный шок x_j через h периодов).
+- ``panel_var_irf`` -- IRF Panel VAR по A-матрицам PanelVarResult
+  (без ортогонализации, дисклоужено) -- закрытие отсылки спеки
+  «IRF -- вне задачи (PANEL-GMM-4)».
+
 Границы: однорядный контур не затрагивается (R4); GMM -- PANEL-GMM-4;
 без новых зависимостей (statsmodels/numpy/scipy уже в requirements).
 Статическая панель FE/RE прогнозирует ТОЛЬКО сценарно: без экзогенных
@@ -58,8 +88,10 @@ from app.preprocessing.panel import (
     CAPACITY_REFUSE_ENTITIES,
     CAPACITY_WARN_ENTITIES,
     MIN_ENTITIES_FE_RE,
+    MIN_ENTITIES_GMM,
     MIN_ENTITIES_PANEL_VAR,
     MIN_T_PER_ENTITY_FE_RE,
+    MIN_T_PER_ENTITY_GMM_BASE,
     MIN_VARS_PANEL_VAR,
     PANEL_VAR_MAX_LAG_BASE,
     PANEL_VAR_RECOMMENDED_BASE,
@@ -1047,6 +1079,678 @@ def panel_var_forecast(
         state.append(new_values)
         steps.append({"step": step, "values": dict(new_values)})
     return PanelVarForecast(horizon=int(horizon), steps=tuple(steps))
+
+
+# ── PANEL-GMM-4: динамические панели -- difference GMM (Arellano-Bond) ──────
+
+#: Допустимые лаги динамической панели GMM (канон Panel VAR: 1..2).
+PANEL_GMM_LAGS = (1, 2)
+
+
+def _gate_panel_gmm(frame: PanelFrame, lags: int) -> list[str]:
+    """Гейты GMM (PANEL-GMM-4): n_entities >= 5, t_per_entity.min >=
+    lags + 3 (не менее двух разностных наблюдений на сущность), lags 1..2,
+    капы семейства. Экзогенные НЕ обязательны: динамическая панель
+    прогнозирует от собственной динамики (замыкание R6 спеки)."""
+    reasons: list[str] = []
+    if frame.n_entities > CAPACITY_REFUSE_ENTITIES:
+        reasons.append(
+            f"Производственный кап превышен: {frame.n_entities} сущностей > "
+            f"{CAPACITY_REFUSE_ENTITIES} -- честный отказ вместо риска OOM "
+            "(среда 512MB)"
+        )
+        return reasons
+    if frame.n_entities < MIN_ENTITIES_GMM:
+        reasons.append(
+            f"Недостаточно сущностей: {frame.n_entities} < {MIN_ENTITIES_GMM} "
+            "(минимум для панельного GMM)"
+        )
+    min_t = lags + MIN_T_PER_ENTITY_GMM_BASE
+    if frame.t_per_entity["min"] < min_t:
+        reasons.append(
+            "Недостаточно наблюдений внутри сущностей: минимальная длина "
+            f"{int(frame.t_per_entity['min'])} < lags + 3 = {min_t} "
+            "(не менее двух разностных наблюдений на сущность)"
+        )
+    if lags not in PANEL_GMM_LAGS:
+        reasons.append(
+            f"GMM поддерживает lags {list(PANEL_GMM_LAGS)} "
+            f"(difference GMM Arellano-Bond), получено lags={lags}"
+        )
+    return reasons
+
+
+@dataclass(frozen=True)
+class PanelGmmResult:
+    """Честные артефакты difference GMM (Model Card динамической панели).
+
+    ``coefficients``/``std_errors`` -- само-выражающие имена:
+    ``f"{target}_lag{ell}"`` (AR-члены) и имена экзогенных;
+    ``alpha`` -- AR-коэффициенты (lags,), ``beta`` -- экзогенные;
+    ``entity_effects`` -- восстановленные сущностные эффекты mu_i
+    (уровневая форма: mean(y - alpha*y_lag - beta*x));
+    ``diagnostics`` -- AR(1)/AR(2)/J-тест (JSON-safe).
+    """
+
+    model_id: str  # "panel_gmm"
+    lags: int
+    exog_columns: Tuple[str, ...]
+    coefficients: Dict[str, float]
+    std_errors: Dict[str, float]
+    covariance: Dict[str, Dict[str, float]]
+    alpha: Tuple[float, ...]
+    beta: Dict[str, float]
+    entity_effects: Dict[str, float]
+    n_entities: int
+    n_obs: int  # разностные (эффективные) наблюдения
+    n_instruments: int
+    residual_variance: float
+    diagnostics: Dict[str, Any]
+    two_step: bool
+    collapsed: bool
+    warnings: Tuple[str, ...] = ()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "contract_version": PANEL_MODELS_VERSION,
+            "model_id": self.model_id,
+            "lags": int(self.lags),
+            "exog_columns": list(self.exog_columns),
+            "coefficients": dict(self.coefficients),
+            "std_errors": dict(self.std_errors),
+            "alpha": [float(value) for value in self.alpha],
+            "beta": dict(self.beta),
+            "entity_effects": dict(self.entity_effects),
+            "n_entities": int(self.n_entities),
+            "n_obs": int(self.n_obs),
+            "n_instruments": int(self.n_instruments),
+            "residual_variance": float(self.residual_variance),
+            "diagnostics": {
+                key: dict(value) if isinstance(value, dict) else value
+                for key, value in self.diagnostics.items()
+            },
+            "two_step": bool(self.two_step),
+            "collapsed": bool(self.collapsed),
+            "warnings": list(self.warnings),
+        }
+
+
+def _ar_impulse_responses(alpha: Sequence[float], count: int) -> np.ndarray:
+    """Импульсные отклики psi_k AR(lags)-полинома: psi_0 = 1,
+    psi_k = sum_ell alpha_ell * psi_{k-ell} (отрицательные индексы = 0)."""
+    psi = np.zeros(count, dtype=float)
+    for k in range(count):
+        value = 1.0 if k == 0 else 0.0
+        for ell in range(1, len(alpha) + 1):
+            if k - ell >= 0:
+                value += alpha[ell - 1] * psi[k - ell]
+        psi[k] = value
+    return psi
+
+
+def _fit_panel_gmm_core(
+    frame: PanelFrame,
+    *,
+    lags: int,
+    two_step: bool,
+    collapse: bool,
+    warn: Optional[str],
+) -> PanelGmmResult:
+    """Исполнение difference GMM на подготовленной панели (гейты пройдены).
+
+    Шаги: сортировка (entity, date) -> по-сущностные разности -> матрицы
+    X/y/Z (инструменты: уровни y_{i,s}, s <= t-lags-1; collapsed -- одна
+    колонка на лаг-дистанцию, полная -- gmm-формат AB; экзогенные --
+    собственные разности) -> 1-step W = (Σ Z'HZ)^-1, H = tridiag(2,-1) ->
+    робастный сэндвич SE (кластеризация по сущностям) -> опциональный
+    2-step (W2 из остатков 1-step, честный warning без Windmeijer) ->
+    диагностика AR(1)/AR(2)/J на финальных остатках -> эффекты mu_i.
+    """
+    data = frame.frame.sort_values(
+        [frame.entity_column, frame.date_column], kind="mergesort",
+    ).reset_index(drop=True)
+    target = frame.target_column
+    exog = _exog_names(frame)
+    k_exog = len(exog)
+    n_params = lags + k_exog
+
+    grouped_indices: list[np.ndarray] = []
+    for _, group in data.groupby(frame.entity_column, sort=True):
+        grouped_indices.append(group.index.to_numpy())
+
+    design_rows: list[np.ndarray] = []
+    target_rows: list[np.ndarray] = []
+    instrument_rows: list[np.ndarray] = []
+    entity_slices: list[tuple[int, int]] = []
+    level_series: list[dict[str, Any]] = []
+
+    # Проход 1: размеры колонок инструментов.
+    max_t = 0
+    for indices in grouped_indices:
+        t_i = len(indices)
+        max_t = max(max_t, t_i)
+    if collapse:
+        ar_columns = max_t - lags - 1  # дистанции d = lags+1 .. max_t-1
+    else:
+        # Полная gmm-матрица AB: для каждого оригинального t = lags+1..
+        # max_t-1 собственные инструменты y_0..y_{t-lags-1} (t-lags штук).
+        ar_columns = sum(t - lags for t in range(lags + 1, max_t))
+
+    # Проход 2: сборка строк.
+    cursor = 0
+    for indices in grouped_indices:
+        block = data.loc[indices]
+        y_levels = block[target].to_numpy(dtype=float)
+        x_levels = _frame_matrix(block, exog) if k_exog else np.zeros((len(indices), 0))
+        t_i = len(y_levels)
+        dy = np.diff(y_levels)  # (t_i - 1,): dy[j] = y[j+1] - y[j]
+        dx = np.diff(x_levels, axis=0) if k_exog else np.zeros((t_i - 1, 0))
+        # Эффективные строки: j = lags .. t_i - 2 (оригинальное t = j+1).
+        valid = np.arange(lags, t_i - 1)
+        if len(valid) == 0:  # pragma: no cover -- гейт t_min >= lags+3 исключает
+            raise PanelModelError(
+                "GMM: сущность без разностных наблюдений (гейт t_min нарушен)"
+            )
+        lag_block = np.column_stack([
+            dy[valid - ell] for ell in range(1, lags + 1)
+        ]) if lags else np.zeros((len(valid), 0))
+        x_block = dx[valid] if k_exog else np.zeros((len(valid), 0))
+        design_rows.append(np.column_stack([lag_block, x_block]))
+        target_rows.append(dy[valid])
+
+        # Инструменты: уровни y_{i,s}, s <= t - lags - 1 (оригинальное
+        # t = j + 1). Collapsed: колонка на дистанцию d = t - s.
+        z_ar = np.zeros((len(valid), ar_columns))
+        if collapse:
+            for row_index, j in enumerate(valid):
+                t_original = j + 1
+                for d_index in range(ar_columns):
+                    d = lags + 1 + d_index
+                    s = t_original - d
+                    if s >= 0:
+                        z_ar[row_index, d_index] = y_levels[s]
+        else:
+            # Полная gmm-матрица AB: колонка (t_key, s) -- уровень y_{i,s}
+            # в строке СВОЕГО периода t_original == t_key (стандартный
+            # gmm-формат: период t имеет собственные инструменты
+            # y_0..y_{t-lags-1}, в других строках колонка нулевая).
+            column_offset = 0
+            for t_key in range(lags + 1, max_t):
+                for s in range(0, t_key - lags):
+                    for row_index, j in enumerate(valid):
+                        if j + 1 == t_key:
+                            z_ar[row_index, column_offset] = y_levels[s]
+                    column_offset += 1
+        z_exog = dx[valid] if k_exog else np.zeros((len(valid), 0))
+        instrument_rows.append(np.column_stack([z_ar, z_exog]))
+
+        entity_slices.append((cursor, cursor + len(valid)))
+        cursor += len(valid)
+        level_series.append({
+            "y": y_levels, "x": x_levels,
+            "entity": str(block[frame.entity_column].iloc[0]),
+        })
+
+    design = np.vstack(design_rows)
+    y_diff = np.concatenate(target_rows)
+    instruments = np.vstack(instrument_rows)
+    n_rows = design.shape[0]
+    n_instruments = instruments.shape[1]
+    n = frame.n_entities
+
+    # Взвешивание 1-step: W = (Σ Z_i' H_i Z_i)^-1, H_i = tridiag(2,-1).
+    w1_inv = np.zeros((n_instruments, n_instruments))
+    for start, stop in entity_slices:
+        z_i = instruments[start:stop]
+        h_i = (
+            2.0 * np.eye(stop - start)
+            - np.eye(stop - start, k=1)
+            - np.eye(stop - start, k=-1)
+        )
+        w1_inv += z_i.T @ h_i @ z_i
+    w1 = np.linalg.pinv(w1_inv)
+    xz = design.T @ instruments  # X'Z: (params, L)
+    a1 = xz @ w1 @ xz.T          # X'Z W Z'X: (params, params)
+    b1 = xz @ w1 @ (instruments.T @ y_diff)
+    try:
+        theta1 = np.linalg.solve(a1, b1)
+    except np.linalg.LinAlgError:
+        theta1 = np.linalg.pinv(a1) @ b1
+
+    u1 = y_diff - design @ theta1
+    # Робастный сэндвич 1-step (кластеризация по сущностям).
+    moment_cov = np.zeros((n_instruments, n_instruments))
+    for start, stop in entity_slices:
+        g_i = instruments[start:stop].T @ u1[start:stop]
+        moment_cov += np.outer(g_i, g_i)
+    a1_inv = np.linalg.pinv(a1)
+    cov1 = a1_inv @ (xz @ w1 @ moment_cov @ w1 @ xz.T) @ a1_inv
+
+    theta = theta1
+    cov = cov1
+    warnings_list: list[str] = []
+    if warn:
+        warnings_list.append(warn)
+
+    if two_step:
+        w2_inv = moment_cov
+        w2 = np.linalg.pinv(w2_inv)
+        xz2 = design.T @ instruments
+        a2 = xz2 @ w2 @ xz2.T
+        b2 = xz2 @ w2 @ (instruments.T @ y_diff)
+        try:
+            theta2 = np.linalg.solve(a2, b2)
+        except np.linalg.LinAlgError:
+            theta2 = np.linalg.pinv(a2) @ b2
+        u2 = y_diff - design @ theta2
+        a2_inv = np.linalg.pinv(a2)
+        moment_cov2 = np.zeros((n_instruments, n_instruments))
+        for start, stop in entity_slices:
+            g_i = instruments[start:stop].T @ u2[start:stop]
+            moment_cov2 += np.outer(g_i, g_i)
+        cov2 = a2_inv @ (xz2 @ w2 @ moment_cov2 @ w2 @ xz2.T) @ a2_inv
+        theta, cov = theta2, cov2
+        warnings_list.append(
+            "SE 2-step GMM -- без Windmeijer-поправки (смещены вниз на "
+            "конечных выборках): статистический вывод по 1-step robust SE"
+        )
+
+    if n_instruments > n:
+        warnings_list.append(
+            f"Инструментальная пролиферация: инструментов {n_instruments} > "
+            f"сущностей {n} -- J-тест (Sargan/Hansen) ненадёжен; используйте "
+            "collapsed-инструменты (по умолчанию) или сократите лаг-дистанции"
+        )
+    if k_exog:
+        warnings_list.append(
+            "Экзогенные инструментируются собственными разностями "
+            "(предпосылка строгой экзогенности; при обратной причинности "
+            "оценка beta смещена -- решение за аналитиком)"
+        )
+
+    # Диагностика на финальных остатках.
+    u_final = y_diff - design @ theta
+    residual_variance = float(
+        u_final @ u_final / max(n_rows - n_params, 1)
+    )
+
+    def _ar_test(order: int) -> Dict[str, Any]:
+        sums: list[float] = []
+        for start, stop in entity_slices:
+            u_i = u_final[start:stop]
+            if len(u_i) > order:
+                sums.append(float(np.sum(u_i[order:] * u_i[:-order])))
+        if not sums:
+            return {"statistic": 0.0, "p_value": 1.0, "n_pairs": 0}
+        total_obs = sum(stop - start for start, stop in entity_slices)
+        m_stat = float(np.sum(sums) / total_obs)
+        n_clusters = len(sums)
+        cluster_var = (
+            (n_clusters / (n_clusters - 1))
+            * float(np.sum(np.asarray(sums) ** 2))
+            / (total_obs ** 2)
+        )
+        if cluster_var <= 0.0:
+            z_value = 0.0
+        else:
+            z_value = m_stat / np.sqrt(cluster_var)
+        p_value = float(
+            2.0 * scipy_stats.norm.sf(abs(z_value))
+        )
+        return {
+            "statistic": float(z_value),
+            "p_value": p_value,
+            "n_pairs": int(len(sums)),
+        }
+
+    ar1 = _ar_test(1)
+    ar2 = _ar_test(2)
+    g_final = instruments.T @ u_final
+    j_stat = float(g_final @ (w2 if two_step else w1) @ g_final)
+    j_df = int(n_instruments - n_params)
+    # Переидентифицированная система (j_df <= 0): J-тест не определён --
+    # честный None вместо фиктивной p-величины (JSON-safe).
+    j_p = float(scipy_stats.chi2.sf(j_stat, j_df)) if j_df > 0 else None
+    diagnostics = {
+        "ar1": ar1,
+        "ar2": ar2,
+        "j_test": {
+            "name": "hansen" if two_step else "sargan",
+            "statistic": j_stat,
+            "df": j_df,
+            "p_value": j_p,
+        },
+        "n_instruments": int(n_instruments),
+    }
+
+    # Имена коэффициентов: f"{target}_lag{ell}" + экзогенные.
+    ar_names = [f"{target}_lag{ell}" for ell in range(1, lags + 1)]
+    names = [*ar_names, *exog]
+    alpha = tuple(float(value) for value in theta[:lags])
+    beta = {
+        name: float(value)
+        for name, value in zip(exog, theta[lags:], strict=True)
+    }
+    coefficients = {
+        name: float(value)
+        for name, value in zip(names, theta, strict=True)
+    }
+    std_errors = {
+        name: float(np.sqrt(max(cov[index, index], 0.0)))
+        for index, name in enumerate(names)
+    }
+    covariance = {
+        row_name: {
+            col_name: float(cov[i, j])
+            for j, col_name in enumerate(names)
+        }
+        for i, row_name in enumerate(names)
+    }
+
+    # Эффекты сущностей mu_i: уровневая форма по данным фита.
+    entity_effects: Dict[str, float] = {}
+    for block_info in level_series:
+        y_levels = block_info["y"]
+        x_levels = block_info["x"]
+        values = []
+        for t_index in range(lags, len(y_levels)):
+            value = y_levels[t_index]
+            for ell in range(1, lags + 1):
+                value -= float(alpha[ell - 1]) * y_levels[t_index - ell]
+            for j in range(k_exog):
+                value -= beta[exog[j]] * x_levels[t_index, j]
+            values.append(value)
+        entity_effects[block_info["entity"]] = (
+            float(np.mean(values)) if values else 0.0
+        )
+
+    return PanelGmmResult(
+        model_id="panel_gmm",
+        lags=int(lags),
+        exog_columns=tuple(exog),
+        coefficients=coefficients,
+        std_errors=std_errors,
+        covariance=covariance,
+        alpha=alpha,
+        beta=beta,
+        entity_effects=entity_effects,
+        n_entities=int(n),
+        n_obs=int(n_rows),
+        n_instruments=int(n_instruments),
+        residual_variance=residual_variance,
+        diagnostics=diagnostics,
+        two_step=bool(two_step),
+        collapsed=bool(collapse),
+        warnings=tuple(warnings_list),
+    )
+
+
+def fit_panel_gmm(
+    frame: PanelFrame,
+    *,
+    lags: int = 1,
+    two_step: bool = False,
+    collapse: bool = True,
+) -> PanelGmmResult:
+    """Difference GMM Arellano-Bond (PANEL-GMM-4, динамические панели).
+
+    Модель уровней y_it = alpha*y_i,t-1 + beta*x_it + mu_i + e_it
+    оценивается в первых разностях (mu_i устранён; разности строго
+    groupby(entity), R5). Инструменты -- уровни y_{i,s}, s <= t-lags-1
+    (Arellano-Bond, 1991). ``collapse=True`` (по умолчанию) -- collapsed
+    инструментальная матрица (одна колонка на лаг-дистанцию, контроль
+    пролиферации); ``collapse=False`` -- полная gmm-матрица AB.
+    ``two_step=True`` -- 2-шаговая оценка с робастной весовой матрицей
+    (SE без Windmeijer-поправки -- честный warning; вывод по 1-step).
+    Экзогенные НЕ обязательны: панель только с target -- чистая динамика
+    (замыкание honest limitation FE/RE, R6 спеки).
+    """
+    warn, refuse = _gate_capacity(frame.n_entities)
+    if refuse:
+        raise PanelModelError(refuse)
+    _raise_if(_gate_panel_gmm(frame, lags))
+    return _fit_panel_gmm_core(
+        frame, lags=lags, two_step=two_step, collapse=collapse, warn=warn,
+    )
+
+
+@dataclass(frozen=True)
+class PanelGmmForecast:
+    """По-сущностной динамический прогноз GMM: точка + интервал."""
+
+    entity: str
+    horizon: int
+    confidence: float
+    point: Tuple[float, ...]
+    lower: Tuple[float, ...]
+    upper: Tuple[float, ...]
+    method: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "contract_version": PANEL_MODELS_VERSION,
+            "entity": self.entity,
+            "horizon": int(self.horizon),
+            "confidence": float(self.confidence),
+            "point": [float(value) for value in self.point],
+            "lower": [float(value) for value in self.lower],
+            "upper": [float(value) for value in self.upper],
+            "method": self.method,
+        }
+
+
+def panel_gmm_forecast(
+    result: PanelGmmResult,
+    *,
+    frame: PanelFrame,
+    entity: str,
+    horizon: int,
+    exog_paths: Optional[Dict[str, Sequence[float]]] = None,
+    confidence: float = 0.95,
+) -> PanelGmmForecast:
+    """Динамический прогноз по сущности (рекурсия по AR-структуре).
+
+    y_{T+h} = mu_i + Σ_ell alpha_ell * y_{T+h-ell} + Σ_j beta_j * x_{j,T+h}.
+    Панель БЕЗ экзогенных прогнозирует от собственной динамики (замыкание
+    R6); модель С экзогенными требует сценарные пути (что-if аналитика).
+    Интервал -- нормальная аппроксимация: накопленная остаточная
+    дисперсия через импульсные отклики AR-полинома (Σ psi_k^2 * sigma^2)
+    + коэффициентная неопределённость экзогенной части (x'Vx); метод
+    дисклоужен в ``method``.
+    """
+    if horizon < 1:
+        raise PanelModelError("Горизонт прогноза должен быть положительным")
+    if entity not in result.entity_effects:
+        raise PanelModelError(
+            f"Неизвестная сущность '{entity}': прогноз строится только по "
+            "сущностям подтверждённой панели"
+        )
+    mu = result.entity_effects[entity]
+    alpha = np.asarray(result.alpha, dtype=float)
+    psi = _ar_impulse_responses(alpha, horizon)
+
+    exog = list(result.exog_columns)
+    x_matrix: Optional[np.ndarray] = None
+    if exog:
+        if not exog_paths:
+            raise PanelModelError(
+                "Сценарий не содержит пути экзогенных факторов: модель с "
+                f"экзогенными {exog} требует сценарные пути; чистая динамика "
+                "доступна для панелей без экзогенных колонок"
+            )
+        missing = [name for name in exog if name not in exog_paths]
+        if missing:
+            raise PanelModelError(
+                "Сценарий не содержит пути экзогенных факторов: "
+                f"отсутствуют {missing}"
+            )
+        for name, path in exog_paths.items():
+            if len(path) != horizon:
+                raise PanelModelError(
+                    f"Путь '{name}' длины {len(path)} расходится с горизонтом "
+                    f"прогноза {horizon}"
+                )
+        x_matrix = np.column_stack([
+            [float(value) for value in exog_paths[name]] for name in exog
+        ])
+
+    history = frame.frame[
+        frame.frame[frame.entity_column].astype(str) == str(entity)
+    ].sort_values(frame.date_column)[frame.target_column].to_numpy(dtype=float)
+    if len(history) < result.lags:
+        raise PanelModelError(
+            f"Сущность '{entity}': наблюдений {len(history)} < lags "
+            f"{result.lags} -- состояние прогноза недоступно"
+        )
+    state = [float(value) for value in history[-result.lags:]] if result.lags else []
+
+    beta = np.asarray(
+        [result.beta[name] for name in exog], dtype=float,
+    ) if exog else np.zeros(0)
+    cov_exog = np.asarray(
+        [[result.covariance[r][c] for c in exog] for r in exog], dtype=float,
+    ) if exog else np.zeros((0, 0))
+
+    points: list[float] = []
+    lowers: list[float] = []
+    uppers: list[float] = []
+    z_value = float(scipy_stats.norm.ppf(1.0 - (1.0 - confidence) / 2.0))
+    for step in range(horizon):
+        value = mu
+        for ell in range(1, result.lags + 1):
+            value += float(alpha[ell - 1]) * state[-ell]
+        if x_matrix is not None:
+            value += float(beta @ x_matrix[step])
+        points.append(float(value))
+        state.append(float(value))
+        var_step = result.residual_variance * float(
+            np.sum(psi[: step + 1] ** 2)
+        )
+        if x_matrix is not None:
+            var_step += float(x_matrix[step] @ cov_exog @ x_matrix[step])
+        half_width = z_value * np.sqrt(max(var_step, 0.0))
+        lowers.append(float(value - half_width))
+        uppers.append(float(value + half_width))
+
+    method = (
+        "динамическая рекурсия GMM по AR-структуре: накопленная остаточная "
+        "дисперсия (импульсные отклики AR-полинома) + коэффициентная "
+        "неопределённость экзогенной части (x'Vx); нормальная аппроксимация"
+    )
+    return PanelGmmForecast(
+        entity=str(entity),
+        horizon=int(horizon),
+        confidence=float(confidence),
+        point=tuple(points),
+        lower=tuple(lowers),
+        upper=tuple(uppers),
+        method=method,
+    )
+
+
+@dataclass(frozen=True)
+class PanelGmmIrf:
+    """IRF difference GMM: динамические мультипликаторы beta_j * psi_{h-1}."""
+
+    horizon: int
+    steps: Tuple[Dict[str, Any], ...]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "contract_version": PANEL_MODELS_VERSION,
+            "horizon": int(self.horizon),
+            "steps": [dict(step) for step in self.steps],
+        }
+
+
+def panel_gmm_irf(result: PanelGmmResult, *, horizon: int) -> PanelGmmIrf:
+    """Отклик y на единичный шок x_j: IRF_h = beta_j * psi_{h-1}.
+
+    psi_k -- импульсные отклики AR-полинома (psi_0 = 1). Без экзогенных --
+    честный отказ (IRF не определена: шокировать нечего).
+    """
+    if horizon < 1:
+        raise PanelModelError("Горизонт IRF должен быть положительным")
+    if not result.exog_columns:
+        raise PanelModelError(
+            "IRF GMM требует экзогенных переменных: панель только с target "
+            "не содержит шокируемых факторов"
+        )
+    psi = _ar_impulse_responses(np.asarray(result.alpha, dtype=float), horizon)
+    steps: list[Dict[str, Any]] = []
+    for step in range(1, horizon + 1):
+        steps.append({
+            "step": step,
+            "responses": {
+                name: float(result.beta[name] * psi[step - 1])
+                for name in result.exog_columns
+            },
+        })
+    return PanelGmmIrf(horizon=int(horizon), steps=tuple(steps))
+
+
+@dataclass(frozen=True)
+class PanelVarIrf:
+    """IRF Panel VAR по A-матрицам PanelVarResult (без ортогонализации).
+
+    IRF_h = Σ_l A_l * IRF_{h-l}, IRF_0 = I; шаги 1..H. Удар -- единичный
+    в переменной-источнике (Холецкий НЕ применяется -- дисклоужено).
+    """
+
+    horizon: int
+    variables: Tuple[str, ...]
+    steps: Tuple[Dict[str, Dict[str, float]], ...]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "contract_version": PANEL_MODELS_VERSION,
+            "horizon": int(self.horizon),
+            "variables": list(self.variables),
+            "steps": [
+                {response: dict(values) for response, values in step.items()}
+                for step in self.steps
+            ],
+        }
+
+
+def panel_var_irf(result: PanelVarResult, *, horizon: int) -> PanelVarIrf:
+    """IRF Panel VAR (закрытие отсылки спеки «IRF -- вне задачи
+    (PANEL-GMM-4)»): IRF_h = Σ_l A_l * IRF_{h-l} по A-матрицам фита.
+
+    Без ортогонализации (единичный удар в переменной-источнике);
+    предпосылка -- стационарность VAR (|собственные значения| < 1),
+    она НЕ проверяется здесь -- advisory-факт Model Card.
+    """
+    if horizon < 1:
+        raise PanelModelError("Горизонт IRF должен быть положительным")
+    variables = list(result.variables)
+    k = len(variables)
+    a_matrices = [
+        np.asarray(
+            [[matrix[eq][var] for var in variables] for eq in variables],
+            dtype=float,
+        )
+        for matrix in result.a_matrices
+    ]
+    irf_mats = [np.eye(k)]
+    for step in range(1, horizon + 1):
+        accumulator = np.zeros((k, k))
+        for lag in range(1, min(step, result.lags) + 1):
+            accumulator += a_matrices[lag - 1] @ irf_mats[step - lag]
+        irf_mats.append(accumulator)
+    steps = tuple(
+        {
+            response: {
+                shock: float(matrix[row, col])
+                for col, shock in enumerate(variables)
+            }
+            for row, response in enumerate(variables)
+        }
+        for matrix in irf_mats[1:]
+    )
+    return PanelVarIrf(
+        horizon=int(horizon), variables=tuple(variables), steps=steps,
+    )
 
 
 # ── Folds панельного бэктеста ───────────────────────────────────────────────

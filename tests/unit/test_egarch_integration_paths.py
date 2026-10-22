@@ -148,7 +148,7 @@ def test_production_count_is_nineteen() -> None:
     PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b)."""
     from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 
-    expected = (24 if neuralforecast_runtime_available() else 19) + 3
+    expected = (24 if neuralforecast_runtime_available() else 19) + 4  # PANEL-GMM-4: +panel_gmm
     assert len(PRODUCTION_BACKTEST_MODEL_IDS) == expected
 
 

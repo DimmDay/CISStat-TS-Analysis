@@ -19,8 +19,9 @@ def test_capability_contract_covers_every_catalog_model_and_stage() -> None:
     assert MODELING_CAPABILITY_CONTRACT_VERSION == "model-capabilities-v1"
     # Историческая база 24. PANEL-MODELS-3b (fa0cce1): + panel_fe/panel_re/
     # panel_var; PANEL-MODELS-3c (bee3f8e): + deepar_panel -- итого 28.
-    # Рекалибровка пина PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
-    assert len(matrix) == 28
+    # PANEL-GMM-4 (7352010+): + panel_gmm -- итого 29.
+    # Рекалибровки пина: PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b), PANEL-GMM-4.
+    assert len(matrix) == 29
     assert all(set(stages) == set(MODELING_STAGE_IDS) for stages in matrix.values())
     assert matrix["naive"]["tuning"]["status"] == "not_applicable"
     assert matrix["theta"]["diagnostics"]["status"] == "available"

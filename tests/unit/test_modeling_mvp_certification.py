@@ -65,8 +65,9 @@ _EXPECTED_NEURAL = (
 # production-модели (input_kind=panel_entity, движок сущностного контура);
 # членство безусловное. deepar_panel (PANEL-MODELS-3c, bee3f8e) --
 # dependency_group="neural": членство условно, как у deepar.
-# Рекалибровка пина PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
-_EXPECTED_PANEL = frozenset({"panel_fe", "panel_re", "panel_var"})
+# Рекалибровки пина: PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b), PANEL-GMM-4
+# (panel_gmm -- динамические панели, членство безусловное).
+_EXPECTED_PANEL = frozenset({"panel_fe", "panel_re", "panel_var", "panel_gmm"})
 _EXPECTED_PANEL_NEURAL = (
     {"deepar_panel"} if neuralforecast_runtime_available() else frozenset()
 )
@@ -87,9 +88,9 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
 
     # Историческое имя -- эра 19/24. Рост каталога легитимен: PANEL-MODELS-3b
     # (fa0cce1) добавил panel_fe/panel_re/panel_var; PANEL-MODELS-3c (bee3f8e)
-    # -- deepar_panel. Итого 24 + 4 = 28. Рекалибровка пина
-    # PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
-    assert len(catalog) == 28
+    # -- deepar_panel; PANEL-GMM-4 -- panel_gmm. Итого 24 + 5 = 29.
+    # Рекалибровки пина: PANEL-MODELS-3b-FIX (CF-1), PANEL-GMM-4.
+    assert len(catalog) == 29
     # Task 138/139/140/141: readiness = 19 сертифицированных + lstm/
     # nbeats/nhits/tft при установленной опциональной neural-группе (см.
     # EXPECTED_PRODUCTION_MODEL_IDS).
@@ -98,12 +99,13 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
     # Legacy-предикторы строятся по ЗАПИСЯМ реестра (код) -- lstm/nbeats/
     # nhits/tft входят независимо от среды; вызов без группы честно
     # отклоняется гейтом зависимостей registry.execute.
-    # PANEL-MODELS-3b/3c: panel_fe/panel_re/panel_var/deepar_panel --
-    # записи реестра сущностного контура, предикторы входят безусловно.
+    # PANEL-MODELS-3b/3c/GMM-4: panel_fe/panel_re/panel_var/deepar_panel/
+    # panel_gmm -- записи реестра сущностного контура, предикторы входят
+    # безусловно.
     assert frozenset(PRODUCTION_PREDICTORS) == (
         CERTIFIED_MODEL_IDS
         | {"lstm", "nbeats", "nhits", "tft", "deepar"}
-        | {"panel_fe", "panel_re", "panel_var", "deepar_panel"}
+        | {"panel_fe", "panel_re", "panel_var", "deepar_panel", "panel_gmm"}
     )
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
         {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost",

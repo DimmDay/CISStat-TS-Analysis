@@ -852,7 +852,8 @@ class TestSessionPanelContour:
             assert "панел" in candidates.text.lower()
         if candidates.status_code == 200:
             cards = {card["model_id"]: card for card in candidates.json()["models"]}
-            assert set(cards) == {"panel_fe", "panel_re", "panel_var", "deepar_panel"}
+            # PANEL-GMM-4: пятая карточка сущностного контура.
+            assert set(cards) == {"panel_fe", "panel_re", "panel_var", "deepar_panel", "panel_gmm"}
             deepar_card = cards["deepar_panel"]
             assert deepar_card["gates"]["min_entities"] == DEEPAR_MIN_SERIES
 
@@ -865,13 +866,17 @@ class TestSessionPanelContour:
         assert candidates.status_code == 200, candidates.text
         body = candidates.json()
         cards = {card["model_id"]: card for card in body["models"]}
-        assert set(cards) == {"panel_fe", "panel_re", "panel_var", "deepar_panel"}
+        # PANEL-GMM-4: пятая карточка сущностного контура.
+        assert set(cards) == {"panel_fe", "panel_re", "panel_var", "deepar_panel", "panel_gmm"}
         # Гейты паспорта честны: 6x48 панель применима для FE/RE/deepar_panel
         assert cards["panel_fe"]["applicable"] is True
         assert cards["deepar_panel"]["gates"]["n_entities"] == 6
         assert cards["deepar_panel"]["gates"]["min_entity_observations"] == DEEPAR_MIN_TRAIN
-        # GMM в карточках НЕ появляется (отдельная постановка PANEL-GMM-4)
+        # PANEL-GMM-4: карточка panel_gmm появилась (реальные гейты
+        # паспорта _gmm_computability); отдельного ключа "gmm" нет --
+        # ключ карточки panel_gmm (канон имён каталога).
         assert "gmm" not in cards
+        assert "panel_gmm" in cards
 
     def test_backtest_fe_session(self, seeded_client):
         seeded_client.post(

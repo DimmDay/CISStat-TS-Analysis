@@ -1134,10 +1134,11 @@ def _panel_entity_executor(request: ModelExecutionRequest) -> ModelExecutionResu
     capability-дескрипторы и cohort-изоляцию.
     """
     raise ModelExecutionContractError(
-        "panel_entity-модели (panel_fe/panel_re/panel_var/deepar_panel) "
+        "panel_entity-модели (panel_fe/panel_re/panel_var/deepar_panel/"
+        "panel_gmm) "
         "исполняются ТОЛЬКО панельным движком run_panel_entity_backtest_plan: "
         "сущностная панель не представима плоским ModelExecutionRequest "
-        "(честность PANEL-MODELS-3b/3c)"
+        "(честность PANEL-MODELS-3b/3c/GMM-4)"
     )
 
 
@@ -1603,6 +1604,23 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         resource_capabilities=ModelResourceCapabilities(
             memory_class="standard", gpu="optional",
         ),
+    ),
+    # PANEL-GMM-4: динамические панели -- difference GMM Arellano-Bond.
+    # Тот же panel_entity-контур (fail-closed executor, исполнение ТОЛЬКО
+    # панельным движком run_panel_entity_backtest_plan); engine statsmodels/
+    # numpy -- собственная реализация без новых зависимостей. Гейты:
+    # n_entities >= 5, t_per_entity.min >= lags + 3; экзогенные НЕ обязательны
+    # (динамическая панель прогнозирует от собственной динамики -- замыкание
+    # honest limitation FE/RE, R6 спеки).
+    ModelExecutionDefinition(
+        model_id="panel_gmm", family_id="panel",
+        adapter_id="panel-gmm-arellano-bond", executor=_panel_entity_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        required_packages=("statsmodels",),
+        input_kind="panel_entity",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])
 

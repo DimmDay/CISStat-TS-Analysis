@@ -1975,7 +1975,7 @@ def run_panel_entity_backtest_plan(
     НЕ колонко-параллельная "panel":
 
     - гейт: модели, объявившие input_kind="panel_entity" (panel_fe /
-      panel_re / panel_var / deepar_panel); сущностная панель не
+      panel_re / panel_var / deepar_panel / panel_gmm); сущностная панель не
       представима плоским ModelExecutionRequest -- панельные модели
       фита непосредственно на PanelFrame (реестр -- capability-
       дескрипторы);
@@ -1996,9 +1996,11 @@ def run_panel_entity_backtest_plan(
         PanelModelError,
         build_panel_entity_folds,
         fit_fixed_effects,
+        fit_panel_gmm,
         fit_panel_var,
         fit_random_effects,
         panel_fe_re_scenario_forecast,
+        panel_gmm_forecast,
         panel_var_forecast,
     )
     from app.preprocessing.panel import (
@@ -2020,7 +2022,7 @@ def run_panel_entity_backtest_plan(
         raise BacktestExecutionError(
             f"Модель '{model_id}' не объявила input_kind=panel_entity: "
             "панельный движок сущностного контура исполняет только "
-            "panel_fe / panel_re / panel_var / deepar_panel"
+            "panel_fe / panel_re / panel_var / deepar_panel / panel_gmm"
         )
 
     strategy = str(validation.get("strategy", "expanding"))
@@ -2036,6 +2038,7 @@ def run_panel_entity_backtest_plan(
     parameters = dict(params or {})
     is_var = model_id == "panel_var"
     is_deepar_panel = model_id == "deepar_panel"
+    is_gmm = model_id == "panel_gmm"
     mode = "common_grid" if is_var else "dates"
     fit_model = fit_panel_var if is_var else (
         fit_fixed_effects if model_id == "panel_fe" else fit_random_effects
@@ -2077,6 +2080,15 @@ def run_panel_entity_backtest_plan(
             "unique_id = значению entity-колонки, НЕ series_i Task 142); "
             "интервалы -- нативные квантили DistributionLoss (StudentT), "
             "НЕ conformal"
+        ]
+    elif is_gmm:
+        warnings: list[str] = [
+            "GMM (PANEL-GMM-4): динамическая панель Arellano-Bond -- "
+            "OOF-прогноз по-сущностной динамической рекурсией от конца "
+            "train (AR-структура); без экзогенных прогноз строит чистую "
+            "динамику (замыкание honest limitation FE/RE); с экзогенными -- "
+            "test-факты используются как сценарий аналитика (what-if), "
+            "y test-периода в фит не входит (leakage-safe)"
         ]
     else:
         warnings: list[str] = [
@@ -2148,9 +2160,16 @@ def run_panel_entity_backtest_plan(
                 ) from exc
         else:
             try:
-                model_result = (
-                    fit_model(sub_frame, lags=1) if is_var else fit_model(sub_frame)
-                )
+                if is_var:
+                    model_result = fit_model(sub_frame, lags=1)
+                elif is_gmm:
+                    model_result = fit_panel_gmm(
+                        sub_frame,
+                        lags=int(parameters.get("lags", 1)),
+                        two_step=bool(parameters.get("two_step", False)),
+                    )
+                else:
+                    model_result = fit_model(sub_frame)
             except PanelModelError as exc:
                 raise BacktestExecutionError(
                     f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
@@ -2200,6 +2219,65 @@ def run_panel_entity_backtest_plan(
                 entity_train = train_df[
                     train_df[entity_column].astype(str) == str(entity)
                 ].sort_values(date_column)
+                entity_series[str(entity)]["train_target"] = [
+                    float(value) for value in entity_train[target_column]
+                ]
+        elif is_gmm:
+            # По-сущностной динамический прогноз от конца train:
+            # рекурсия по AR-структуре фита fold'а; экзогенные test-факта
+            # -- сценарий аналитика (what-if, паритет FE/RE-постановки);
+            # без экзогенных -- чистая динамика (замыкание R6).
+            gmm_lags = int(parameters.get("lags", 1))
+            test_df = data[
+                data[date_column].isin(fold.test_dates)
+            ].sort_values([entity_column, date_column])
+            for entity in entities:
+                entity_test = test_df[
+                    test_df[entity_column] == entity
+                ].sort_values(date_column)
+                if entity_test.empty:
+                    continue
+                entity_train = train_df[
+                    train_df[entity_column] == entity
+                ].sort_values(date_column)
+                if len(entity_train) < gmm_lags:
+                    raise BacktestExecutionError(
+                        f"{model_name}: fold {fold.fold}: сущность '{entity}' "
+                        f"имеет {len(entity_train)} train-наблюдений < lags "
+                        f"{gmm_lags} -- состояние динамического прогноза "
+                        "недоступно (честный отказ)"
+                    )
+                exog_paths = (
+                    {
+                        name: [float(value) for value in entity_test[name]]
+                        for name in exog_columns
+                    }
+                    if exog_columns else None
+                )
+                forecast = panel_gmm_forecast(
+                    model_result,
+                    frame=sub_frame,
+                    entity=str(entity),
+                    horizon=horizon,
+                    exog_paths=exog_paths,
+                )
+                for step_index, (_, row) in enumerate(entity_test.iterrows()):
+                    if step_index >= horizon:
+                        break
+                    actual_value = float(row[target_column])
+                    predicted_value = float(forecast.point[step_index])
+                    predictions.append({
+                        "fold": fold.fold,
+                        "entity": str(entity),
+                        "date": str(row[date_column]),
+                        "actual": actual_value,
+                        "predicted": predicted_value,
+                        "residual": round(actual_value - predicted_value, 12),
+                        "lower": float(forecast.lower[step_index]),
+                        "upper": float(forecast.upper[step_index]),
+                    })
+                    entity_series[str(entity)]["actual"].append(actual_value)
+                    entity_series[str(entity)]["predicted"].append(predicted_value)
                 entity_series[str(entity)]["train_target"] = [
                     float(value) for value in entity_train[target_column]
                 ]

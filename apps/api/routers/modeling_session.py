@@ -3347,13 +3347,14 @@ def get_model_card(card_id: str, request: Request, response: Response):
 # глобальный фит, по-сущностной прогноз, probabilistic-поверхность).
 # ══════════════════════════════════════════════════════════════════════════════
 
-PANEL_ENTITY_MODEL_IDS = ("panel_fe", "panel_re", "panel_var", "deepar_panel")
+PANEL_ENTITY_MODEL_IDS = ("panel_fe", "panel_re", "panel_var", "deepar_panel", "panel_gmm")
 
 _PANEL_PASSPORT_MODEL_KEYS = {
     "panel_fe": "fixed_effects",
     "panel_re": "random_effects",
     "panel_var": "panel_var",
     "deepar_panel": "deepar_panel",
+    "panel_gmm": "gmm",
 }
 
 
@@ -3706,13 +3707,18 @@ def panel_forecast(
     FE/RE -- сценарный (пути экзогенных по каждой сущности; горизонт =
     длина сценария); Panel VAR -- рекурсивный по общей сетке;
     deepar_panel -- по-сущностной прогноз глобальной модели с
-    probabilistic-поверхностью (DistributionLoss, native quantiles)."""
+    probabilistic-поверхностью (DistributionLoss, native quantiles);
+    panel_gmm (PANEL-GMM-4) -- по-сущностной динамический прогноз:
+    панель БЕЗ экзогенных прогнозирует от собственной динамики,
+    с экзогенными -- сценарные пути (опциональны)."""
     from app.modeling.panel_models import (
         PanelModelError,
         fit_fixed_effects,
+        fit_panel_gmm,
         fit_panel_var,
         fit_random_effects,
         panel_fe_re_scenario_forecast,
+        panel_gmm_forecast,
         panel_var_forecast,
     )
     from apps.api.model_impls.deepar import (
@@ -3854,6 +3860,75 @@ def panel_forecast(
             )
             warnings.extend(fit.warnings)
             method = "recursive_panel_var"
+        elif payload.model_id == "panel_gmm":
+            # PANEL-GMM-4: по-сущностной динамический прогноз. Панель БЕЗ
+            # экзогенных прогнозирует от собственной динамики (замыкание
+            # honest limitation FE/RE); с экзогенными пути ОПЦИОНАЛЬНЫ --
+            # заданы аналитиком (what-if) или отсутствуют (чистая динамика).
+            gmm_params = dict(payload.params or {})
+            fit = fit_panel_gmm(
+                frame,
+                lags=int(gmm_params.get("lags", 1)),
+                two_step=bool(gmm_params.get("two_step", False)),
+            )
+            paths = payload.exog_paths or {}
+            missing = [
+                entity for entity in entities
+                if fit.exog_columns and str(entity) not in paths
+            ]
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Модель с экзогенными требует сценарные пути для "
+                        f"КАЖДОЙ сущности; отсутствуют: {missing[:5]} "
+                        "(чистая динамика доступна для панелей без "
+                        "экзогенных колонок)"
+                    ),
+                )
+            for entity in entities:
+                entity_rows = data[
+                    data[frame.entity_column].astype(str) == str(entity)
+                ].sort_values(frame.date_column)
+                frequency = _panel_entity_frequency(entity_rows[frame.date_column])
+                last_date = pd.Timestamp(entity_rows[frame.date_column].iloc[-1])
+                entity_paths = (
+                    {
+                        str(name): [float(value) for value in values]
+                        for name, values in paths[str(entity)].items()
+                    }
+                    if fit.exog_columns and str(entity) in paths
+                    else None
+                )
+                forecast = panel_gmm_forecast(
+                    fit,
+                    frame=frame,
+                    entity=str(entity),
+                    horizon=payload.horizon,
+                    exog_paths=entity_paths,
+                    confidence=payload.confidence,
+                )
+                entity_records.append(PanelEntityForecast(
+                    entity=str(entity),
+                    dates=_panel_future_dates(last_date, frequency, payload.horizon),
+                    point=[float(value) for value in forecast.point],
+                    lower=[float(value) for value in forecast.lower],
+                    upper=[float(value) for value in forecast.upper],
+                ))
+            warnings.extend(fit.warnings)
+            if fit.exog_columns:
+                warnings.append(
+                    "Динамический прогноз GMM: пути экзогенных заданы "
+                    "аналитиком (what-if); AR-часть -- рекурсия от "
+                    "последних наблюдений сущности"
+                )
+            else:
+                warnings.append(
+                    "Динамический прогноз GMM: панель без экзогенных -- "
+                    "прогноз от собственной динамики (динамическая панель, "
+                    "PANEL-GMM-4)"
+                )
+            method = "dynamic_panel_gmm"
         else:
             try:
                 deepar_payload = _deepar_panel_fit_predict(

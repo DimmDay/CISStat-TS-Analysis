@@ -28,8 +28,9 @@ spec_panel_models_2026-10-20.md §3a).
   cointegration-evidence Task 132).
 
 Границы: однорядный контур (паспорт, passport-серия, checkpoint
-modeling_entry) не затрагивается; GMM (Arellano-Bond) -- отдельная
-постановка PANEL-GMM-4; без новых зависимостей (statsmodels/numpy/scipy).
+modeling_entry) не затрагивается; GMM (Arellano-Bond) -- PANEL-GMM-4
+(app/modeling/panel_models.py, гейты паспорта -- _gmm_computability);
+без новых зависимостей (statsmodels/numpy/scipy).
 """
 from __future__ import annotations
 
@@ -65,6 +66,15 @@ MIN_OBS_PER_ENTITY_DEEPAR = 30
 # VAR(2) -- рекомендованный запас (warning при нехватке).
 PANEL_VAR_MAX_LAG_BASE = 2  # p + 1 при p = 1
 PANEL_VAR_RECOMMENDED_BASE = 3  # p + 1 при p = 2
+# Гейты GMM (PANEL-GMM-4, динамические панели -- difference GMM
+# Arellano-Bond): n_entities >= 5 -- канон семейства (N -- размерность
+# асимптотики AB); t_per_entity.min >= lags + MIN_T_PER_ENTITY_GMM_BASE --
+# технический минимум идентификации (при lags=1: T_i >= 4 -- не менее двух
+# разностных наблюдений на сущность; иначе моментные условия вырождаются).
+# Экзогенные НЕ обязательны: динамическая панель прогнозирует от собственной
+# динамики (замыкание honest limitation FE/RE, R6 спеки).
+MIN_ENTITIES_GMM = 5
+MIN_T_PER_ENTITY_GMM_BASE = 3
 # Производственные капы (render.com free tier 512MB, прецедент FC-MON-2).
 CAPACITY_WARN_ENTITIES = 200
 CAPACITY_REFUSE_ENTITIES = 2000
@@ -597,8 +607,8 @@ def _fe_re_computability(frame: PanelFrame, model_name: str, refused: bool) -> D
     if n_exog < 1:
         reasons.append(
             "Нет экзогенных переменных: статическая панель FE/RE прогнозирует "
-            "только по сценарным путям экзогенных факторов; без экзогенных -- "
-            "динамические панели это контур GMM (в разработке, PANEL-GMM-4)"
+            "только по сценарным путям экзогенных факторов; без экзогенных "
+            "прогноз строит динамический контур GMM (panel_gmm, PANEL-GMM-4)"
         )
     return {"applicable": not reasons, "reasons": reasons, "gates": gates}
 
@@ -648,6 +658,40 @@ def _panel_var_computability(frame: PanelFrame, refused: bool) -> Dict[str, Any]
             f"(рекомендуется ≥ {need_recommended}): надёжна оценка только VAR(1)"
         )
     return {"applicable": not reasons, "reasons": reasons, "gates": gates, "warning": warning}
+
+
+def _gmm_computability(frame: PanelFrame, refused: bool) -> Dict[str, Any]:
+    """Гейты вычислимости GMM (PANEL-GMM-4, зеркальны _gate_panel_gmm).
+
+    Динамическая панель: экзогенные НЕ обязательны (прогноз от собственной
+    динамики -- замыкание honest limitation FE/RE); t_per_entity.min >=
+    lags + MIN_T_PER_ENTITY_GMM_BASE (при lags=1 -- >= 2 разностных
+    наблюдения на сущность); капы семейства 200/2000.
+    """
+    reasons: list[str] = []
+    gates = {
+        "n_entities": int(frame.n_entities),
+        "t_min": int(frame.t_per_entity["min"]),
+        "need_t_min_lags1": int(1 + MIN_T_PER_ENTITY_GMM_BASE),
+    }
+    if refused:
+        reasons.append(
+            f"Производственный кап превышен: {frame.n_entities} сущностей > "
+            f"{CAPACITY_REFUSE_ENTITIES} -- честный отказ вместо риска OOM (среда 512MB)"
+        )
+        return {"applicable": False, "reasons": reasons, "gates": gates}
+    if frame.n_entities < MIN_ENTITIES_GMM:
+        reasons.append(
+            f"Недостаточно сущностей: {frame.n_entities} < {MIN_ENTITIES_GMM} "
+            "(минимум для панельного GMM)"
+        )
+    if frame.t_per_entity["min"] < 1 + MIN_T_PER_ENTITY_GMM_BASE:
+        reasons.append(
+            "Недостаточно наблюдений внутри сущностей: минимальная длина "
+            f"{int(frame.t_per_entity['min'])} < {1 + MIN_T_PER_ENTITY_GMM_BASE} "
+            "(для lags=1: не менее двух разностных наблюдений на сущность)"
+        )
+    return {"applicable": not reasons, "reasons": reasons, "gates": gates}
 
 
 def _sanitize_json(value: Any) -> Any:
@@ -780,7 +824,7 @@ def build_panel_passport(
 
     Шаги: fail-closed ``build_panel_frame`` -> по-сущностный профиль
     достаточности (``profile_sufficiency`` с зафиксированными колонками) ->
-    гейты вычислимости FE/RE/Panel VAR + честный отказ GMM -> advisory
+    гейты вычислимости FE/RE/Panel VAR/GMM (PANEL-GMM-4) -> advisory
     Pesaran CD по target -> капы производительности. Advisory-факты не
     блокируют; fail-closed нарушения останавливают построение честной ошибкой.
     """
@@ -818,14 +862,9 @@ def build_panel_passport(
         "random_effects": _fe_re_computability(frame, "random_effects", capacity["refused"]),
         "panel_var": _panel_var_computability(frame, capacity["refused"]),
         "deepar_panel": _deepar_panel_computability(frame, capacity["refused"]),
-        "gmm": {
-            "applicable": False,
-            "reasons": [
-                "Динамические панели (Arellano-Bond GMM) -- вне контура "
-                "PANEL-MODELS-3: отдельная постановка PANEL-GMM-4"
-            ],
-            "gates": {},
-        },
+        # PANEL-GMM-4: реальные гейты динамического контура (Arellano-Bond
+        # difference GMM) вместо честного отказа этапа 3a.
+        "gmm": _gmm_computability(frame, capacity["refused"]),
     }
 
     cd = pesaran_cd(

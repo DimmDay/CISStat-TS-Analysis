@@ -207,15 +207,15 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     # на укороченном бюджете.  deepar -- panel-постановка (Task 142):
     # вдобавок требует related_series и исполняется панельным движком.
     # PANEL-MODELS-3b (fa0cce1): panel_fe/panel_re/panel_var --
-    # panel_entity-исполнители; исполняются ТОЛЬКО панельным движком
-    # run_panel_entity_backtest_plan и не входят в одномерный OOF cohort
-    # (honest fail-closed, отказ проверяется ниже). Рекалибровка пина
-    # PANEL-MODELS-3b-FIX (CF-1 акта Cert 3b).
+    # panel_entity-исполнители; PANEL-GMM-4: + panel_gmm. Исполняются
+    # ТОЛЬКО панельным движком run_panel_entity_backtest_plan и не входят
+    # в одномерный OOF cohort (honest fail-closed, отказ проверяется ниже).
+    # Рекалибровки пина: PANEL-MODELS-3b-FIX (CF-1), PANEL-GMM-4.
     univariate_model_ids = (
         PRODUCTION_BACKTEST_MODEL_IDS
         - {"var", "vecm", "garch", "egarch"}
         - {"lstm", "nbeats", "nhits", "tft", "deepar"}
-        - {"panel_fe", "panel_re", "panel_var"}
+        - {"panel_fe", "panel_re", "panel_var", "panel_gmm"}
     )
     results = {
         model_id: run_backtest_plan(

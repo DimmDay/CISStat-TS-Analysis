@@ -29,7 +29,7 @@ from apps.api.schemas import CandidatesRequest, DataProfileRequest
 # "panel" (R2 спеки); исполнение ТОЛЬКО панельным движком
 # run_panel_entity_backtest_plan, dispatch -- честный отказ (прецедент
 # var/vecm/deepar).
-PANEL_ENTITY_IDS = frozenset({"panel_fe", "panel_re", "panel_var", "deepar_panel"})
+PANEL_ENTITY_IDS = frozenset({"panel_fe", "panel_re", "panel_var", "deepar_panel", "panel_gmm"})  # PANEL-GMM-4
 CERTIFIED_IDS = frozenset({
     "naive", "seasonal_naive", "drift", "mean", "ets",
     "ets_damped", "theta", "arima", "arima_auto", "prophet", "tbats",

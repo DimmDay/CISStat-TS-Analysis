@@ -449,7 +449,7 @@ class TestBacktestImplementationsRegistry:
     """Регрессия: _BACKTEST_IMPLEMENTATIONS должен содержать все 19 моделей:
     4 baseline + 15 production. Если кто-то случайно удалил ключ -- тест падает."""
 
-    def test_registry_has_22_implementations(self):
+    def test_registry_has_23_implementations(self):  # PANEL-GMM-4: было 22
         impls = models_router._BACKTEST_IMPLEMENTATIONS
         expected = {
             "naive", "seasonal_naive", "drift", "mean",  # baselines (Phase 0)
@@ -467,6 +467,9 @@ class TestBacktestImplementationsRegistry:
             # PANEL-MODELS-3b: панельное семейство №9 (сущностный контур;
             # legacy synthetic-эндпоинт -- честный отказ, прецедент var/vecm).
             "panel_fe", "panel_re", "panel_var",
+            # PANEL-GMM-4: динамические панели (Arellano-Bond) -- тот же
+            # panel_entity-контур, честный отказ на legacy-эндпоинте.
+            "panel_gmm",
         }
         # Task 138/139/140/141: lstm, nbeats, nhits и tft -- условные
         # neural-записи (опциональная группа requirements-neural.txt; см.

@@ -233,3 +233,125 @@ class TestPanelEntityEngine:
         # из факта; дисклоужено в warnings.
         result = self._run(panel_frame, "panel_fe")
         assert any("сценар" in warning.lower() for warning in result["warnings"])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PANEL-GMM-4: panel_gmm -- Arellano-Bond difference GMM (динамические панели).
+# Реестр исполнения + панельный движок. TDD RED -- тесты ДО реализации.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _make_dynamic_panel_df(*, n_entities=12, t_per_entity=24, alpha=0.6,
+                           beta=0.8, seed=42, with_exog=True):
+    """Динамический панельный DGP: y_it = alpha*y_i,t-1 + beta*x_it + mu_i + e."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    dates = pd.date_range("2022-01-31", periods=t_per_entity, freq="ME")
+    mus = rng.normal(0.0, 2.0, size=n_entities)
+    for i in range(n_entities):
+        entity = f"g{i:02d}"
+        x = rng.normal(0.0, 1.0, size=t_per_entity) if with_exog else np.zeros(t_per_entity)
+        y = np.zeros(t_per_entity)
+        y[0] = mus[i] / (1.0 - alpha) + beta * x[0] + rng.normal(0.0, 0.7)
+        for t in range(1, t_per_entity):
+            y[t] = alpha * y[t - 1] + beta * x[t] + mus[i] + rng.normal(0.0, 0.7)
+        for t in range(t_per_entity):
+            row = {"entity": entity, "date": dates[t], "y": float(y[t])}
+            if with_exog:
+                row["x"] = float(x[t])
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+class TestPanelGmmRegistry:
+    def test_panel_gmm_registered_as_panel_entity(self):
+        definition = MODEL_EXECUTION_REGISTRY.require("panel_gmm")
+        assert definition.family_id == "panel"
+        assert definition.input_kind == "panel_entity"
+        assert definition.deterministic is True
+        assert "backtest" in definition.actions
+
+    def test_panel_gmm_descriptor(self):
+        descriptor = MODEL_EXECUTION_REGISTRY.describe("panel_gmm")
+        assert descriptor["input_kind"] == "panel_entity"
+        assert descriptor["runtime_available"] is True  # statsmodels установлен
+
+    def test_panel_gmm_in_production_backtest_ids(self):
+        from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
+        assert "panel_gmm" in PRODUCTION_BACKTEST_MODEL_IDS
+
+    def test_panel_entity_executor_refuses_panel_gmm(self):
+        # Прецедент FE/RE/VAR: сущностная панель не представима плоским
+        # request -- executor честно отказывает, исполнение ТОЛЬКО движком.
+        import numpy as np
+        request = ModelExecutionRequest(
+            target=[float(value) for value in np.arange(20)],
+            horizon=4, params={},
+        )
+        with pytest.raises(ModelExecutionContractError):
+            _panel_entity_executor(request)
+
+
+class TestPanelGmmEngine:
+    @pytest.fixture()
+    def gmm_frame(self):
+        return build_panel_frame(
+            _make_dynamic_panel_df(),
+            date_column="date", entity_column="entity",
+            value_columns=["y", "x"], target_column="y",
+        )
+
+    def test_backtest_end_to_end(self, gmm_frame):
+        result = run_panel_entity_backtest_plan(
+            model_id="panel_gmm", model_name="Arellano-Bond GMM",
+            family_id="panel", frame=gmm_frame,
+            validation={"strategy": "expanding", "horizon": 4, "n_folds": 2},
+            seasonal_period=12,
+        )
+        assert result["status"] == "success"
+        assert result["model_id"] == "panel_gmm"
+        assert result["cohort_contract"]["panel_entity"] is True
+        assert result["cohort_contract"]["input_kind"] == "panel_entity"
+        assert len(result["folds"]) == 2
+        assert all(fold["status"] == "success" for fold in result["folds"])
+        assert result["oof_predictions"], "OOF-точки обязаны быть"
+        for point in result["oof_predictions"]:
+            assert "entity" in point and "actual" in point and "predicted" in point
+        assert result["panel"]["n_entities"] == 12
+        assert set(result["panel"]["entity_metrics"]) == {
+            f"g{i:02d}" for i in range(12)
+        }
+        assert any("динамическ" in warning for warning in result["warnings"])
+
+    def test_backtest_pure_dynamics_without_exog(self):
+        # ДИФФЕРЕНЦИАТОР от FE/RE: панель БЕЗ экзогенных исполняется --
+        # динамическая панель прогнозирует от собственной динамики (R6).
+        frame = build_panel_frame(
+            _make_dynamic_panel_df(with_exog=False),
+            date_column="date", entity_column="entity",
+            value_columns=["y"], target_column="y",
+        )
+        result = run_panel_entity_backtest_plan(
+            model_id="panel_gmm", model_name="Arellano-Bond GMM",
+            family_id="panel", frame=frame,
+            validation={"strategy": "expanding", "horizon": 3, "n_folds": 2},
+            seasonal_period=12,
+        )
+        assert result["status"] == "success"
+        assert result["oof_predictions"]
+
+    def test_backtest_short_history_refused(self):
+        # t_per_entity < fold-минимума -- честный отказ движка (без пустых
+        # folds), а не фиктивный прогон.
+        frame = build_panel_frame(
+            _make_dynamic_panel_df(t_per_entity=9),
+            date_column="date", entity_column="entity",
+            value_columns=["y", "x"], target_column="y",
+        )
+        with pytest.raises(BacktestExecutionError) as exc:
+            run_panel_entity_backtest_plan(
+                model_id="panel_gmm", model_name="Arellano-Bond GMM",
+                family_id="panel", frame=frame,
+                validation={"strategy": "expanding", "horizon": 2, "n_folds": 1},
+                seasonal_period=12,
+            )
+        assert "Недостаточно истории" in str(exc.value)

@@ -461,11 +461,22 @@ class TestPanelPassportGates:
         pv = passport.models["panel_var"]
         assert pv["applicable"] is True, pv["reasons"]
 
-    def test_gmm_honest_not_implemented(self):
+    def test_gmm_computability_gates(self):
+        # PANEL-GMM-4: реальные гейты динамического контура вместо
+        # честного отказа этапа 3a (адекватная панель -- применим).
         passport = self._passport(_balanced_panel(n_entities=6, n_dates=14))
         gmm = passport.models["gmm"]
+        assert gmm["applicable"] is True, gmm["reasons"]
+        assert gmm["gates"]["n_entities"] == 6
+        assert gmm["gates"]["t_min"] == 14
+
+    def test_gmm_short_panel_refused(self):
+        passport = self._passport(_balanced_panel(n_entities=6, n_dates=3))
+        gmm = passport.models["gmm"]
         assert gmm["applicable"] is False
-        assert "PANEL-GMM-4" in " ".join(gmm["reasons"])
+        assert any(
+            "Недостаточно наблюдений" in reason for reason in gmm["reasons"]
+        )
 
     def test_capacity_warning_above_200_entities(self):
         passport = self._passport(_balanced_panel(n_entities=201, n_dates=3))

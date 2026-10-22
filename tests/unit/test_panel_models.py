@@ -13,26 +13,35 @@ from app.preprocessing.panel import (
     CAPACITY_REFUSE_ENTITIES,
     CAPACITY_WARN_ENTITIES,
     MIN_ENTITIES_FE_RE,
+    MIN_ENTITIES_GMM,
     MIN_T_PER_ENTITY_FE_RE,
+    MIN_T_PER_ENTITY_GMM_BASE,
     UNBALANCED,
     PanelContractError,
     build_panel_frame,
 )
 
-# RED: контрактного модуля ещё не существует -> ModuleNotFoundError.
+# RED PANEL-GMM-4: GMM-контракт ещё не реализован -> ImportError при сборе.
 from app.modeling.panel_models import (
     PANEL_MODELS_VERSION,
     HausmanResult,
+    PanelGmmForecast,
+    PanelGmmResult,
     PanelModelError,
+    PanelVarIrf,
     PanelVarResult,
     build_panel_entity_folds,
     fit_fixed_effects,
     fit_fixed_effects_dummies,
+    fit_panel_gmm,
     fit_panel_var,
     fit_random_effects,
     hausman_test,
     panel_fe_re_scenario_forecast,
+    panel_gmm_forecast,
+    panel_gmm_irf,
     panel_var_forecast,
+    panel_var_irf,
 )
 
 
@@ -672,3 +681,416 @@ class TestPanelEntityFolds:
             build_panel_entity_folds(
                 fe_frame, horizon=200, n_folds=2, strategy="expanding",
             )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PANEL-GMM-4: динамические панели -- Arellano-Bond difference GMM
+# (спека spec_panel_models_2026-10-20.md: классификатор маршрутизирует GMM;
+# FE/RE honest limitation «динамические панели -- GMM-контур»; Panel VAR:
+# «IRF -- вне задачи (PANEL-GMM-4)»). TDD RED -- тесты ДО реализации.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _make_dynamic_panel(
+    *,
+    n_entities: int = 40,
+    t_per_entity: int = 25,
+    alpha: float = 0.6,
+    beta: float = 0.8,
+    mu_sd: float = 2.0,
+    noise_sd: float = 0.7,
+    ar2: float = 0.0,
+    seed: int = 42,
+    unbalanced: bool = False,
+    with_exog: bool = True,
+):
+    """Динамический панельный DGP (известная истина для GMM):
+
+    y_it = alpha*y_i,t-1 + beta*x_it + mu_i + e_it, e_it = ar2*e_i,t-2 + nu_it.
+    ar2 != 0 -- второй порядок серийной корреляции уровневых ошибок
+    (после первых разностей сохраняется -- AR(2)-тест обязан его видеть).
+    Старт y_i0 -- из стационарного состояния mu_i/(1-alpha) (без начального
+    выброса, честная переходная динамика).
+    """
+    rng = np.random.default_rng(seed)
+    mus = rng.normal(0.0, mu_sd, size=n_entities)
+    rows = []
+    for i in range(n_entities):
+        n_t = t_per_entity - (i % 3 if unbalanced else 0)
+        dates = pd.date_range("2022-01-31", periods=t_per_entity, freq="ME")[:n_t]
+        e = np.zeros(n_t)
+        for t in range(n_t):
+            shock = rng.normal(0.0, noise_sd)
+            e[t] = ar2 * e[t - 2] + shock if t >= 2 else shock
+        x = rng.normal(0.0, 1.0, size=n_t) if with_exog else np.zeros(n_t)
+        y = np.zeros(n_t)
+        y[0] = mus[i] / (1.0 - alpha) + beta * x[0] + e[0]
+        for t in range(1, n_t):
+            y[t] = alpha * y[t - 1] + beta * x[t] + mus[i] + e[t]
+        entity = f"d{i:02d}"
+        if with_exog:
+            for t in range(n_t):
+                rows.append(
+                    {"entity": entity, "date": dates[t],
+                     "y": float(y[t]), "x": float(x[t])}
+                )
+        else:
+            for t in range(n_t):
+                rows.append(
+                    {"entity": entity, "date": dates[t], "y": float(y[t])}
+                )
+    return pd.DataFrame(rows)
+
+
+def _build_dynamic_frame(df: pd.DataFrame) -> PanelFrame:
+    value_columns = [name for name in ("y", "x") if name in df.columns]
+    return build_panel_frame(
+        df, date_column="date", entity_column="entity",
+        value_columns=value_columns, target_column="y",
+    )
+
+
+class TestPanelGmmGates:
+    """Гейты GMM: честные отказы без фиктивных результатов."""
+
+    def test_too_few_entities_refused(self):
+        df = _make_dynamic_panel(n_entities=MIN_ENTITIES_GMM - 1, seed=3)
+        frame = _build_dynamic_frame(df)
+        with pytest.raises(PanelModelError) as exc:
+            fit_panel_gmm(frame)
+        assert "Недостаточно сущностей" in str(exc.value)
+
+    def test_short_entities_refused(self):
+        # t_per_entity.min < lags + 3 -- меньше двух разностных наблюдений
+        # на сущность: моментные условия вырождаются -- честный отказ.
+        df = _make_dynamic_panel(t_per_entity=3, seed=4)
+        frame = _build_dynamic_frame(df)
+        with pytest.raises(PanelModelError) as exc:
+            fit_panel_gmm(frame)
+        message = str(exc.value)
+        assert "Недостаточно наблюдений" in message
+        assert "lags + 3" in message or "4" in message
+
+    def test_unsupported_lags_refused(self):
+        df = _make_dynamic_panel(seed=5)
+        frame = _build_dynamic_frame(df)
+        with pytest.raises(PanelModelError) as exc:
+            fit_panel_gmm(frame, lags=3)
+        assert "lags" in str(exc.value)
+
+    def test_capacity_refusal_above_2000(self):
+        # Кап 2000 сущностей недостижим в тесте по памяти -- панель
+        # имитирует отказ: гейт проверяется напрямую (канон паспорта).
+        from app.modeling.panel_models import _gate_panel_gmm
+        df = _make_dynamic_panel(n_entities=6, t_per_entity=20, seed=6)
+        frame = _build_dynamic_frame(df)
+        oversized = type(frame)(
+            frame=frame.frame,
+            date_column=frame.date_column,
+            entity_column=frame.entity_column,
+            value_columns=frame.value_columns,
+            target_column=frame.target_column,
+            n_entities=2001,
+            n_dates_common=frame.n_dates_common,
+            balance=frame.balance,
+            t_per_entity=frame.t_per_entity,
+            n_valid=frame.n_valid,
+            dates_common=frame.dates_common,
+            nan_profile=frame.nan_profile,
+        )
+        reasons = _gate_panel_gmm(oversized, lags=1)
+        assert any("кап превышен" in reason for reason in reasons)
+
+
+class TestPanelGmmEstimation:
+    """Восстановление истины на DGP с известными параметрами."""
+
+    def test_alpha_beta_recovery(self):
+        df = _make_dynamic_panel(
+            n_entities=40, t_per_entity=25, alpha=0.6, beta=0.8, seed=42,
+        )
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        assert isinstance(result, PanelGmmResult)
+        assert result.model_id == "panel_gmm"
+        assert abs(result.alpha[0] - 0.6) <= 0.08, result.alpha
+        assert abs(result.beta["x"] - 0.8) <= 0.08, result.beta
+        assert f"y_lag1" in result.coefficients
+        assert "x" in result.coefficients
+        assert result.std_errors["x"] > 0.0
+        assert result.n_obs > 0
+        assert result.n_instruments > 0
+
+    def test_alpha_zero_no_dynamic_bias(self):
+        # alpha=0: без AR-составляющей GMM не должен выдумывать динамику.
+        df = _make_dynamic_panel(
+            n_entities=40, t_per_entity=25, alpha=0.0, beta=0.9, seed=7,
+        )
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        assert abs(result.alpha[0]) <= 0.12, result.alpha
+
+    def test_entity_effects_correlate_with_truth(self):
+        df = _make_dynamic_panel(
+            n_entities=40, t_per_entity=25, alpha=0.6, beta=0.8, seed=42,
+        )
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        # DGP тянет mu из ПЕРВЫХ n_entities бросков rng(seed) -- воспроизводим
+        # ровно их (порядок вызовов фиксирован конвенцией фикстуры).
+        true_mu = np.random.default_rng(42).normal(0.0, 2.0, size=40)
+        for i in range(40):
+            recovered = result.entity_effects[f"d{i:02d}"]
+            assert recovered == recovered  # конечность
+        correlation = np.corrcoef(
+            [result.entity_effects[f"d{i:02d}"] for i in range(40)],
+            true_mu,
+        )[0, 1]
+        assert correlation > 0.9, correlation
+
+    def test_unbalanced_panel_works(self):
+        # R7: несбалансированные панели легитимны (theta по фактическим T_i).
+        df = _make_dynamic_panel(n_entities=30, t_per_entity=22, seed=11, unbalanced=True)
+        frame = _build_dynamic_frame(df)
+        assert frame.balance == UNBALANCED
+        result = fit_panel_gmm(frame)
+        assert abs(result.alpha[0] - 0.6) <= 0.1, result.alpha
+        assert abs(result.beta["x"] - 0.8) <= 0.1, result.beta
+
+    def test_determinism(self):
+        df = _make_dynamic_panel(seed=13)
+        frame = _build_dynamic_frame(df)
+        first = fit_panel_gmm(frame)
+        second = fit_panel_gmm(frame)
+        assert first.to_dict() == second.to_dict()
+
+    def test_to_dict_json_safe(self):
+        df = _make_dynamic_panel(seed=14)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        payload = result.to_dict()
+        assert payload["contract_version"] == PANEL_MODELS_VERSION
+        assert payload["model_id"] == "panel_gmm"
+        import json
+        json.dumps(payload, allow_nan=False)  # не падает -- JSON-safe
+
+    def test_two_step_available_with_honest_warning(self):
+        df = _make_dynamic_panel(seed=15)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame, two_step=True)
+        assert result.two_step is True
+        assert any("Windmeijer" in warning for warning in result.warnings)
+        # 2-step на гомоскедастичном DGP близок к 1-step (состоятельность).
+        one_step = fit_panel_gmm(frame)
+        assert abs(one_step.alpha[0] - result.alpha[0]) <= 0.1
+
+    def test_full_instruments_proliferation_warning(self):
+        # Полная gmm-матрица на длинной панели: L > N -- честный warning
+        # (Hansen/Sargan ненадёжен при пролиферации, практика Roodman).
+        df = _make_dynamic_panel(n_entities=12, t_per_entity=25, seed=16)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame, collapse=False)
+        assert result.n_instruments > 12
+        assert any(
+            "пролиферация" in warning.lower() or "L > N" in warning
+            for warning in result.warnings
+        )
+
+
+class TestPanelGmmDiagnostics:
+    """AR(1)/AR(2)/J-тесты: корректное направление на DGP."""
+
+    def test_ar1_rejects_ar2_not_on_iid(self):
+        df = _make_dynamic_panel(ar2=0.0, seed=42)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        ar1 = result.diagnostics["ar1"]
+        ar2 = result.diagnostics["ar2"]
+        assert 0.0 <= ar1["p_value"] <= 1.0
+        assert 0.0 <= ar2["p_value"] <= 1.0
+        assert ar1["p_value"] < 0.05, (
+            "AR(1) обязан отвергать: разности по построению MA(1)-структура"
+        )
+        assert ar2["p_value"] > 0.05, (
+            "AR(2) не должен отвергать на iid-шуме"
+        )
+
+    def test_ar2_detects_second_order_serial_correlation(self):
+        df = _make_dynamic_panel(ar2=0.4, seed=17)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        assert result.diagnostics["ar2"]["p_value"] < 0.05
+
+    def test_j_test_shape_and_df(self):
+        df = _make_dynamic_panel(n_entities=40, t_per_entity=25, seed=42)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        j = result.diagnostics["j_test"]
+        assert j["name"] in {"sargan", "hansen"}
+        # df = L - K: инструменты минус оцениваемые параметры (lags + exog).
+        expected_df = result.n_instruments - (result.lags + len(result.exog_columns))
+        assert j["df"] == expected_df
+        assert j["df"] > 0
+        assert 0.0 <= j["p_value"] <= 1.0
+
+    def test_j_test_hansen_name_for_two_step(self):
+        df = _make_dynamic_panel(seed=18)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame, two_step=True)
+        assert result.diagnostics["j_test"]["name"] == "hansen"
+        one_step = fit_panel_gmm(frame)
+        assert one_step.diagnostics["j_test"]["name"] == "sargan"
+
+
+class TestPanelGmmForecast:
+    """По-сущностной динамический прогноз: точная ручная рекурсия."""
+
+    def test_pure_dynamics_without_exog(self):
+        # ЗАМЫКАНИЕ R6: панель БЕЗ экзогенных прогнозирует от собственной
+        # динамики -- то, что FE/RE честно отказываются делать.
+        df = _make_dynamic_panel(
+            n_entities=12, t_per_entity=20, alpha=0.6, with_exog=False, seed=19,
+        )
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        assert result.exog_columns == ()
+        forecast = panel_gmm_forecast(result, frame=frame, entity="d00", horizon=5)
+        assert isinstance(forecast, PanelGmmForecast)
+        assert len(forecast.point) == 5
+        alpha = result.alpha[0]
+        mu = result.entity_effects["d00"]
+        y_hist = frame.frame[
+            frame.frame["entity"] == "d00"
+        ].sort_values("date")["y"].to_numpy(dtype=float)
+        expected = []
+        value = float(y_hist[-1])
+        for _ in range(5):
+            value = alpha * value + mu
+            expected.append(value)
+        assert np.allclose(forecast.point, expected, atol=1e-9)
+        # Интервалы расширяются с горизонтом (неопределённость накапливается).
+        widths = [upper - lower for lower, upper in zip(forecast.lower, forecast.upper)]
+        assert widths == sorted(widths)
+
+    def test_forecast_with_exog_paths_manual(self):
+        df = _make_dynamic_panel(seed=20)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        alpha = result.alpha[0]
+        beta = result.beta["x"]
+        mu = result.entity_effects["d00"]
+        y_hist = frame.frame[
+            frame.frame["entity"] == "d00"
+        ].sort_values("date")["y"].to_numpy(dtype=float)
+        x_path = [1.0, -0.5, 2.0]
+        forecast = panel_gmm_forecast(
+            result, frame=frame, entity="d00", horizon=3,
+            exog_paths={"x": x_path},
+        )
+        expected = []
+        value = float(y_hist[-1])
+        for step in range(3):
+            value = alpha * value + beta * x_path[step] + mu
+            expected.append(value)
+        assert np.allclose(forecast.point, expected, atol=1e-9)
+        assert forecast.lower[0] < forecast.point[0] < forecast.upper[0]
+
+    def test_forecast_unknown_entity_refused(self):
+        df = _make_dynamic_panel(seed=21)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        with pytest.raises(PanelModelError) as exc:
+            panel_gmm_forecast(result, frame=frame, entity="nope", horizon=2)
+        assert "Неизвестная сущность" in str(exc.value)
+
+    def test_forecast_horizon_positive(self):
+        df = _make_dynamic_panel(seed=22)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        with pytest.raises(PanelModelError):
+            panel_gmm_forecast(result, frame=frame, entity="d00", horizon=0)
+
+    def test_forecast_exog_paths_full_coverage_required(self):
+        df = _make_dynamic_panel(seed=23)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        with pytest.raises(PanelModelError) as exc:
+            panel_gmm_forecast(
+                result, frame=frame, entity="d00", horizon=3,
+                exog_paths={},
+            )
+        assert "Сценарий" in str(exc.value)
+
+
+class TestPanelGmmIrf:
+    """IRF GMM: динамические мультипликаторы beta_j * psi_{h-1}."""
+
+    def test_irf_manual_multipliers(self):
+        df = _make_dynamic_panel(alpha=0.5, beta=1.2, seed=24)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        alpha = result.alpha[0]
+        beta = result.beta["x"]
+        irf = panel_gmm_irf(result, horizon=4)
+        for step_index, step in enumerate(irf.steps):
+            expected = beta * (alpha ** step_index)
+            assert abs(step["responses"]["x"] - expected) < 1e-9
+
+    def test_irf_without_exog_refused(self):
+        df = _make_dynamic_panel(with_exog=False, seed=25)
+        frame = _build_dynamic_frame(df)
+        result = fit_panel_gmm(frame)
+        with pytest.raises(PanelModelError) as exc:
+            panel_gmm_irf(result, horizon=3)
+        assert "экзогенных" in str(exc.value)
+
+
+class TestPanelVarIrf:
+    """IRF Panel VAR: закрытие отсылки спеки «IRF -- вне задачи (PANEL-GMM-4)»."""
+
+    @staticmethod
+    def _var_frame(a11: float = 0.7, a12: float = 0.2, a21: float = -0.1,
+                   a22: float = 0.8, n_entities: int = 6, t: int = 18):
+        rng = np.random.default_rng(26)
+        rows = []
+        dates = pd.date_range("2022-01-31", periods=t, freq="ME")
+        for i in range(n_entities):
+            entity = f"v{i}"
+            y1, y2 = rng.normal(0.0, 1.0), rng.normal(0.0, 1.0)
+            for t_index in range(t):
+                new_y1 = a11 * y1 + a12 * y2
+                new_y2 = a21 * y1 + a22 * y2
+                y1, y2 = new_y1, new_y2
+                rows.append({
+                    "entity": entity, "date": dates[t_index],
+                    "v1": float(y1), "v2": float(y2),
+                })
+        df = pd.DataFrame(rows)
+        return build_panel_frame(
+            df, date_column="date", entity_column="entity",
+            value_columns=["v1", "v2"], target_column="v1",
+        )
+
+    def test_var_irf_matrix_powers(self):
+        frame = self._var_frame()
+        result = fit_panel_var(frame, lags=1)
+        irf = panel_var_irf(result, horizon=3)
+        assert isinstance(irf, PanelVarIrf)
+        a = np.array([[0.7, 0.2], [-0.1, 0.8]])
+        # Шаг 1 -- отклик = A_1 (удар единичный, без ортогонализации).
+        assert np.allclose(
+            [[irf.steps[0][response][shock]
+              for shock in ("v1", "v2")] for response in ("v1", "v2")],
+            a, atol=1e-9,
+        )
+        # Шаг 3 -- A^3.
+        assert np.allclose(
+            [[irf.steps[2][response][shock]
+              for shock in ("v1", "v2")] for response in ("v1", "v2")],
+            np.linalg.matrix_power(a, 3), atol=1e-9,
+        )
+
+    def test_var_irf_horizon_positive(self):
+        frame = self._var_frame()
+        result = fit_panel_var(frame, lags=1)
+        with pytest.raises(PanelModelError):
+            panel_var_irf(result, horizon=0)

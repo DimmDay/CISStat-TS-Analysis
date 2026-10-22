@@ -54,7 +54,7 @@ def test_endpoint_returns_typed_matrix_for_current_session_dataset():
     assert body["horizon"] == 12
     # PANEL-MODELS-3b: семейство №9 panel (+3 модели) -- 24 -> 27;
     # PANEL-MODELS-3c: deepar_panel (entity-pivot, этап 3) -- 27 -> 28.
-    assert body["summary"]["total_models"] == 28
+    assert body["summary"]["total_models"] == 29  # PANEL-GMM-4: +panel_gmm
     assert body["models"][0]["criteria"]
 
 

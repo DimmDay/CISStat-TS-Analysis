@@ -201,7 +201,7 @@ def test_tft_readiness_and_stage_matrix_reflect_runtime():
     else:
         assert actions == []
         assert capabilities["backtest"]["status"] == "not_implemented"
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 22
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 23  # PANEL-GMM-4: +panel_gmm
 
 
 # ── yaml: bounded param_space и честная attention-ось ────────────────────

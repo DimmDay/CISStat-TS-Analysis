@@ -106,7 +106,8 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # F05) / catalog-only 0 / blocked 5 (var, vecm, garch, egarch,
     # deepar); без опциональной группы -- честные 15/5/4 (Task 136).
     # PANEL-MODELS-3b: панельное семейство №9 -- NOT_APPLICABLE (F06) на
-    # однорядном профиле: blocked +3 (panel_fe/panel_re/panel_var); панельные
+    # однорядном профиле: blocked +3 (panel_fe/panel_re/panel_var);
+    # PANEL-GMM-4: blocked +4 (+ panel_gmm). Панельные
     # модели -- production-ready в реестре, в candidates не входят (F06),
     # catalog_only не меняется.
     if _HAS_NEURAL:
@@ -114,14 +115,17 @@ def test_candidate_statistics_report_runtime_availability_separately():
         assert response.statistics.catalog_only_candidates == 0
         # PANEL-MODELS-3c: deepar_panel (neural-группа установлена) --
         # production-ready, но F06 блокирует на однорядном профиле: 9.
-        assert response.statistics.blocked_candidates == 9
+        # PANEL-GMM-4: panel_gmm -- блокирован F06: 10.
+        assert response.statistics.blocked_candidates == 10
     else:
         assert response.statistics.runnable_candidates == 15
         # PANEL-MODELS-3c: deepar_panel без neural-группы -- честный
         # catalog-only (шестой недоступный исполнитель).
         assert response.statistics.catalog_only_candidates == 6
-        assert response.statistics.blocked_candidates == 7
-    assert response.statistics.total_models_in_spec == 28  # PANEL-MODELS-3c: +deepar_panel
+        # PANEL-GMM-4: panel_gmm -- блокирован F06: 8.
+        assert response.statistics.blocked_candidates == 8
+    # PANEL-GMM-4: +panel_gmm (базис PANEL-MODELS-3c: +deepar_panel).
+    assert response.statistics.total_models_in_spec == 29
 
 
 def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
@@ -133,7 +137,7 @@ def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
     candidate_ids = {item.model_id for item in response.candidates}
     catalog = {item.model_id: item for item in response.catalog}
 
-    assert len(response.catalog) == response.statistics.total_models_in_spec == 28
+    assert len(response.catalog) == response.statistics.total_models_in_spec == 29
     assert len(response.candidates) < len(response.catalog)
     assert "var" not in candidate_ids
     assert catalog["var"].level == "NOT_APPLICABLE"
@@ -228,8 +232,9 @@ def test_not_recommended_soft_window_warns_but_allows_in_catalog():
         for model_id in ("lstm", "nbeats", "nhits", "tft", "deepar"):
             assert catalog[model_id].platform_status == "ready", model_id
             assert catalog[model_id].available_actions == [], model_id
-        # 4 ready-but-blocked (var/vecm/garch/egarch) + 5 нейро = 9
-        assert response.statistics.blocked_candidates == 9
+        # 4 ready-but-blocked (var/vecm/garch/egarch) + 5 нейро = 9;
+        # PANEL-GMM-4: панельные -- NOT_APPLICABLE (F06): blocked +4 -- 10.
+        assert response.statistics.blocked_candidates == 10
     else:
         for model_id in ("lstm", "nbeats", "nhits", "tft", "deepar"):
             assert catalog[model_id].platform_status == "catalog_only", model_id
@@ -238,5 +243,6 @@ def test_not_recommended_soft_window_warns_but_allows_in_catalog():
                 "фиктивные метрики запрещены."
             ), model_id
         # Только var/vecm/garch/egarch остаются ready-but-blocked
-        # PANEL-MODELS-3b: панельные -- NOT_APPLICABLE (F06): blocked +3.
-        assert response.statistics.blocked_candidates == 7
+        # PANEL-MODELS-3b: панельные -- NOT_APPLICABLE (F06): blocked +3;
+        # PANEL-GMM-4: blocked +4 (+ panel_gmm).
+        assert response.statistics.blocked_candidates == 8
