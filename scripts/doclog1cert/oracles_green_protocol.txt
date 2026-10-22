@@ -1,0 +1,8 @@
+=== ORACLES GREEN PASS-1 (78769bd, финальный корпус 62) ===
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 62 passed, 8 warnings in 3.00s ========================
+=== ORACLES GREEN PASS-2 (78769bd, финальный корпус 62) ===
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 62 passed, 8 warnings in 2.98s ========================

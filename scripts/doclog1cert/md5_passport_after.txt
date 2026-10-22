@@ -1,0 +1,6 @@
+9229c221cc6fa80048224a804dbd1ed5  apps/api/artifact_store.py
+c32b3736dc948a742b009a480315cd3e  apps/api/artifact_promotion.py
+45b7f11e1fff977b7b6b1c19cac83dd3  apps/api/migrations/0007_doclog1_artifacts.sql
+593f23e427967a5706ac46e890c4e8be  apps/api/research_runs.py
+524809a9a37558264ca80b244ffa4691  apps/api/routers/progress.py
+132840ed89b31d2c3cfe0e9d85d1e458  apps/api/storage_diagnostics.py

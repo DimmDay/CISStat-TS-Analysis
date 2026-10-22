@@ -1,0 +1,32 @@
+M01 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T12: маскировка NaN в канонизации
+M02 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | verify staging инвертирован (AC08 fail-closed снят)
+M03 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T8: проверка целостности при чтении снята
+M04 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | algorithm/version data_digest искажён
+M05 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | AC09: идемпотентность/конфликт Memory сняты
+M06 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | pinned_checkpoint_ids игнорирует ref_kind
+M07 | artifact_store.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | идемпотентность pin_ref снята
+M08 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | sweep перестаёт удалять orphan staging
+M09 | artifact_store.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | схема content-addressed ключа изменена
+M10 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | схема artifact_id искажена
+M11 | artifact_store.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | P21/F14: required fail-closed снят
+M12 | artifact_store.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | staging не убирается после коммита
+M13 | artifact_store.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | R1: копии записей реестра сняты
+M14 | artifact_promotion.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | uniform-отказ отсутствующего run снят
+M15 | artifact_promotion.py | DUAL-KILLED | oracle_kill=True repo_kill=True | R09: классификация write-отказа снята
+M16 | artifact_promotion.py | DUAL-KILLED | oracle_kill=True repo_kill=True | R4/AC13: изоляция panel-вселенной снята
+M17 | artifact_promotion.py | DUAL-KILLED | oracle_kill=True repo_kill=True | AC12-дух: честный отказ NaN подменён сырым исключением
+M18 | artifact_promotion.py | DUAL-SURVIVOR | oracle_kill=False repo_kill=False | предварительный поиск producer_key снят (гарантия остаётся в реестре)
+M19 | artifact_promotion.py | DUAL-KILLED | oracle_kill=True repo_kill=True | AC04: авто-pin зависимостей снят
+M20 | artifact_promotion.py | DUAL-KILLED | oracle_kill=True repo_kill=True | зависимость model_card от checkpoint снята
+M21 | artifact_promotion.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | невалидный source-ref фабкуется
+M22 | research_runs.py | DUAL-SURVIVOR | oracle_kill=False repo_kill=False | честное отсутствие снимка чекпоинта снято
+M23 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | миграция 0007 выведена из каталога
+M24 | progress.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | T11: fail-closed prune при сбое lookup снят
+M25 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | AC04: объединение keep-списка с пинами снято
+M26 | storage_diagnostics.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T6: artifacts-блок /health/ops удалён
+M27 | storage_diagnostics.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T10: раскрытие пути в health
+CTL-01 | artifact_store.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-02 | artifact_promotion.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-03 | progress.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+
+md5-паспорта восстановлены: True; git diff чист: True

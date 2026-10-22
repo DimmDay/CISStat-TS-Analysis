@@ -1,0 +1,199 @@
+============================= test session starts ==============================
+collected 29 items / 1 error
+
+scripts/doclog1cert/test_doclog1cert_oracle_api.py FFFFFFFFFFFFFFFFFFFFF [ 72%]
+FFFF.FF.                                                                 [100%]
+
+==================================== ERRORS ====================================
+_____ ERROR collecting scripts/doclog1cert/test_doclog1cert_oracle_unit.py _____
+ImportError while importing test module '/home/z/my-project/cisstat-parent-fb26f6f/scripts/doclog1cert/test_doclog1cert_oracle_unit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_unit.py:26: in <module>
+    from apps.api import artifact_store
+E   ImportError: cannot import name 'artifact_store' from 'apps.api' (/home/z/my-project/cisstat-parent-fb26f6f/apps/api/__init__.py)
+=================================== FAILURES ===================================
+_____________ TestCertPromotionAuthMatrix.test_owner_write_allowed _____________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:127: in test_owner_write_allowed
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_____ TestCertPromotionAuthMatrix.test_foreign_write_denied_with_decision ______
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:137: in test_foreign_write_denied_with_decision
+    from apps.api.artifact_promotion import PromotionDenied
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+___________ TestCertPromotionAuthMatrix.test_anonymous_write_denied ____________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:152: in test_anonymous_write_denied
+    from apps.api.artifact_promotion import PromotionDenied
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_ TestCertPromotionAuthMatrix.test_creator_continuity_on_unresolved_legacy_run _
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:180: in test_creator_continuity_on_unresolved_legacy_run
+    artifact = _service().promote_passport(
+               ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+__ TestCertPromotionAuthMatrix.test_missing_run_uniform_denial_even_for_write __
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:190: in test_missing_run_uniform_denial_even_for_write
+    from apps.api.artifact_promotion import ArtifactAccessDenied
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+__ TestCertPromotionAuthMatrix.test_read_denies_foreign_and_unknown_uniformly __
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:204: in test_read_denies_foreign_and_unknown_uniformly
+    from apps.api.artifact_promotion import ArtifactAccessDenied
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_____ TestCertPromotionAuthMatrix.test_admin_read_foreign_artifact_allowed _____
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:222: in test_admin_read_foreign_artifact_allowed
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_ TestCertDurableAfterSessionLoss.test_artifact_readable_after_session_deleted _
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:242: in test_artifact_readable_after_session_deleted
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+____ TestCertDurableAfterSessionLoss.test_list_without_session_still_scoped ____
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:262: in test_list_without_session_still_scoped
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_________ TestCertAdapters.test_passport_payload_fields_and_source_ref _________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:281: in test_passport_payload_fields_and_source_ref
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_________ TestCertAdapters.test_passport_unknown_stage_honest_refusal __________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:297: in test_passport_unknown_stage_honest_refusal
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+______ TestCertAdapters.test_passport_missing_snapshot_nothing_fabricated ______
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:309: in test_passport_missing_snapshot_nothing_fabricated
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_________ TestCertAdapters.test_panel_entry_reads_only_panel_universe __________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:323: in test_panel_entry_reads_only_panel_universe
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+___ TestCertAdapters.test_panel_backtest_carries_per_entity_and_pooled_as_is ___
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:344: in test_panel_backtest_carries_per_entity_and_pooled_as_is
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+________ TestCertAdapters.test_model_card_dependencies_carry_checkpoint ________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:379: in test_model_card_dependencies_carry_checkpoint
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_________ TestCertAdapters.test_forecast_promotion_is_frozen_no_recalc _________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:406: in test_forecast_promotion_is_frozen_no_recalc
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+________________ TestCertAdapters.test_forecast_missing_honest _________________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:429: in test_forecast_missing_honest
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_____ TestCertAdapters.test_source_ref_invalid_becomes_none_not_fabricated _____
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:445: in test_source_ref_invalid_becomes_none_not_fabricated
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_____ TestCertHonestAndIdempotent.test_nan_payload_refused_without_masking _____
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:469: in test_nan_payload_refused_without_masking
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_ TestCertHonestAndIdempotent.test_re_promotion_returns_same_artifact_no_object_duplication _
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:484: in test_re_promotion_returns_same_artifact_no_object_duplication
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_______ TestCertCheckpointData.test_raw_csv_bytes_promoted_with_auto_pin _______
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:516: in test_raw_csv_bytes_promoted_with_auto_pin
+    from apps.api.artifact_store import get_artifact_registry
+E   ModuleNotFoundError: No module named 'apps.api.artifact_store'
+______ TestCertCheckpointData.test_missing_checkpoint_snapshot_is_honest _______
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:544: in test_missing_checkpoint_snapshot_is_honest
+    from apps.api.artifact_promotion import PromotionUnavailable
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+_____ TestCertCheckpointData.test_unpinned_checkpoint_data_still_readable ______
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:556: in test_unpinned_checkpoint_data_still_readable
+    service = _service()
+              ^^^^^^^^^^
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:114: in _service
+    from apps.api.artifact_promotion import PromotionService
+E   ModuleNotFoundError: No module named 'apps.api.artifact_promotion'
+___________ TestCertHealthOps.test_ops_health_artifacts_block_honest ___________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:574: in test_ops_health_artifacts_block_honest
+    block = resp.json()["artifacts"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'artifacts'
+_________ TestCertHealthOps.test_ops_health_after_init_reports_memory __________
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:580: in test_ops_health_after_init_reports_memory
+    from apps.api.artifact_store import get_artifact_registry
+E   ModuleNotFoundError: No module named 'apps.api.artifact_store'
+_ TestCertRoutePinAC04.test_pinned_early_checkpoint_survives_five_route_creates _
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:621: in test_pinned_early_checkpoint_survives_five_route_creates
+    from apps.api.artifact_store import get_artifact_registry
+E   ModuleNotFoundError: No module named 'apps.api.artifact_store'
+_____ TestCertRoutePinAC04.test_pin_lookup_failure_skips_prune_fail_closed _____
+scripts/doclog1cert/test_doclog1cert_oracle_api.py:693: in test_pin_lookup_failure_skips_prune_fail_closed
+    import apps.api.artifact_store as artifact_store_module
+E   ModuleNotFoundError: No module named 'apps.api.artifact_store'
+=============================== warnings summary ===============================
+scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertHealthOps::test_ops_health_artifacts_block_honest
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_owner_write_allowed
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_foreign_write_denied_with_decision
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_anonymous_write_denied
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_creator_continuity_on_unresolved_legacy_run
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_missing_run_uniform_denial_even_for_write
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_read_denies_foreign_and_unknown_uniformly
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertPromotionAuthMatrix::test_admin_read_foreign_artifact_allowed
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertDurableAfterSessionLoss::test_artifact_readable_after_session_deleted
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertDurableAfterSessionLoss::test_list_without_session_still_scoped
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_passport_payload_fields_and_source_ref
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_passport_unknown_stage_honest_refusal
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_passport_missing_snapshot_nothing_fabricated
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_panel_entry_reads_only_panel_universe
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_panel_backtest_carries_per_entity_and_pooled_as_is
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_model_card_dependencies_carry_checkpoint
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_forecast_promotion_is_frozen_no_recalc
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_forecast_missing_honest
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertAdapters::test_source_ref_invalid_becomes_none_not_fabricated
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertHonestAndIdempotent::test_nan_payload_refused_without_masking
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertHonestAndIdempotent::test_re_promotion_returns_same_artifact_no_object_duplication
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertCheckpointData::test_raw_csv_bytes_promoted_with_auto_pin
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertCheckpointData::test_missing_checkpoint_snapshot_is_honest
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertCheckpointData::test_unpinned_checkpoint_data_still_readable
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertHealthOps::test_ops_health_artifacts_block_honest
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertHealthOps::test_ops_health_after_init_reports_memory
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertRoutePinAC04::test_pinned_early_checkpoint_survives_five_route_creates
+FAILED scripts/doclog1cert/test_doclog1cert_oracle_api.py::TestCertRoutePinAC04::test_pin_lookup_failure_skips_prune_fail_closed
+ERROR scripts/doclog1cert/test_doclog1cert_oracle_unit.py
+=============== 27 failed, 2 passed, 1 warning, 1 error in 3.13s ===============

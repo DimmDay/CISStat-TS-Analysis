@@ -1,0 +1,977 @@
+============================= test session starts ==============================
+collected 4434 items / 7 skipped
+
+tests/api/test_admin_analytics.py ............................           [  0%]
+tests/api/test_admin_progress_api.py .......................             [  1%]
+tests/api/test_cv.py ...................................                 [  1%]
+tests/api/test_dataset_consistency_correction.py ....                    [  2%]
+tests/api/test_dataset_derived_columns.py ..........                     [  2%]
+tests/api/test_dataset_derived_columns_delete.py .................       [  2%]
+tests/api/test_dataset_eda_correlation.py ....                           [  2%]
+tests/api/test_dataset_eda_descriptive.py ....                           [  2%]
+tests/api/test_dataset_eda_distribution.py ...                           [  2%]
+tests/api/test_dataset_eda_feature_selection.py ..                       [  2%]
+tests/api/test_dataset_eda_model_matrix.py ..                            [  2%]
+tests/api/test_dataset_eda_seasonality.py ....                           [  3%]
+tests/api/test_dataset_eda_stationarity.py ....                          [  3%]
+tests/api/test_dataset_eda_structural_breaks.py ..                       [  3%]
+tests/api/test_dataset_eda_validation_strategy.py ..                     [  3%]
+tests/api/test_dataset_format_correction.py ...                          [  3%]
+tests/api/test_dataset_inclusion_correction.py ....                      [  3%]
+tests/api/test_dataset_missing_correction.py .................           [  3%]
+tests/api/test_dataset_outlier_correction.py ........................    [  4%]
+tests/api/test_dataset_passport.py ............................          [  4%]
+tests/api/test_dataset_preprocessing_decomposition.py ....               [  5%]
+tests/api/test_dataset_preprocessing_feature_engineering.py ...          [  5%]
+tests/api/test_dataset_preprocessing_regularity.py .........             [  5%]
+tests/api/test_dataset_preprocessing_scaling.py ...                      [  5%]
+tests/api/test_dataset_preprocessing_smoothing.py .....                  [  5%]
+tests/api/test_dataset_preprocessing_spectral.py ...                     [  5%]
+tests/api/test_dataset_preprocessing_stationarity.py .....               [  5%]
+tests/api/test_dataset_preprocessing_variance.py ....                    [  5%]
+tests/api/test_dataset_profile_detail_level.py ..........                [  5%]
+tests/api/test_dataset_range_correction.py ....                          [  6%]
+tests/api/test_dataset_referential_correction.py ...                     [  6%]
+tests/api/test_dataset_regularity_correction.py ...                      [  6%]
+tests/api/test_dataset_rows.py ...........                               [  6%]
+tests/api/test_dataset_sufficiency_plan.py ...                           [  6%]
+tests/api/test_dataset_text_quality_correction.py ....                   [  6%]
+tests/api/test_dataset_type_conversion.py ....                           [  6%]
+tests/api/test_dataset_type_schema.py ....                               [  6%]
+tests/api/test_dataset_uniqueness_correction.py ...                      [  6%]
+tests/api/test_dataset_validate.py ...............                       [  7%]
+tests/api/test_dataset_validation_rules.py ............                  [  7%]
+tests/api/test_deepar_panel_pivot.py ............................s...... [  8%]
+......                                                                   [  8%]
+tests/api/test_diagnostics.py ......                                     [  8%]
+tests/api/test_diagnostics_internal.py ...                               [  8%]
+tests/api/test_distribution.py ..........                                [  8%]
+tests/api/test_docker_image_layout.py ....                               [  8%]
+tests/api/test_doclog0_identity.py ..................................... [  9%]
+.....                                                                    [  9%]
+tests/api/test_egarch_session.py ....                                    [  9%]
+tests/api/test_feature_regressors_api.py ...........                     [ 10%]
+tests/api/test_forecasting_session.py ......................             [ 10%]
+tests/api/test_garch_session.py .....                                    [ 10%]
+tests/api/test_internal_backtest.py ............                         [ 11%]
+tests/api/test_internal_candidates.py .......                            [ 11%]
+tests/api/test_knowledge_api.py ........................................ [ 12%]
+.                                                                        [ 12%]
+tests/api/test_mentor_rules.py ......................................... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+................                                                         [ 16%]
+tests/api/test_missing_manual_editor.py ..............                   [ 17%]
+tests/api/test_modeling_comparison_spec.py ..                            [ 17%]
+tests/api/test_modeling_diagnostics_spec.py .....                        [ 17%]
+tests/api/test_modeling_selection_spec.py ..                             [ 17%]
+tests/api/test_modeling_workflow.py ...F................................ [ 18%]
+..........                                                               [ 18%]
+tests/api/test_models_backtest_neural_capacity.py F.                     [ 18%]
+tests/api/test_models_backtest_real.py .......................           [ 18%]
+tests/api/test_models_candidates.py ...........................F........ [ 19%]
+..                                                                       [ 19%]
+tests/api/test_node_status_engine.py ................................... [ 20%]
+.................................                                        [ 21%]
+tests/api/test_outlier_manual_editor.py .................                [ 21%]
+tests/api/test_panel_contract.py .............                           [ 21%]
+tests/api/test_panel_execution.py ..............................         [ 22%]
+tests/api/test_panel_transforms.py ................                      [ 22%]
+tests/api/test_param_space.py ..............                             [ 23%]
+tests/api/test_passport_session_state.py ............                    [ 23%]
+tests/api/test_pipeline_graph.py ....................................... [ 24%]
+........................................................................ [ 26%]
+.....................................                                    [ 26%]
+tests/api/test_progress_audit_1a.py .................................... [ 27%]
+                                                                         [ 27%]
+tests/api/test_progress_audit_2a.py ......................               [ 28%]
+tests/api/test_progress_audit_3.py .........................             [ 28%]
+tests/api/test_progress_audit_4.py ..................................... [ 29%]
+...........                                                              [ 29%]
+tests/api/test_progress_audit_5b.py ....................                 [ 30%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 31%]
+ss                                                                       [ 31%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 31%]
+.............ss                                                          [ 32%]
+tests/api/test_progress_audit_6c.py ..................s.s............... [ 33%]
+....ss                                                                   [ 33%]
+tests/api/test_progress_audit_7a.py ...................                  [ 33%]
+tests/api/test_progress_audit_7b.py .................................    [ 34%]
+tests/api/test_progress_audit_8.py ...............                       [ 34%]
+tests/api/test_progress_audit_c.py ................................      [ 35%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 35%]
+tests/api/test_progress_audit_h1.py ..........................           [ 36%]
+tests/api/test_progress_audit_s.py ..................................... [ 37%]
+....                                                                     [ 37%]
+tests/api/test_progress_defects_progr13.py ........                      [ 37%]
+tests/api/test_progress_panel.py ...................                     [ 37%]
+tests/api/test_progress_progr13a.py .........................            [ 38%]
+tests/api/test_progress_progr13b.py ...................                  [ 38%]
+tests/api/test_progress_progr13c.py ..................                   [ 39%]
+tests/api/test_progress_progr16.py ...........                           [ 39%]
+tests/api/test_progress_progr17.py .........                             [ 39%]
+tests/api/test_progress_progr18.py .........                             [ 39%]
+tests/api/test_progress_progr23.py .....................                 [ 40%]
+tests/api/test_progress_progr25a.py ................                     [ 40%]
+tests/api/test_progress_progr25c.py ........                             [ 40%]
+tests/api/test_progress_progr25d.py .........                            [ 41%]
+tests/api/test_progress_trace_hook.py .................................. [ 41%]
+..................                                                       [ 42%]
+tests/api/test_research_runs.py ........................................ [ 43%]
+....................                                                     [ 43%]
+tests/api/test_run_report.py ........................................... [ 44%]
+..................                                                       [ 44%]
+tests/api/test_session_date_column.py ..........                         [ 45%]
+tests/api/test_session_store.py ........................................ [ 46%]
+...............................................                          [ 47%]
+tests/api/test_status_original_series.py ............................... [ 47%]
+.                                                                        [ 47%]
+tests/api/test_structure_detection.py .......                            [ 47%]
+tests/api/test_target_column.py ....................                     [ 48%]
+tests/api/test_tasks_causes.py .........                                 [ 48%]
+tests/api/test_timeseries_decomposition.py ...................           [ 49%]
+tests/api/test_trace_events.py ........................                  [ 49%]
+tests/api/test_tune.py ................................................. [ 50%]
+...........                                                              [ 50%]
+tests/api/test_tune_production_dispatch.py ....                          [ 51%]
+tests/api/test_tune_real_models.py ..........                            [ 51%]
+tests/api/test_upload.py .....                                           [ 51%]
+tests/api/test_upload_db.py ...............................              [ 52%]
+tests/integration/test_progress_audit_cert.py ...................        [ 52%]
+tests/integration/test_progress_target_column_e2e.py ...                 [ 52%]
+tests/test_catalog.py ...                                                [ 52%]
+tests/test_consistency_masks.py ...                                      [ 52%]
+tests/test_modeling_spec.py ............................................ [ 53%]
+............................                                             [ 54%]
+tests/test_no_false_positives.py ....                                    [ 54%]
+tests/test_pipeline_bug.py ....                                          [ 54%]
+tests/test_validation.py ......................                          [ 55%]
+tests/unit/test_apply_decomposition.py ........                          [ 55%]
+tests/unit/test_auth.py .......                                          [ 55%]
+tests/unit/test_backtesting_engine.py ...........                        [ 55%]
+tests/unit/test_catboost_adapter.py .................................... [ 56%]
+............                                                             [ 56%]
+tests/unit/test_catboost_backtest.py .........                           [ 56%]
+tests/unit/test_chart_timeseries_decomposition.py ................       [ 57%]
+tests/unit/test_classifier.py .........                                  [ 57%]
+tests/unit/test_compare_ts_props.py .........                            [ 57%]
+tests/unit/test_consistency_correction.py ......                         [ 57%]
+tests/unit/test_correlation.py .........                                 [ 58%]
+tests/unit/test_dataset_classifier.py ...........                        [ 58%]
+tests/unit/test_db_connection.py .....                                   [ 58%]
+tests/unit/test_db_connectors.py ....................................... [ 59%]
+.....................                                                    [ 59%]
+tests/unit/test_db_embedded.py .................                         [ 60%]
+tests/unit/test_db_guard.py ............................................ [ 61%]
+.............................                                            [ 61%]
+tests/unit/test_db_upload_fixes.py ...........                           [ 61%]
+tests/unit/test_decomposition_series.py .........                        [ 62%]
+tests/unit/test_deepar_integration_paths.py .....F....sss.s              [ 62%]
+tests/unit/test_detect_column_frequency.py .........                     [ 62%]
+tests/unit/test_detectors.py .......                                     [ 62%]
+tests/unit/test_detectors_scoring.py ...........                         [ 63%]
+tests/unit/test_distribution_analysis.py ....                            [ 63%]
+tests/unit/test_distributions.py .............                           [ 63%]
+tests/unit/test_eda_autocorrelation.py ...                               [ 63%]
+tests/unit/test_eda_distribution_adapter.py ..                           [ 63%]
+tests/unit/test_eda_feature_selection_adapter.py ...                     [ 63%]
+tests/unit/test_eda_model_matrix.py .........                            [ 63%]
+tests/unit/test_eda_seasonality_adapter.py ..                            [ 63%]
+tests/unit/test_eda_stationarity_adapter.py ...                          [ 64%]
+tests/unit/test_eda_structural_breaks_adapter.py ..                      [ 64%]
+tests/unit/test_egarch_adapter.py ................................       [ 64%]
+tests/unit/test_egarch_integration_paths.py .............                [ 65%]
+tests/unit/test_export.py .........                                      [ 65%]
+tests/unit/test_feature_plan.py ....................                     [ 65%]
+tests/unit/test_feature_plan_backtest.py ..........                      [ 65%]
+tests/unit/test_feature_plan_folds.py ................................   [ 66%]
+tests/unit/test_feature_regressors.py .....................              [ 67%]
+tests/unit/test_feature_selection_analysis.py ....                       [ 67%]
+tests/unit/test_file_loader.py .......                                   [ 67%]
+tests/unit/test_final_fit.py ............                                [ 67%]
+tests/unit/test_forecasting.py ....................                      [ 68%]
+tests/unit/test_forecasting_contract.py ...............                  [ 68%]
+tests/unit/test_format_correction.py ......                              [ 68%]
+tests/unit/test_garch_adapter.py .........................               [ 69%]
+tests/unit/test_garch_integration_paths.py .....................         [ 69%]
+tests/unit/test_ih_analysis.py .............                             [ 69%]
+tests/unit/test_inclusion_correction.py .........                        [ 70%]
+tests/unit/test_jsonstat.py ...............                              [ 70%]
+tests/unit/test_lightgbm_adapter.py .................................... [ 71%]
+........                                                                 [ 71%]
+tests/unit/test_lightgbm_backtest.py .........                           [ 71%]
+tests/unit/test_lstm_integration_paths.py ....F...sss.                   [ 71%]
+tests/unit/test_mentor_next_step_spec.py FFFFFFFFFFFFFF.                 [ 72%]
+tests/unit/test_mentor_stop_explanations.py ............................ [ 72%]
+..........................                                               [ 73%]
+tests/unit/test_missing_correction.py ................                   [ 73%]
+tests/unit/test_model_capability_matrix.py .                             [ 73%]
+tests/unit/test_model_execution_contract.py .F...                        [ 73%]
+tests/unit/test_model_execution_contract_v2_compliance.py ...            [ 74%]
+tests/unit/test_model_jobs.py ....                                       [ 74%]
+tests/unit/test_model_readiness_candidates.py ....                       [ 74%]
+tests/unit/test_modeling_comparison.py ......                            [ 74%]
+tests/unit/test_modeling_mvp_certification.py ...                        [ 74%]
+tests/unit/test_modeling_selection.py ......                             [ 74%]
+tests/unit/test_modeling_traceability.py ...                             [ 74%]
+tests/unit/test_modeling_tuning_plan.py .....                            [ 74%]
+tests/unit/test_multivariate_contract.py ............................... [ 75%]
+.......................................................                  [ 76%]
+tests/unit/test_nbeats_integration_paths.py ....F...sss.                 [ 76%]
+tests/unit/test_neural_capacity_guard.py ......................          [ 77%]
+tests/unit/test_neural_contract.py ..................................... [ 78%]
+....................................                                     [ 79%]
+tests/unit/test_nhits_integration_paths.py .....F....ssss                [ 79%]
+tests/unit/test_outliers_correction.py ...............                   [ 79%]
+tests/unit/test_outliers_module_boundary.py ..                           [ 79%]
+tests/unit/test_panel_models.py ........................................ [ 80%]
+.......................                                                  [ 81%]
+tests/unit/test_panel_preprocessing.py ................................. [ 81%]
+..............                                                           [ 82%]
+tests/unit/test_passport.py ........................                     [ 82%]
+tests/unit/test_passport_foundation.py .............                     [ 83%]
+tests/unit/test_preprocessing.py ......                                  [ 83%]
+tests/unit/test_preprocessing_decomposition.py ......                    [ 83%]
+tests/unit/test_preprocessing_feature_engineering.py .....               [ 83%]
+tests/unit/test_preprocessing_feature_engineering_adapter.py .....       [ 83%]
+tests/unit/test_preprocessing_missing.py ..................              [ 84%]
+tests/unit/test_preprocessing_missing_status.py ...                      [ 84%]
+tests/unit/test_preprocessing_outliers.py .............                  [ 84%]
+tests/unit/test_preprocessing_scaling.py .....                           [ 84%]
+tests/unit/test_preprocessing_scaling_adapter.py .....                   [ 84%]
+tests/unit/test_preprocessing_smoothing.py ..........                    [ 84%]
+tests/unit/test_preprocessing_spectral.py ...                            [ 84%]
+tests/unit/test_preprocessing_spectral_adapter.py ....                   [ 85%]
+tests/unit/test_preprocessing_stationarity.py .....                      [ 85%]
+tests/unit/test_preprocessing_stationarity_adapter.py ....               [ 85%]
+tests/unit/test_prophet_adapter.py ..........                            [ 85%]
+tests/unit/test_prophet_regressors.py .......                            [ 85%]
+tests/unit/test_random_forest_adapter.py ............................... [ 86%]
+.......                                                                  [ 86%]
+tests/unit/test_random_forest_backtest.py ..........                     [ 86%]
+tests/unit/test_range_correction.py ......                               [ 86%]
+tests/unit/test_referential_correction.py .......                        [ 86%]
+tests/unit/test_regularity_charts.py .......                             [ 87%]
+tests/unit/test_regularity_correction.py ...........                     [ 87%]
+tests/unit/test_reporter.py ......                                       [ 87%]
+tests/unit/test_rolling.py ....                                          [ 87%]
+tests/unit/test_spectral_seasonality.py ...                              [ 87%]
+tests/unit/test_state.py ...                                             [ 87%]
+tests/unit/test_stationarity_analysis.py ......                          [ 87%]
+tests/unit/test_structural_breaks_analysis.py ......                     [ 88%]
+tests/unit/test_sufficiency.py ...                                       [ 88%]
+tests/unit/test_tbats_adapter.py .............                           [ 88%]
+tests/unit/test_text_quality_correction.py .......                       [ 88%]
+tests/unit/test_tft_integration_paths.py ......F....ssss                 [ 88%]
+tests/unit/test_transforms.py .........                                  [ 89%]
+tests/unit/test_type_conversion.py ....                                  [ 89%]
+tests/unit/test_uniqueness_correction.py .........                       [ 89%]
+tests/unit/test_upload_db9_docs.py ..................................... [ 90%]
+..........................                                               [ 90%]
+tests/unit/test_utils.py ............................                    [ 91%]
+tests/unit/test_validation_checks.py .............................       [ 92%]
+tests/unit/test_validation_regularity.py .......                         [ 92%]
+tests/unit/test_validation_rule_resolver.py ...                          [ 92%]
+tests/unit/test_validation_run_all_checks.py .......................     [ 92%]
+tests/unit/test_validation_strategy_analysis.py ......                   [ 92%]
+tests/unit/test_validation_text.py ..                                    [ 92%]
+tests/unit/test_validation_text_quality.py ....................          [ 93%]
+tests/unit/test_var_adapter.py ............................              [ 94%]
+tests/unit/test_var_backtest.py ...........................              [ 94%]
+tests/unit/test_var_integration_paths.py .............                   [ 94%]
+tests/unit/test_var_registry_integration.py ................             [ 95%]
+tests/unit/test_variance_stabilization.py ...........                    [ 95%]
+tests/unit/test_varx_exogenous.py ...............................        [ 96%]
+tests/unit/test_vecm_adapter.py ...........................              [ 96%]
+tests/unit/test_vector_tuning.py ...........                             [ 97%]
+tests/unit/test_volatility_contract.py ................................. [ 97%]
+.................................                                        [ 98%]
+tests/unit/test_volatility_engine.py ...........                         [ 98%]
+tests/unit/test_xgboost_adapter.py ..................................... [ 99%]
+....                                                                     [ 99%]
+tests/unit/test_xgboost_backtest.py .........                            [100%]
+
+=================================== FAILURES ===================================
+___ test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics ____
+tests/api/test_modeling_workflow.py:151: in test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+    assert "заблокирована матрицей применимости" in response.json()["detail"]
+E   assert 'заблокирована матрицей применимости' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+______ test_backtest_lstm_503_with_honest_message_on_insufficient_memory _______
+tests/api/test_models_backtest_neural_capacity.py:73: in test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+    assert "512 MB" in detail and "1024 MB" in detail
+E   assert ('512 MB' in "Реестр готовности моделей расходится с production backtest dispatch (missing=[], unexpected=['lstm']); исполнение заблокировано (fail-closed, AUDIT-6C)")
+____ TestBacktestNaive.test_unsupported_model_never_returns_penalty_metrics ____
+tests/api/test_models_candidates.py:461: in test_unsupported_model_never_returns_penalty_metrics
+    assert "панель" in response.json()["detail"]
+E   assert 'панель' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+___________ test_deepar_registry_requires_related_series_fail_closed ___________
+tests/unit/test_deepar_integration_paths.py:137: in test_deepar_registry_requires_related_series_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="related_series"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'related_series'
+E     Actual message: "Модель 'deepar' недоступна: отсутствуют зависимости ['neuralforecast']"
+_____ test_lstm_registry_rejects_wrong_objective_and_features_fail_closed ______
+tests/unit/test_lstm_integration_paths.py:117: in test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'lstm' недоступна: отсутствуют зависимости ['neuralforecast']"
+________________ TestMnsSpec1File.test_spec_exists_at_repo_root ________________
+tests/unit/test_mentor_next_step_spec.py:130: in test_spec_exists_at_repo_root
+    assert _read_spec()  # непустой
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+_________ TestMnsSpec1File.test_spec_references_review_and_base_commit _________
+tests/unit/test_mentor_next_step_spec.py:133: in test_spec_references_review_and_base_commit
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+___ TestMnsSpec1CanonAgainstCode.test_scan_order_matches_stage_nodes_exactly ___
+tests/unit/test_mentor_next_step_spec.py:143: in test_scan_order_matches_stage_nodes_exactly
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+________ TestMnsSpec1CanonAgainstCode.test_excluded_stages_are_the_rest ________
+tests/unit/test_mentor_next_step_spec.py:158: in test_excluded_stages_are_the_rest
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+__ TestMnsSpec1CanonAgainstCode.test_scan_status_priority_error_over_warning ___
+tests/unit/test_mentor_next_step_spec.py:165: in test_scan_status_priority_error_over_warning
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+__ TestMnsSpec1CanonAgainstCode.test_existing_rules_pinned_id_stage_priority ___
+tests/unit/test_mentor_next_step_spec.py:177: in test_existing_rules_pinned_id_stage_priority
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+_______ TestMnsSpec1CanonAgainstCode.test_canon_declares_version_marker ________
+tests/unit/test_mentor_next_step_spec.py:205: in test_canon_declares_version_marker
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+__________ TestMnsSpec1ContractTerms.test_all_contract_terms_present ___________
+tests/unit/test_mentor_next_step_spec.py:214: in test_all_contract_terms_present
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+____________ TestMnsSpec1ContractTerms.test_all_q1_to_q7_documented ____________
+tests/unit/test_mentor_next_step_spec.py:221: in test_all_q1_to_q7_documented
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+__________ TestMnsSpec1ContractTerms.test_all_eight_rule_ids_present ___________
+tests/unit/test_mentor_next_step_spec.py:226: in test_all_eight_rule_ids_present
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+_________ TestMnsSpec1ContractTerms.test_warning_capable_stages_named __________
+tests/unit/test_mentor_next_step_spec.py:236: in test_warning_capable_stages_named
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+_________ TestMnsSpec1ContractTerms.test_one_recommendation_canon_kept _________
+tests/unit/test_mentor_next_step_spec.py:243: in test_one_recommendation_canon_kept
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+______ TestMnsSpec1ContractTerms.test_no_silence_with_problem_node_claim _______
+tests/unit/test_mentor_next_step_spec.py:251: in test_no_silence_with_problem_node_claim
+    spec_text = _read_spec()
+                ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+_________ TestMnsSpec1GuardHonesty.test_scan_stops_total_matches_code __________
+tests/unit/test_mentor_next_step_spec.py:263: in test_scan_stops_total_matches_code
+    canon = _canon_block()
+            ^^^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:108: in _canon_block
+    text = _read_spec()
+           ^^^^^^^^^^^^
+tests/unit/test_mentor_next_step_spec.py:97: in _read_spec
+    assert SPEC.exists(), (
+E   AssertionError: Спека контракта отсутствует: spec_mentor_next_step.md (DoD MNS-SPEC-1: контракт v2 задокументирован)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/home/z/my-project/cisstat-parent-fb26f6f/spec_mentor_next_step.md').exists
+______ test_candidates_publish_v2_descriptors_only_for_executable_models _______
+tests/unit/test_model_execution_contract.py:182: in test_candidates_publish_v2_descriptors_only_for_executable_models
+    assert catalog["lstm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lstm")
+E   AssertionError: assert None == {'version': 'model-execution-v2', 'model_id': 'lstm', 'family_id': 'neural', 'adapter_id': 'neuralforecast-lstm-gru', ...}
+E    +  where None = ModelCandidate(model_id='lstm', model_name='LSTM / GRU', family_id='neural', level='RECOMMENDED', rule_id=None, messag...se, action=None, reason='Production backtest отсутствует; downstream-артефакты недоступны.')}, execution_contract=None).execution_contract
+E    +  and   {'version': 'model-execution-v2', 'model_id': 'lstm', 'family_id': 'neural', 'adapter_id': 'neuralforecast-lstm-gru', ...} = describe('lstm')
+E    +    where describe = <apps.api.model_execution.ModelExecutionRegistry object at 0x7fa3585f4620>.describe
+____ test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed _____
+tests/unit/test_nbeats_integration_paths.py:116: in test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'nbeats' недоступна: отсутствуют зависимости ['neuralforecast']"
+_____ test_nhits_registry_rejects_wrong_objective_and_features_fail_closed _____
+tests/unit/test_nhits_integration_paths.py:159: in test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'nhits' недоступна: отсутствуют зависимости ['neuralforecast']"
+______ test_tft_registry_rejects_wrong_objective_and_features_fail_closed ______
+tests/unit/test_tft_integration_paths.py:178: in test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+    with pytest.raises(ModelExecutionContractError, match="objective"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'objective'
+E     Actual message: "Модель 'tft' недоступна: отсутствуют зависимости ['neuralforecast']"
+=============================== warnings summary ===============================
+../cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/api/test_dataset_consistency_correction.py::test_apply_persists_sort_updates_metadata_and_revalidation_passes
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/pandera/_pandas_deprecated.py:144: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    warnings.warn(_future_warning, FutureWarning)
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_format_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_text_quality_correction.py: 3 warnings
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 14 warnings
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+tests/unit/test_detectors.py: 2 warnings
+tests/unit/test_detectors_scoring.py: 4 warnings
+tests/unit/test_regularity_correction.py: 1 warning
+tests/unit/test_sufficiency.py: 1 warning
+tests/unit/test_validation_run_all_checks.py: 8 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 1 warning
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+tests/unit/test_detectors.py: 2 warnings
+tests/unit/test_detectors_scoring.py: 3 warnings
+tests/unit/test_regularity_correction.py: 1 warning
+tests/unit/test_sufficiency.py: 1 warning
+tests/unit/test_validation_run_all_checks.py: 8 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_consistency_correction.py: 2 warnings
+tests/api/test_dataset_uniqueness_correction.py: 2 warnings
+tests/api/test_dataset_validate.py: 8 warnings
+tests/api/test_dataset_validation_rules.py: 18 warnings
+tests/unit/test_panel_preprocessing.py: 3 warnings
+tests/unit/test_sufficiency.py: 1 warning
+tests/unit/test_validation_run_all_checks.py: 3 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/validation/sufficiency.py:137: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    days = pd.Series(unique).diff().dropna().median() / pd.Timedelta(days=1)
+
+tests/api/test_dataset_eda_correlation.py: 1 warning
+tests/api/test_progress_audit_3.py: 4 warnings
+tests/api/test_progress_trace_hook.py: 8 warnings
+tests/integration/test_progress_audit_cert.py: 2 warnings
+tests/unit/test_eda_autocorrelation.py: 2 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/app/eda/correlation.py:118: FutureWarning: acf currently returns a plain tuple whose length depends on the qstat and alpha arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an AcfResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    acf_values, acf_intervals = acf(
+
+tests/api/test_dataset_eda_model_matrix.py: 3 warnings
+tests/api/test_dataset_passport.py: 1 warning
+tests/api/test_feature_regressors_api.py: 28 warnings
+tests/api/test_forecasting_session.py: 673 warnings
+tests/api/test_mentor_rules.py: 16 warnings
+tests/api/test_modeling_workflow.py: 704 warnings
+tests/api/test_progress_audit_3.py: 3 warnings
+tests/api/test_progress_audit_7a.py: 167 warnings
+tests/api/test_progress_defects_progr13.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 68 warnings
+tests/api/test_tasks_causes.py: 175 warnings
+tests/integration/test_progress_audit_cert.py: 7 warnings
+tests/unit/test_eda_model_matrix.py: 27 warnings
+tests/unit/test_passport_foundation.py: 7 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:149: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    results[lag] = mod_instance.fit()
+
+tests/api/test_dataset_eda_model_matrix.py: 3 warnings
+tests/api/test_dataset_passport.py: 1 warning
+tests/api/test_feature_regressors_api.py: 28 warnings
+tests/api/test_forecasting_session.py: 673 warnings
+tests/api/test_mentor_rules.py: 12 warnings
+tests/api/test_modeling_workflow.py: 633 warnings
+tests/api/test_progress_audit_3.py: 2 warnings
+tests/api/test_progress_audit_7a.py: 167 warnings
+tests/api/test_progress_trace_hook.py: 68 warnings
+tests/api/test_tasks_causes.py: 175 warnings
+tests/integration/test_progress_audit_cert.py: 7 warnings
+tests/unit/test_eda_model_matrix.py: 27 warnings
+tests/unit/test_passport_foundation.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:432: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    resols = OLS(xdshort, add_trend(xdall[:, : usedlag + 1], regression)).fit()
+
+tests/api/test_dataset_eda_model_matrix.py: 1 warning
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_mentor_rules.py: 2 warnings
+tests/api/test_modeling_workflow.py: 198 warnings
+tests/api/test_progress_audit_3.py: 1 warning
+tests/api/test_progress_trace_hook.py: 21 warnings
+tests/api/test_tasks_causes.py: 56 warnings
+tests/integration/test_progress_audit_cert.py: 2 warnings
+tests/unit/test_eda_model_matrix.py: 5 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:3995: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    o = OLS(endog[baselags:], exog, hasconst=1).fit()
+
+tests/api/test_dataset_passport.py: 33 warnings
+tests/api/test_egarch_session.py: 4 warnings
+tests/api/test_feature_regressors_api.py: 10 warnings
+tests/api/test_forecasting_session.py: 22 warnings
+tests/api/test_garch_session.py: 4 warnings
+tests/api/test_modeling_workflow.py: 47 warnings
+tests/api/test_progress_audit_7a.py: 8 warnings
+tests/api/test_progress_defects_progr13.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 5 warnings
+tests/api/test_tasks_causes.py: 7 warnings
+tests/integration/test_progress_audit_cert.py: 1 warning
+tests/unit/test_passport.py: 14 warnings
+tests/unit/test_passport_foundation.py: 8 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/api/test_dataset_preprocessing_variance.py: 21 warnings
+tests/api/test_diagnostics.py: 4 warnings
+tests/api/test_diagnostics_internal.py: 1 warning
+tests/api/test_forecasting_session.py: 42 warnings
+tests/api/test_modeling_workflow.py: 29 warnings
+tests/api/test_progress_audit_7a.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 2 warnings
+tests/api/test_tasks_causes.py: 12 warnings
+tests/unit/test_variance_stabilization.py: 10 warnings
+tests/unit/test_volatility_contract.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    return acorr_lm(
+
+tests/api/test_deepar_panel_pivot.py::TestSessionPanelContour::test_r4_tripwire_univariate_contour_untouched
+tests/api/test_panel_execution.py::TestCatalog::test_family_panel_present
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/_pytest/fixtures.py:1313: PytestRemovedIn10Warning: Class-scoped fixture defined as instance method is deprecated.
+  Instance attributes set in this fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use @classmethod decorator and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/api/test_diagnostics.py: 2 warnings
+tests/api/test_modeling_workflow.py: 2 warnings
+tests/api/test_models_backtest_real.py: 28 warnings
+tests/api/test_models_candidates.py: 1 warning
+tests/api/test_tune.py: 10 warnings
+tests/unit/test_backtesting_engine.py: 12 warnings
+tests/unit/test_forecasting.py: 9 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_modeling_workflow.py: 241 warnings
+tests/api/test_progress_audit_7a.py: 53 warnings
+tests/api/test_tasks_causes.py: 56 warnings
+tests/integration/test_progress_audit_cert.py: 2 warnings
+tests/unit/test_multivariate_contract.py: 3 warnings
+tests/unit/test_var_backtest.py: 46 warnings
+tests/unit/test_var_registry_integration.py: 4 warnings
+tests/unit/test_varx_exogenous.py: 13 warnings
+tests/unit/test_vecm_adapter.py: 8 warnings
+tests/unit/test_vector_tuning.py: 24 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:717: ComplexWarning: Casting complex values to real discards the imaginary part
+    lr1[i] = -t * np.sum(tmp, 0)
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_modeling_workflow.py: 241 warnings
+tests/api/test_progress_audit_7a.py: 53 warnings
+tests/api/test_tasks_causes.py: 56 warnings
+tests/integration/test_progress_audit_cert.py: 2 warnings
+tests/unit/test_multivariate_contract.py: 3 warnings
+tests/unit/test_var_backtest.py: 46 warnings
+tests/unit/test_var_registry_integration.py: 4 warnings
+tests/unit/test_varx_exogenous.py: 13 warnings
+tests/unit/test_vecm_adapter.py: 8 warnings
+tests/unit/test_vector_tuning.py: 24 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:718: ComplexWarning: Casting complex values to real discards the imaginary part
+    lr2[i] = -t * np.log(1 - a[i])
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+tests/unit/test_backtesting_engine.py: 2 warnings
+tests/unit/test_prophet_adapter.py: 5 warnings
+tests/unit/test_prophet_regressors.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/prophet/forecaster.py:1187: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    yearly_disable = last - first < pd.Timedelta(days=730)
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+tests/unit/test_backtesting_engine.py: 2 warnings
+tests/unit/test_prophet_adapter.py: 5 warnings
+tests/unit/test_prophet_regressors.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/prophet/forecaster.py:1209: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    weekly_disable = ((last - first < pd.Timedelta(weeks=2)) or
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+tests/unit/test_backtesting_engine.py: 2 warnings
+tests/unit/test_prophet_adapter.py: 5 warnings
+tests/unit/test_prophet_regressors.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/prophet/forecaster.py:1210: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    (min_dt >= pd.Timedelta(weeks=1)))  # pyrefly:ignore[unsupported-operation]
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+tests/unit/test_backtesting_engine.py: 2 warnings
+tests/unit/test_prophet_adapter.py: 5 warnings
+tests/unit/test_prophet_regressors.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/prophet/forecaster.py:1223: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    daily_disable = ((last - first < pd.Timedelta(days=2)) or
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+tests/unit/test_backtesting_engine.py: 2 warnings
+tests/unit/test_prophet_adapter.py: 5 warnings
+tests/unit/test_prophet_regressors.py: 2 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/prophet/forecaster.py:1224: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    (min_dt >= pd.Timedelta(days=1)))  # pyrefly:ignore[unsupported-operation]
+
+tests/api/test_models_backtest_real.py: 7 warnings
+tests/api/test_tune.py: 6 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/api/test_models_backtest_real.py: 13 warnings
+tests/api/test_tune.py: 36 warnings
+tests/unit/test_modeling_mvp_certification.py: 1 warning
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:737: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    mlefit = super().fit(
+
+tests/api/test_panel_contract.py: 864 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/api/test_panel_contract.py:39: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restore_keeps_auto_origin
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restored_session_origin_visible_in_trace_header
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_tune.py: 44 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:989: EstimationWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    params_variance) = self._conditional_sum_squares(
+
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/holtwinters/model.py:1065: ConvergenceWarning: Optimization failed to converge. Check mle_retvals.
+    res = self._optimize_parameters(res, use_brute, method, minimize_kwargs)
+
+tests/test_no_false_positives.py: 5 warnings
+tests/test_pipeline_bug.py: 5 warnings
+tests/test_validation.py: 10 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/validation/engine.py:1351: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    sort_violations += int((group_df[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+
+tests/test_validation.py::TestValidateRegularStep::test_unsorted_series_returns_sort_info
+  /home/z/my-project/cisstat-parent-fb26f6f/validation/engine.py:1355: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    sort_violations = int((df_temp[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+
+tests/unit/test_dataset_classifier.py: 200 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_dataset_classifier.py:82: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    timestamps = [base + pd.Timedelta(seconds=s) for s in offsets_seconds]
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2668: RuntimeWarning: divide by zero encountered in log
+    return float(np.log(super().backcast(resids)))
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2731: RuntimeWarning: divide by zero encountered in log
+    target = np.log(np.mean(resids**2))
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: divide by zero encountered in log
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: invalid value encountered in divide
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/base.py:724: RuntimeWarning: invalid value encountered in divide
+    std_resids = resids / np.sqrt(sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2610: RuntimeWarning: divide by zero encountered in log
+    lnv = np.log(v)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/base.py:129: RuntimeWarning: invalid value encountered in dot
+    return np.dot(coeff, params) - val
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: divide by zero encountered in divide
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: invalid value encountered in add
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/arch/univariate/volatility.py:1233: RuntimeWarning: invalid value encountered in scalar divide
+    scale = np.mean(resids**2) / (target ** (2.0 / power))
+
+tests/unit/test_panel_preprocessing.py: 7510 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:44: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py::TestBuildPanelFrameFailClosed::test_non_date_column_rejected
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:117: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'не-дата' has dtype incompatible with datetime64[ns], please explicitly cast to a compatible dtype first.
+    df.loc[0, "date"] = "не-дата"
+
+tests/unit/test_panel_preprocessing.py::TestBuildPanelFrameFailClosed::test_non_date_column_rejected
+  /home/z/my-project/cisstat-parent-fb26f6f/app/preprocessing/panel.py:171: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    converted = pd.to_datetime(series, errors="coerce")
+
+tests/unit/test_panel_preprocessing.py: 20 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:57: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py: 12 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:64: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:332: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    rows.append({"entity": "A", "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t), "value": float(t + 1)})
+
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+tests/unit/test_panel_preprocessing.py::TestPanelLag::test_no_cross_entity_leakage_flat_shift_detected
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:334: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    rows.append({"entity": "B", "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t), "value": 100.0 + t})
+
+tests/unit/test_panel_preprocessing.py: 70 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:437: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py: 14 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:443: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-03") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py: 84 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:508: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=t),
+
+tests/unit/test_panel_preprocessing.py: 40 warnings
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_panel_preprocessing.py:534: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    "date": pd.Timestamp("2024-02-01") + pd.Timedelta(days=t),
+
+tests/unit/test_passport.py::TestCalcTsProps::test_basic_stats
+tests/unit/test_passport.py::TestCalcTsProps::test_stationarity_detection
+tests/unit/test_passport.py::TestCalcTsProps::test_trend_detection
+tests/unit/test_passport.py::TestCalcTsProps::test_returns_dict_with_expected_keys
+  /home/z/my-project/cisstat-parent-fb26f6f/app/core/passport.py:858: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(series.dropna(), autolag='AIC')
+
+tests/unit/test_passport_foundation.py::test_series_fingerprint_is_canonical_and_detects_old_aggregate_collision
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_passport_foundation.py:65: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    assert series_fingerprint(first.set_axis(dates + pd.Timedelta(days=1))) != series_fingerprint(first)
+
+tests/unit/test_prophet_adapter.py::test_supported_country_holidays_fold_local_no_leakage_by_construction
+tests/unit/test_prophet_adapter.py::test_supported_country_holidays_fold_local_no_leakage_by_construction
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/pandas/core/internals/concat.py:510: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    return dtype.type("NaT")
+
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_long_memory_is_computed_not_error_placeholder
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_random_walk_gives_sensible_hurst_near_half
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_long_memory_detail_empty_on_success
+  /home/z/my-project/cisstat-parent-fb26f6f/app/preprocessing/transforms.py:433: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(series.dropna(), autolag='AIC')
+
+tests/unit/test_validation_checks.py::TestCheckTsProperties::test_basic_ts_checks
+tests/unit/test_validation_checks.py::TestCheckTsProperties::test_frequency_detection
+  /home/z/my-project/cisstat-parent-fb26f6f/validation/ts_checks.py:45: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(df_ts[num_col].dropna())
+
+tests/unit/test_validation_run_all_checks.py::test_regularity_detects_gap
+  /home/z/my-project/cisstat-parent-fb26f6f/tests/unit/test_validation_run_all_checks.py:88: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    dates[3] = dates[3] + pd.Timedelta(days=10)  # разрыв
+
+tests/unit/test_var_backtest.py::test_aggregate_mase_is_test_size_weighted_across_folds
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:3862: RuntimeWarning: Mean of empty slice
+    return _methods._mean(a, axis=axis, dtype=dtype,
+
+tests/unit/test_var_backtest.py::test_aggregate_mase_is_test_size_weighted_across_folds
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/numpy/_core/_methods.py:142: RuntimeWarning: invalid value encountered in scalar divide
+    ret = ret.dtype.type(ret / rcount)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+--------------------------- snapshot report summary ----------------------------
+3 snapshots passed.
+=========================== short test summary info ============================
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_exists_at_repo_root
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_references_review_and_base_commit
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_order_matches_stage_nodes_exactly
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_excluded_stages_are_the_rest
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_status_priority_error_over_warning
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_existing_rules_pinned_id_stage_priority
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_canon_declares_version_marker
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_contract_terms_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_q1_to_q7_documented
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_eight_rule_ids_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_warning_capable_stages_named
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_one_recommendation_canon_kept
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_no_silence_with_problem_node_claim
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1GuardHonesty::test_scan_stops_total_matches_code
+FAILED tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+=== 23 failed, 4352 passed, 66 skipped, 15186 warnings in 449.22s (0:07:29) ====

@@ -1,0 +1,5 @@
+M01 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T12: маскировка NaN в канонизации
+M02 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | verify staging инвертирован (AC08 fail-closed снят)
+M03 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | T8: проверка целостности при чтении снята
+M04 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | algorithm/version data_digest искажён
+M05 | artifact_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | AC09: идемпотентность/конфликт Memory сняты
