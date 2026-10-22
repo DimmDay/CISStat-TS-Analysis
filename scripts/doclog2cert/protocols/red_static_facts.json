@@ -1,0 +1,98 @@
+{
+ "worktree": "/home/z/my-project/wt-parent-78769bd",
+ "commit": "78769bd4a955856d33b094b8e582ce5aeb5fd159",
+ "facts_total": 15,
+ "facts_red": 15,
+ "facts": [
+  {
+   "id": "F01",
+   "name": "F01 report_snapshot.py отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F02",
+   "name": "F02 snapshot_builder.py отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F03",
+   "name": "F03 миграция 0008 файл отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F04",
+   "name": "F04 repo-тест test_doclog2_snapshots.py отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F05",
+   "name": "F05 MIGRATION_STATEMENTS_0008 отсутствует в research_runs",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F06",
+   "name": "F06 каталог MIGRATION_FILES без 0008",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F07",
+   "name": "F07 MIGRATION_STATEMENTS без 0008-конкатенации",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F08",
+   "name": "F08 COMPONENT_SNAPSHOTS отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F09",
+   "name": "F09 build_snapshots_health отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F10",
+   "name": "F10 ops-health без snapshots-блока",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F11",
+   "name": "F11 doclog2_report_snapshot.md отсутствует",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F12",
+   "name": "F12 main.py не импортирует report_snapshot",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F13",
+   "name": "F13 research_runs не знает report_snapshot",
+   "red": true,
+   "detail": ""
+  },
+  {
+   "id": "F14",
+   "name": "F14 каталог миграций родителя 0001-0007",
+   "red": true,
+   "detail": "['0001_research_runs.sql', '0002_audit6a_atomic_ledger.sql', '0003_audit1a_target_source.sql', '0004_audit8_checkpoint_metadata.sql', '0005_audit6b_delivery_outbox.sql', '0006_doclog0_run_ownership.sql', '0007_doclog1_artifacts.sql']"
+  },
+  {
+   "id": "F15",
+   "name": "F15 в storage_diagnostics нет 'snapshots' компонента",
+   "red": true,
+   "detail": ""
+  }
+ ]
+}

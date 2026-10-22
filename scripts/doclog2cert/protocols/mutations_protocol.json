@@ -1,0 +1,302 @@
+{
+ "baseline": {
+  "repo_green": true,
+  "oracle_green": true,
+  "repo_tail": [
+   "============================== 68 passed in 1.28s =============================="
+  ],
+  "oracle_tail": [
+   "======================= 76 passed, 3 deselected in 5.04s ======================="
+  ]
+ },
+ "results": [
+  {
+   "id": "M01",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "is_valid_snapshot_id ослаблен",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M02",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "new_snapshot_id: 31 hex вместо 32",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M03",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "resolve_kinds: дедупе снят",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M04",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "resolve_kinds: порядок запроса -> sorted",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M05",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "resolve_kinds: пустой список допустим",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M06",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "knowledge_registry_version: константа",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M07",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "canonical корпус несёт manifest (бережливость §18 снята)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M08",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "last_sequence = число событий (не max) в canonical",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M09",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "legacy корпус помечен canonical",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M10",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "validity: and -> or",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M11",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "validity: отсутствие metadata -> stale",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M12",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "to_dict: registry-поле в канонических байтах",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M13",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "copy(): неглубокие sections",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M14",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "Memory register: fingerprint-конфликт снят",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M15",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "Memory get: живой объект вместо копии",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M16",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "Memory list_records: сортировка снята",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M17",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "решающая таблица инвертирована",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M18",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "авторизация снята полностью (R09/T7)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M19",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "_mirror_key: data_revision выпала из зеркала",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M20",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "идемпотентный replay: конфликт тел снят",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M21",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "авто-ключ без cutoff (новая заморозка не рождается)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M22",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "второе чтение/сверка сняты (AC02/T13)",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M23",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "reproducibility: missing_data_artifact снят",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M24",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "pins: checkpoint-зависимости не пинятся",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M25",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "_load_content: payload_sha256-гейт снят (T16)",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M26",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "D08: bool-горизонт проходит как int",
+   "status": "ORACLE-ONLY",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M27",
+   "file": "apps/api/storage_diagnostics.py",
+   "zone": "health: not_initialized фабрикуется",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "M28",
+   "file": "apps/api/research_runs.py",
+   "zone": "каталог 0008: UNIQUE(run_id, idempotency_key) снят",
+   "status": "DUAL-KILLED",
+   "restored": true,
+   "repo_rc": 1,
+   "oracle_rc": 1
+  },
+  {
+   "id": "CTL1",
+   "file": "apps/api/report_snapshot.py",
+   "zone": "no-op: комментарий",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  },
+  {
+   "id": "CTL2",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "no-op: пробел в docstring",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  },
+  {
+   "id": "CTL3",
+   "file": "apps/api/snapshot_builder.py",
+   "zone": "no-op: .get с дефолтом None",
+   "status": "CONTROL-ALIVE",
+   "restored": true,
+   "repo_rc": 0,
+   "oracle_rc": 0
+  }
+ ],
+ "tree_restored": true,
+ "git_diff_empty": true,
+ "summary": {
+  "total": 31,
+  "killed": 20,
+  "survived": 0,
+  "controls_alive": 3,
+  "restore_fail": 0
+ }
+}

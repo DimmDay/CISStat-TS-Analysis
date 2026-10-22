@@ -1,0 +1,3 @@
+ERROR scripts/doclog2cert/test_doclog2cert_oracle_api.py::TestOrcApiHealth::test_health_ok_with_snapshot_contour_initialized
+ERROR scripts/doclog2cert/test_doclog2cert_oracle_api.py::TestOrcApiNoScienceMutation::test_demo_then_build_then_read_leaves_dataset_intact
+============================== 79 errors in 2.06s ==============================

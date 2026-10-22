@@ -1,0 +1,2 @@
+FAILED scripts/doclog2cert/test_doclog2cert_oracle_unit.py::TestOrcPostgresMirror::test_conflict_replay_path_raises_409_semantics
+========================= 3 failed, 74 passed in 4.87s =========================

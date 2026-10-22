@@ -1,0 +1,4 @@
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+==== 31 failed, 4471 passed, 66 skipped, 5999 warnings in 482.70s (0:08:02) ====
