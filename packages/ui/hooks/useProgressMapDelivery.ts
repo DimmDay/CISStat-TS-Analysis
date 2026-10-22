@@ -58,6 +58,24 @@
 // серверный legacy-контур без идемпотентности -- повтор задублировал бы
 // факты (совместимость до отключения, контракт §19.5).
 //
+// Перевооружение после сбоя (детерминизм, R1/H26): поставка, завершившаяся
+// ошибкой, перевооружается БЕЗ таймера -- сменой вселенной фактов
+// (map → null → map: транзитные «running» волны перезапросов PROGR-9-FOCUS
+// закрывают/открывают снапшот). Null→non-null переход перезапрашивает
+// биндинг; завершение биндинга ставит поставку ПРЯМЫМ путём по refs
+// (attemptDeliveryIfDue). Рендер-путь (setBindingVersion → перезапуск
+// драйвера) остаётся основным, но НЕ единственным: обработка setState из
+// асинхронного колбэка не гарантируется средой (jsdom +
+// IS_REACT_ACT_ENVIRONMENT: обновление, вставшее в очередь после закрытия
+// последнего act-окна, молча теряется -- updater не вызывается, перезапуск
+// драйвера не происходит, поставка после сбоя зависает до следующей волны).
+// Идемпотентность путей -- через «возможность поставки»: fetch биндинга
+// вооружается на конкретный снапшот (bindingOpportunityRef); прямой путь
+// израсходует возможность ровно один раз (bindingOpportunityUsedRef),
+// рендер-путь пропускает израсходованную возможность, а pending-гардс и
+// дедуп (§12 п.4) добивают остаточные гонки -- двойной POST невозможен
+// в любом порядке завершения путей.
+//
 // Статус доставки -- вспомогательный контур (§12 п.8 spec_progress):
 // сбой не ломает модуль и не мешает чтению научного результата; хук
 // не выполняет алертов и не блокирует UI.
@@ -210,6 +228,11 @@ export function useProgressMapDelivery(
   const attemptCounterRef = useRef(0);
   const prevSnapshotRef = useRef<string | null>(null);   // детектор null↔non-null
   const staleArmRef = useRef(false);           // ОДНА повторная поставка после 409
+  // «Возможность поставки»: снапшот, на который вооружён текущий fetch
+  // биндинга, и возможность, уже израсходованная прямым путём (см.
+  // «Перевооружение после сбоя» в шапке файла).
+  const bindingOpportunityRef = useRef<string | null>(null);
+  const bindingOpportunityUsedRef = useRef<string | null>(null);
   const universeKeyRef = useRef<string | null>(universeKey ?? null);
   const lastMapRef = useRef<Record<string, string> | null>(null);
   lastMapRef.current = map;
@@ -284,6 +307,8 @@ export function useProgressMapDelivery(
     bindingReadyRef.current = false;
     bindingFetchInFlightRef.current = false;
     staleArmRef.current = false;
+    bindingOpportunityRef.current = null;
+    bindingOpportunityUsedRef.current = null;
     if (pendingRef.current) abortPending();
     setBindingVersion((v) => v + 1); // драйвер: свежий биндинг новой вселенной
   }, [universeKey, abortPending]);
@@ -305,6 +330,39 @@ export function useProgressMapDelivery(
     },
     [abortPending],
   );
+
+  // ── Прямая оценка «поставка назрела» по refs (без рендер-прохода) ──
+  // Вызывается из колбэка завершения биндинга -- синхронно с получением
+  // контекста, БЕЗ ставки на последующий рендер (см. «Перевооружение
+  // после сбоя» в шапке файла). Гардсы зеркалят хвост драйвера доставки
+  // плюс контракт «возможности»: доставляется ТОЛЬКО тот снапшот, на
+  // который был вооружён этот fetch биндинга; возможность израсходуется
+  // ровно один раз, остаточные гонки добивают pending-гардс и дедуп.
+  const attemptDeliveryIfDue = useCallback(() => {
+    const currentMap = lastMapRef.current;
+    if (!currentMap) return; // вселенная закрыта/транзит -- доставлять нечего
+    const currentSnapshot = canonicalMapString(currentMap);
+    // Возможность вооружена драйвером под КОНКРЕТНЫЙ снапшот; если картина
+    // ушла вперёд (или fetch не вооружён) -- решение за рендер-путём:
+    // новый переход пересчитает биндинг и поставку на свежих гардсах.
+    if (bindingOpportunityRef.current === null) return;
+    if (currentSnapshot !== bindingOpportunityRef.current) return;
+    if (anchorSnapshotRef.current !== null && anchorSnapshotRef.current === currentSnapshot) return;
+    if (!bindingReadyRef.current) return;
+    const key = deliveryKey(bindingRef.current, currentSnapshot);
+    // Дедуп §12 п.4: (run, context, snapshot) уже записан.
+    if (deliveredKeyRef.current === key) return;
+    // Та же поставка уже в полёте/на retry -- дубликат не нужен.
+    if (
+      pendingRef.current &&
+      pendingRef.current.snapshot === currentSnapshot &&
+      (pendingRef.current.inFlight || timerRef.current !== null)
+    ) {
+      return;
+    }
+    bindingOpportunityUsedRef.current = currentSnapshot;
+    startDelivery(currentSnapshot);
+  }, [startDelivery]);
 
   // ── POST-попытка поставки (рекурсия retry -- через postAttemptRef) ──
   const postAttempt = useCallback(
@@ -443,6 +501,7 @@ export function useProgressMapDelivery(
       bindingReadyRef.current = false;
       bindingFetchInFlightRef.current = false;
       staleArmRef.current = false;
+      bindingOpportunityUsedRef.current = null; // новый переход -- новая возможность
     }
     if (snapshot === null) {
       // Вселенная закрыта: висящая поставка замещается (не delivered).
@@ -461,6 +520,7 @@ export function useProgressMapDelivery(
       // источник, что проверяет сервер). Один запрос на вселенную.
       if (!bindingFetchInFlightRef.current) {
         bindingFetchInFlightRef.current = true;
+        bindingOpportunityRef.current = snapshot; // возможность вооружена на ЭТОТ снапшот
         setDeliveryState("binding", null);
         void (async () => {
           const binding = await fetchBinding();
@@ -470,7 +530,13 @@ export function useProgressMapDelivery(
           bindingReadyRef.current = true;
           setRunId(binding?.runId ?? null);
           setContextId(binding?.contextId ?? null);
-          setBindingVersion((v) => v + 1); // драйвер перезапустится с биндингом
+          setBindingVersion((v) => v + 1); // рендер-путь драйвера (основной)
+          // Прямой путь (детерминизм перевооружения -- R1/H26): если среда
+          // не обрабатывает этот setState (act-окно закрыто -- обновление
+          // теряется), перезапуск драйвера не состоится и поставка после
+          // сбоя зависнет до следующей волны. Контракт «возможности» и
+          // pending-гардс делают пути взаимно идемпотентными.
+          attemptDeliveryIfDue();
         })();
       }
       return;
@@ -486,13 +552,18 @@ export function useProgressMapDelivery(
     ) {
       return;
     }
+    // Возможность этого снапшота уже израсходована прямым путём из
+    // колбэка биндинга -- повтор здесь задублировал бы POST (после сбоя
+    // прямой путь pendingRef/deliveredKey не оставляет).
+    if (bindingOpportunityUsedRef.current === snapshot) return;
     startDelivery(snapshot);
-  }, [snapshot, bindingVersion, redeliverTick, abortPending, setDeliveryState, startDelivery]);
+  }, [snapshot, bindingVersion, redeliverTick, abortPending, setDeliveryState, startDelivery, attemptDeliveryIfDue]);
 
   // ── Принудительная повторная поставка (Upload: подтверждение структуры) ──
   const redeliver = useCallback(() => {
     deliveredKeyRef.current = null;
     staleArmRef.current = false;
+    bindingOpportunityUsedRef.current = null; // принудительная повторная поставка -- новая возможность
     setRedeliverTick((v) => v + 1);
   }, []);
 
