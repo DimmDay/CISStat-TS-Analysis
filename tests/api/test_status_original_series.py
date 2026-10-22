@@ -268,8 +268,9 @@ class TestCanonicalScopeAndCompat:
         assert canonical_columns(session) == ["a"]
 
     def test_schema_version_grows(self):
-        """Спека §Реализация п.3: версия схемы сессии растёт."""
-        assert SESSION_SCHEMA_VERSION == 3
+        """Спека §Реализация п.3: версия схемы сессии растёт
+        (DOCLOG-0: 3 -> 4, аддитивные owner_subject/tenant_id)."""
+        assert SESSION_SCHEMA_VERSION == 4
 
     def test_registry_survives_serialization_roundtrip(self):
         session = AnalysisSession(session_id="s")

@@ -125,11 +125,21 @@ def _run_meta(run_id: str) -> research_runs.ResearchRun:
 
 
 def _restore(run_id: str) -> dict:
+    """Рекалибровка DOCLOG-0 (P3): restore -- под bearer владельца
+    (cookie исследования); bare run_id не право (§15.1). Новый cookie
+    читается из ответа (джар несёт и bearer, и новый cookie)."""
     fresh = TestClient(app)
+    owner_cookie = client.cookies.get(SESSION_COOKIE_NAME)
+    if owner_cookie:
+        fresh.cookies.set(SESSION_COOKIE_NAME, owner_cookie)
     resp = fresh.get(f"/v1/progress/runs/{run_id}/restore")
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    data["_session_id"] = fresh.cookies.get(SESSION_COOKIE_NAME)
+    fresh.cookies.clear()
+    new_cookie = resp.cookies.get(SESSION_COOKIE_NAME) or ""
+    if new_cookie:
+        fresh.cookies.set(SESSION_COOKIE_NAME, new_cookie)
+    data["_session_id"] = new_cookie or owner_cookie or ""
     return data
 
 
@@ -150,11 +160,12 @@ def _node(trace: dict, stage: str, node_id: str) -> dict:
     return nodes[0]
 
 
-def _checkpoint_post(run_id: str, event_id: str, *, http=None) -> dict:
+def _checkpoint_post(run_id: str, event_id: str, *, http=None, headers=None) -> dict:
     poster = http or client
     resp = poster.post(
         f"/v1/progress/runs/{run_id}/checkpoints",
         json={"event_id": event_id, "label": "точка аудита"},
+        headers=headers or {},
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["checkpoint"]
@@ -346,13 +357,15 @@ class TestRestoreRawSemantics:
 
     def test_missing_raw_file_409(self):
         """RED-карточка «отсутствующий raw/файл»: файлового слоя нет --
-        честный 409 (повторная загрузка), не 500 и не тихая деградация."""
+        честный 409 (повторная загрузка), не 500 и не тихая деградация.
+        Рекалибровка DOCLOG-0 (P3): restore -- под bearer владельца."""
         _upload_csv()
         run_id = _run_id()
         file_store = research_runs.get_dataset_file_store()
         for path in file_store.uploads_dir.glob("*"):
             path.unlink()
         fresh = TestClient(app)
+        fresh.cookies.set(SESSION_COOKIE_NAME, client.cookies.get(SESSION_COOKIE_NAME))
         resp = fresh.get(f"/v1/progress/runs/{run_id}/restore")
         assert resp.status_code == 409
 
@@ -432,7 +445,7 @@ class TestCheckpointMetadata:
         assert checkpoint["data_revision"] == 1
         assert checkpoint["watermark"] == ledger_before_checkpoint
 
-    def test_checkpoint_foreign_session_snapshot_absent_honest(self):
+    def test_checkpoint_foreign_session_snapshot_absent_honest(self, monkeypatch):
         """RED-карточка «snapshot absent»: чужая сессия создаёт ссылку
         БЕЗ снимка (has_snapshot=False) и без контекстных метаданных
         (честное отсутствие); watermark durable-истории записывается --
@@ -442,8 +455,15 @@ class TestCheckpointMetadata:
         store = research_runs.get_research_run_store()
         ledger_before = len(store.list_events(run_id))
 
+        # Рекалибровка DOCLOG-0 (P2): чужой аноним закрыт gate'ом (404,
+        # test_doclog0_identity); семантика «снимок только из сессии
+        # запуска» -- через ADMIN-ключ (gate пускает роль, сессия чужая).
+        monkeypatch.setenv("CISSTAT_API_KEYS", "d0-admin-8key:admin:")
         foreign = TestClient(app)  # без cookie исследования
-        checkpoint = _checkpoint_post(run_id, _first_event_id(run_id), http=foreign)
+        checkpoint = _checkpoint_post(
+            run_id, _first_event_id(run_id), http=foreign,
+            headers={"X-API-Key": "d0-admin-8key"},
+        )
         assert checkpoint["has_snapshot"] is False
         assert checkpoint["context_id"] is None
         assert checkpoint["data_revision"] is None

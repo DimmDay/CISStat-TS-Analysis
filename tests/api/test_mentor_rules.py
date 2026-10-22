@@ -50,6 +50,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from apps.api.session_store import SESSION_COOKIE_NAME
+
 from app.core import mentor_rules
 from app.core.mentor_rules import (
     CorrectionOutcomeSummary,
@@ -84,9 +86,14 @@ def _isolated_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 @pytest.fixture()
 def client():
+    """Рекалибровка DOCLOG-0 (P1): cookie-сессия клиента зафиксирована на
+    «seed-session» -- сиды _seed_run/session_id="seed-session" проходят
+    серверный континуитет (§15.1: аналитик читает СВОЙ запуск); bare
+    run_id без носителя закрыт (покрыто test_doclog0_identity)."""
     from apps.api.main import app
 
     with TestClient(app) as test_client:
+        test_client.cookies.set(SESSION_COOKIE_NAME, "seed-session")
         yield test_client
 
 
@@ -2257,10 +2264,16 @@ class TestMentorDerivedSpikesEndpoint:
         rule_ids = [w["rule_id"] for w in response.json()["history_warnings"]]
         assert "derived_spikes" not in rule_ids
 
-    def test_silent_when_session_of_run_is_gone(self, client: TestClient):
+    def test_silent_when_session_of_run_is_gone(
+        self, client: TestClient, monkeypatch
+    ):
         """run.session_id указывает на несуществующую сессию (истёкшая
         cookie, другой слой) -- best-effort деградация: ответ валиден,
-        совета нет, НЕ 500."""
+        совета нет, НЕ 500. Рекалибровка DOCLOG-0 (P2): чтение чужого
+        легаси-запуска закрыто gate'ом (404) -- сценарий деградации
+        Наставника проверяется через ADMIN-ключ (роли), session-lookup
+        по run.session_id="ghost-session" по-прежнему пуст."""
+        monkeypatch.setenv("CISSTAT_API_KEYS", "d0-admin-mentor:admin:")
         from apps.api import research_runs
 
         _upload_frame(client, _g345_like_frame())
@@ -2276,7 +2289,10 @@ class TestMentorDerivedSpikesEndpoint:
                 last_active_at=_now_iso(),
             )
         )
-        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        response = client.get(
+            "/v1/progress/runs/RUN-AAA00001/mentor/next-step",
+            headers={"X-API-Key": "d0-admin-mentor"},
+        )
         assert response.status_code == 200
         rule_ids = [w["rule_id"] for w in response.json()["history_warnings"]]
         assert "derived_spikes" not in rule_ids

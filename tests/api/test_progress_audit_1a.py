@@ -185,11 +185,21 @@ def _mentor_text() -> str:
 
 
 def _restore(run_id: str) -> dict:
+    """Рекалибровка DOCLOG-0 (P3): restore -- под bearer владельца
+    (cookie исследования модульного клиента); bare run_id не право
+    (§15.1). Новый cookie -- из ответа (джар несёт и bearer, и новый)."""
     fresh = TestClient(app)
+    owner_cookie = client.cookies.get(SESSION_COOKIE_NAME)
+    if owner_cookie:
+        fresh.cookies.set(SESSION_COOKIE_NAME, owner_cookie)
     resp = fresh.get(f"/v1/progress/runs/{run_id}/restore")
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    data["_session_id"] = fresh.cookies.get(SESSION_COOKIE_NAME)
+    fresh.cookies.clear()
+    new_cookie = resp.cookies.get(SESSION_COOKIE_NAME) or ""
+    if new_cookie:
+        fresh.cookies.set(SESSION_COOKIE_NAME, new_cookie)
+    data["_session_id"] = new_cookie or owner_cookie or ""
     return data
 
 
@@ -738,24 +748,24 @@ class TestRestorePair:
             buf.getvalue().encode("utf-8"), "legacy.csv",
             rows=1, columns=1, size_label="1 B",
         )
+        # Рекалибровка DOCLOG-0 (P1): легаси-run сеется на cookie-сессию
+        # модульного клиента -- серверный континуитет §15.1 (создавшая
+        # сессия продолжает свой запуск).
+        client.get("/v1/progress/trace")  # фиксируем cookie клиента
         store.upsert_run(
             research_runs.ResearchRun(
                 run_id="legacy-r1",
-                session_id="s0",
+                session_id=client.cookies.get(SESSION_COOKIE_NAME),
                 dataset_fingerprint=fingerprint,
                 dataset_name="legacy.csv",
                 target_column="rain",
             )
         )
-        fresh = TestClient(app)
-        resp = fresh.get("/v1/progress/runs/legacy-r1/restore")
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
+        # P3: restore под bearer владельца (не bare run_id).
+        data = _restore("legacy-r1")
         assert data["target_column"] == "rain"
         assert data["target_column_source"] is None
-        session = get_session_store().get(
-            fresh.cookies.get(SESSION_COOKIE_NAME)
-        )
+        session = get_session_store().get(data["_session_id"])
         assert session.target_column == "rain"
         assert session.target_column_source is None
 

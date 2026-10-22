@@ -162,6 +162,11 @@ def register_uploaded_dataframe(
     session_id = get_or_create_session_id(request, response)
     store = get_session_store()
     session = store.get_or_create(session_id)
+    # DOCLOG-0 (§15.1): привязка владельца фиксируется в ЕДИНОЙ точке
+    # регистрации датасета (файл И БД -- register_uploaded_dataframe);
+    # first-write-wins, идемпотентно (restore-наследование не
+    # перезаписывается). Сохраняется вместе с сессией (урок F1).
+    session.ensure_owner_binding()
     session.set_dataset(
         DatasetInfo(
             dataset_id=dataset_id,

@@ -122,10 +122,23 @@ class AuthenticatedPrincipal(BaseModel):
     """
     Результат резолва API-ключа (/v1/public) или сессии портала (/v1/internal).
     ЗАМЕНА для плоской проверки "ключ валиден/невалиден" в старом auth.py.
+
+    DOCLOG-0 (spec_documentation_logging.md §15): аддитивные поля
+    идентичности -- субъект должен иметь СТАБИЛЬНЫЙ БЕЗОПАСНЫЙ ID, НЕ
+    значение API-key (principal_id остаётся легаси-полем маршрутов;
+    идентичность -- subject_id). None -- честное отсутствие (старые
+    записи реестра без явного subject/tenant -- суррогат вычисляет
+    auth.resolve_principal_for_key); scopes -- выданные права policy
+    layer'а (каталог apps/api/identity.py::Scope), у ролей без явной
+    выдачи -- пусто, не фантазируется.
     """
     principal_id: str
     role: Role
     plan: Optional[PlanName] = None  # None для admin/internal_analyst -- у них нет тарифа как такового
+    # ── DOCLOG-0: аддитивная идентичность (None = честное отсутствие) ──
+    subject_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    scopes: tuple[str, ...] = ()
 
     @property
     def capabilities(self) -> Capabilities:

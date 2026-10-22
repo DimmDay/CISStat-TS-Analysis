@@ -603,6 +603,10 @@ def load_demo_dataset(request: Request, response: Response):
     session_id = get_or_create_session_id(request, response)
     store = get_session_store()
     session = store.get_or_create(session_id)
+    # DOCLOG-0 (§15.1): привязка владельца при загрузке демо-датасета
+    # (та же семантика, что у register_uploaded_dataframe):
+    # first-write-wins, субъект-суррогат = псевдоним cookie.
+    session.ensure_owner_binding()
 
     demo_name = "demo_sales.csv (демо-датасет)"
     demo_size_label = format_size_label(DEMO_DATASET_PATH.stat().st_size)

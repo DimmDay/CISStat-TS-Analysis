@@ -60,6 +60,10 @@ from apps.api.session_store import (
 from apps.api.trace_events import TraceEvent
 
 client = TestClient(app)
+# Рекалибровка DOCLOG-0 (P1): cookie-сессия клиента = сид легаси-корпуса
+# ("sess-legacy") -- серверный континуитет §15.1; bare run_id закрыт
+# (test_doclog0_identity).
+client.cookies.set(SESSION_COOKIE_NAME, "sess-legacy")
 
 
 @pytest.fixture(autouse=True)
@@ -355,12 +359,14 @@ def test_restore_phase_from_node_facts_not_stage_level_tail():
 
     run = research_runs.get_research_run_store().list_runs()[0]
 
-    # «Другое устройство»: чистый клиент без cookie (§5.3).
+    # «Другое устройство»: клиент с bearer владельца (старый cookie).
+    # Рекалибровка DOCLOG-0 (P3): bare run_id не право (§15.1).
     fresh = TestClient(app)
+    fresh.cookies.set(SESSION_COOKIE_NAME, client.cookies.get(SESSION_COOKIE_NAME))
     resp = fresh.get(f"/v1/progress/runs/{run.run_id}/restore")
     assert resp.status_code == 200, resp.text
 
-    new_session_id = fresh.cookies.get(SESSION_COOKIE_NAME)
+    new_session_id = resp.cookies.get(SESSION_COOKIE_NAME)
     session = get_session_store().get(new_session_id)
     assert session is not None
     assert session.last_active_stage == "upload", (

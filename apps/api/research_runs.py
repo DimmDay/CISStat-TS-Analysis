@@ -213,6 +213,19 @@ class ResearchRun:
     context_id: Optional[str] = None    # текущий контекст расчёта запуска
     data_revision: Optional[int] = None  # ревизия данных на момент зеркала
     data_digest: Optional[str] = None   # дайджест контента (compute_data_digest)
+    # ── DOCLOG-0 (spec_documentation_logging.md §9.1/§15.1): владение ──
+    # owner_subject -- стабильный безопасный ID субъекта-владельца
+    # (псевдоним, НЕ значение ключа/cookie); tenant_id -- серверная
+    # граница доверия (из запроса не читается); ownership -- явное
+    # "bound" ТОЛЬКО у новых запусков (созданы после DOCLOG-0);
+    # None -- честное отсутствие (legacy-корпус): состояние
+    # unresolved ВЫЧИСЛЯЕТСЯ резолвером (identity.effective_ownership),
+    # данные не переписываются задним числом (§9.2). Привязка легаси --
+    # только административная миграция (§15.1). Аддитивные Optional --
+    # без подъёма версий (прецедент AUDIT-6A/PROGR-24-ORIGIN-A/F1).
+    owner_subject: Optional[str] = None
+    tenant_id: Optional[str] = None
+    ownership: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.status not in RUN_STATUSES:
@@ -245,6 +258,14 @@ class ResearchRun:
             result["data_revision"] = self.data_revision
         if self.data_digest is not None:
             result["data_digest"] = self.data_digest
+        # DOCLOG-0: владение -- та же аддитивная тройка (None не пишется:
+        # legacy-корпус не переписывается задним числом, §9.2).
+        if self.owner_subject is not None:
+            result["owner_subject"] = self.owner_subject
+        if self.tenant_id is not None:
+            result["tenant_id"] = self.tenant_id
+        if self.ownership is not None:
+            result["ownership"] = self.ownership
         return result
 
     @classmethod
@@ -279,6 +300,23 @@ class ResearchRun:
             ),
             data_digest=(
                 str(raw["data_digest"]) if isinstance(raw.get("data_digest"), str)
+                else None
+            ),
+            # DOCLOG-0: мусорные типы -> честное отсутствие (щит C-CERT);
+            # ownership вне известного значения не фабрикуется в bound.
+            owner_subject=(
+                str(raw["owner_subject"])
+                if isinstance(raw.get("owner_subject"), str) and raw.get("owner_subject")
+                else None
+            ),
+            tenant_id=(
+                str(raw["tenant_id"])
+                if isinstance(raw.get("tenant_id"), str) and raw.get("tenant_id")
+                else None
+            ),
+            ownership=(
+                str(raw["ownership"])
+                if raw.get("ownership") == "bound"
                 else None
             ),
         )
@@ -728,10 +766,27 @@ MIGRATION_STATEMENTS_0005: tuple[str, ...] = (
     f"ON {OUTBOX_TABLE} (run_id)",
 )
 
+# DOCLOG-0 (spec_documentation_logging.md §15.1, §19): владение
+# запусков -- owner/tenant binding на создание run. АДДИТИВНАЯ
+# миграция: NULL у legacy-строк -- честное отсутствие (состояние
+# unresolved вычисляет резолвер identity.effective_ownership, данные
+# не переписываются задним числом, §9.2); привязка легаси -- только
+# административная миграция (§15.1). COALESCE-паритет
+# _merge_run_additive: батч без owner не стирает привязку.
+MIGRATION_STATEMENTS_0006: tuple[str, ...] = (
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS owner_subject TEXT",
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS tenant_id TEXT",
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS ownership TEXT",
+    "CREATE INDEX IF NOT EXISTS idx_research_runs_owner "
+    "ON research_runs (owner_subject)",
+    "CREATE INDEX IF NOT EXISTS idx_research_runs_tenant "
+    "ON research_runs (tenant_id)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
-    + MIGRATION_STATEMENTS_0005
+    + MIGRATION_STATEMENTS_0005 + MIGRATION_STATEMENTS_0006
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -742,6 +797,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0003_audit1a_target_source.sql", MIGRATION_STATEMENTS_0003),
     ("0004_audit8_checkpoint_metadata.sql", MIGRATION_STATEMENTS_0004),
     ("0005_audit6b_delivery_outbox.sql", MIGRATION_STATEMENTS_0005),
+    ("0006_doclog0_run_ownership.sql", MIGRATION_STATEMENTS_0006),
 )
 
 
@@ -887,6 +943,21 @@ def _merge_run_additive(new: ResearchRun, existing: ResearchRun) -> ResearchRun:
         ),
         data_digest=(
             new.data_digest if new.data_digest is not None else existing.data_digest
+        ),
+        # DOCLOG-0: батч без owner не стирает привязку (COALESCE);
+        # существующая привязка легаси-запуска не появляется сама --
+        # только явным созданием/админ-миграцией (§15.1).
+        owner_subject=(
+            new.owner_subject if new.owner_subject is not None
+            else existing.owner_subject
+        ),
+        tenant_id=(
+            new.tenant_id if new.tenant_id is not None
+            else existing.tenant_id
+        ),
+        ownership=(
+            new.ownership if new.ownership is not None
+            else existing.ownership
         ),
     )
 
@@ -1211,7 +1282,8 @@ class PostgresResearchRunStore(ResearchRunStore):
     _RUN_COLUMNS = (
         "run_id, session_id, dataset_fingerprint, dataset_name, "
         "target_column, created_at, last_active_at, status, "
-        "context_id, data_revision, data_digest, target_column_source"
+        "context_id, data_revision, data_digest, target_column_source, "
+        "owner_subject, tenant_id, ownership"
     )
 
     # COALESCE аддитивных полей (паритет _merge_run_additive Memory):
@@ -1223,8 +1295,9 @@ class PostgresResearchRunStore(ResearchRunStore):
         INSERT INTO research_runs
             (run_id, session_id, dataset_fingerprint, dataset_name,
              target_column, created_at, last_active_at, status,
-             context_id, data_revision, data_digest, target_column_source)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             context_id, data_revision, data_digest, target_column_source,
+             owner_subject, tenant_id, ownership)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (run_id) DO UPDATE SET
             session_id = EXCLUDED.session_id,
             dataset_fingerprint = EXCLUDED.dataset_fingerprint,
@@ -1236,7 +1309,10 @@ class PostgresResearchRunStore(ResearchRunStore):
             status = EXCLUDED.status,
             context_id = COALESCE(EXCLUDED.context_id, research_runs.context_id),
             data_revision = COALESCE(EXCLUDED.data_revision, research_runs.data_revision),
-            data_digest = COALESCE(EXCLUDED.data_digest, research_runs.data_digest)
+            data_digest = COALESCE(EXCLUDED.data_digest, research_runs.data_digest),
+            owner_subject = COALESCE(EXCLUDED.owner_subject, research_runs.owner_subject),
+            tenant_id = COALESCE(EXCLUDED.tenant_id, research_runs.tenant_id),
+            ownership = COALESCE(EXCLUDED.ownership, research_runs.ownership)
     """
 
     @staticmethod
@@ -1247,6 +1323,7 @@ class PostgresResearchRunStore(ResearchRunStore):
             _ts_to_db(run.created_at), _ts_to_db(run.last_active_at),
             run.status, run.context_id, run.data_revision, run.data_digest,
             run.target_column_source,
+            run.owner_subject, run.tenant_id, run.ownership,
         )
 
     def upsert_run(self, run: ResearchRun) -> None:
@@ -1316,6 +1393,15 @@ class PostgresResearchRunStore(ResearchRunStore):
             context_id=row[8] if row[8] is None else str(row[8]),
             data_revision=row[9] if row[9] is None else int(row[9]),
             data_digest=row[10] if row[10] is None else str(row[10]),
+            # DOCLOG-0 (миграция 0006): владение; NULL legacy -- честное
+            # отсутствие (unresolved вычисляет резолвер, не данные).
+            owner_subject=row[12] if row[12] is None else str(row[12]),
+            tenant_id=row[13] if row[13] is None else str(row[13]),
+            ownership=(
+                str(row[14])
+                if row[14] == "bound"
+                else None
+            ),
         )
 
     # -- события --
@@ -1872,7 +1958,18 @@ def _mirror_run_base(
     активных, §3.1) либо перелинковка session_id («последний известный»,
     §5). Возвращает (run, expected_context) -- CAS-контекст равен
     ХРАНИМОМУ контексту на момент чтения продюсером (оптимистичная
-    проверка, план §7: «проверка expected context»)."""
+    проверка, план §7: «проверка expected context»)."
+
+    DOCLOG-0 (§15.1): при СОЗДАНИИ запуск привязывается к субъекту
+    владельца (owner_subject/tenant_id сессии, first-write-wins;
+    ownership="bound" -- только так и никак иначе создаются новые
+    запуски). Существующие запуски НЕ перепривязываются: смена
+    session_id (restore/продолжение) не меняет владельца.
+    """
+    # DOCLOG-0: привязка владельца детерминированна и идемпотентна
+    # (first-write-wins); для сессий без явной привязки суррогат
+    # вычисляется здесь (та же функция -- тот же субъект).
+    owner_subject, tenant_id = session.ensure_owner_binding()
     existing = store.get_run(run_id)
     if existing is None:
         # Новый запуск: предыдущие АКТИВНЫЕ запуски этой сессии --
@@ -1884,11 +1981,18 @@ def _mirror_run_base(
             session_id=session.session_id,
             dataset_fingerprint=getattr(dataset, "dataset_fingerprint", "") or "",
             dataset_name=getattr(dataset, "name", "") or "",
+            # DOCLOG-0 (§15.1): owner/tenant binding на создание run.
+            owner_subject=owner_subject,
+            tenant_id=tenant_id,
+            ownership="bound",
         )
         expected_context = None
     else:
         # session_id -- «последний известный» (§5): запускается
         # перелинковка при restore/продолжении на новом устройстве.
+        # Владелец НЕ меняется (§15.1: «нельзя назначать владельца
+        # тому, кто первым назвал run_id»); аддитивные поля existing
+        # сохраняются (merge в commit_event_batch/upsert_run).
         run = replace(existing, session_id=session.session_id)
         expected_context = existing.context_id
     return run, expected_context
@@ -1921,6 +2025,34 @@ def record_run_event(session: Any, event: TraceEvent) -> None:
         if not event.run_id:
             event = replace(event, run_id=run_id)
         store = get_research_run_store()
+        # DOCLOG-0 (T2, эшелонированная защита слоя 2): bound-запуск не
+        # принимает зеркала от чужого субъекта (fail-closed; легаси-run
+        # без полей -- прежняя перелинковка §5; dev_single_user --
+        # объявленная изоляция одного аналитика). Сессия без привязки
+        # (ин-флайт сессии до выката) -- деградация без 500: суррогат
+        # детерминирован по session_id, совпадёт с bind при создании.
+        existing_run = store.get_run(run_id)
+        if existing_run is not None:
+            from apps.api.identity import (
+                MODE_DEV_SINGLE_USER,
+                get_identity_mode,
+                effective_ownership,
+                OWNERSHIP_BOUND,
+            )
+
+            if (
+                effective_ownership(existing_run) == OWNERSHIP_BOUND
+                and get_identity_mode() != MODE_DEV_SINGLE_USER
+            ):
+                session_owner, _ = session.ensure_owner_binding()
+                same_creator = session.session_id == existing_run.session_id
+                if session_owner != existing_run.owner_subject and not same_creator:
+                    logger.warning(
+                        "Research runs: зеркало события %s в bound-запуск %s "
+                        "отклонено (чужой субъект)",
+                        event.event_id, run_id,
+                    )
+                    return
         run, expected_context = _mirror_run_base(store, session, run_id)
         if event.event_type in ("target_column_changed", "target_column_cleared"):
             # PROGR-AUDIT-1A (план §9 п.2, контракт v0.7-1A): нормализация

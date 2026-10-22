@@ -804,9 +804,14 @@ class TestCheckpointEndpoints:
         df = file_store.load_checkpoint_snapshot(run.run_id, checkpoint_id)
         assert df is not None and len(df) > 0
 
-    def test_checkpoint_requires_matching_session_for_snapshot(self, client: TestClient):
+    def test_checkpoint_requires_matching_session_for_snapshot(self, client: TestClient, monkeypatch):
         """Снимок пишется только из сессии ЭТОГО запуска: чужая/пустая
-        сессия создаёт ссылку без снимка (честный has_snapshot=False)."""
+        сессия создаёт ссылку без снимка (честный has_snapshot=False).
+        Рекалибровка DOCLOG-0 (P2): чужой анонимный доступ к run закрыт
+        объектной авторизацией (404, test_doclog0_identity) — семантика
+        «снимок только из сессии запуска» проверяется через ADMIN-ключ
+        (gate пускает роль, эндпоинт видит чужую сессию — снимка нет)."""
+        monkeypatch.setenv("CISSTAT_API_KEYS", "d0-admin-key:admin:")
         client.post("/v1/session/demo")
         from apps.api import research_runs
 
@@ -818,6 +823,7 @@ class TestCheckpointEndpoints:
         resp = fresh.post(
             f"/v1/progress/runs/{run.run_id}/checkpoints",
             json={"event_id": event.event_id},
+            headers={"X-API-Key": "d0-admin-key"},
         )
         assert resp.status_code == 201
         assert resp.json()["checkpoint"]["has_snapshot"] is False
@@ -839,13 +845,18 @@ class TestRestoreEndpoint:
 
     def test_restore_without_dataset_file_409(self, client: TestClient):
         """Нет файла по fingerprint -> честный 409: промежуточные состояния
-        не восстанавливаются (§5.3), повторная загрузка -- на аналитике."""
+        не восстанавливаются (§5.3), повторная загрузка -- на аналитике.
+        Рекалибровка DOCLOG-0 (P1): restore доступен владельцу/создателю —
+        запуск сеется на cookie-сессию клиента (серверный континуитет)."""
+        client.get("/v1/session/current")  # фиксируем cookie-сессию
         from apps.api import research_runs
+        from apps.api.session_store import SESSION_COOKIE_NAME as COOKIE
 
         store = research_runs.get_research_run_store()
         store.upsert_run(
             research_runs.ResearchRun(
-                run_id="RUN-NOFILE01", session_id="s",
+                run_id="RUN-NOFILE01",
+                session_id=client.cookies.get(COOKIE),
                 dataset_fingerprint="0" * 64, dataset_name="lost.csv",
             )
         )
@@ -870,8 +881,12 @@ class TestRestoreEndpoint:
 
         run = research_runs.get_research_run_store().list_runs()[0]
 
-        # «Другое устройство»: чистый клиент без cookie.
+        # «Другое устройство»: чистый клиент БЕЗ cookie, но с bearer
+        # владельца (старый cookie). Рекалибровка DOCLOG-0 (P3): bare
+        # run_id больше не право (§15.1) — restore требует носителя
+        # владельца; приёмка «run переживает cookie» сохранена.
         fresh = TestClient(app)
+        fresh.cookies.set(SESSION_COOKIE_NAME, client.cookies.get(SESSION_COOKIE_NAME))
         resp = fresh.get(f"/v1/progress/runs/{run.run_id}/restore")
         assert resp.status_code == 200
         data = resp.json()
@@ -881,10 +896,13 @@ class TestRestoreEndpoint:
         assert data["target_column"] == "sales"
         assert data["events_restored"] >= 1
 
-        # Новый cookie выдан (§5.3: новая сессия).
-        assert SESSION_COOKIE_NAME in fresh.cookies
-        new_session_id = fresh.cookies.get(SESSION_COOKIE_NAME)
+        # Новый cookie выдан (§5.3: новая сессия); читаем из ОТВЕТА:
+        # джар несёт и bearer владельца, и новый cookie -- пересобираем.
+        new_session_id = resp.cookies.get(SESSION_COOKIE_NAME)
+        assert new_session_id
         assert new_session_id != client.cookies.get(SESSION_COOKIE_NAME)
+        fresh.cookies.clear()
+        fresh.cookies.set(SESSION_COOKIE_NAME, new_session_id)
 
         # Новая сессия: датасет активен, run_id тот же, трасса засеяна.
         session = get_session_store().get(new_session_id)
@@ -926,13 +944,16 @@ class TestRestoreEndpoint:
                                  run_id=run.run_id, seq=i),
             )
         fresh = TestClient(app)
+        fresh.cookies.set(SESSION_COOKIE_NAME, client.cookies.get(SESSION_COOKIE_NAME))
         resp = fresh.get(f"/v1/progress/runs/{run.run_id}/restore")
         assert resp.status_code == 200
         data = resp.json()
         assert data["events_restored"] == MAX_PIPELINE_TRACE_EVENTS
         assert data["events_total"] == MAX_PIPELINE_TRACE_EVENTS + 6  # upload + 1005
 
-        session = get_session_store().get(fresh.cookies.get(SESSION_COOKIE_NAME))
+        fresh.cookies.clear()
+        fresh.cookies.set(SESSION_COOKIE_NAME, resp.cookies.get(SESSION_COOKIE_NAME))
+        session = get_session_store().get(resp.cookies.get(SESSION_COOKIE_NAME))
         trace = session.read_pipeline_trace()
         # Засев (1000) + run_resumed от restore -> cap слоя 1 вытесняет
         # старейший засеянный: буфер остаётся 1000, полный хвост -- тут.
@@ -968,9 +989,10 @@ class TestRestoreEndpoint:
                              run_id=run.run_id, modes={"formats": "disabled"}),
         )
         fresh = TestClient(app)
+        fresh.cookies.set(SESSION_COOKIE_NAME, client.cookies.get(SESSION_COOKIE_NAME))
         resp = fresh.get(f"/v1/progress/runs/{run.run_id}/restore")
         assert resp.status_code == 200
-        session = get_session_store().get(fresh.cookies.get(SESSION_COOKIE_NAME))
+        session = get_session_store().get(resp.cookies.get(SESSION_COOKIE_NAME))
         trace = session.read_pipeline_trace()
         mode_events = [e for e in trace if e.event_type == "mode_changed"]
         assert len(mode_events) == 1

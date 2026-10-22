@@ -36,6 +36,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.knowledge.registry import load_registry
+from apps.api.session_store import SESSION_COOKIE_NAME
 from apps.api.trace_events import make_trace_event
 
 
@@ -753,8 +754,15 @@ class TestHtmlRender:
 
 
 class TestReportEndpoint:
-    def _seed_full_run(self, run_id: str = "RUN-REST0001"):
-        _seed_run(run_id)
+    def _seed_full_run(self, run_id: str = "RUN-REST0001", client: TestClient | None = None):
+        """Рекалибровка DOCLOG-0 (P1): seed привязан к cookie-сессии
+        клиента (серверный континуитет §15.1) -- аналитик читает отчёт
+        СВОЕГО запуска; bare run_id без носителя больше не право."""
+        if client is not None:
+            client.get("/v1/session/current")  # фиксируем cookie
+            _seed_run(run_id, session_id=client.cookies.get(SESSION_COOKIE_NAME))
+        else:
+            _seed_run(run_id)
         _append(run_id, _ev("upload_completed", "upload", "structure_confirmed",
                             run_id, _ts(1), name="prices.csv", rows=120,
                             columns=5, size_label="12.3 КБ"))
@@ -768,7 +776,7 @@ class TestReportEndpoint:
         return run_id
 
     def test_report_md_default(self, client: TestClient):
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         resp = client.get(f"/v1/progress/runs/{run_id}/report")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/markdown")
@@ -776,7 +784,7 @@ class TestReportEndpoint:
         assert "Применено исправление" in resp.text
 
     def test_report_html_explicit(self, client: TestClient):
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         resp = client.get(
             f"/v1/progress/runs/{run_id}/report", params={"format": "html"}
         )
@@ -791,7 +799,7 @@ class TestReportEndpoint:
     def test_report_bad_format_422(self, client: TestClient):
         """Формат фиксируется контрактом plan_progress.md (md|html):
         pdf не поддерживается -- честный 422, а не тихий md."""
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         resp = client.get(
             f"/v1/progress/runs/{run_id}/report", params={"format": "pdf"}
         )
@@ -802,7 +810,7 @@ class TestReportEndpoint:
         неполной истории выдавал бы неполные факты за полные)."""
         from apps.api import research_runs
 
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         research_runs.reset_research_run_store_for_testing()
         monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:5432/db")
         research_runs.reset_research_run_store_for_testing()
@@ -811,18 +819,29 @@ class TestReportEndpoint:
         assert resp.status_code == 503
 
     def test_report_contains_forecast_export_link(self, client: TestClient):
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         resp = client.get(f"/v1/progress/runs/{run_id}/report")
         assert "/v1/session/modeling/forecast/F-abc123/export.json" in resp.text
 
-    def test_report_reflects_layer2_not_layer1(self, client: TestClient):
+    def test_report_reflects_layer2_not_layer1(
+        self, client: TestClient, monkeypatch
+    ):
         """Отчёт строится из слоя 2 (кросс-сессионный §5): события
-        ДРУГОЙ сессии, не тронувшей отчётный запуск, в отчёт не попадают."""
+        ДРУГОЙ сессии, не тронувшей отчётный запуск, в отчёт не попадают.
+        Рекалибровка DOCLOG-0 (P2): прежний сценарий (чужой аноним читает
+        отчёт) закрыт объектной авторизацией (404 -- проверяется
+        test_doclog0_identity); фильтрация корпуса слоя 2 проверяется
+        чтением ADMIN-ключа поверх чужой сессии того же браузера."""
+        monkeypatch.setenv("CISSTAT_API_KEYS", "d0-admin-report:admin:")
         run_id = self._seed_full_run()
         # Чужая браузерная сессия грузит свой датасет -- слой 2 другого запуска
         other = client.post("/v1/session/demo")
         assert other.status_code == 200
-        resp = client.get(f"/v1/progress/runs/{run_id}/report")
+        resp = client.get(
+            f"/v1/progress/runs/{run_id}/report",
+            headers={"X-API-Key": "d0-admin-report"},
+        )
+        assert resp.status_code == 200, resp.text
         assert "demo_sales.csv" not in resp.text
 
     def test_report_endpoint_not_traced_by_hook(self):
@@ -836,14 +855,15 @@ class TestReportEndpoint:
     def test_report_no_panel_control_semantics(self, client: TestClient):
         """N-4 (PROGR-4): документ отчёта не несёт семантики управления
         панелью -- рендер у клиента."""
-        run_id = self._seed_full_run()
+        run_id = self._seed_full_run(client=client)
         resp = client.get(f"/v1/progress/runs/{run_id}/report")
         for forbidden in ("close_panel", "open_panel", "navigate", "redirect"):
             assert forbidden not in resp.text
 
     def test_report_of_empty_run_is_honest(self, client: TestClient):
         run_id = "RUN-REST0002"
-        _seed_run(run_id)
+        client.get("/v1/session/current")  # фиксируем cookie (P1)
+        _seed_run(run_id, session_id=client.cookies.get(SESSION_COOKIE_NAME))
         resp = client.get(f"/v1/progress/runs/{run_id}/report")
         assert resp.status_code == 200
         assert "Событий в трассе: 0" in resp.text

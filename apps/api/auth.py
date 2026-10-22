@@ -16,6 +16,7 @@ docs/MIGRATION_ARCHITECTURE.md), но контракт зависимостей
 не изменится при переходе на неё.
 """
 import os
+from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, status
 
@@ -24,25 +25,66 @@ from apps.api.plans import AuthenticatedPrincipal, Capabilities, PlanName, Role
 
 def _parse_key_registry() -> dict[str, AuthenticatedPrincipal]:
     """
-    Формат переменной окружения CISSTAT_API_KEYS:
-    "key1:external_user:starter,key2:external_user:demo,key3:internal_analyst:"
-    (план пуст для admin/internal_analyst -- у них capabilities не тарифные).
+    Формат переменной окружения CISSTAT_API_KEYS (DOCLOG-0: аддитивное
+    расширение, прежний формат продолжает работать):
+
+      "key1:external_user:starter,key2:internal_analyst:"          -- legacy 3 поля
+      "key3:external_user:starter:subj-<hex16>:tenant-alpha:"       -- + явный субъект/tenant
+      "key4:admin::subj-<hex16>:tenant-default:policy.admin+audit.read" -- + scopes
+
+    Обязательные права каталогизирует apps/api/identity.py::Scope; в
+    реестре перечисляются через «+» в 6-м сегменте (факультативно;
+    запятая занята разделителем ЗАПИСЕЙ реестра; базовая выдача по
+    роли -- identity.default_scopes_for_role).
+    Fail-closed (§15): субъект, равный значению ключа, НЕ принимается
+    (ключ не становится идентичностью) -- запись пропускается; без
+    явного subject_id -- псевдоним ключа (subject_pseudonym), НИКОГДА
+    не само значение.
     """
+    from apps.api.identity import DEFAULT_TENANT_ID, subject_pseudonym
+
     raw = os.environ.get("CISSTAT_API_KEYS", "")
     registry: dict[str, AuthenticatedPrincipal] = {}
     for entry in filter(None, raw.split(",")):
         parts = entry.split(":")
-        if len(parts) != 3:
+        if len(parts) < 3:
             continue
-        key, role_str, plan_str = parts
+        key, role_str, plan_str = parts[0], parts[1], parts[2]
+        subject_id: Optional[str] = parts[3] if len(parts) >= 4 and parts[3] else None
+        tenant_id: Optional[str] = parts[4] if len(parts) >= 5 and parts[4] else None
+        scopes_raw = parts[5] if len(parts) >= 6 and parts[5] else ""
+        # Fail-closed (§15/T4): субъект == значение ключа -- запрещено.
+        if subject_id is not None and subject_id == key:
+            continue
         try:
             role = Role(role_str)
             plan = PlanName(plan_str) if plan_str else None
-            registry[key] = AuthenticatedPrincipal(principal_id=key, role=role, plan=plan)
         except ValueError:
             # Некорректная запись в конфиге -- пропускаем, а не роняем весь сервис.
             continue
+        scopes = tuple(
+            s.strip() for s in scopes_raw.split("+") if s.strip()
+        )
+        registry[key] = AuthenticatedPrincipal(
+            principal_id=key,
+            role=role,
+            plan=plan,
+            # Идентичность -- НЕ значение ключа: явный subject_id реестра
+            # либо стабильный псевдоним (subject_pseudonym).
+            subject_id=subject_id if subject_id is not None else subject_pseudonym(key),
+            tenant_id=tenant_id if tenant_id is not None else DEFAULT_TENANT_ID,
+            scopes=scopes,
+        )
     return registry
+
+
+def resolve_principal_for_key(key: str) -> Optional[AuthenticatedPrincipal]:
+    """Публичный резолв ключа для identity-контура (DOCLOG-0): None для
+    неизвестного ключа / незарегистрированного реестра -- НЕ исключение:
+    объектная авторизация (R09) сама решает судьбу анонима."""
+    if not key:
+        return None
+    return _parse_key_registry().get(key)
 
 
 def get_current_principal(x_api_key: str = Header(...)) -> AuthenticatedPrincipal:

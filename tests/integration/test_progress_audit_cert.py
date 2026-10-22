@@ -116,7 +116,10 @@ def test_demo_uses_same_singleton_rule(http, tmp_path, monkeypatch):
 def test_unmodified_auto_restore_preserves_source_without_new_choice(http):
     data = upload(http)
     count = len(events(data["run_id"]))
+    # Рекалибровка DOCLOG-0 (P3): restore -- под bearer владельца
+    # (§15.1: bare run_id не право).
     with TestClient(app) as restored:
+        restored.cookies.set(SESSION_COOKIE_NAME, http.cookies.get(SESSION_COOKIE_NAME))
         response = restored.get(f"/v1/progress/runs/{data['run_id']}/restore")
         assert response.status_code == 200, response.text
         result = trace(restored)
@@ -142,6 +145,7 @@ def test_auto_convert_reset_restore_manual_consumers(http):
     assert "flow (авто)" not in mentor.json()["phase_text"]
     before = sum(e.event_type == "target_column_changed" for e in events(run_id))
     with TestClient(app) as restored:
+        restored.cookies.set(SESSION_COOKIE_NAME, http.cookies.get(SESSION_COOKIE_NAME))
         response = restored.get(f"/v1/progress/runs/{run_id}/restore")
         assert response.status_code == 200, response.text
         assert response.json()["mode"] == "raw" and response.json()["data_revision"] == 0

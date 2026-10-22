@@ -177,6 +177,9 @@ from app.core.run_report import (
     render_markdown,
 )
 from apps.api.auth import require_admin_role
+# DOCLOG-0 (spec_documentation_logging.md §15, §15.1): единая объектная
+# авторизация run-маршрутов -- решающая таблица identity.authorize_run_access.
+from apps.api.identity import authorize_run_access, resolve_request_subject
 from apps.api.knowledge.registry import load_registry  # MNS-TEXT-5: методология — ссылкой (Q7)
 from apps.api.delivery_outbox import (  # AUDIT-6B: восстановимая доставка
     DeliveryTask,
@@ -1122,9 +1125,38 @@ class RestoreResponse(BaseModel):
 
 
 def _require_run(run_id: str) -> ResearchRun:
+    """404 «запуск не найден» -- ЕДИНОЕ тело ответа для отсутствующего И
+    чужого запуска (DOCLOG-0, R09/§15.2: существование ресурса не
+    дисклоужается тем, у кого нет прав; message без run_id -- uniform,
+    сравнение test_doclog0_identity). Причина отказа -- серверному
+    аудиту (AccessDecision), не чужому ответу."""
     run = get_research_run_store().get_run(run_id)
     if run is None:
-        raise HTTPException(status_code=404, detail=f"Запуск {run_id} не найден")
+        raise HTTPException(status_code=404, detail="Запуск не найден")
+    return run
+
+
+# Единый текст 404 (uniform: отсутствие == отказ доступа, существование
+# не дисклоужается).
+_RUN_NOT_FOUND_DETAIL = "Запуск не найден"
+
+
+def _authorized_run(
+    request: Request, response: Response, run_id: str, action: str
+) -> ResearchRun:
+    """DOCLOG-0 (§19, строка DOCLOG-0; §15.1): ЕДИНАЯ точка доступа к
+    run-маршрутам -- объектная авторизация (R09): субъект запроса (API-
+    ключ приоритетен, иначе суррогат cookie-сессии) против привязки
+    запуска. Отказ -- uniform 404 (тот же код/тело, что отсутствие);
+    причина -- AccessDecision в журнале. Знание run_id НЕ является
+    правом; WRITE-действия (pause/resume/checkpoints/restore) проходят
+    ту же таблицу."""
+    run = _require_run(run_id)
+    subject = resolve_request_subject(request)
+    session_id = request.cookies.get(SESSION_COOKIE_NAME) or ""
+    decision = authorize_run_access(run, subject, session_id=session_id, action=action)
+    if not decision.allowed:
+        raise HTTPException(status_code=404, detail=_RUN_NOT_FOUND_DETAIL)
     return run
 
 
@@ -1249,15 +1281,18 @@ def _mirror_to_layer1(request: Request, response: Response, run_id: str, event) 
 @router.get("/runs/{run_id}", response_model=RunDetailResponse)
 @_durable_ops
 def get_run_detail(
+    request: Request,
+    response: Response,
     run_id: str,
     limit: Optional[int] = Query(default=None, ge=1, le=1000),
 ) -> RunDetailResponse:
     """Запуск слоя 2: мета (§5) + события (хронология дописывания;
     limit -- ПОСЛЕДНИЕ N, панель/отчёт читают свежий хвост) + чекпоинты
     (§5.1). 503 -- долговременный слой недоступен (деградировать на
-    слой 1 нельзя: ответ выдавал бы неполную историю за полную)."""
+    слой 1 нельзя: ответ выдавал бы неполную историю за полную).
+    DOCLOG-0: доступ -- объектная авторизация (§15.1)."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="read")
     events = store.list_events(run_id)
     events_total = len(events)
     if limit is not None:
@@ -1284,7 +1319,7 @@ def pause_run(request: Request, response: Response, run_id: str) -> RunEventResp
     между двумя записями больше не существует). Синхронное зеркало слоя 1
     закрывает обязательство; отказ cache оставляет его worker'у (п.2)."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="write")
     if run.status != "active":
         raise HTTPException(
             status_code=409,
@@ -1313,7 +1348,7 @@ def resume_run(request: Request, response: Response, run_id: str) -> RunEventRes
 
     AUDIT-6B: атомарный батч + обязательство доставки (см. pause_run)."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="write")
     if run.status != "paused":
         raise HTTPException(
             status_code=409,
@@ -1356,7 +1391,7 @@ def create_checkpoint(
     позиция). Чужая сессия -- ссылка без снимка и без контекстных
     метаданных (честное отсутствие)."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="write")
     if run.status in ("completed", "abandoned"):
         raise HTTPException(
             status_code=409,
@@ -1460,7 +1495,7 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     к ТОМУ ЖЕ запуску, следующие события продолжают его трассу.
     """
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="write")
     if run.status == "completed":
         raise HTTPException(status_code=409, detail="Запуск завершён: восстановление закрыто (§5.3)")
 
@@ -1519,6 +1554,17 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
         df,
     )
     session.run_id = run.run_id  # run переживает cookie -- приёмка плана
+
+    # DOCLOG-0 (§15.1): restore проверил владение (gate выше); новая
+    # сессия НАСЛЕДУЕТ субъект владельца bound-запуска -- это
+    # КОНТИНУИТЕТ того же владельца, а не назначение нового (знание
+    # run_id без права не проходит gate; легаси-run восстанавливает
+    # только создавшая cookie-сессия). Для легаси-run поля не
+    # фабрикуются (None -- суррогат вычислится при первом зеркале,
+    # перелинковка §5 сохраняет непрерывность).
+    if run.owner_subject:
+        session.owner_subject = run.owner_subject
+        session.tenant_id = run.tenant_id or "tenant-default"
 
     # Прогресс -- из trace_events (засев слоя 1 в пределах cap; §5.3:
     # решения восстанавливаются, промежуточные DataFrame -- нет).
@@ -1710,12 +1756,15 @@ class DeliveryStatusResponse(BaseModel):
 
 @router.get("/runs/{run_id}/delivery", response_model=DeliveryListResponse)
 @_durable_ops
-def list_run_delivery(run_id: str) -> DeliveryListResponse:
+def list_run_delivery(
+    request: Request, response: Response, run_id: str,
+) -> DeliveryListResponse:
     """Обязательства доставки запуска (AUDIT-6B): pending -- проекция
     слоя 1 ждёт worker'а; delivered -- доставлено; failed -- бюджет
-    попыток исчерпан (факт в ledger остаётся авторитетным)."""
+    попыток исчерпан (факт в ledger остаётся авторитетным).
+    DOCLOG-0: доступ -- объектная авторизация (§15.1)."""
     store = _require_store()
-    _require_run(run_id)
+    _authorized_run(request, response, run_id, action="read")
     tasks = store.delivery_outbox.list_by_run(run_id)
     counts: Dict[str, int] = {}
     for task in tasks:
@@ -1747,13 +1796,16 @@ def list_run_delivery(run_id: str) -> DeliveryListResponse:
     response_model=DeliveryStatusResponse,
 )
 @_durable_ops
-def get_operation_delivery(run_id: str, operation_id: str) -> DeliveryStatusResponse:
+def get_operation_delivery(
+    request: Request, response: Response, run_id: str, operation_id: str,
+) -> DeliveryStatusResponse:
     """Read-after-write по operation_id (план §17 п.8): либо состояние с
     receipt/watermark, либо честное ожидающее. Ключи required-путей --
     event:{run_id}:{op} и report:{run_id}:{op}; неизвестная операция --
-    не_executed (операция до хранилища не дошла), не 500."""
+    не_executed (операция до хранилища не дошла), не 500.
+    DOCLOG-0: доступ -- объектная авторизация (§15.1)."""
     store = _require_store()
-    _require_run(run_id)
+    _authorized_run(request, response, run_id, action="read")
     task = store.delivery_outbox.get_task(operation_id)
     receipt = None
     if task is not None and task.idempotency_key:
@@ -2084,8 +2136,11 @@ def _derived_spikes_facts(run: ResearchRun) -> dict[str, Any] | None:
 
 @router.get("/runs/{run_id}/mentor/next-step", response_model=MentorNextStepResponse)
 @_durable_ops
-def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
+def get_mentor_next_step(
+    request: Request, response: Response, run_id: str,
+) -> MentorNextStepResponse:
     """«Следующий шаг» (§7.1): одна рекомендация по трассе слоя 2.
+    DOCLOG-0: доступ -- объектная авторизация (§15.1).
 
     Статусы узлов выводятся из фактов trace_events запуска
     (derive_node_statuses -- единый движок app/core/node_status.py,
@@ -2094,7 +2149,7 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     слой недоступен (рекомендация по неполной истории выдавала бы
     уверенный совет на неполных данных)."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="read")
     events = store.list_events(run_id)
     # AUDIT-5B: статусы -- ЕДИНАЯ проекция полного ledger (тот же
     # редьюсер/порядок, что у панели и отчёта; одинаковый snapshot для
@@ -2183,6 +2238,8 @@ _REPORT_MEDIA_TYPES: dict[str, str] = {
 @router.get("/runs/{run_id}/report")
 @_durable_ops
 def get_run_report(
+    request: Request,
+    response: Response,
     run_id: str,
     report_format: str = Query(
         default="md", alias="format", pattern="^(md|html)$"
@@ -2196,7 +2253,7 @@ def get_run_report(
     неполной истории выдавал бы неполные факты за полные); ответ --
     документ (Response), не pydantic-модель: формат и есть контракт."""
     store = _require_store()
-    run = _require_run(run_id)
+    run = _authorized_run(request, response, run_id, action="read")
     events = store.list_events(run_id)
     # AUDIT-5B (P12/F08): отчёт -- потребитель ЕДИНОЙ версии истории:
     # канонический порядок корпуса (дедуп по event_id + §3.3), как у

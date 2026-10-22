@@ -102,7 +102,7 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с 
 # гейтов качества -- канонические исходные колонки; старые документы без
 # поля читаются с пустым реестром = все колонки исходные (обратная
 # совместимость, спека §Реализация п.3).
-SESSION_SCHEMA_VERSION = 3
+SESSION_SCHEMA_VERSION = 4  # DOCLOG-0: аддитивные owner_subject/tenant_id (см. session_to_dict)
 
 
 class SessionConflictError(RuntimeError):
@@ -345,6 +345,18 @@ class AnalysisSession:
     # новое исследование, §3.1). Формат "RUN-XXXXXXXX" -- читаемый,
     # человекопроизносимый идентификатор для техподдержки (§5.3).
     run_id: str = ""
+    # ── DOCLOG-0 (spec_documentation_logging.md §9.1/§15.1): владение ──
+    # Сессия -- способ работы, не владелец (§9.1); в dev/транзитном
+    # контуре владелец запуска -- СУБЪЕКТ-СУРРОГАТ сессии (псевдоним
+    # cookie, apps/api/identity.py::subject_pseudonym -- значение
+    # cookie НЕ является идентичностью). Привязка -- first-write-wins
+    # (ensure_owner_binding), при restore -- НАСЛЕДОВАНИЕМ; сериализуется
+    # (урок F1: поле обязано переживать save→get, иначе Redis-путь
+    # теряет владельца на каждом save). None -- честное отсутствие
+    # (сессии до DOCLOG-0; суррогат вычисляется детерминированно при
+    # первой привязке run).
+    owner_subject: Optional[str] = None
+    tenant_id: Optional[str] = None
     # Внутрисессионный буфер stored-событий (каноническая форма to_dict(),
     # 8+1 ключей). Пишет apps/api/trace_hook.py (§4.2) на успешных ответах;
     # читается через read_pipeline_trace() -- граница нормализации старых
@@ -366,6 +378,21 @@ class AnalysisSession:
         if not self.run_id:
             self.run_id = "RUN-" + uuid.uuid4().hex[:8].upper()
         return self.run_id
+
+    def ensure_owner_binding(self) -> tuple[Optional[str], Optional[str]]:
+        """DOCLOG-0 (§15.1): фиксирует владение сессии -- first-write-wins.
+        Субъект-суррогат = псевдоним session_id (identity.subject_pseudonym:
+        значение cookie не восстанавливаемо и не дисклоужается, T4);
+        tenant -- серверный дефолт (из запроса НЕ читается, R09/T5).
+        Возвращает (owner_subject, tenant_id); существующая привязка
+        (в т.ч. restore-наследование) НЕ переписывается."""
+        from apps.api.identity import DEFAULT_TENANT_ID, subject_pseudonym
+
+        if self.owner_subject is None:
+            self.owner_subject = subject_pseudonym(self.session_id)
+        if self.tenant_id is None:
+            self.tenant_id = DEFAULT_TENANT_ID
+        return self.owner_subject, self.tenant_id
 
     def append_trace_event(self, event: TraceEvent) -> None:
         """Дописывает событие в буфер слоя 1 (§5) в stored-форме to_dict().
@@ -867,6 +894,12 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "sufficiency_plan": dict(session.sufficiency_plan),
         # PROGR-3: слой 1 трассы (§5) -- stored-события и run_id исследования
         "run_id": session.run_id,
+        # DOCLOG-0 (§15.1): владение переживает персистенцию (урок F1:
+        # PROGR-25-A-CERT -- несериализованное поле терялось на каждом
+        # save→get Redis-пути). Аддитивные ключи; legacy-документы без
+        # них читаются as None (session_from_dict).
+        "owner_subject": session.owner_subject,
+        "tenant_id": session.tenant_id,
         "pipeline_trace": deepcopy(session.pipeline_trace),
         "updated_at": session.updated_at,
     }
@@ -976,6 +1009,18 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         # документа отбрасываются здесь (Task 143: мусор не роняет сессию);
         # нормализация к канону -- на read_pipeline_trace().
         run_id=str(d.get("run_id", "") or ""),
+        # DOCLOG-0: None для старых документов без полей (backcompat
+        # rolling-deploy; суррогат вычислится при первой привязке run).
+        owner_subject=(
+            str(d["owner_subject"])
+            if isinstance(d.get("owner_subject"), str) and d.get("owner_subject")
+            else None
+        ),
+        tenant_id=(
+            str(d["tenant_id"])
+            if isinstance(d.get("tenant_id"), str) and d.get("tenant_id")
+            else None
+        ),
         pipeline_trace=[
             item for item in (d.get("pipeline_trace", []) or [])
             if isinstance(item, dict)

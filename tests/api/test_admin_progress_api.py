@@ -80,7 +80,12 @@ def _isolated_environment(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client():
+    """Рекалибровка DOCLOG-0 (P1): cookie-сессия клиента зафиксирована на
+    «sess-1» -- сиды _populate_run (session_id="sess-1") проходят
+    серверный континуитет (§15.1); bare run_id без носителя закрыт
+    (покрыто test_doclog0_identity)."""
     with TestClient(app) as test_client:
+        test_client.cookies.set(SESSION_COOKIE_NAME, "sess-1")
         yield test_client
 
 

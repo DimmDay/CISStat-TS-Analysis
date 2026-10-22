@@ -263,6 +263,25 @@ def probe_store(store: Any, *, component: str) -> dict[str, Any]:
 # ── Тело /health/ops (п.3) ───────────────────────────────────────────
 
 
+def build_identity_health() -> dict[str, Any]:
+    """DOCLOG-0 (§19.1): identity-блок /health/ops -- режим идентичности,
+    факт применения owner-гейта к run-контуру, серверный дефолт-tenant и
+    факт конфигурации реестра ключей. НИКАКИХ значений ключей/субъектов
+    (T6: секреты не попадают в операционные поверхности)."""
+    from apps.api.identity import (
+        DEFAULT_TENANT_ID,
+        get_identity_mode,
+        is_key_registry_configured,
+    )
+
+    return {
+        "mode": get_identity_mode(),
+        "run_ownership_enforcement": "owner_bound",
+        "default_tenant": DEFAULT_TENANT_ID,
+        "api_key_registry_configured": is_key_registry_configured(),
+    }
+
+
 def build_ops_health(
     *,
     run_store: Any = None,
@@ -359,4 +378,9 @@ def build_ops_health(
         "delivery": delivery,
         "worker": worker_status,
         "models_dispatch": models_dispatch or {"ready": True},
+        # DOCLOG-0 (§19.1, operational counters): честный режим
+        # идентичности и факт конфигурации реестра ключей (bool, БЕЗ
+        # значений/DSN -- T6). enforcement -- факт применения
+        # объектной авторизации к run-контуру.
+        "identity": build_identity_health(),
     }
