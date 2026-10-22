@@ -58,6 +58,9 @@ COMPONENT_SESSION = "session"  # SessionStore (cache слоя 1)
 # DOCLOG-1 (§19): реестр устойчивых артефактов (metadata durable-слоя;
 # байты -- в object store). Отдельный компонент снимка фабрик.
 COMPONENT_ARTIFACTS = "artifacts"
+# DOCLOG-2 (§19): реестр ReportSnapshot (metadata durable-слоя; байты
+# снимка -- в том же object store, content-addressed).
+COMPONENT_SNAPSHOTS = "snapshots"
 
 
 def get_storage_mode() -> str:
@@ -307,6 +310,28 @@ def build_artifacts_health() -> dict[str, Any]:
     }
 
 
+def build_snapshots_health() -> dict[str, Any]:
+    """DOCLOG-2 (§19.1): snapshots-блок /health/ops -- честные факты
+    контура ReportSnapshot БЕЗ путей/DSN (T6/T10; паритет
+    build_artifacts_health): backend реестра снимков (peek БЕЗ
+    провокации фабрики), тип object store и факт конфигурации root'а
+    (bool, не значение). Содержимое снимков -- не диагностика.
+    """
+    from apps.api.report_snapshot import peek_snapshot_registry
+
+    registry = peek_snapshot_registry()
+    backend = "not_initialized" if registry is None else type(registry).__name__.replace(
+        "SnapshotRegistry", ""
+    ).lower() or "unknown"
+    return {
+        "registry_backend": backend,
+        "object_store": "local_fs",
+        "data_root_configured": bool(
+            (os.environ.get("CISSTAT_DATA_DIR") or "").strip()
+        ),
+    }
+
+
 def build_ops_health(
     *,
     run_store: Any = None,
@@ -411,4 +436,7 @@ def build_ops_health(
         # DOCLOG-1 (§19.1): устойчивые артефакты -- backend реестра,
         # тип object store, факт конфигурации root'а (без путей, T10).
         "artifacts": build_artifacts_health(),
+        # DOCLOG-2 (§19.1): ReportSnapshot -- backend реестра снимков,
+        # тот же object store (паритет facts-only, T6/T10).
+        "snapshots": build_snapshots_health(),
     }
