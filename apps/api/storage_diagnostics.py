@@ -55,6 +55,9 @@ _VALID_MODES = (STORAGE_MODE_ADVISORY, STORAGE_MODE_REQUIRED)
 # Компоненты хранения (фабрики фиксируют выбор по этим ключам).
 COMPONENT_RUNS = "runs"        # ResearchRunStore (+ durable outbox)
 COMPONENT_SESSION = "session"  # SessionStore (cache слоя 1)
+# DOCLOG-1 (§19): реестр устойчивых артефактов (metadata durable-слоя;
+# байты -- в object store). Отдельный компонент снимка фабрик.
+COMPONENT_ARTIFACTS = "artifacts"
 
 
 def get_storage_mode() -> str:
@@ -282,6 +285,28 @@ def build_identity_health() -> dict[str, Any]:
     }
 
 
+def build_artifacts_health() -> dict[str, Any]:
+    """DOCLOG-1 (§19.1): artifacts-блок /health/ops -- честные факты
+    контура устойчивых артефактов БЕЗ путей/DSN (T6/T10): backend
+    реестра (peek БЕЗ провокации фабрики -- паритет runs/session),
+    тип object store и факт конфигурации root'а (bool, не значение).
+    Полные counts/GC-статусы -- при появлении render-очереди (DOCLOG-5+).
+    """
+    from apps.api.artifact_store import peek_artifact_registry
+
+    registry = peek_artifact_registry()
+    backend = "not_initialized" if registry is None else type(registry).__name__.replace(
+        "ArtifactRegistry", ""
+    ).lower() or "unknown"
+    return {
+        "registry_backend": backend,
+        "object_store": "local_fs",
+        "data_root_configured": bool(
+            (os.environ.get("CISSTAT_DATA_DIR") or "").strip()
+        ),
+    }
+
+
 def build_ops_health(
     *,
     run_store: Any = None,
@@ -383,4 +408,7 @@ def build_ops_health(
         # значений/DSN -- T6). enforcement -- факт применения
         # объектной авторизации к run-контуру.
         "identity": build_identity_health(),
+        # DOCLOG-1 (§19.1): устойчивые артефакты -- backend реестра,
+        # тип object store, факт конфигурации root'а (без путей, T10).
+        "artifacts": build_artifacts_health(),
     }

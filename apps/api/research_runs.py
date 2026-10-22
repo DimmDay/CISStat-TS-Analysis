@@ -783,10 +783,67 @@ MIGRATION_STATEMENTS_0006: tuple[str, ...] = (
     "ON research_runs (tenant_id)",
 )
 
+# DOCLOG-1 (spec_documentation_logging.md §9.1, §16, §19, AC04/AC08/AC09):
+# устойчивые артефакты -- metadata tables durable-слоя. АДДИТИВНАЯ
+# миграция: таблицы новые, legacy-корпус без артефактов остаётся
+# читаемым (читатели раньше писателей). research_artifacts -- метаданные
+# результатов (байты -- в object store, ключ content-addressed из
+# SHA-256); UNIQUE(run_id, producer_key) -- идемпотентность промоушена
+# (AC09); FK ON DELETE CASCADE -- паритет ledger (артефакты живут
+# вместе с запуском; publish-политика DOCLOG-6).
+# research_artifact_pins -- защита зависимостей независимо от keeper
+# «последних пяти» checkpoint (AC04/T11); UNIQUE(run_id, ref_kind,
+# ref_id) -- идемпотентные пины с ПРИЧИНОЙ (§16: «metadata graph
+# хранит причины ссылок»). Модуль контура: apps/api/artifact_store.py.
+MIGRATION_STATEMENTS_0007: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS research_artifacts (
+        artifact_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.artifact/1',
+        producer_key TEXT NOT NULL,
+        media_type TEXT NOT NULL DEFAULT 'application/json',
+        size_bytes BIGINT NOT NULL DEFAULT 0,
+        payload_sha256 TEXT NOT NULL DEFAULT '',
+        data_digest_algorithm TEXT,
+        data_digest_value TEXT,
+        source_bytes_sha256 TEXT,
+        storage_key TEXT NOT NULL DEFAULT '',
+        context_id TEXT,
+        data_revision BIGINT,
+        input_kind TEXT,
+        panel JSONB,
+        dependencies JSONB NOT NULL DEFAULT '[]'::jsonb,
+        refs JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (run_id, producer_key)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_research_artifacts_run "
+    "ON research_artifacts (run_id, kind)",
+    """
+    CREATE TABLE IF NOT EXISTS research_artifact_pins (
+        pin_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        ref_kind TEXT NOT NULL,
+        ref_id TEXT NOT NULL,
+        reason TEXT NOT NULL DEFAULT '',
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (run_id, ref_kind, ref_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_research_artifact_pins_run "
+    "ON research_artifact_pins (run_id, ref_kind)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
     + MIGRATION_STATEMENTS_0005 + MIGRATION_STATEMENTS_0006
+    + MIGRATION_STATEMENTS_0007
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -798,6 +855,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0004_audit8_checkpoint_metadata.sql", MIGRATION_STATEMENTS_0004),
     ("0005_audit6b_delivery_outbox.sql", MIGRATION_STATEMENTS_0005),
     ("0006_doclog0_run_ownership.sql", MIGRATION_STATEMENTS_0006),
+    ("0007_doclog1_artifacts.sql", MIGRATION_STATEMENTS_0007),
 )
 
 
@@ -2402,6 +2460,25 @@ class DatasetFileStore:
         except (OSError, ValueError):
             logger.warning(
                 "Dataset files: нечитаемый снимок чекпоинта %s", path, exc_info=True
+            )
+            return None
+
+    def read_checkpoint_snapshot_bytes(
+        self, run_id: str, checkpoint_id: str
+    ) -> Optional[bytes]:
+        """DOCLOG-1: СЫРЫЕ байты снимка (без парсинга) -- basis
+        content-addressed артефакта данных чекпоинта (digest по точным
+        байтам, H10: деградация CSV-пути не маскируется повторным
+        выводом типов). None -- файла нет (честное отсутствие)."""
+        path = self._checkpoints_dir(run_id) / f"{checkpoint_id}.csv"
+        if not path.exists():
+            return None
+        try:
+            return path.read_bytes()
+        except OSError:
+            logger.warning(
+                "Dataset files: снимок чекпоинта %s нечитаем", checkpoint_id,
+                exc_info=True,
             )
             return None
 

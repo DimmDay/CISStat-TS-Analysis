@@ -1470,9 +1470,32 @@ def create_checkpoint(
     _mirror_to_layer1(request, response, run_id, event)
     _mark_delivered_safe(store, task)
     # §12 п.4: последние 5 снимков на запуск.
+    # DOCLOG-1 (AC04/T11): pinned checkpoint-зависимости переживают
+    # keeper «последних пяти» -- keep-список объединяется с pinned
+    # checkpoint-id (§16: pin защищает зависимости; metadata хранит
+    # причины). Сбой lookup пинов -- prune ПРОПУСКАЕТСЯ целиком
+    # (fail-closed для защиты: неизвестное состояние пинов не удаляет
+    # файлы; warning журналу), обычный путь без пинов не меняется.
     try:
         keep = [checkpoint.checkpoint_id for checkpoint in store.list_checkpoints(run_id)][-5:]
-        get_dataset_file_store().prune_checkpoints(run_id, keep=keep)
+        try:
+            from apps.api.artifact_store import get_artifact_registry
+
+            pinned = get_artifact_registry().pinned_checkpoint_ids(run_id)
+        except Exception:  # защитный контур: реестр пинов недоступен
+            logger.warning(
+                "Checkpoint: lookup пинов не удался -- prune снимков "
+                "пропущен (fail-closed, AC04)",
+                exc_info=True,
+            )
+            pinned = None
+        if pinned is not None:
+            if pinned:
+                keep = [
+                    checkpoint_id
+                    for checkpoint_id in dict.fromkeys(list(keep) + sorted(pinned))
+                ]
+            get_dataset_file_store().prune_checkpoints(run_id, keep=keep)
     except Exception:  # pragma: no cover - защитный контур диска
         logger.warning("Checkpoint: prune снимков не удался", exc_info=True)
     return CheckpointCreatedResponse(
