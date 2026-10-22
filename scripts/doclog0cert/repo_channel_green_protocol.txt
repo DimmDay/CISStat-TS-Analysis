@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+collected 189 items
+
+tests/api/test_doclog0_identity.py ..................................... [ 19%]
+.....                                                                    [ 22%]
+tests/api/test_session_store.py ........................................ [ 43%]
+...............................................                          [ 68%]
+tests/api/test_research_runs.py ........................................ [ 89%]
+....................                                                     [100%]
+
+=============================== warnings summary ===============================
+../cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 189 passed, 1 warning in 4.17s ========================

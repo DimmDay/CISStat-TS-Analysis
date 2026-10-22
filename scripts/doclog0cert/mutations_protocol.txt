@@ -1,0 +1,12 @@
+M18 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | объектная авторизация run-маршрутов снята (F08 возвращён)
+M19 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | uniform-404 дисклоужает run_id
+M20 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | restore-наследование владельца снято (T3)
+M21 | progress.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | restore проходит как read (audit-факт действия искажён)
+M22 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | гвард зеркала слоя 2 снят (T2)
+M23 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | создание run без привязки владельца (T3)
+M24 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | COALESCE инвертирован: батч без owner стирает привязку
+M25 | session_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | first-write-wins снят (restore-наследование переписывается)
+M26 | session_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | owner_subject выпадает из сериализации (класс F1/PROGR-25)
+CTL-01 | identity.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-02 | progress.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-03 | research_runs.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий

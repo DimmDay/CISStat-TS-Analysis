@@ -1,0 +1,58 @@
+M01 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | анониму разрешён доступ (T1 снят)
+M02 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | ADMIN-грант мёртв
+M03 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | dev_single_user-режим мёртв
+M04 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | tenant-граница снята в owner-строке (T5)
+M05 | identity.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | bound creator-continuity мёртв
+M06 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | чужой bound-запуск разрешён (T1)
+M07 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | чужой legacy-запуск разрешён (T1)
+M08 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | effective_ownership всегда unresolved
+M09 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | материал субъекта всплывает в псевдониме (T4)
+Traceback (most recent call last):
+  File "/home/z/my-project/cisstat-repo/scripts/doclog0cert/mutations.py", line 287, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/z/my-project/cisstat-repo/scripts/doclog0cert/mutations.py", line 220, in main
+    m.apply()
+  File "/home/z/my-project/cisstat-repo/scripts/doclog0cert/mutations.py", line 67, in apply
+    raise RuntimeError(
+RuntimeError: M10: вхождений 0 (ожидается 1) в apps/api/identity.py: '            else (os.environ.get(IDENTITY_SALT_ENV) or _DEV_SALT)'
+M10 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | env-соль игнорируется (ротация мертва)
+M11 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | подделка формы subj-* принимается
+M12 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | незнакомый режим возвращается как есть (fail-closed снят)
+M13 | identity.py | DUAL-KILLED | oracle_kill=True repo_kill=True | ops-флаг реестра -- строка, не bool (T6)
+M14 | auth.py | DUAL-KILLED | oracle_kill=True repo_kill=True | subject==key принят (T4 снят)
+M15 | auth.py | DUAL-KILLED | oracle_kill=True repo_kill=True | идентичность по умолчанию -- значение ключа (T4)
+M16 | auth.py | DUAL-KILLED | oracle_kill=True repo_kill=True | разделитель scopes сломан
+M17 | auth.py | DUAL-KILLED | oracle_kill=True repo_kill=True | неизвестный ключ -- исключение вместо None
+
+== md5-паспорт после кампании ==
+apps/api/identity.py: OK
+apps/api/auth.py: OK
+apps/api/routers/progress.py: OK
+apps/api/research_runs.py: OK
+apps/api/session_store.py: OK
+git diff пуст: True
+
+ИТОГО: боевых 26 -- DUAL 8, ORACLE-ONLY 0, REPO-ONLY 0, SURVIVED 0; контролей ALIVE 0/3; restore OK
+M18 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | объектная авторизация run-маршрутов снята (F08 возвращён)
+M19 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | uniform-404 дисклоужает run_id
+M20 | progress.py | DUAL-KILLED | oracle_kill=True repo_kill=True | restore-наследование владельца снято (T3)
+M21 | progress.py | ORACLE-ONLY | oracle_kill=True repo_kill=False | restore проходит как read (audit-факт действия искажён)
+M22 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | гвард зеркала слоя 2 снят (T2)
+M23 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | создание run без привязки владельца (T3)
+M24 | research_runs.py | DUAL-KILLED | oracle_kill=True repo_kill=True | COALESCE инвертирован: батч без owner стирает привязку
+M25 | session_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | first-write-wins снят (restore-наследование переписывается)
+M26 | session_store.py | DUAL-KILLED | oracle_kill=True repo_kill=True | owner_subject выпадает из сериализации (класс F1/PROGR-25)
+CTL-01 | identity.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-02 | progress.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+CTL-03 | research_runs.py | ALIVE(OK) | oracle_kill=False repo_kill=False | no-op: комментарий
+
+== md5-паспорт после кампании ==
+apps/api/identity.py: OK
+apps/api/auth.py: OK
+apps/api/routers/progress.py: OK
+apps/api/research_runs.py: OK
+apps/api/session_store.py: OK
+git diff пуст: True
+
+ИТОГО: боевых 26 -- DUAL 8, ORACLE-ONLY 1, REPO-ONLY 0, SURVIVED 0; контролей ALIVE 3/3; restore OK

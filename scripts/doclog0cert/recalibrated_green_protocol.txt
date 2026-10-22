@@ -1,0 +1,100 @@
+============================= test session starts ==============================
+collected 553 items
+
+tests/api/test_mentor_rules.py ......................................... [  7%]
+........................................................................ [ 20%]
+........................................................................ [ 33%]
+................                                                         [ 36%]
+tests/api/test_admin_progress_api.py .......................             [ 40%]
+tests/api/test_run_report.py ........................................... [ 48%]
+..................                                                       [ 51%]
+tests/api/test_progress_progr13b.py ...................                  [ 54%]
+tests/api/test_research_runs.py ........................................ [ 62%]
+....................                                                     [ 65%]
+tests/api/test_progress_audit_1a.py .................................... [ 72%]
+                                                                         [ 72%]
+tests/api/test_progress_audit_8.py ...............                       [ 75%]
+tests/api/test_session_store.py ........................................ [ 82%]
+...............................................                          [ 90%]
+tests/api/test_status_original_series.py ............................... [ 96%]
+.                                                                        [ 96%]
+tests/integration/test_progress_audit_cert.py ...................        [100%]
+
+=============================== warnings summary ===============================
+../cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/api/test_mentor_rules.py: 16 warnings
+tests/integration/test_progress_audit_cert.py: 7 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:149: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    results[lag] = mod_instance.fit()
+
+tests/api/test_mentor_rules.py: 12 warnings
+tests/integration/test_progress_audit_cert.py: 7 warnings
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:432: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    resols = OLS(xdshort, add_trend(xdall[:, : usedlag + 1], regression)).fit()
+
+tests/api/test_mentor_rules.py::TestMentorDerivedSpikesEndpoint::test_silent_when_derived_columns_have_no_spikes
+tests/api/test_mentor_rules.py::TestMentorDerivedSpikesEndpoint::test_silent_when_derived_columns_have_no_spikes
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:3995: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    o = OLS(endog[baselags:], exog, hasconst=1).fit()
+
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restore_keeps_auto_origin
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restored_session_origin_visible_in_trace_header
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_status_original_series.py::TestValidationScope::test_validate_runs_on_canonical_scope
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/pandera/_pandas_deprecated.py:144: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    warnings.warn(_future_warning, FutureWarning)
+
+tests/integration/test_progress_audit_cert.py::test_eda_get_remount_pending_seed_failure_and_new_context
+tests/integration/test_progress_audit_cert.py::test_eda_get_remount_pending_seed_failure_and_new_context
+  /home/z/my-project/cisstat-repo/app/eda/correlation.py:118: FutureWarning: acf currently returns a plain tuple whose length depends on the qstat and alpha arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an AcfResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    acf_values, acf_intervals = acf(
+
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+  /home/z/my-project/cisstat-repo/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:717: ComplexWarning: Casting complex values to real discards the imaginary part
+    lr1[i] = -t * np.sum(tmp, 0)
+
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+tests/integration/test_progress_audit_cert.py::test_model_job_cancel_context_late_result_and_phase
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:718: ComplexWarning: Casting complex values to real discards the imaginary part
+    lr2[i] = -t * np.log(1 - a[i])
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================== 553 passed, 59 warnings in 10.55s =======================

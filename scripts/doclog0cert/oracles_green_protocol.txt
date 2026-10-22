@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+collected 53 items
+
+scripts/doclog0cert/test_doclog0cert_oracle_api.py .................     [ 32%]
+scripts/doclog0cert/test_doclog0cert_oracle_unit.py .................... [ 69%]
+................                                                         [100%]
+
+=============================== warnings summary ===============================
+../cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /home/z/my-project/cisstat-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 53 passed, 1 warning in 3.28s =========================

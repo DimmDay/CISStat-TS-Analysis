@@ -1,0 +1,26 @@
+== RED на родителе cc5c14e (worktree cisstat-doclog0cert-red-wt) ==
+родитель подтверждён: cc5c14e
+[RED] F1 identity.py отсутствует 
+[RED] F2 test_doclog0_identity.py отсутствует 
+[RED] F3 миграция 0006 отсутствует 
+[RED] F4 контрактный документ отсутствует 
+[RED] F5 MIGRATION_STATEMENTS_0006 отсутствует 
+[RED] F6 ResearchRun без owner_subject/tenant_id/ownership 
+[RED] F7 _mirror_run_base не привязывает владельца 
+[RED] F8 record_run_event без гварда субъекта 
+[RED] F9 _authorized_run отсутствует (report без owner-проверки, F08) 
+[RED] F10 детальный 404 отчёта дисклоужал run_id (f-string) 
+[RED] F11 AnalysisSession без owner_subject/ensure_owner_binding 
+[RED] F12 SESSION_SCHEMA_VERSION == 3 на родителе (4 на HEAD) 
+[RED] F13 реестр ключей без subject/tenant/scopes-сегментов 
+[RED] F14 resolve_principal_for_key отсутствует 
+[RED] F15 /health/ops без identity-блока 
+[RED] F16 unit-оракулы RED (identity.py не существует -> collection error) ======================== 36 failed, 1 warning in 0.83s =========================
+[RED] F17 API-оракулы RED (rc!=0 -- F08 живьём) =================== 14 failed, 3 passed, 1 warning in 3.03s ====================
+[RED] F18 test_oc36_demo_upload_binds_owner FAILED на родителе 
+[RED] F18 test_oc39_foreign_denied_uniform_404_no_leak FAILED на родителе 
+[RED] F18 test_oc40_write_paths_denied_for_foreign FAILED на родителе 
+[RED] F18 test_oc45_restore_inherits_owner_and_fresh_session_reads FAILED на родителе 
+worktree удалён, cleanup подтверждён
+
+ИТОГО RED-репродукции: 21/21 фактов красные
