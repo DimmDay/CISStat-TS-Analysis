@@ -31,6 +31,10 @@ from apps.api.session_store import SessionConflictError
 # PROGR-3: хук трассы «Прогресса» -- единая точка интеграции §4.2
 # (таблица маршрутов путь -> (stage, node_id, event_type) внутри модуля).
 from apps.api.trace_hook import TraceHookMiddleware
+# DOCLOG-3 (§13.2/§19.1): request-корреляция + наблюдаемость ingress
+# (X-Request-ID, traceparent-валидация, api.request с sampling). Отдельно
+# от хука трассы: трасса -- журнал решений (§1), telemetry -- техпоток.
+from apps.api.telemetry import TelemetryContextMiddleware, emit as telemetry_emit
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 from apps.api.routers import forecasting_session, tasks_session
@@ -67,11 +71,23 @@ async def _lifespan(app: FastAPI):
         get_research_run_store()
         _get_ss()
         logger.info("Startup: required-режим хранения -- фабрики проверены")
+    # DOCLOG-3 (§13.1): lifecycle-события в техпоток (essential -- не
+    # сэмплируются); сбой телеметрии не влияет на старт (AC11).
+    telemetry_emit(
+        "api.startup", severity="info", essential=True,
+        message_template="API startup: storage/worker factories checked",
+        outcome="success",
+    )
     delivery_worker.start_delivery_worker()
     try:
         yield
     finally:
         delivery_worker.stop_delivery_worker()
+        telemetry_emit(
+            "api.shutdown", severity="info", essential=True,
+            message_template="API shutdown: worker stopped",
+            outcome="success",
+        )
 
 
 app = FastAPI(
@@ -97,6 +113,12 @@ _default_dev_origins = ["http://localhost:3000", "http://localhost:3001"]
 # Регистрация ДО CORS: последний add_middleware становится внешним, CORS
 # должен остаться самым внешним слоем (существующий контракт ответов 4xx).
 app.add_middleware(TraceHookMiddleware)
+
+# DOCLOG-3 (§13.2/§19.1): telemetry-контур -- ВНУТРИ CORS, СНАРУЖИ хука
+# трассы (порядок add_middleware: последний -- внешний): видит финальный
+# статус, не перехватывает контракт CORS, X-Request-ID добавляется всем
+# ответам включая ошибки (§13.1 error correlation).
+app.add_middleware(TelemetryContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

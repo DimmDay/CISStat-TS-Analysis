@@ -87,6 +87,29 @@ def resolve_principal_for_key(key: str) -> Optional[AuthenticatedPrincipal]:
     return _parse_key_registry().get(key)
 
 
+def _audit_authn_denied(presented_key: str) -> None:
+    """DOCLOG-3 (§14.1): аутентификационный отказ -- durable audit.
+    Значение предъявленного ключа НЕ дисклоужается: субъект -- HMAC
+    псевдоним материала (связь повторов сохранена, материал не
+    восстановим). best-effort: отказ уже решён (401), сбой записи не
+    меняет его (AC11-инвариант)."""
+    try:
+        from apps.api.identity import subject_pseudonym
+        from apps.api.security_audit import record_standard
+
+        record_standard(
+            "authn_denied",
+            "denied",
+            actor_subject=subject_pseudonym(presented_key),
+            actor_via="api_key",
+            resource_kind="principal",
+            policy_basis="API-key registry",
+            details={"reason_code": "invalid_key"},
+        )
+    except Exception:  # pragma: no cover -- audit не роняет auth
+        pass
+
+
 def get_current_principal(x_api_key: str = Header(...)) -> AuthenticatedPrincipal:
     """Резолвит API-ключ в аутентифицированного принципала (роль + план)."""
     registry = _parse_key_registry()
@@ -97,6 +120,7 @@ def get_current_principal(x_api_key: str = Header(...)) -> AuthenticatedPrincipa
         )
     principal = registry.get(x_api_key)
     if principal is None:
+        _audit_authn_denied(x_api_key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный API-ключ")
     return principal
 
@@ -142,6 +166,26 @@ def require_admin_role(
     не тарифом -- полные capabilities internal_analyst админку не
     открывают."""
     if principal.role != Role.ADMIN:
+        # DOCLOG-3 (§14.1): авторизационный отказ -- durable audit
+        # (псевдоним субъекта, НЕ значение ключа principal_id).
+        try:
+            from apps.api.identity import subject_pseudonym
+            from apps.api.security_audit import record_standard
+
+            record_standard(
+                "authz_denied",
+                "denied",
+                actor_subject=(
+                    getattr(principal, "subject_id", None)
+                    or subject_pseudonym(getattr(principal, "principal_id", ""))
+                ),
+                actor_via="api_key",
+                resource_kind="admin_endpoint",
+                policy_basis="ADMIN role required",
+                details={"reason_code": "role_insufficient"},
+            )
+        except Exception:  # pragma: no cover -- audit не роняет auth
+            pass
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Требуется роль ADMIN (API-ключ администратора платформы)",

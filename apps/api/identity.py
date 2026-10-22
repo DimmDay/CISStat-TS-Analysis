@@ -357,6 +357,19 @@ def effective_ownership(run: Any) -> str:
     return OWNERSHIP_UNRESOLVED
 
 
+def _audit_access_decision(decision: "AccessDecision") -> None:
+    """DOCLOG-3 (§14.1/§19.1): решения решающей таблицы -- в durable
+    security audit (record_run_access_decision). best-effort по
+    построению record_standard: сбой записи НЕ меняет решение
+    (AC11-инвариант: deny остаётся deny, allow -- allow)."""
+    try:
+        from apps.api.security_audit import record_run_access_decision
+
+        record_run_access_decision(decision)
+    except Exception:  # pragma: no cover -- audit не роняет авторизацию
+        pass
+
+
 def authorize_run_access(
     run: Any,
     subject: SubjectRef,
@@ -388,12 +401,15 @@ def authorize_run_access(
         )
         # Аудит решений (серверный; псевдонимы, без cookie/ключей):
         # отказы -- warning (их поиск -- первичный инцидент-сигнал),
-        # разрешения -- info. DOCLOG-3 заменит logger на durable-поток.
+        # разрешения -- info. DOCLOG-3 (выполнено): durable-поток
+        # security_audit добавлен РЯДОМ с logger; сбой записи НЕ меняет
+        # уже принятое решение (AC11-инвариант).
         (logger.warning if (log_warning or not allowed) else logger.info)(
             "Run access: %s run=%s action=%s subject=%s via=%s reason=%s",
             "ALLOW" if allowed else "DENY", run_id, action,
             subject.subject_id or "anonymous", subject.via, reason,
         )
+        _audit_access_decision(result)
         return result
 
     # 1. Аноним (нет cookie/ключа): знания run_id недостаточно (R09).

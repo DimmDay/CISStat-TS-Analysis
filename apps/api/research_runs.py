@@ -900,11 +900,88 @@ MIGRATION_STATEMENTS_0008: tuple[str, ...] = (
     "ON report_snapshot_dependencies (snapshot_id)",
 )
 
+# DOCLOG-3 (spec_documentation_logging.md §13, §14, §19, AC10/AC11):
+# telemetry/audit foundation -- durable-приёмники тех-событий и
+# security audit. АДДИТИВНАЯ миграция (читатели раньше писателей).
+# FK на research_runs НЕТ НАМЕРЕННО: журналы переживают удаление run
+# (§16.1: audit 365 дней против lifecycle запуска). Append-only:
+# INSERT-only контур. Модули: apps/api/telemetry.py,
+# apps/api/security_audit.py.
+MIGRATION_STATEMENTS_0009: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS telemetry_events (
+        event_id TEXT PRIMARY KEY,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.telemetry/1',
+        event_name TEXT NOT NULL,
+        occurred_at TIMESTAMPTZ NOT NULL,
+        observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        severity_text TEXT NOT NULL,
+        severity_number INTEGER NOT NULL,
+        message_template TEXT,
+        attributes JSONB,
+        service TEXT,
+        service_version TEXT,
+        environment TEXT,
+        instance TEXT,
+        request_id TEXT,
+        trace_id TEXT,
+        span_id TEXT,
+        operation_id TEXT,
+        execution_id TEXT,
+        research_run_id TEXT,
+        context_id TEXT,
+        subject_surrogate TEXT,
+        tenant_id TEXT,
+        outcome TEXT,
+        method TEXT,
+        error_code TEXT,
+        error_fingerprint TEXT,
+        duration_ms DOUBLE PRECISION,
+        retry_attempt INTEGER,
+        sampled BOOLEAN NOT NULL DEFAULT false
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_telemetry_events_time "
+    "ON telemetry_events (occurred_at)",
+    "CREATE INDEX IF NOT EXISTS idx_telemetry_events_name "
+    "ON telemetry_events (event_name, occurred_at)",
+    "CREATE INDEX IF NOT EXISTS idx_telemetry_events_request "
+    "ON telemetry_events (request_id)",
+    """
+    CREATE TABLE IF NOT EXISTS security_audit_records (
+        audit_id TEXT PRIMARY KEY,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.security_audit/1',
+        occurred_at TIMESTAMPTZ NOT NULL,
+        actor_subject TEXT,
+        actor_via TEXT NOT NULL DEFAULT 'anonymous',
+        tenant_id TEXT,
+        action TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        resource_kind TEXT,
+        resource_id TEXT,
+        resource_version TEXT,
+        policy_basis TEXT,
+        request_id TEXT,
+        operation_id TEXT,
+        run_id TEXT,
+        details JSONB,
+        recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_security_audit_action "
+    "ON security_audit_records (action, occurred_at)",
+    "CREATE INDEX IF NOT EXISTS idx_security_audit_tenant "
+    "ON security_audit_records (tenant_id, occurred_at)",
+    "CREATE INDEX IF NOT EXISTS idx_security_audit_request "
+    "ON security_audit_records (request_id)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
     + MIGRATION_STATEMENTS_0005 + MIGRATION_STATEMENTS_0006
     + MIGRATION_STATEMENTS_0007 + MIGRATION_STATEMENTS_0008
+    + MIGRATION_STATEMENTS_0009
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -918,6 +995,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0006_doclog0_run_ownership.sql", MIGRATION_STATEMENTS_0006),
     ("0007_doclog1_artifacts.sql", MIGRATION_STATEMENTS_0007),
     ("0008_doclog2_snapshots.sql", MIGRATION_STATEMENTS_0008),
+    ("0009_doclog3_telemetry_audit.sql", MIGRATION_STATEMENTS_0009),
 )
 
 

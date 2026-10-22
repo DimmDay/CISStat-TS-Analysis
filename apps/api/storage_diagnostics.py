@@ -61,6 +61,11 @@ COMPONENT_ARTIFACTS = "artifacts"
 # DOCLOG-2 (§19): реестр ReportSnapshot (metadata durable-слоя; байты
 # снимка -- в том же object store, content-addressed).
 COMPONENT_SNAPSHOTS = "snapshots"
+# DOCLOG-3 (§19): durable-приёмник тех-событий (telemetry_events).
+COMPONENT_TELEMETRY = "telemetry"
+# DOCLOG-3 (§14.1): отдельный durable security audit
+# (security_audit_records) -- НЕ смешивается с sampling техлогов.
+COMPONENT_AUDIT = "audit"
 
 
 def get_storage_mode() -> str:
@@ -220,6 +225,8 @@ def storage_backend_snapshot() -> dict[str, Any]:
         "degraded": degraded,
         "runs_backend": runs_backend,
         "session_backend": session_backend,
+        "telemetry": states.get(COMPONENT_TELEMETRY, _honest_backend(COMPONENT_TELEMETRY)),
+        "audit": states.get(COMPONENT_AUDIT, _honest_backend(COMPONENT_AUDIT)),
         "fallback_events": events,
     }
 
@@ -332,6 +339,53 @@ def build_snapshots_health() -> dict[str, Any]:
     }
 
 
+def build_telemetry_health() -> dict[str, Any]:
+    """DOCLOG-3 (§13.4, §19.1): telemetry-блок /health/ops -- facts-only
+    наблюдаемость тех-контурa: backend приёмника (peek БЕЗ провокации
+    фабрики), счётчики (dropped/spool/sink failures/redaction P0) и
+    конфиг политики (DEBUG/sampling). Содержимое событий НЕ выдаётся
+    (T6/T10); run_id/tenant в метрики не попадают (§13.4)."""
+    from apps.api.telemetry import peek_telemetry_sink, telemetry_status
+
+    sink = peek_telemetry_sink()
+    if sink is None:
+        return {
+            "backend": "not_initialized",
+            "degraded": False,
+            "counters": {},
+            "config": {
+                "debug_enabled": False,
+                "sample_rate": 1.0,
+            },
+        }
+    status = telemetry_status()
+    return {
+        "backend": status["backend"],
+        "degraded": status["degraded"],
+        "counters": status["counters"],
+        "spool_size": status["spool_size"],
+        "config": status["config"],
+    }
+
+
+def build_audit_health() -> dict[str, Any]:
+    """DOCLOG-3 (§14.1, §19.1): audit-блок /health/ops -- facts-only:
+    backend durable-приёмника (peek БЕЗ провокации фабрики), счётчики
+    сбоев записи/дропов, флаг деградации. Содержимое записей НЕ
+    выдаётся (T6); чтение журнала -- DOCLOG-7."""
+    from apps.api.security_audit import audit_status, peek_audit_sink
+
+    sink = peek_audit_sink()
+    if sink is None:
+        return {"backend": "not_initialized", "degraded": False, "counters": {}}
+    status = audit_status()
+    return {
+        "backend": status["backend"],
+        "degraded": status["degraded"],
+        "counters": status["counters"],
+    }
+
+
 def build_ops_health(
     *,
     run_store: Any = None,
@@ -439,4 +493,10 @@ def build_ops_health(
         # DOCLOG-2 (§19.1): ReportSnapshot -- backend реестра снимков,
         # тот же object store (паритет facts-only, T6/T10).
         "snapshots": build_snapshots_health(),
+        # DOCLOG-3 (§13.4/§19.1): telemetry -- facts-only счётчики/конфиг
+        # тех-контурa (dropped/spool/redaction P0), без содержимого.
+        "telemetry": build_telemetry_health(),
+        # DOCLOG-3 (§14.1/§19.1): отдельный durable security audit --
+        # backend/счётчики сбоев, без содержимого записей (T6).
+        "audit": build_audit_health(),
     }
