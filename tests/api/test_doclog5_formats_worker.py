@@ -1458,7 +1458,8 @@ class TestMigration0011:
 
         names = [name for name, _statements in MIGRATION_FILES]
         assert "0011_doclog5_render_formats.sql" in names
-        assert len(names) == 11
+        assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
+        assert len(names) == 12
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

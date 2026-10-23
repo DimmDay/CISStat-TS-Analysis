@@ -39,7 +39,20 @@ from apps.api.document_jobs import (
     DocumentQuotaExceeded,
     DocumentRetryLimitExceeded,
     DocumentDeliveryService,
+    RenditionPurgedError,
     UnsupportedFormatError,
+)
+from apps.api.document_lifecycle import (
+    ApprovalHashMismatchError,
+    ApprovalNotApplicableError,
+    DiffAcrossDocumentsError,
+    DocumentLifecycleService,
+    InsufficientScopeError,
+    InvalidTransitionError,
+    LifecycleAccessDenied,
+    PublishBlockedGapsError,
+    PublishRequiresApprovalError,
+    SelfApprovalForbiddenError,
 )
 from apps.api.document_renditions import (
     RENDITION_FORMATS,
@@ -60,6 +73,7 @@ from apps.api.security_audit import (
     ACTION_PROTECTED_DOCUMENT_VIEWED,
     ACTION_RESPONSE_STREAM_FINISHED,
     ACTION_RESPONSE_STREAM_STARTED,
+    MandatoryAuditFailure,
     record_standard,
 )
 from apps.api.session_store import SESSION_COOKIE_NAME
@@ -71,6 +85,7 @@ _RUN_NOT_FOUND_DETAIL = "Запуск не найден"
 _DOCUMENT_NOT_FOUND_DETAIL = "Документ не найден"
 
 _SERVICE: Optional[DocumentDeliveryService] = None
+_LIFECYCLE_SERVICE: Optional[DocumentLifecycleService] = None
 
 
 def _delivery_service() -> DocumentDeliveryService:
@@ -80,9 +95,17 @@ def _delivery_service() -> DocumentDeliveryService:
     return _SERVICE
 
 
+def _lifecycle_service() -> DocumentLifecycleService:
+    global _LIFECYCLE_SERVICE
+    if _LIFECYCLE_SERVICE is None:
+        _LIFECYCLE_SERVICE = DocumentLifecycleService.create_default()
+    return _LIFECYCLE_SERVICE
+
+
 def reset_documentation_service_for_testing() -> None:
-    global _SERVICE
+    global _SERVICE, _LIFECYCLE_SERVICE
     _SERVICE = None
+    _LIFECYCLE_SERVICE = None
 
 
 # ── Авторизация и отображение ошибок ─────────────────────────────────
@@ -116,7 +139,11 @@ def _authorized_run_or_404(request: Request, run_id: str, *, action: str) -> Any
 
 def _map_service_errors(exc: Exception) -> HTTPException:
     """§17: 400 unsupported_format; 409 конфликт; 404 uniform; 429
-    пределы очереди/попыток (§18, DOCLOG-5); 503."""
+    пределы очереди/попыток (§18, DOCLOG-5); 503. DOCLOG-6: 403
+    insufficient_scope (ресурс свой, права нет); 409
+    approval_hash_mismatch/approval_not_applicable (AC07); 422
+    invalid_transition/self_approval_forbidden/publish_*; 410
+    purged_artifact (§16.1); 503 mandatory_audit_unavailable (AC11)."""
     if isinstance(exc, UnsupportedFormatError):
         return HTTPException(
             status_code=400,
@@ -161,7 +188,9 @@ def _map_service_errors(exc: Exception) -> HTTPException:
                 ),
             },
         )
-    if isinstance(exc, DocumentAccessDenied):
+    if isinstance(exc, (DocumentAccessDenied, LifecycleAccessDenied)):
+        # DOCLOG-6: LifecycleAccessDenied -- тот же uniform-404 контракт
+        # (R09/T15): «нет» и «чужой» неразличимы.
         return HTTPException(status_code=404, detail=_DOCUMENT_NOT_FOUND_DETAIL)
     if isinstance(exc, DocumentIntegrityError):
         return HTTPException(
@@ -169,6 +198,87 @@ def _map_service_errors(exc: Exception) -> HTTPException:
             detail={
                 "code": "integrity_mismatch",
                 "message": "Файл повреждён; обратитесь в поддержку",
+            },
+        )
+    if isinstance(exc, RenditionPurgedError):
+        # §17/§16.1: purged artifact -- честный 410 разрешённому владельцу.
+        return HTTPException(
+            status_code=410,
+            detail={
+                "code": "purged_artifact",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, InsufficientScopeError):
+        # §15/D5: субъект владеет ресурсом, права на действие нет.
+        return HTTPException(
+            status_code=403,
+            detail={"code": "insufficient_scope", "message": str(exc)},
+        )
+    if isinstance(exc, ApprovalHashMismatchError):
+        return HTTPException(
+            status_code=409,
+            detail={
+                "code": "approval_hash_mismatch",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, ApprovalNotApplicableError):
+        return HTTPException(
+            status_code=409,
+            detail={
+                "code": "approval_not_applicable",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, PublishRequiresApprovalError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "publish_requires_approval",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, PublishBlockedGapsError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "publish_blocked_gaps",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, SelfApprovalForbiddenError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "self_approval_forbidden",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, DiffAcrossDocumentsError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "diff_across_documents",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, InvalidTransitionError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid_transition",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, MandatoryAuditFailure):
+        # §14.1/AC11: обязательный audit не зафиксирован -- защищённое
+        # действие не выполняется (fail-closed), состояние не меняется.
+        return HTTPException(
+            status_code=503,
+            detail={
+                "code": "mandatory_audit_unavailable",
+                "message": "Аудит недоступен; действие не выполнено",
             },
         )
     return HTTPException(
@@ -182,7 +292,8 @@ def _map_service_errors(exc: Exception) -> HTTPException:
 
 def _revision_json(revision: Any, snapshot_record: Any) -> dict[str, Any]:
     """Версия документа + метаданные снимка (captured_at/полнота) +
-    готовые renditions (§12.2 таблица: «доступные форматы и размер»)."""
+    готовые renditions (§12.2 таблица: «доступные форматы и размер») +
+    DOCLOG-6: вычисленное состояние оси содержания (lifecycle_state)."""
     payload = revision.to_dict()
     if snapshot_record is not None:
         payload["captured_at"] = snapshot_record.captured_at
@@ -200,6 +311,15 @@ def _revision_json(revision: Any, snapshot_record: Any) -> dict[str, Any]:
             revision.snapshot_id
         )
     ]
+    # DOCLOG-6 (аддитивно): состояние draft/ready_for_review/approved/
+    # published/rejected/retracted/superseded -- вычисляется из
+    # append-only lifecycle-записей (сбой lookup -- честный draft).
+    try:
+        payload["lifecycle_state"] = _lifecycle_service().revision_state(
+            revision.revision_id
+        )
+    except Exception:
+        payload["lifecycle_state"] = "draft"
     return payload
 
 
@@ -581,9 +701,8 @@ def get_rendition_content(request: Request, rendition_id: str) -> Response:
         content = service.read_rendition_content(
             rendition, subject, session_id=session_id
         )
-    except DocumentAccessDenied as exc:
-        raise _map_service_errors(exc) from None
-    except DocumentIntegrityError as exc:
+    except (DocumentAccessDenied, DocumentIntegrityError, RenditionPurgedError) as exc:
+        # DOCLOG-6: purged rendition -- честный 410 владельцу (§16.1/§17).
         raise _map_service_errors(exc) from None
     spec = RENDITION_FORMATS.get(rendition.format)
     media_type = (
@@ -628,3 +747,241 @@ def get_rendition_content(request: Request, rendition_id: str) -> Response:
             "Cache-Control": "private, no-store",
         },
     )
+
+
+# ── DOCLOG-6: согласование и архив (§11, §16, §17) ───────────────────
+
+
+@router.post("/revisions/{revision_id}/approvals")
+def revision_approvals(
+    request: Request, revision_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """§17 POST /revisions/{revision_id}/approvals: approve/reject по
+    policy и точному hash (§11/AC07). Тело: {action: "request"} --
+    запрос согласования (draft -> ready_for_review), либо
+    {decision: "approve"|"reject", reason?, expected_snapshot_sha256?}
+    -- решение согласующего (ready_for_review -> approved | rejected).
+    Approve/publish/retract -- mandatory audit fail-closed (§14.1)."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        if str(payload.get("action", "")) == "request":
+            revision, _state = service.request_approval(
+                revision_id, subject, session_id=session_id
+            )
+            return {
+                "revision": _revision_json(
+                    revision, peek_snapshot_record(revision.snapshot_id)
+                )
+            }
+        decision = str(payload.get("decision", ""))
+        revision, approval, _state = service.decide_approval(
+            revision_id,
+            subject,
+            session_id=session_id,
+            decision=decision,
+            reason=str(payload.get("reason", "") or ""),
+            expected_snapshot_sha256=payload.get("expected_snapshot_sha256"),
+        )
+        return {
+            "revision": _revision_json(
+                revision, peek_snapshot_record(revision.snapshot_id)
+            ),
+            "approval": approval.to_dict(),
+        }
+    except (
+        LifecycleAccessDenied,
+        InsufficientScopeError,
+        InvalidTransitionError,
+        SelfApprovalForbiddenError,
+        ApprovalHashMismatchError,
+        ApprovalNotApplicableError,
+        MandatoryAuditFailure,
+    ) as exc:
+        raise _map_service_errors(exc) from None
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        raise _map_service_errors(exc) from None
+
+
+@router.post("/revisions/{revision_id}/publish")
+def revision_publish(request: Request, revision_id: str) -> dict[str, Any]:
+    """§17 POST /revisions/{revision_id}/publish: публикация
+    согласованной версии; статус/approval refs, без изменения bytes.
+    Перепроверка bound-hash (AC07); D11 gaps блокируют (policy v1);
+    предыдущая published ревизия -- append-only superseded; снимок
+    пинируется (§16). Mandatory audit fail-closed."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        revision, record, _state = service.publish(
+            revision_id, subject, session_id=session_id
+        )
+        return {
+            "revision": _revision_json(
+                revision, peek_snapshot_record(revision.snapshot_id)
+            ),
+            "record": record.to_dict(),
+        }
+    except (
+        LifecycleAccessDenied,
+        InsufficientScopeError,
+        InvalidTransitionError,
+        PublishRequiresApprovalError,
+        PublishBlockedGapsError,
+        ApprovalNotApplicableError,
+        MandatoryAuditFailure,
+    ) as exc:
+        raise _map_service_errors(exc) from None
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        raise _map_service_errors(exc) from None
+
+
+@router.post("/revisions/{revision_id}/retract")
+def revision_retract(
+    request: Request, revision_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """§17 POST /revisions/{revision_id}/retract: отзыв с причиной;
+    append-only решение, не удаление истории (§11). Mandatory audit
+    fail-closed."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        revision, _state = service.retract(
+            revision_id,
+            subject,
+            session_id=session_id,
+            reason=str(payload.get("reason", "") or ""),
+        )
+        return {
+            "revision": _revision_json(
+                revision, peek_snapshot_record(revision.snapshot_id)
+            )
+        }
+    except (
+        LifecycleAccessDenied,
+        InsufficientScopeError,
+        InvalidTransitionError,
+        MandatoryAuditFailure,
+    ) as exc:
+        raise _map_service_errors(exc) from None
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        raise _map_service_errors(exc) from None
+
+
+@router.get("/revisions/{revision_id}/lifecycle")
+def revision_lifecycle(request: Request, revision_id: str) -> dict[str, Any]:
+    """§17/§12.2 «История»: append-only lifecycle-записи ревизии;
+    read-only (AC05: не меняет науку; access-audit через решающую
+    таблицу)."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        records = service.list_lifecycle(
+            revision_id, subject, session_id=session_id
+        )
+    except LifecycleAccessDenied as exc:
+        raise _map_service_errors(exc) from None
+    return {
+        "revision_id": revision_id,
+        "records": [record.to_dict() for record in records],
+    }
+
+
+@router.get("/revisions/{revision_id}/diff")
+def revision_diff(
+    request: Request,
+    revision_id: str,
+    against: str = Query(...),
+) -> dict[str, Any]:
+    """§17 GET /revisions/{revision_id}/diff?against=: различия снимков
+    ДВУХ ревизий одного документа по замороженным данным; никаких
+    пересчётов исследования (§17)."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        report = service.diff_revisions(
+            revision_id,
+            subject,
+            session_id=session_id,
+            against_revision_id=against,
+        )
+    except (LifecycleAccessDenied, DiffAcrossDocumentsError) as exc:
+        raise _map_service_errors(exc) from None
+    return report
+
+
+@router.post("/documents/{document_id}/retention")
+def document_retention(
+    request: Request, document_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """§16.1: hold/release на документе (hold приоритетен над очисткой);
+    audit retention_policy_changed (§14.1)."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        record = service.set_retention(
+            document_id,
+            subject,
+            session_id=session_id,
+            action=str(payload.get("action", "")),
+            reason=str(payload.get("reason", "") or ""),
+        )
+    except (
+        LifecycleAccessDenied,
+        InsufficientScopeError,
+        InvalidTransitionError,
+    ) as exc:
+        raise _map_service_errors(exc) from None
+    return {"retention": record.to_dict()}
+
+
+@router.post("/runs/{run_id}/retention/sweep")
+def retention_sweep(request: Request, run_id: str) -> dict[str, Any]:
+    """§16.1: sweep невостребованных draft renditions (hold приоритетен;
+    published не очищаются); audit cleanup_started. Наука и pinned
+    зависимости не трогаются."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        report = service.sweep_retention(
+            run_id, subject, session_id=session_id
+        )
+    except (LifecycleAccessDenied, InsufficientScopeError) as exc:
+        raise _map_service_errors(exc) from None
+    return {"run_id": run_id, "report": report}
+
+
+@router.post("/runs/{run_id}/archive")
+def archive_run(request: Request, run_id: str) -> dict[str, Any]:
+    """§16/AC18: создать архивный пакет (metadata.jsonl + objects +
+    manifest без self-hash §13.3); в ответе -- bundle_id/manifest_sha256
+    БЕЗ путей ФС; audit archive_bundle_created."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        bundle = service.build_archive_bundle(
+            run_id, subject, session_id=session_id
+        )
+    except (LifecycleAccessDenied, InsufficientScopeError) as exc:
+        raise _map_service_errors(exc) from None
+    return bundle
+
+
+@router.post("/runs/{run_id}/archive/verify")
+def archive_verify(request: Request, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """§16/AC18: restore drill -- члены пакета, ссылочная целостность,
+    bound-hash согласований; missing/mismatched ЯВНО перечислены (не
+    маскируются); duration_ms замерен; audit restore_started +
+    integrity_verified|failed."""
+    subject, session_id = _subject_and_session(request)
+    service = _lifecycle_service()
+    try:
+        report = service.verify_archive_bundle(
+            run_id,
+            subject,
+            session_id=session_id,
+            bundle_id=str(payload.get("bundle_id", "") or ""),
+        )
+    except (LifecycleAccessDenied, InsufficientScopeError) as exc:
+        raise _map_service_errors(exc) from None
+    return report

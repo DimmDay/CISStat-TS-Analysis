@@ -48,6 +48,8 @@ export interface RevisionSummary {
   created_at: string;
   captured_at?: string | null;
   completeness_status?: CompletenessStatus | null;
+  /** DOCLOG-6 (§11): вычисленное состояние оси содержания. */
+  lifecycle_state?: LifecycleState | null;
   renditions: RenditionSummary[];
 }
 
@@ -212,4 +214,208 @@ export function renditionContentUrl(renditionId: string): string {
 /** Прямая ссылка на preview HTML (GET, §17) -- для iframe src, не fetch. */
 export function revisionPreviewUrl(revisionId: string): string {
   return documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/preview`);
+}
+
+// ── DOCLOG-6: согласование и архив (§11, §16, §17) ──────────────────
+
+export type LifecycleState =
+  | "draft"
+  | "ready_for_review"
+  | "approved"
+  | "published"
+  | "rejected"
+  | "retracted"
+  | "superseded";
+
+export type LifecycleEvent =
+  | "approval_requested"
+  | "approved"
+  | "rejected"
+  | "published"
+  | "retracted"
+  | "superseded";
+
+export interface ApprovalPayload {
+  approval_id: string;
+  revision_id: string;
+  document_id: string;
+  run_id: string;
+  decision: "approve" | "reject";
+  actor_subject: string;
+  actor_via: string;
+  policy: string;
+  policy_version: string;
+  reason: string;
+  snapshot_payload_sha256: string;
+  approval_manifest: Array<{
+    rendition_id: string;
+    format: string;
+    content_sha256: string;
+  }>;
+  created_at: string;
+}
+
+export interface LifecycleRecordPayload {
+  record_id: string;
+  document_id: string;
+  revision_id: string;
+  run_id: string;
+  event: LifecycleEvent;
+  actor_subject: string | null;
+  reason: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface RetentionPayload {
+  document_id: string;
+  run_id: string;
+  hold: boolean;
+  hold_reason: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+/** Различия двух ревизий одного документа (§17 diff; без пересчётов). */
+export interface DiffPayload {
+  revision_id: string;
+  against_revision_id: string;
+  metadata: Record<string, { from: unknown; to: unknown }>;
+  claims: {
+    added: Array<{ code: string; text: string; validity: string | null }>;
+    removed: Array<{ code: string; text: string; validity: string | null }>;
+    validity_changed: Array<{
+      text: string;
+      from: string | null;
+      to: string | null;
+    }>;
+  };
+  recalculated: false;
+}
+
+export interface ArchiveBundlePayload {
+  bundle_id: string;
+  run_id: string;
+  member_count: number;
+  manifest_sha256: string;
+  created_at: string;
+}
+
+export interface RestoreDrillReport {
+  bundle_id: string;
+  run_id: string;
+  ok: boolean;
+  checked_refs: number;
+  missing: string[];
+  mismatched: string[];
+  ref_errors: string[];
+  duration_ms: number;
+}
+
+/** Запрос согласования: draft -> ready_for_review (§11). */
+export function requestApproval(
+  revisionId: string,
+): Promise<ApiResult<{ revision: RevisionSummary }>> {
+  return requestJson(
+    documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/approvals`),
+    { method: "POST", body: JSON.stringify({ action: "request" }) },
+  );
+}
+
+/** Решение согласующего: approve | reject (§11/AC07, bound hash). */
+export function decideApproval(
+  revisionId: string,
+  decision: "approve" | "reject",
+  options?: { reason?: string; expected_snapshot_sha256?: string },
+): Promise<ApiResult<{ revision: RevisionSummary; approval: ApprovalPayload }>> {
+  return requestJson(
+    documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/approvals`),
+    {
+      method: "POST",
+      body: JSON.stringify({
+        decision,
+        ...(options?.reason ? { reason: options.reason } : {}),
+        ...(options?.expected_snapshot_sha256
+          ? { expected_snapshot_sha256: options.expected_snapshot_sha256 }
+          : {}),
+      }),
+    },
+  );
+}
+
+/** Публикация согласованной версии (§11; bound-hash верификация). */
+export function publishRevision(
+  revisionId: string,
+): Promise<ApiResult<{ revision: RevisionSummary }>> {
+  return requestJson(
+    documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/publish`),
+    { method: "POST" },
+  );
+}
+
+/** Отзыв опубликованной версии с причиной (append-only, §11). */
+export function retractRevision(
+  revisionId: string,
+  reason: string,
+): Promise<ApiResult<{ revision: RevisionSummary }>> {
+  return requestJson(
+    documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/retract`),
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+}
+
+/** История жизненного цикла ревизии (§12.2 «История»). */
+export function getLifecycle(
+  revisionId: string,
+): Promise<ApiResult<{ revision_id: string; records: LifecycleRecordPayload[] }>> {
+  return requestJson(
+    documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/lifecycle`),
+  );
+}
+
+/** Diff двух ревизий одного документа (§17; по замороженным данным). */
+export function getRevisionDiff(
+  revisionId: string,
+  againstRevisionId: string,
+): Promise<ApiResult<DiffPayload>> {
+  return requestJson(
+    documentationApiUrl(
+      `/revisions/${encodeURIComponent(revisionId)}/diff?against=${encodeURIComponent(againstRevisionId)}`,
+    ),
+  );
+}
+
+/** Retention hold/release на документе (§16.1). */
+export function setRetention(
+  documentId: string,
+  action: "hold" | "release",
+  reason?: string,
+): Promise<ApiResult<{ retention: RetentionPayload }>> {
+  return requestJson(
+    documentationApiUrl(`/documents/${encodeURIComponent(documentId)}/retention`),
+    {
+      method: "POST",
+      body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
+    },
+  );
+}
+
+/** Архивный пакет запуска (§16/AC18; manifest без self-hash §13.3). */
+export function createArchiveBundle(
+  runId: string,
+): Promise<ApiResult<ArchiveBundlePayload>> {
+  return requestJson(documentationApiUrl(`/runs/${encodeURIComponent(runId)}/archive`), {
+    method: "POST",
+  });
+}
+
+/** Restore drill пакета: missing/mismatched НЕ маскируются (AC18). */
+export function verifyArchiveBundle(
+  runId: string,
+  bundleId: string,
+): Promise<ApiResult<RestoreDrillReport>> {
+  return requestJson(
+    documentationApiUrl(`/runs/${encodeURIComponent(runId)}/archive/verify`),
+    { method: "POST", body: JSON.stringify({ bundle_id: bundleId }) },
+  );
 }

@@ -79,6 +79,10 @@ ACTION_CLEANUP_STARTED = "cleanup_started"
 ACTION_RESTORE_STARTED = "restore_started"
 ACTION_INTEGRITY_VERIFIED = "integrity_verified"
 ACTION_INTEGRITY_FAILED = "integrity_failed"
+# DOCLOG-6 (§16/AC18): создание архивного пакета (backup) -- учёт
+# архивного контура (restore drill несёт собственные restore_started +
+# integrity_verified/failed).
+ACTION_ARCHIVE_BUNDLE_CREATED = "archive_bundle_created"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTHN_DENIED,
@@ -101,6 +105,7 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_RESTORE_STARTED,
     ACTION_INTEGRITY_VERIFIED,
     ACTION_INTEGRITY_FAILED,
+    ACTION_ARCHIVE_BUNDLE_CREATED,
 })
 
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/

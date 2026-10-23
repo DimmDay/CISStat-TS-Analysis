@@ -694,6 +694,83 @@ class SnapshotService:
             ))
         return self._section("D09", claims)
 
+    def _section_d10(self, ctx: _BuildCtx) -> dict[str, Any]:
+        """DOCLOG-6 (§6 D10 «Рекомендации и ограничения»): факты
+        решений аналитика из ledger (evidence=user_decision, с refs) +
+        честное not_computed для редактируемого текста (R03: отсутствие
+        источника -- причина, не пустота). Интерпретации/гипотезы
+        аналитика -- отдельный реестр утверждений, снимок их не
+        фабрикует."""
+        claims: list[dict[str, Any]] = []
+        for event in ctx.events:
+            if event.get("evidence_level") != "user_decision":
+                continue
+            event_type = str(event.get("event_type") or "—")
+            claims.append(self._event_claim(
+                event,
+                f"Решение аналитика: {event_type} -- зафиксировано в "
+                f"durable-слое (evidence: user_decision).",
+                ctx,
+            ))
+        claims.append(self._claim(
+            "Редактируемый текст аналитика (рекомендации, ограничения, "
+            "условия использования и неприменимости) не внесён -- "
+            "not_computed (§6 D10: редактируемый текст, версии и явное "
+            "согласование); снимок не фабрикует интерпретации.",
+            validity=VALIDITY_UNKNOWN,
+        ))
+        return self._section("D10", claims)
+
+    def _section_d11(self, ctx: _BuildCtx) -> dict[str, Any]:
+        """DOCLOG-6 (§6 D11 «Итоговый отчёт»): честная сводка состояния
+        запуска на cutoff + факты вех исследования (event claims с refs
+        -- completeness честна: dangling result_ref -> partial, AC01) +
+        явная граница согласования (снимок НЕ является утверждённым
+        документом, §11). Сборка -- из frozen-фактов, без пересчётов."""
+        from apps.api.report_snapshot import build_source_cutoff
+
+        cutoff = build_source_cutoff(ctx.events)
+        claims: list[dict[str, Any]] = [
+            self._claim(
+                f"Итоговый отчёт D11 замораживает состояние исследования "
+                f"на cutoff durable-слоя (last_sequence="
+                f"{cutoff.last_sequence}, events={cutoff.event_count}, "
+                f"ordering_quality={cutoff.ordering_quality}).",
+                validity=VALIDITY_CURRENT,
+            )
+        ]
+        target = getattr(ctx.run, "target_column", None)
+        if target:
+            claims.append(self._claim(
+                f"Исследуемый признак на момент cutoff: {target} "
+                f"(метаданные запуска).",
+                validity=VALIDITY_CURRENT,
+            ))
+        # Вехи исследования -- фактами ledger с refs (AC01: незакрытый
+        # result_ref -- честный gap, не выдуманная цифра).
+        milestone_types = (
+            "upload_completed",
+            "structure_confirmed",
+            "model_selected",
+            "forecasting_completed",
+        )
+        for event in ctx.events:
+            if event.get("event_type") in milestone_types:
+                claims.append(self._event_claim(
+                    event,
+                    f"Веха исследования: {event.get('event_type')} "
+                    f"(evidence: {event.get('evidence_level') or 'legacy'}).",
+                    ctx,
+                ))
+        claims.append(self._claim(
+            "Публикация итогового отчёта требует явного согласования "
+            "(approvals/publish -- DOCLOG-6); сам по себе снимок не "
+            "является утверждённым документом (§11), legacy-подписи не "
+            "наследуются (F13).",
+            validity=VALIDITY_UNKNOWN,
+        ))
+        return self._section("D11", claims)
+
     _SECTION_ADAPTERS = {
         "D01": _section_d01,
         "D02": _section_d02,
@@ -704,6 +781,8 @@ class SnapshotService:
         "D07": _section_d07,
         "D08": _section_d08,
         "D09": _section_d09,
+        "D10": _section_d10,
+        "D11": _section_d11,
     }
 
     # -- Data ref / reproducibility (§10.1, §10.2 п.4) --

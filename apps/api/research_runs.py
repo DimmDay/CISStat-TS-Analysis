@@ -1059,13 +1059,65 @@ MIGRATION_STATEMENTS_0011: tuple[str, ...] = (
     "ON document_jobs (state, created_at)",
 )
 
+MIGRATION_STATEMENTS_0012: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS document_approvals (
+        approval_id TEXT PRIMARY KEY,
+        revision_id TEXT NOT NULL REFERENCES document_revisions(revision_id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL REFERENCES documents(document_id) ON DELETE CASCADE,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        decision TEXT NOT NULL,
+        actor_subject TEXT NOT NULL DEFAULT '',
+        actor_via TEXT NOT NULL DEFAULT '',
+        tenant_id TEXT,
+        policy TEXT NOT NULL DEFAULT 'single',
+        policy_version TEXT NOT NULL DEFAULT 'doclog6-approval-policy-v1',
+        reason TEXT NOT NULL DEFAULT '',
+        snapshot_payload_sha256 TEXT NOT NULL DEFAULT '',
+        approval_manifest JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_document_approvals_revision "
+    "ON document_approvals (revision_id, created_at)",
+    """
+    CREATE TABLE IF NOT EXISTS document_lifecycle (
+        record_id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES documents(document_id) ON DELETE CASCADE,
+        revision_id TEXT NOT NULL REFERENCES document_revisions(revision_id) ON DELETE CASCADE,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        event TEXT NOT NULL,
+        actor_subject TEXT,
+        reason TEXT NOT NULL DEFAULT '',
+        details JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_document_lifecycle_revision "
+    "ON document_lifecycle (revision_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_document_lifecycle_document "
+    "ON document_lifecycle (document_id)",
+    """
+    CREATE TABLE IF NOT EXISTS document_retention (
+        document_id TEXT PRIMARY KEY REFERENCES documents(document_id) ON DELETE CASCADE,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        hold BOOLEAN NOT NULL DEFAULT FALSE,
+        hold_reason TEXT NOT NULL DEFAULT '',
+        updated_by TEXT,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_document_retention_run "
+    "ON document_retention (run_id)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
     + MIGRATION_STATEMENTS_0005 + MIGRATION_STATEMENTS_0006
     + MIGRATION_STATEMENTS_0007 + MIGRATION_STATEMENTS_0008
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
-    + MIGRATION_STATEMENTS_0011
+    + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1082,6 +1134,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0009_doclog3_telemetry_audit.sql", MIGRATION_STATEMENTS_0009),
     ("0010_doclog4_documents.sql", MIGRATION_STATEMENTS_0010),
     ("0011_doclog5_render_formats.sql", MIGRATION_STATEMENTS_0011),
+    ("0012_doclog6_approvals_archive.sql", MIGRATION_STATEMENTS_0012),
 )
 
 

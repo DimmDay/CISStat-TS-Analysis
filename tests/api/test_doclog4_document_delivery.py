@@ -778,8 +778,14 @@ class TestNegativeStates:
     def test_invalid_kind_422(self, client):
         _seed_snapshot()
         _cookie(client)
-        resp = client.post(
+        # DOCLOG-6 (обновлено честно): D11 -- плановая поставка DOCLOG-6
+        # (201); некорректный вид -- по-прежнему честный 422 (D12 -- DOCLOG-8).
+        resp_ok = client.post(
             f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D11"}
+        )
+        assert resp_ok.status_code in {200, 201}
+        resp = client.post(
+            f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D12"}
         )
         assert resp.status_code in {400, 422}
 
@@ -1073,7 +1079,8 @@ class TestOpsWiringAndMigration:
         names = [name for name, _statements in MIGRATION_FILES]
         assert "0010_doclog4_documents.sql" in names
         assert "0011_doclog5_render_formats.sql" in names  # DOCLOG-5
-        assert len(names) == 11
+        assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
+        assert len(names) == 12
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

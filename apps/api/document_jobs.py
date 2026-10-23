@@ -107,6 +107,9 @@ JOB_STATES = frozenset({JOB_QUEUED, JOB_RENDERING, JOB_READY, JOB_FAILED, JOB_CA
 
 RENDITION_READY = "ready"
 RENDITION_FAILED = "failed"
+# DOCLOG-6 (§16.1): tombstone retention-очистки -- запись/хэши сохранены,
+# байтов нет (честный 410 на чтение).
+RENDITION_PURGED = "purged"
 
 # DOCLOG-5 (§18/§11): пределы рендер-контура. MAX_JOB_ATTEMPTS --
 # ограничение ПОПЫТОК рендера одной цели (snapshot, format, profile);
@@ -178,6 +181,12 @@ class DocumentRetryLimitExceeded(RuntimeError):
 class DocumentQuotaExceeded(RuntimeError):
     """§18 backpressure: tenant-очередь открытых jobs переполнена --
     честный 429 quota_exceeded (не тихое переполнение очереди)."""
+
+
+class RenditionPurgedError(RuntimeError):
+    """DOCLOG-6 (§16.1/§17): байты rendition удалены retention-sweep'ом
+    (tombstone state="purged") -- чтение владельцу 410 purged_artifact
+    («410 -- известный разрешённому владельцу purged artifact»)."""
 
 
 # ── Записи ───────────────────────────────────────────────────────────
@@ -1382,6 +1391,11 @@ class DocumentDeliveryService:
         self._authorized_run(
             rendition.run_id, subject, session_id=session_id, action="read"
         )
+        if rendition.state == RENDITION_PURGED:
+            raise RenditionPurgedError(
+                "Файл удалён политикой хранения (§16.1); соберите формат "
+                "заново"
+            )
         if rendition.state != RENDITION_READY or not rendition.storage_key:
             raise DocumentAccessDenied("Файл недоступен")
         if isinstance(self.registry, MemoryDocumentRegistry) and rendition.content_bytes is not None:

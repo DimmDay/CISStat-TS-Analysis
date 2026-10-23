@@ -25,21 +25,33 @@ import { DocumentPreview } from "./DocumentPreview";
 import {
   cancelJob,
   createDraft,
+  decideApproval,
   getJob,
+  getLifecycle,
   getRevision,
+  getRevisionDiff,
   listDocuments,
+  publishRevision,
   renditionContentUrl,
+  requestApproval,
   requestRendition,
+  retractRevision,
+  type DiffPayload,
   type DocumentSummary,
   type JobPayload,
+  type LifecycleRecordPayload,
+  type LifecycleState,
   type RenditionSummary,
   type RevisionSummary,
   type SnapshotPayload,
 } from "../lib/documentation";
 
-// Виды документов D01-D09 (спека §6/§12.2 «Левый список»); заголовки --
-// серверный реестр (DOCUMENT_KINDS), клиентский фолбэк -- по коду.
-const KIND_CODES = ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09"] as const;
+// Виды документов D01-D11 (спека §6/§12.2 «Левый список»; D10/D11 --
+// DOCLOG-6 «Согласование и архив»); заголовки -- серверный реестр
+// (DOCUMENT_KINDS), клиентский фолбэк -- по коду.
+const KIND_CODES = [
+  "D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11",
+] as const;
 
 const KIND_TITLES: Record<string, string> = {
   D01: "План исследования",
@@ -51,6 +63,8 @@ const KIND_TITLES: Record<string, string> = {
   D07: "Карточка модели",
   D08: "Выпуск прогноза",
   D09: "Приложение панели",
+  D10: "Рекомендации и ограничения",
+  D11: "Итоговый отчёт",
 };
 
 // Форматы P0 (§7) кнопки «Собрать формат» (§12.2 действия); тяжёлые
@@ -74,6 +88,41 @@ const JOB_STATE_LABELS: Record<string, string> = {
   failed: "Ошибка (failed)",
   cancelled: "Отменено (cancelled)",
 };
+
+// DOCLOG-6 (§11): состояния оси содержания -- текстовые метки (цвет НЕ
+// единственный носитель, §12.3).
+export const LIFECYCLE_STATE_LABELS: Record<string, string> = {
+  draft: "Черновик (draft)",
+  ready_for_review: "На согласовании (ready_for_review)",
+  approved: "Согласовано (approved)",
+  published: "Опубликовано (published)",
+  rejected: "Отклонено (rejected)",
+  retracted: "Отозвано (retracted)",
+  superseded: "Заменено новой версией (superseded)",
+};
+
+const LIFECYCLE_EVENT_LABELS: Record<string, string> = {
+  approval_requested: "Запрошено согласование",
+  approved: "Согласовано",
+  rejected: "Отклонено согласующим",
+  published: "Опубликовано",
+  retracted: "Отозвано",
+  superseded: "Заменено новой версией",
+};
+
+/** Честный текст отказа жизненного цикла по HTTP-статусу/коду (§12.3). */
+export function lifecycleErrorText(status: number | null): string {
+  if (status === null) return "Сервис документирования недоступен — действие не выполнено";
+  if (status === 403)
+    return "Недостаточно прав (insufficient_scope) — действие требует отдельного права согласования/публикации";
+  if (status === 404) return "Документ не найден или недоступен";
+  if (status === 409)
+    return "Хэш снимка/утверждённых форм изменился после согласования (approval_not_applicable) — старое согласование не переносится; соберите формат заново и согласуйте повторно";
+  if (status === 422) return "Операция недопустима в текущем состоянии ревизии";
+  if (status === 503)
+    return "Аудит недоступен — защищённое действие не выполнено (fail-closed)";
+  return "Действие не выполнено — повторите попытку позже";
+}
 
 function formatBytes(size: number): string {
   if (!Number.isFinite(size) || size <= 0) return "—";
@@ -143,6 +192,13 @@ export function DocumentationWorkspace({
   const [creating, setCreating] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<"brief" | "methodology" | "basis">("brief");
+  // DOCLOG-6: ось содержания (§11) -- история/действия/diff.
+  const [lifecycleRecords, setLifecycleRecords] = useState<LifecycleRecordPayload[]>([]);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [lifecyclePending, setLifecyclePending] = useState(false);
+  const [retractReason, setRetractReason] = useState("");
+  const [diff, setDiff] = useState<DiffPayload | null>(null);
+  const [diffError, setDiffError] = useState<string | null>(null);
   const pollTimer = useRef<number | null>(null);
 
   // ── Список документов (чтение; НЕ создаёт документы, §12.1) ────────
@@ -180,6 +236,10 @@ export function DocumentationWorkspace({
   const loadRevision = useCallback(async (revisionId: string) => {
     setPreviewPhase("loading");
     setJob(null);
+    setDiff(null);
+    setDiffError(null);
+    setLifecycleError(null);
+    setRetractReason("");
     const result = await getRevision(revisionId);
     if (!result.ok) {
       if (result.status === 409) {
@@ -195,6 +255,16 @@ export function DocumentationWorkspace({
     setSnapshot(result.data?.snapshot ?? null);
     setRenditions(result.data?.renditions ?? result.data?.revision?.renditions ?? []);
     setPreviewPhase("ready");
+    // DOCLOG-6: история жизненного цикла выбранной версии (read-only,
+    // §12.2 «История»; отказ не ломает предпросмотр -- честная подпись).
+    const history = await getLifecycle(revisionId);
+    if (history.ok && history.data) {
+      setLifecycleRecords(history.data.records);
+      setLifecycleError(null);
+    } else {
+      setLifecycleRecords([]);
+      setLifecycleError(lifecycleErrorText(history.status));
+    }
   }, []);
 
   useEffect(() => {
@@ -308,6 +378,64 @@ export function DocumentationWorkspace({
       await loadDocuments();
     }
   }, [runId, activeKind, loadDocuments]);
+
+  // ── DOCLOG-6: действия жизненного цикла (§11/§12.2) ───────────────
+  const runLifecycleAction = useCallback(
+    async (
+      action: () => Promise<
+        | { ok: boolean; status: number | null }
+        | { ok: true; status: number; data?: unknown }
+      >,
+    ) => {
+      if (!activeRevisionId) return;
+      setLifecyclePending(true);
+      setLifecycleError(null);
+      const result = await action();
+      setLifecyclePending(false);
+      if (!result.ok) {
+        setLifecycleError(lifecycleErrorText(result.status));
+        return;
+      }
+      // Успех: перечитываем версию + историю (сервер -- источник истины).
+      await loadRevision(activeRevisionId);
+    },
+    [activeRevisionId, loadRevision],
+  );
+
+  const handleLifecycle = useCallback(
+    async (kind: "request" | "approve" | "reject" | "publish") => {
+      if (!activeRevisionId) return;
+      const actions = {
+        request: () => requestApproval(activeRevisionId),
+        approve: () => decideApproval(activeRevisionId, "approve"),
+        reject: () => decideApproval(activeRevisionId, "reject"),
+        publish: () => publishRevision(activeRevisionId),
+      } as const;
+      await runLifecycleAction(actions[kind]);
+    },
+    [activeRevisionId, runLifecycleAction],
+  );
+
+  const handleRetract = useCallback(async () => {
+    if (!activeRevisionId) return;
+    await runLifecycleAction(() => retractRevision(activeRevisionId, retractReason));
+  }, [activeRevisionId, retractReason, runLifecycleAction]);
+
+  const handleDiff = useCallback(async () => {
+    if (!activeRevisionId || !activeDocument) return;
+    const previous = [...activeDocument.revisions]
+      .filter((item) => item.version_no < (revision?.version_no ?? 0))
+      .sort((a, b) => b.version_no - a.version_no)[0];
+    if (!previous) return;
+    setDiff(null);
+    setDiffError(null);
+    const result = await getRevisionDiff(activeRevisionId, previous.revision_id);
+    if (result.ok && result.data) {
+      setDiff(result.data);
+    } else {
+      setDiffError(lifecycleErrorText(result.status));
+    }
+  }, [activeDocument, activeRevisionId, revision]);
 
   const kindCounts = useMemo(() => {
     const counts = new Map<string, { documents: number; versions: number; incomplete: number }>();
@@ -620,6 +748,193 @@ export function DocumentationWorkspace({
               snapshot={snapshot}
               viewMode={viewMode}
             />
+
+            {/* DOCLOG-6: панель жизненного цикла (§11/§12.2 действия:
+                «запросить согласование, опубликовать/отозвать по праву»;
+                отказ -- честный текст, состояние -- текстовая метка). */}
+            <div
+              data-testid="doclog6-lifecycle-panel"
+              className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-700"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+                  Жизненный цикл:{" "}
+                  <span
+                    data-testid="doclog6-lifecycle-state"
+                    className="font-normal"
+                  >
+                    {LIFECYCLE_STATE_LABELS[revision.lifecycle_state ?? "draft"] ??
+                      (revision.lifecycle_state ?? "draft")}
+                  </span>
+                </p>
+                {activeDocument && activeDocument.revisions.length > 1 && (
+                  <button
+                    type="button"
+                    data-testid="doclog6-diff-button"
+                    onClick={() => void handleDiff()}
+                    className="rounded-full border border-neutral-300 px-3 py-1 text-xs text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-600"
+                  >
+                    Сравнить с предыдущей версией
+                  </button>
+                )}
+              </div>
+
+              {lifecycleError && (
+                <p
+                  role="alert"
+                  data-testid="doclog6-lifecycle-error"
+                  className="mt-2 text-xs text-red-600"
+                >
+                  {lifecycleError}
+                </p>
+              )}
+
+              {/* Действия по состоянию (§11: draft -> ready_for_review ->
+                  approved -> published; терминальные -- без действий) */}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {revision.lifecycle_state === "draft" && (
+                  <button
+                    type="button"
+                    data-testid="doclog6-action-request"
+                    disabled={lifecyclePending}
+                    onClick={() => void handleLifecycle("request")}
+                    className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                  >
+                    Запросить согласование
+                  </button>
+                )}
+                {revision.lifecycle_state === "ready_for_review" && (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="doclog6-action-approve"
+                      disabled={lifecyclePending}
+                      onClick={() => void handleLifecycle("approve")}
+                      className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                    >
+                      Утвердить
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="doclog6-action-reject"
+                      disabled={lifecyclePending}
+                      onClick={() => void handleLifecycle("reject")}
+                      className="rounded-full border border-neutral-300 px-3 py-1 text-xs text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50 dark:border-neutral-600"
+                    >
+                      Отклонить
+                    </button>
+                  </>
+                )}
+                {revision.lifecycle_state === "approved" && (
+                  <button
+                    type="button"
+                    data-testid="doclog6-action-publish"
+                    disabled={lifecyclePending}
+                    onClick={() => void handleLifecycle("publish")}
+                    className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                  >
+                    Опубликовать
+                  </button>
+                )}
+                {revision.lifecycle_state === "published" && (
+                  <>
+                    <input
+                      type="text"
+                      data-testid="doclog6-retract-reason"
+                      value={retractReason}
+                      onChange={(event) => setRetractReason(event.target.value)}
+                      placeholder="Причина отзыва"
+                      className="w-48 rounded border border-neutral-300 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-600 dark:bg-transparent"
+                    />
+                    <button
+                      type="button"
+                      data-testid="doclog6-action-retract"
+                      disabled={lifecyclePending}
+                      onClick={() => void handleRetract()}
+                      className="rounded-full border border-red-300 px-3 py-1 text-xs text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+                    >
+                      Отозвать
+                    </button>
+                  </>
+                )}
+                {revision.lifecycle_state === "rejected" && (
+                  <span className="text-xs text-neutral-500">
+                    Ревизия отклонена — выпустите новую черновую версию
+                    («Создать черновик»)
+                  </span>
+                )}
+                {revision.lifecycle_state === "retracted" && (
+                  <span className="text-xs text-neutral-500">
+                    Ревизия отозвана (история сохранена); актуальная версия —
+                    новая публикация
+                  </span>
+                )}
+                {revision.lifecycle_state === "superseded" && (
+                  <span className="text-xs text-neutral-500">
+                    Ревизия заменена новой опубликованной версией (история
+                    сохранена)
+                  </span>
+                )}
+              </div>
+
+              {/* Diff ревизий (§17: по замороженным данным, без пересчётов) */}
+              {diff && (
+                <div
+                  data-testid="doclog6-diff-panel"
+                  className="mt-3 rounded border border-neutral-200 p-2 text-xs dark:border-neutral-700"
+                >
+                  <p className="font-medium text-neutral-700 dark:text-neutral-200">
+                    Различия с предыдущей версией (по замороженным снимкам,
+                    без пересчётов):
+                  </p>
+                  <ul className="ml-4 mt-1 list-disc">
+                    {Object.entries(diff.metadata).map(([field, change]) => (
+                      <li key={field}>
+                        <code className="font-mono">{field}</code>: изменено
+                      </li>
+                    ))}
+                    {diff.claims.added.length > 0 && (
+                      <li>Добавлено утверждений: {diff.claims.added.length}</li>
+                    )}
+                    {diff.claims.removed.length > 0 && (
+                      <li>Убрано утверждений: {diff.claims.removed.length}</li>
+                    )}
+                    {diff.claims.validity_changed.length > 0 && (
+                      <li>
+                        Изменилась применимость: {diff.claims.validity_changed.length}
+                      </li>
+                    )}
+                    {Object.keys(diff.metadata).length === 0 &&
+                      diff.claims.added.length === 0 &&
+                      diff.claims.removed.length === 0 &&
+                      diff.claims.validity_changed.length === 0 && (
+                        <li>Различий не обнаружено</li>
+                      )}
+                  </ul>
+                </div>
+              )}
+              {diffError && (
+                <p role="alert" className="mt-2 text-xs text-red-600">
+                  {diffError}
+                </p>
+              )}
+
+              {/* История (append-only, §12.2 «История») */}
+              {lifecycleRecords.length > 0 && (
+                <ul
+                  data-testid="doclog6-lifecycle-history"
+                  className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300"
+                >
+                  {lifecycleRecords.map((record) => (
+                    <li key={record.record_id}>
+                      {formatDate(record.created_at)} —{" "}
+                      {LIFECYCLE_EVENT_LABELS[record.event] ?? record.event}
+                      {record.reason ? `: ${record.reason}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </>
         )}
 
