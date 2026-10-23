@@ -1,0 +1,251 @@
+{
+  "task": "DOCLOG-4-CERT",
+  "channels": {
+    "repo": [
+      "tests/api/test_doclog4_document_delivery.py"
+    ],
+    "oracle": [
+      "scripts/doclog4cert/",
+      "--deselect",
+      "scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcRedDefectProofs"
+    ]
+  },
+  "battle": [
+    {
+      "id": "M01",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "HTML: снято экранирование + нейтрализация схем (AC16)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_html_escapes_untrusted_content | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 44 passed, 1 warning in 4.39s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderHtml::test_script_sentinel_never_executable | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 40 passed, 4 deselected, 1 warning in 4.65s =============",
+      "repo_seconds": 6.0,
+      "oracle_seconds": 6.6
+    },
+    {
+      "id": "M02",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "HTML: снята только нейтрализация javascript:/data: схем",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_html_escapes_untrusted_content | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 44 passed, 1 warning in 4.80s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderHtml::test_event_handler_and_scheme_neutralized | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 41 passed, 4 deselected, 1 warning in 4.52s =============",
+      "repo_seconds": 6.7,
+      "oracle_seconds": 6.2
+    },
+    {
+      "id": "M03",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "CSV: снята spreadsheet-safe нейтрализация префиксов =,+,-,@",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_csv_spreadsheet_safe_and_numeric_preserved | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 46 passed, 1 warning in 4.41s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderCsv::test_formula_prefixes_neutralized_text_only | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 46 passed, 4 deselected, 1 warning in 4.61s =============",
+      "repo_seconds": 6.0,
+      "oracle_seconds": 6.4
+    },
+    {
+      "id": "M04",
+      "family": "BATTLE",
+      "status": "ORACLE-ONLY",
+      "description": "CSV: числа прогнаны через текстовый safe-профиль (минусы -> текст)",
+      "repo_killed": false,
+      "oracle_killed": true,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.38s =========================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderCsv::test_negative_numbers_not_neutralized | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 47 passed, 4 deselected, 1 warning in 4.53s =============",
+      "repo_seconds": 6.0,
+      "oracle_seconds": 6.1
+    },
+    {
+      "id": "M05",
+      "family": "BATTLE",
+      "status": "REPO-ONLY",
+      "description": "JSONL: envelope теряет schema_version снимка (подмена)",
+      "repo_killed": true,
+      "oracle_killed": false,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_jsonl_envelope_one_claim_per_line | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 42 passed, 1 warning in 4.53s ====================",
+      "oracle_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ================= 57 passed, 4 deselected, 1 warning in 4.51s ==================",
+      "repo_seconds": 6.2,
+      "oracle_seconds": 6.1
+    },
+    {
+      "id": "M06",
+      "family": "BATTLE",
+      "status": "SURVIVED",
+      "description": "JSONL: порядок секций инвертирован (§7 порядок frozen корпуса)",
+      "repo_killed": false,
+      "oracle_killed": false,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.43s =========================",
+      "oracle_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ================= 57 passed, 4 deselected, 1 warning in 4.42s ==================",
+      "repo_seconds": 6.0,
+      "oracle_seconds": 6.1
+    },
+    {
+      "id": "M07",
+      "family": "BATTLE",
+      "status": "ORACLE-ONLY",
+      "description": "filename: разрешена точка (path-traversal '..' проходит)",
+      "repo_killed": false,
+      "oracle_killed": true,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.49s =========================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcFilenameFor::test_traversal_and_garbage_sanitized | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 50 passed, 4 deselected, 1 warning in 4.59s =============",
+      "repo_seconds": 6.2,
+      "oracle_seconds": 6.4
+    },
+    {
+      "id": "M08",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Jobs: снята идемпотентность выдачи (каждый клик -- новый job)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDocumentJobs::test_rendition_idempotent_no_duplicate_jobs | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 10 passed, 1 warning in 0.59s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcIdempotency::test_same_format_returns_same_job_and_rendition | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 10 passed, 4 deselected, 1 warning in 3.00s =============",
+      "repo_seconds": 1.9,
+      "oracle_seconds": 4.9
+    },
+    {
+      "id": "M09",
+      "family": "BATTLE",
+      "status": "ORACLE-ONLY",
+      "description": "Jobs: снят integrity-гвард content_sha256 (T8-дух)",
+      "repo_killed": false,
+      "oracle_killed": true,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.78s =========================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcJobContract::test_content_integrity_guard | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 19 passed, 4 deselected, 1 warning in 3.47s =============",
+      "repo_seconds": 6.7,
+      "oracle_seconds": 5.5
+    },
+    {
+      "id": "M10",
+      "family": "BATTLE",
+      "status": "ORACLE-ONLY",
+      "description": "Jobs: cancel переписывает терминальные состояния (ready -> cancelled)",
+      "repo_killed": false,
+      "oracle_killed": true,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.36s =========================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcIdempotency::test_cancel_idempotent_terminal_states_respected | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 15 passed, 4 deselected, 1 warning in 3.07s =============",
+      "repo_seconds": 6.1,
+      "oracle_seconds": 4.7
+    },
+    {
+      "id": "M11",
+      "family": "BATTLE",
+      "status": "ORACLE-ONLY",
+      "description": "Jobs: байтовый рендер обнуляется (пустой ready-файл)",
+      "repo_killed": false,
+      "oracle_killed": true,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.36s =========================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcJobContract::test_p0_job_renders_ready_with_integrity | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 16 passed, 4 deselected, 1 warning in 3.06s =============",
+      "repo_seconds": 5.9,
+      "oracle_seconds": 4.7
+    },
+    {
+      "id": "M12",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Jobs: сервисная авторизация отключена (R09 сквозной канал)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDocumentJobs::test_foreign_subject_denied_at_service_layer | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 15 passed, 1 warning in 2.99s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcAuthMatrix::test_foreign_uniform_404_on_every_route | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============= 1 failed, 1 passed, 4 deselected, 1 warning in 3.61s =============",
+      "repo_seconds": 4.6,
+      "oracle_seconds": 5.7
+    },
+    {
+      "id": "M13",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Router: uniform-404 -> 403 (дисклоужается существование, AC06)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDocumentationRoutesAuth::test_foreign_session_uniform_404_on_every_route | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 17 passed, 1 warning in 2.88s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcAuthMatrix::test_foreign_uniform_404_on_every_route | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============= 1 failed, 1 passed, 4 deselected, 1 warning in 2.92s =============",
+      "repo_seconds": 4.6,
+      "oracle_seconds": 4.8
+    },
+    {
+      "id": "M14",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Router: тройка аудита теряет finished (§14.1 различимость)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDeliveryAudit::test_download_triple_distinct_and_ordered | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 34 passed, 1 warning in 3.10s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcAuditTriple::test_triple_distinct_ordered_owner_allowed | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 21 passed, 4 deselected, 1 warning in 3.38s =============",
+      "repo_seconds": 4.8,
+      "oracle_seconds": 5.3
+    },
+    {
+      "id": "M15",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Router: preview без protected_document_viewed (§14.1)",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDeliveryAudit::test_preview_records_protected_document_viewed | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 33 passed, 1 warning in 3.05s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcAuditTriple::test_preview_records_protected_view | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============ 1 failed, 20 passed, 4 deselected, 1 warning in 3.19s =============",
+      "repo_seconds": 4.7,
+      "oracle_seconds": 4.8
+    },
+    {
+      "id": "M16",
+      "family": "BATTLE",
+      "status": "DUAL-KILLED",
+      "description": "Router: N3-гейт -- dependency-манифест утекает в список",
+      "repo_killed": true,
+      "oracle_killed": true,
+      "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDocumentationRoutesAuth::test_owner_full_path_list_create_preview_rendition_content | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | =================== 1 failed, 16 passed, 1 warning in 2.84s ====================",
+      "oracle_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcN3Gate::test_dependencies_only_in_authorized_revision_get | !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ============= 1 failed, 6 passed, 4 deselected, 1 warning in 2.88s =============",
+      "repo_seconds": 4.4,
+      "oracle_seconds": 4.6
+    }
+  ],
+  "controls": [
+    {
+      "id": "C01",
+      "family": "CONTROL",
+      "status": "ALIVE",
+      "description": "Контроль: комментарий (семантики нет)",
+      "repo_killed": false,
+      "oracle_killed": false,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.45s =========================",
+      "oracle_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ================= 57 passed, 4 deselected, 1 warning in 4.64s ==================",
+      "repo_seconds": 6.2,
+      "oracle_seconds": 6.5
+    },
+    {
+      "id": "C02",
+      "family": "CONTROL",
+      "status": "ALIVE",
+      "description": "Контроль: скобочная группировка (AST-эквивалент)",
+      "repo_killed": false,
+      "oracle_killed": false,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.81s =========================",
+      "oracle_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ================= 57 passed, 4 deselected, 1 warning in 4.92s ==================",
+      "repo_seconds": 6.5,
+      "oracle_seconds": 6.9
+    },
+    {
+      "id": "C03",
+      "family": "CONTROL",
+      "status": "ALIVE",
+      "description": "Контроль: комментарий-2 (семантики нет)",
+      "repo_killed": false,
+      "oracle_killed": false,
+      "repo_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ======================== 48 passed, 1 warning in 4.78s =========================",
+      "oracle_tail": " | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | ================= 57 passed, 4 deselected, 1 warning in 4.92s ==================",
+      "repo_seconds": 6.7,
+      "oracle_seconds": 6.9
+    }
+  ],
+  "restore_failures": 0,
+  "baseline_hashes": {
+    "b99c535135bdaa4cb5105f4f221e4009f788ab437efad7e07283dcdf16686e62": "/home/z/my-project/CISStat-TS-Analysis/apps/api/routers/documentation.py",
+    "36964f912c22ca0448f4ab22ea925f3c1238ddcd8579e6515100bc35d2f6afaa": "/home/z/my-project/CISStat-TS-Analysis/apps/api/document_jobs.py",
+    "031e9e3157588a38b94f95f9cc01fc2bc7dc272f13f2bda9cdaa7e6abeccd552": "/home/z/my-project/CISStat-TS-Analysis/apps/api/document_renditions.py"
+  }
+}

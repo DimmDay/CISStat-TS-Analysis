@@ -1944,3 +1944,39 @@ RED: ModuleNav 6F («Документы» ещё в сетке/нет право
 Постановка «отцентрировав рядом с „Прогрессом"» интерпретирована как вертикальное центрирование в правой группе (items-center) со смещением правее от прежнего места в сетке; «Прогресс» остаётся крайним справа (слот §4.1). Иконка на кнопке «Документы» НЕ добавлялась — паттерн «Прогресса» применён к рамке/цветам/геометрии (иконка Workflow остаётся отличием «Прогресса»); если тимлид захочет парную иконку — точечное добавление в ту же константу. Усечённый фон: кроп зафиксирован viewBox="0 800 1600 800" (верхняя половина отрезана) — при сильном росте высоты страницы (много версий/preview) волны растягиваются сильнее домашнего (preserveAspectRatio="none", прецедент главной); перенастройка кропа — одна константа viewBox. 24px-инсеты подтверждены замером при 1600w; на вьюпортах >1600px действует общий каркас сайта (max-w-1600 центрируется — паттерн всех вкладок). Бэкенд/API/научный контур не тронуты (0 изменений apps/api); tests/api вне дельты.
 
 Deliverable: ZIP cisstat-doclog4-ui-fix.zip → открытый контейнер сессии (download): packages/ui/components/ModuleNav.tsx (ОБНОВЛЁН), packages/ui/components/ModuleNav.test.tsx (ОБНОВЛЁН), packages/ui/components/DocumentationWorkspace.tsx (ОБНОВЛЁН), packages/ui/components/DocumentationWavesBackground.tsx (НОВЫЙ), packages/ui/components/DocumentationWavesBackground.test.tsx (НОВЫЙ), packages/ui/components/DocumentationWorkspace.test.tsx (НОВЫЙ), packages/ui/index.ts (ОБНОВЛЁН), apps/standalone/app/documentation/documentation-shell.tsx (НОВЫЙ), apps/standalone/app/documentation/page.tsx (ОБНОВЛЁН), apps/standalone/app/documentation/page.test.tsx (НОВЫЙ), worklog/worklog10.md (эта запись). Без commit/push (AGENTS.md). Манифест sha256 не ведётся и не используется (указание тимлида, прецедент DOCLOG-2-FIX/3/4).
+
+---
+
+## Task ID: DOCLOG-4-CERT (2026-10-23) — Независимая сертификация DOCLOG-4 (2caf08e): оракулы на своих данных, мутанты на своих мутантах, RED на родителе, полный регресс (база main@2caf08e, без манифеста sha256)
+
+База: main@2caf08e (чистое дерево; родитель 1178288 = DOCLOG-3-FIX). Среда восстановлена до паритета эпохи (statsmodels 0.15.0 + pandera/psycopg/prophet/arch/sqlalchemy/duckdb/syrupy). Корпус сертификатора дизъюнктен repo и 0/1/2/2-FIX/3-CERT: RUN-D4C*, d4cert-*, d4c-cert-admin-key-04.
+
+### Оракулы (61 = 57 green + 4 RED-доказательства) и RED на родителе
+
+GREEN ×2: 57/57 (unit 26: каталог P0/детерминизм/JSONL-порядок на многосекционных данных/MD-честность/HTML-сентинелы/CSV-spreadsheet-safe/миграция-статика 10 файлов-62 statement; API 31: auth-матрица всех 8 путей owner-foreign-anon-admin, N3-гейт, AC05-tripwire, идемпотентность, job-контракт, audit-тройка, wiring/health). RED на родителе 1178288 (worktree): статика 15/15 + корпус 61/61 RED (ImportError).
+
+### Мутационная кампания (двухканальная: REPO=48, ORACLE=57)
+
+Итог финальной перепроверки (recheck_final.py): **16 боевых = 10 DUAL-KILLED + 6 ORACLE-ONLY + 0 SURVIVED; контроли 3/3 ALIVE; RESTORE-FAIL 0**. Урок M06: SURVIVED первой волны (односекционные данные) → ORACLE-ONLY после усиления оракула прямым сравнением порядка с frozen-снимком; repo-канал порядок секций не пинует (класс N1). ORACLE-ONLY: M04/M06/M07/M09/M10/M11 — кандидаты на перенос в repo-сюиты.
+
+### Регресс и сборка
+
+Полный pytest tests/ ×2 (таргет 2caf08e и родитель 1178288 в одной восстановленной среде): **4611P/40F/66S vs 4578P/40F/66S — множества 40 FAILED-ID байт-идентичны (diff пуст)**; +33 passed = 48 новых doclog4 − 15 удалённых гвардов (см. F-D4C1). База 40F средовая (14 MNS-SPEC-PATH + 7 psycopg-DSN + 10 neural/modeling + 9 structural_breaks/profile_detail — последний класс = дрейф пересобранной среды, идентичен на родителе). Jest на поставке: 205 сюит / **2278 тестов** (2277P + предсуществующий флак TsAnalysisUpload, в изоляции 46/46). Сборка: OpenAPI 179 путей (171+8 документационных, 9 операций), каталог 10 файлов/62 statement, P0 {csv,html,json,jsonl,md}, AUDIT_ACTIONS=20.
+
+### Находки и вердикт
+
+**НЕ СЕРТИФИЦИРОВАНО** (акт docs/cert_doclog4_2026-10-23.md):
+- **F-D4C1 (блокер):** 2caf08e откатывает гварды DOCLOG-3-FIX — из test_doclog3_telemetry_audit.py удалено 15 тестов (TestPostgresMirrorTelemetryAudit целиком pgm01–pgm11 + 3 теста TestMainAppWiring; git diff 1178288 2caf08e = −568/+11; 93→78; нигде не восстановлены). Причина: база исполнителя 52315ac (до DOCLOG-3-FIX), регресс сравнивался с не-родительской базой → откат не замечен.
+- **F-D4C2 (блокер, AC11/§14.1):** защищённая выдача fail-open — 4 обязательных audit-действия (protected_document_viewed, download_requested, response_stream_started/finished — mandatory по каталогу DOCLOG-3) пишутся record_standard; при отказе audit-sink байты/preview отдаются (200). RED ×2. Контракт-док декларирует отклонение как «AC11-инвариант» — инверсия спеки.
+- **F-D4C3 (блокер, §14.1):** download_requested с decision=allowed пишется ДО авторизации (routers/documentation.py:543–556) — при отказе чужому в durable audit остаётся ложный факт. RED.
+- **F-D4C4 (блокер поставки/честность):** заявленные UI-оракулы (15/15 workspace + 4/4 entry; «jest 2296/2297») отсутствуют в поставке — файлов нет, Jest-базлайн 2278 (= без прироста); UI-приёмка §12.1–12.3/AC17 не покрыта.
+- **F-D4C5 (серьёзное, AC09):** reuse-путь черновика игнорирует idempotency_key (тот же ключ + другое тело → 201 + новая версия вместо 409). RED.
+- N1: 6 ORACLE-ONLY пинов → перенос в repo-сюиты (прецедент N1/N6 DOCLOG-3-CERT). N2: средовой класс 40F vs документированного 31F — дрейф пересобранной среды (идентичен родителю). R-N1: «~70 оракулов» контракт-дока = 48 repo + 19 несуществующих UI.
+
+Положительное: backend-поставка сильная (57/57 ×2, 48/48 repo, 0 SURVIVED, дельта-0 побайтно, N3-гейт/AC05/AC06/AC16 подтверждены, HTML/CSV-безопасность двухслойная). Продуктовый код аудитом не менялся (RESTORE-FAIL 0).
+
+### План DOCLOG-4-FIX (кандидат)
+
+(1) вернуть 15 гвардов DOCLOG-3-FIX с сохранением плановых +11 обновлений; (2) 4 audit-действия выдачи → record_mandatory fail-closed до раскрытия, решение записи = фактическое; (3) 409 на reuse-пути при том же ключе с другим телом; (4) поставить заявленные UI-оракулы; (5) перенести 6 ORACLE-ONLY пинов; пересертификация.
+
+Deliverable: ZIP cisstat-doclog4-cert.zip → открытый контейнер сессии (download): docs/cert_doclog4_2026-10-23.md (акт), scripts/doclog4cert/ (conftest.py, оракулы unit/api, mutations.py, mutations_recheck.py, recheck_final.py, m06_adjudication.py, red_parent.py, protocols/), worklog/worklog10.md (эта запись). Без commit/push (AGENTS.md). Манифест sha256 не ведётся и не используется (указание тимлида).

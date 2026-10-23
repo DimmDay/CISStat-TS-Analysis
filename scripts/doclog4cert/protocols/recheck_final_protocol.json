@@ -1,0 +1,29 @@
+{
+  "recheck_final": [
+    {
+      "id": "M05",
+      "status": "DUAL-KILLED",
+      "repo_tail": "=========================== short test summary info ============================ | FAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_jsonl_envelope_one_claim_per_line | ========================= 1 failed, 47 passed in 5.60s =========================",
+      "oracle_tail": "=========================== short test summary info ============================ | FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderJsonl::test_one_claim_per_line_envelope_fields | ================== 1 failed, 56 passed, 4 deselected in 5.29s =================="
+    },
+    {
+      "id": "M06",
+      "status": "ORACLE-ONLY",
+      "repo_tail": "....................                                                     [100%] |  | ============================== 48 passed in 5.03s ==============================",
+      "oracle_tail": "=========================== short test summary info ============================ | FAILED scripts/doclog4cert/test_doclog4cert_oracle_unit.py::TestOrcRenderJsonl::test_order_and_text_match_snapshot | ================== 1 failed, 56 passed, 4 deselected in 5.12s =================="
+    }
+  ],
+  "green_x2": [
+    {
+      "run": 1,
+      "ok": true,
+      "tail": "...........                                                              [100%] |  | ======================= 57 passed, 4 deselected in 5.08s ======================="
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "tail": "...........                                                              [100%] |  | ======================= 57 passed, 4 deselected in 5.23s ======================="
+    }
+  ],
+  "red_full_run_tail": "FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcRedDefectProofs::test_red_fd4c3_no_false_allowed_on_denied_download | FAILED scripts/doclog4cert/test_doclog4cert_oracle_api.py::TestOrcRedDefectProofs::test_red_fd4c5_idempotency_other_body_409_on_reuse_path | ========================= 4 failed, 57 passed in 5.24s ========================="
+}

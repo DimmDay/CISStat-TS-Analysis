@@ -1,0 +1,12 @@
+[
+  {
+    "id": "M05",
+    "status": "DUAL-KILLED",
+    "description": "JSONL: envelope теряет schema_version снимка (подмена)"
+  },
+  {
+    "id": "M06",
+    "status": "ORACLE-ONLY",
+    "description": "JSONL: порядок секций инвертирован (§7 порядок frozen корпуса)"
+  }
+]

@@ -1,0 +1,106 @@
+{
+  "parent": "1178288",
+  "worktree": "/home/z/my-project/wt-1178288-doclog4cert",
+  "static_facts": [
+    {
+      "fact": "apps/api/document_renditions.py",
+      "label": "рендереры P0 отсутствуют",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/document_jobs.py",
+      "label": "слой документов/job-контракт отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/routers/documentation.py",
+      "label": "роутер /v1/documentation отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/migrations/0010_doclog4_documents.sql",
+      "label": "миграция 0010 отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "tests/api/test_doclog4_document_delivery.py",
+      "label": "repo-сюита поставки отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "packages/ui/lib/documentation.ts",
+      "label": "UI-клиент документации отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "packages/ui/components/DocumentationWorkspace.tsx",
+      "label": "UI-workspace отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "packages/ui/components/DocumentPreview.tsx",
+      "label": "UI-preview отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "apps/standalone/app/documentation/page.tsx",
+      "label": "страница раздела отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "docs/doclog4_document_delivery.md",
+      "label": "контрактный документ отсутствует",
+      "exists": false,
+      "red": true
+    }
+  ],
+  "symbol_facts": [
+    {
+      "fact": "apps/api/research_runs.py::MIGRATION_STATEMENTS_0010",
+      "label": "каталог 0010 отсутствует",
+      "present": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/research_runs.py::0010_doclog4_documents",
+      "label": "файл в каталоге отсутствует",
+      "present": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/storage_diagnostics.py::COMPONENT_DOCUMENTS",
+      "label": "фабрика документов в снимке отсутствует",
+      "present": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/storage_diagnostics.py::build_documents_health",
+      "label": "health-блок documents отсутствует",
+      "present": false,
+      "red": true
+    },
+    {
+      "fact": "apps/api/main.py::documentation",
+      "label": "include_router документации отсутствует",
+      "present": false,
+      "red": true
+    }
+  ],
+  "oracle_corpus_collect": {
+    "returncode": 4,
+    "tail": "no tests collected in 0.00s | ERROR: file or directory not found: scripts/doclog4cert/"
+  },
+  "repo_suite_collect": {
+    "returncode": 4,
+    "tail": "no tests collected in 0.00s | ERROR: file or directory not found: tests/api/test_doclog4_document_delivery.py"
+  }
+}
