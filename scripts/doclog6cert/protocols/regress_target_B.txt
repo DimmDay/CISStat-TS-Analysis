@@ -1,0 +1,358 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.0.2, pluggy-1.6.0
+Fugue tests will be initialized with options:
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, xdist-3.8.0, syrupy-6.1.1, typeguard-4.6.0, fugue-0.9.7
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 2102 items / 6 skipped
+
+tests/test_catalog.py ...                                                [  0%]
+tests/test_consistency_masks.py ...                                      [  0%]
+tests/test_modeling_spec.py ............................................ [  2%]
+............................                                             [  3%]
+tests/test_no_false_positives.py ....                                    [  3%]
+tests/test_pipeline_bug.py ....                                          [  4%]
+tests/test_validation.py ......................                          [  5%]
+tests/unit/test_apply_decomposition.py ........                          [  5%]
+tests/unit/test_auth.py .......                                          [  5%]
+tests/unit/test_backtesting_engine.py ...........                        [  6%]
+tests/unit/test_catboost_adapter.py .................................... [  8%]
+............                                                             [  8%]
+tests/unit/test_catboost_backtest.py .........                           [  9%]
+tests/unit/test_chart_timeseries_decomposition.py ................       [  9%]
+tests/unit/test_classifier.py .........                                  [ 10%]
+tests/unit/test_compare_ts_props.py .........                            [ 10%]
+tests/unit/test_consistency_correction.py ......                         [ 10%]
+tests/unit/test_correlation.py .........                                 [ 11%]
+tests/unit/test_dataset_classifier.py ...........                        [ 11%]
+tests/unit/test_db_connection.py .....                                   [ 12%]
+tests/unit/test_db_connectors.py ....................................... [ 14%]
+.....................                                                    [ 15%]
+tests/unit/test_db_embedded.py .................                         [ 15%]
+tests/unit/test_db_guard.py ............................................ [ 17%]
+.............................                                            [ 19%]
+tests/unit/test_db_upload_fixes.py ...........                           [ 19%]
+tests/unit/test_decomposition_series.py .........                        [ 20%]
+tests/unit/test_deepar_integration_paths.py .....F....sss.s              [ 20%]
+tests/unit/test_detect_column_frequency.py .........                     [ 21%]
+tests/unit/test_detectors.py .......                                     [ 21%]
+tests/unit/test_detectors_scoring.py ...........                         [ 22%]
+tests/unit/test_distribution_analysis.py ....                            [ 22%]
+tests/unit/test_distributions.py .............                           [ 23%]
+tests/unit/test_eda_autocorrelation.py ...                               [ 23%]
+tests/unit/test_eda_distribution_adapter.py ..                           [ 23%]
+tests/unit/test_eda_feature_selection_adapter.py ...                     [ 23%]
+tests/unit/test_eda_model_matrix.py .........                            [ 23%]
+tests/unit/test_eda_seasonality_adapter.py ..                            [ 23%]
+tests/unit/test_eda_stationarity_adapter.py ...                          [ 24%]
+tests/unit/test_eda_structural_breaks_adapter.py ..                      [ 24%]
+tests/unit/test_egarch_adapter.py ................................       [ 25%]
+tests/unit/test_egarch_integration_paths.py .............                [ 26%]
+tests/unit/test_export.py .........                                      [ 26%]
+tests/unit/test_feature_plan.py ....................                     [ 27%]
+tests/unit/test_feature_plan_backtest.py ..........                      [ 28%]
+tests/unit/test_feature_plan_folds.py ................................   [ 29%]
+tests/unit/test_feature_regressors.py .....................              [ 30%]
+tests/unit/test_feature_selection_analysis.py ....                       [ 30%]
+tests/unit/test_file_loader.py .......                                   [ 31%]
+tests/unit/test_final_fit.py ............                                [ 31%]
+tests/unit/test_forecasting.py ....................                      [ 32%]
+tests/unit/test_forecasting_contract.py ...............                  [ 33%]
+tests/unit/test_format_correction.py ......                              [ 33%]
+tests/unit/test_garch_adapter.py .........................               [ 34%]
+tests/unit/test_garch_integration_paths.py .....................         [ 35%]
+tests/unit/test_ih_analysis.py .............                             [ 36%]
+tests/unit/test_inclusion_correction.py .........                        [ 37%]
+tests/unit/test_jsonstat.py ...............                              [ 37%]
+tests/unit/test_lightgbm_adapter.py .................................... [ 39%]
+........                                                                 [ 39%]
+tests/unit/test_lightgbm_backtest.py .........                           [ 40%]
+tests/unit/test_lstm_integration_paths.py ....F...sss.                   [ 40%]
+tests/unit/test_mentor_next_step_spec.py FFFFFFFFFFFFFF.                 [ 41%]
+tests/unit/test_mentor_stop_explanations.py ............................ [ 42%]
+..........................                                               [ 44%]
+tests/unit/test_missing_correction.py ................                   [ 44%]
+tests/unit/test_model_capability_matrix.py .                             [ 44%]
+tests/unit/test_model_execution_contract.py .F...                        [ 45%]
+tests/unit/test_model_execution_contract_v2_compliance.py ...            [ 45%]
+tests/unit/test_model_jobs.py ....                                       [ 45%]
+tests/unit/test_model_readiness_candidates.py ....                       [ 45%]
+tests/unit/test_modeling_comparison.py ......                            [ 45%]
+tests/unit/test_modeling_mvp_certification.py ...                        [ 46%]
+tests/unit/test_modeling_selection.py ......                             [ 46%]
+tests/unit/test_modeling_traceability.py ...                             [ 46%]
+tests/unit/test_modeling_tuning_plan.py .....                            [ 46%]
+tests/unit/test_multivariate_contract.py ............................... [ 48%]
+.......................................................                  [ 50%]
+tests/unit/test_nbeats_integration_paths.py ....F...sss.                 [ 51%]
+tests/unit/test_neural_capacity_guard.py ......................          [ 52%]
+tests/unit/test_neural_contract.py ..................................... [ 54%]
+....................................                                     [ 55%]
+tests/unit/test_nhits_integration_paths.py .....F....ssss                [ 56%]
+tests/unit/test_outliers_correction.py ...............                   [ 57%]
+tests/unit/test_outliers_module_boundary.py ..                           [ 57%]
+tests/unit/test_panel_models.py ........................................ [ 59%]
+.......................                                                  [ 60%]
+tests/unit/test_panel_preprocessing.py ................................. [ 61%]
+..............                                                           [ 62%]
+tests/unit/test_passport.py ........................                     [ 63%]
+tests/unit/test_passport_foundation.py .............                     [ 64%]
+tests/unit/test_preprocessing.py ......                                  [ 64%]
+tests/unit/test_preprocessing_decomposition.py ......                    [ 64%]
+tests/unit/test_preprocessing_feature_engineering.py .....               [ 65%]
+tests/unit/test_preprocessing_feature_engineering_adapter.py .....       [ 65%]
+tests/unit/test_preprocessing_missing.py ..................              [ 66%]
+tests/unit/test_preprocessing_missing_status.py ...                      [ 66%]
+tests/unit/test_preprocessing_outliers.py .............                  [ 67%]
+tests/unit/test_preprocessing_scaling.py .....                           [ 67%]
+tests/unit/test_preprocessing_scaling_adapter.py .....                   [ 67%]
+tests/unit/test_preprocessing_smoothing.py ..........                    [ 68%]
+tests/unit/test_preprocessing_spectral.py ...                            [ 68%]
+tests/unit/test_preprocessing_spectral_adapter.py ....                   [ 68%]
+tests/unit/test_preprocessing_stationarity.py .....                      [ 68%]
+tests/unit/test_preprocessing_stationarity_adapter.py ....               [ 68%]
+tests/unit/test_prophet_adapter.py ..........                            [ 69%]
+tests/unit/test_prophet_regressors.py .......                            [ 69%]
+tests/unit/test_random_forest_adapter.py ............................... [ 71%]
+.......                                                                  [ 71%]
+tests/unit/test_random_forest_backtest.py ..........                     [ 71%]
+tests/unit/test_range_correction.py ......                               [ 72%]
+tests/unit/test_referential_correction.py .......                        [ 72%]
+tests/unit/test_regularity_charts.py .......                             [ 72%]
+tests/unit/test_regularity_correction.py ...........                     [ 73%]
+tests/unit/test_reporter.py ......                                       [ 73%]
+tests/unit/test_rolling.py ....                                          [ 73%]
+tests/unit/test_spectral_seasonality.py ...                              [ 73%]
+tests/unit/test_state.py ...                                             [ 74%]
+tests/unit/test_stationarity_analysis.py ......                          [ 74%]
+tests/unit/test_structural_breaks_analysis.py ......                     [ 74%]
+tests/unit/test_sufficiency.py ...                                       [ 74%]
+tests/unit/test_tbats_adapter.py .............                           [ 75%]
+tests/unit/test_text_quality_correction.py .......                       [ 75%]
+tests/unit/test_tft_integration_paths.py ......F....ssss                 [ 76%]
+tests/unit/test_transforms.py .........                                  [ 76%]
+tests/unit/test_type_conversion.py ....                                  [ 77%]
+tests/unit/test_uniqueness_correction.py .........                       [ 77%]
+tests/unit/test_upload_db9_docs.py ..................................... [ 79%]
+..........................                                               [ 80%]
+tests/unit/test_utils.py ............................                    [ 81%]
+tests/unit/test_validation_checks.py .............................       [ 83%]
+tests/unit/test_validation_regularity.py .......                         [ 83%]
+tests/unit/test_validation_rule_resolver.py ...                          [ 83%]
+tests/unit/test_validation_run_all_checks.py .......................     [ 84%]
+tests/unit/test_validation_strategy_analysis.py ......                   [ 85%]
+tests/unit/test_validation_text.py ..                                    [ 85%]
+tests/unit/test_validation_text_quality.py ....................          [ 86%]
+tests/unit/test_var_adapter.py ............................              [ 87%]
+tests/unit/test_var_backtest.py ...........................              [ 88%]
+tests/unit/test_var_integration_paths.py .............                   [ 89%]
+tests/unit/test_var_registry_integration.py ................             [ 90%]
+tests/unit/test_variance_stabilization.py ...........                    [ 90%]
+tests/unit/test_varx_exogenous.py ...............................        [ 92%]
+tests/unit/test_vecm_adapter.py ...........................              [ 93%]
+tests/unit/test_vector_tuning.py ...........                             [ 93%]
+tests/unit/test_volatility_contract.py ................................. [ 95%]
+.................................                                        [ 97%]
+tests/unit/test_volatility_engine.py ...........                         [ 97%]
+tests/unit/test_xgboost_adapter.py ..................................... [ 99%]
+....                                                                     [ 99%]
+tests/unit/test_xgboost_backtest.py .........                            [100%]
+
+=============================== warnings summary ===============================
+tests/unit/test_backtesting_engine.py: 12 warnings
+tests/unit/test_forecasting.py: 9 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/unit/test_detectors.py: 2 warnings
+tests/unit/test_detectors_scoring.py: 4 warnings
+tests/unit/test_regularity_correction.py: 1 warning
+tests/unit/test_sufficiency.py: 1 warning
+tests/unit/test_validation_run_all_checks.py: 8 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/unit/test_detectors.py: 2 warnings
+tests/unit/test_detectors_scoring.py: 3 warnings
+tests/unit/test_regularity_correction.py: 1 warning
+tests/unit/test_sufficiency.py: 1 warning
+tests/unit/test_validation_run_all_checks.py: 8 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/unit/test_eda_autocorrelation.py::test_autocorrelation_profiles_an_ar1_series
+tests/unit/test_eda_autocorrelation.py::test_autocorrelation_clamps_lags_to_a_safe_pacf_limit
+  /home/z/my-project/CISStat-TS-Analysis/app/eda/correlation.py:118: FutureWarning: acf currently returns a plain tuple whose length depends on the qstat and alpha arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an AcfResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    acf_values, acf_intervals = acf(
+
+tests/unit/test_eda_model_matrix.py: 27 warnings
+tests/unit/test_passport_foundation.py: 7 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:149: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    results[lag] = mod_instance.fit()
+
+tests/unit/test_eda_model_matrix.py: 27 warnings
+tests/unit/test_passport_foundation.py: 2 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:432: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    resols = OLS(xdshort, add_trend(xdall[:, : usedlag + 1], regression)).fit()
+
+tests/unit/test_eda_model_matrix.py::test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readiness
+tests/unit/test_eda_model_matrix.py::test_exogenous_columns_do_not_block_models_that_can_ignore_them
+tests/unit/test_eda_model_matrix.py::test_task_semantics_block_wrong_target_and_keep_volatility_models_conditional
+tests/unit/test_eda_model_matrix.py::test_soft_history_pass_boundary_at_min_is_pass
+tests/unit/test_eda_model_matrix.py::test_deepar_shape_criterion_is_the_honest_panel_gate
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:3995: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    o = OLS(endog[baselags:], exog, hasconst=1).fit()
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2668: RuntimeWarning: divide by zero encountered in log
+    return float(np.log(super().backcast(resids)))
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2731: RuntimeWarning: divide by zero encountered in log
+    target = np.log(np.mean(resids**2))
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: divide by zero encountered in log
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: invalid value encountered in divide
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/base.py:724: RuntimeWarning: invalid value encountered in divide
+    std_resids = resids / np.sqrt(sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2610: RuntimeWarning: divide by zero encountered in log
+    lnv = np.log(v)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: divide by zero encountered in divide
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_egarch_adapter.py::TestEgarchFailClosed::test_degenerate_zero_variance_input_refused
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/distribution.py:410: RuntimeWarning: invalid value encountered in add
+    lls = -0.5 * (log(2 * pi) + log(sigma2) + resids**2.0 / sigma2)
+
+tests/unit/test_garch_adapter.py::TestGarchFitPredict::test_residuals_and_metadata_fail_closed_on_degenerate_input
+  /home/z/.venv/lib/python3.12/site-packages/arch/univariate/volatility.py:1233: RuntimeWarning: invalid value encountered in scalar divide
+    scale = np.mean(resids**2) / (target ** (2.0 / power))
+
+tests/unit/test_modeling_comparison.py: 3 warnings
+tests/unit/test_modeling_selection.py: 20 warnings
+  /home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In future, it will be an error for 'np.bool' scalars to be interpreted as an index
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/unit/test_modeling_mvp_certification.py::test_arima_grid_handles_the_minimum_expanding_window_fold
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:737: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    mlefit = super().fit(
+
+tests/unit/test_panel_preprocessing.py::TestBuildPanelFrameFailClosed::test_non_date_column_rejected
+  /home/z/my-project/CISStat-TS-Analysis/tests/unit/test_panel_preprocessing.py:117: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'не-дата' has dtype incompatible with datetime64[ns], please explicitly cast to a compatible dtype first.
+    df.loc[0, "date"] = "не-дата"
+
+tests/unit/test_panel_preprocessing.py::TestBuildPanelFrameFailClosed::test_non_date_column_rejected
+  /home/z/my-project/CISStat-TS-Analysis/app/preprocessing/panel.py:171: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    converted = pd.to_datetime(series, errors="coerce")
+
+tests/unit/test_passport.py: 14 warnings
+tests/unit/test_passport_foundation.py: 8 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/unit/test_passport.py::TestCalcTsProps::test_basic_stats
+tests/unit/test_passport.py::TestCalcTsProps::test_stationarity_detection
+tests/unit/test_passport.py::TestCalcTsProps::test_trend_detection
+tests/unit/test_passport.py::TestCalcTsProps::test_returns_dict_with_expected_keys
+  /home/z/my-project/CISStat-TS-Analysis/app/core/passport.py:858: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(series.dropna(), autolag='AIC')
+
+tests/unit/test_passport_foundation.py::test_yearly_series_does_not_invent_monthly_seasonality
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_long_memory_is_computed_not_error_placeholder
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_random_walk_gives_sensible_hurst_near_half
+tests/unit/test_transforms.py::TestComputeRowPropertiesLongMemory::test_long_memory_detail_empty_on_success
+  /home/z/my-project/CISStat-TS-Analysis/app/preprocessing/transforms.py:433: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(series.dropna(), autolag='AIC')
+
+tests/unit/test_validation_checks.py::TestCheckTsProperties::test_basic_ts_checks
+tests/unit/test_validation_checks.py::TestCheckTsProperties::test_frequency_detection
+  /home/z/my-project/CISStat-TS-Analysis/validation/ts_checks.py:45: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_result = adfuller(df_ts[num_col].dropna())
+
+tests/unit/test_validation_run_all_checks.py::test_checks_key_has_all_10_ids_matching_frontend_check_type
+  /home/z/.venv/lib/python3.12/site-packages/pandera/_pandas_deprecated.py:144: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    warnings.warn(_future_warning, FutureWarning)
+
+tests/unit/test_var_backtest.py::test_aggregate_mase_is_test_size_weighted_across_folds
+  /home/z/.venv/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:3904: RuntimeWarning: Mean of empty slice.
+    return _methods._mean(a, axis=axis, dtype=dtype,
+
+tests/unit/test_var_backtest.py::test_aggregate_mase_is_test_size_weighted_across_folds
+  /home/z/.venv/lib/python3.12/site-packages/numpy/_core/_methods.py:147: RuntimeWarning: invalid value encountered in scalar divide
+    ret = ret.dtype.type(ret / rcount)
+
+tests/unit/test_variance_stabilization.py: 10 warnings
+tests/unit/test_volatility_contract.py: 2 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    return acorr_lm(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+--------------------------- snapshot report summary ----------------------------
+3 snapshots passed.
+=========================== short test summary info ============================
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_exists_at_repo_root
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1File::test_spec_references_review_and_base_commit
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_order_matches_stage_nodes_exactly
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_excluded_stages_are_the_rest
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_scan_status_priority_error_over_warning
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_existing_rules_pinned_id_stage_priority
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1CanonAgainstCode::test_canon_declares_version_marker
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_contract_terms_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_q1_to_q7_documented
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_all_eight_rule_ids_present
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_warning_capable_stages_named
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_one_recommendation_canon_kept
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1ContractTerms::test_no_silence_with_problem_node_claim
+FAILED tests/unit/test_mentor_next_step_spec.py::TestMnsSpec1GuardHonesty::test_scan_stops_total_matches_code
+FAILED tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+==== 20 failed, 2064 passed, 24 skipped, 210 warnings in 267.10s (0:04:27) =====

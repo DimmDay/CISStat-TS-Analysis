@@ -1,0 +1,16 @@
+{
+ "parent": "e573ff3",
+ "exit_code": 2,
+ "expected": "collection errors / failures (corpus RED)",
+ "is_red": true,
+ "tail": [
+  "scripts/doclog6cert/test_d6cert_oracle_unit.py:16: in <module>",
+  "    from apps.api import document_lifecycle as dl",
+  "E   ImportError: cannot import name 'document_lifecycle' from 'apps.api' (/home/z/my-project/cert6-red-parent/apps/api/__init__.py)",
+  "=========================== short test summary info ============================",
+  "ERROR scripts/doclog6cert/test_d6cert_oracle_static.py",
+  "ERROR scripts/doclog6cert/test_d6cert_oracle_unit.py",
+  "!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!",
+  "============================== 2 errors in 0.35s ==============================="
+ ]
+}

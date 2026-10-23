@@ -1,0 +1,18 @@
+{
+ "target": "70c9c1a+cert (продукт = 70c9c1a)",
+ "base": "e573ff3",
+ "part_A": {
+  "target_failed": 11,
+  "base_failed": 11,
+  "only_in_target": [],
+  "only_in_base": [],
+  "delta0_identical": true
+ },
+ "part_B": {
+  "target_failed": 20,
+  "base_failed": 20,
+  "only_in_target": [],
+  "only_in_base": [],
+  "delta0_identical": true
+ }
+}

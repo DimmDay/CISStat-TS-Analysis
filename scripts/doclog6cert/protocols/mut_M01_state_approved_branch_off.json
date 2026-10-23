@@ -1,0 +1,12 @@
+{
+ "name": "M01_state_approved_branch_off",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog6_approvals_archive.py::TestRetention::test_sweep_never_purges_published_document\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_archive_bundle_structure\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_verify_drill_ok\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_verify_missing_object_not_masked\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_verify_tampered_member_reported\n======================= 18 failed, 308 passed in 10.20s ========================",
+ "oracle_tail": "FAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a33_verify_unknown_bundle_404\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a34_drill_ok_on_own_bundle\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a35_diff_direction_contract_and_validity\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a38_lifecycle_actions_leave_science_state_untouched\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a40_publish_409_on_tampered_snapshot_hash\n======================== 21 failed, 58 passed in 5.19s =========================",
+ "restored": true
+}

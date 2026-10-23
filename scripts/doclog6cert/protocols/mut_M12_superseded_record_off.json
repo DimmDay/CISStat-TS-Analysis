@@ -1,0 +1,12 @@
+{
+ "name": "M12_superseded_record_off",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetractSupersede::test_new_publication_supersedes_previous\n======================== 1 failed, 325 passed in 11.25s ========================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a08_supersede_both_sides_honest\n========================= 1 failed, 78 passed in 5.19s =========================",
+ "restored": true
+}

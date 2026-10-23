@@ -1,0 +1,12 @@
+{
+ "total": 41,
+ "battle": 38,
+ "controls": 3,
+ "DUAL-KILLED": 27,
+ "REPO-ONLY": 5,
+ "ORACLE-ONLY": 6,
+ "SURVIVED": 3,
+ "PATCH-FAIL": 0,
+ "RESTORE-FAIL": 0,
+ "controls_alive": 3
+}

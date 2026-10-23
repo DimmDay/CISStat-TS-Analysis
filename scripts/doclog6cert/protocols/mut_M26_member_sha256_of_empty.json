@@ -1,0 +1,12 @@
+{
+ "name": "M26_member_sha256_of_empty",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_archive_bundle_structure\nFAILED tests/api/test_doclog6_approvals_archive.py::TestArchiveRestoreDrill::test_verify_drill_ok\n======================== 2 failed, 324 passed in 11.98s ========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a30_archive_bundle_covers_all_entities\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a31_drill_ref_errors_on_valid_checksums\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a34_drill_ok_on_own_bundle\n========================= 3 failed, 76 passed in 5.38s =========================",
+ "restored": true
+}

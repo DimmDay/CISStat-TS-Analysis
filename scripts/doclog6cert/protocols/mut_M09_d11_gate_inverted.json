@@ -1,0 +1,12 @@
+{
+ "name": "M09_d11_gate_inverted",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestPublishPolicy::test_d11_partial_completeness_blocks_publish\nFAILED tests/api/test_doclog6_approvals_archive.py::TestPublishPolicy::test_d11_complete_publishes\n======================== 2 failed, 324 passed in 10.54s ========================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a24_d11_partial_blocks_own_data\n========================= 1 failed, 78 passed in 6.69s =========================",
+ "restored": true
+}

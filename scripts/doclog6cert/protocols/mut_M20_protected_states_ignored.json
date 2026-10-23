@@ -1,0 +1,12 @@
+{
+ "name": "M20_protected_states_ignored",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": true,
+ "classification": "REPO-ONLY",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetention::test_sweep_never_purges_published_document\n======================== 1 failed, 325 passed in 10.89s ========================",
+ "oracle_tail": "                                                                         [ 31%]\nscripts/doclog6cert/test_d6cert_oracle_api.py .......................... [ 64%]\n................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n============================== 79 passed in 5.41s ==============================",
+ "restored": true
+}

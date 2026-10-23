@@ -1,0 +1,12 @@
+{
+ "name": "M36_scope_403_to_404",
+ "kind": "battle",
+ "file": "documentation.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRightsSeparation::test_scoped_mode_session_surrogate_has_no_rights\n======================== 1 failed, 325 passed in 11.17s ========================",
+ "oracle_tail": "scripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a15_scoped_mode_cookie_owner_403\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a16_scope_granularity_on_key_owned_run\n========================= 2 failed, 77 passed in 5.27s =========================",
+ "restored": true
+}

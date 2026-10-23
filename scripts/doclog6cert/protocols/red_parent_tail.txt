@@ -1,0 +1,25 @@
+______ ERROR collecting scripts/doclog6cert/test_d6cert_oracle_static.py _______
+ImportError while importing test module '/home/z/my-project/cert6-red-parent/scripts/doclog6cert/test_d6cert_oracle_static.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/doclog6cert/test_d6cert_oracle_static.py:16: in <module>
+    from apps.api import document_lifecycle as dl
+E   ImportError: cannot import name 'document_lifecycle' from 'apps.api' (/home/z/my-project/cert6-red-parent/apps/api/__init__.py)
+_______ ERROR collecting scripts/doclog6cert/test_d6cert_oracle_unit.py ________
+ImportError while importing test module '/home/z/my-project/cert6-red-parent/scripts/doclog6cert/test_d6cert_oracle_unit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/doclog6cert/test_d6cert_oracle_unit.py:16: in <module>
+    from apps.api import document_lifecycle as dl
+E   ImportError: cannot import name 'document_lifecycle' from 'apps.api' (/home/z/my-project/cert6-red-parent/apps/api/__init__.py)
+=========================== short test summary info ============================
+ERROR scripts/doclog6cert/test_d6cert_oracle_static.py
+ERROR scripts/doclog6cert/test_d6cert_oracle_unit.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 2 errors in 0.35s ===============================

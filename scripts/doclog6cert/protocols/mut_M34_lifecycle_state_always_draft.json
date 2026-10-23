@@ -1,0 +1,12 @@
+{
+ "name": "M34_lifecycle_state_always_draft",
+ "kind": "battle",
+ "file": "documentation.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog6_approvals_archive.py::TestTwoPersonPolicy::test_self_approval_forbidden_under_two_person\nFAILED tests/api/test_doclog6_approvals_archive.py::TestMandatoryAuditFailClosed::test_approve_fails_closed\nFAILED tests/api/test_doclog6_approvals_archive.py::TestMandatoryAuditFailClosed::test_publish_fails_closed\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetractSupersede::test_retract_with_reason_append_only\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetractSupersede::test_new_publication_supersedes_previous\n======================== 9 failed, 317 passed in 11.23s ========================",
+ "oracle_tail": "FAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a18_two_person_self_approval_by_owner\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a19_two_person_reject_path\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a20_publish_fails_closed_503\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a39_garbage_decision_422\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a40_publish_409_on_tampered_snapshot_hash\n========================= 7 failed, 72 passed in 5.22s =========================",
+ "restored": true
+}

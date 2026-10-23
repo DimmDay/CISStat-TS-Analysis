@@ -1,0 +1,12 @@
+{
+ "name": "M38_archive_action_unregistered",
+ "kind": "battle",
+ "file": "security_audit.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestAuditActions::test_archive_bundle_created_action_registered\n======================== 1 failed, 325 passed in 10.42s ========================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py .....F......            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_static.py::test_s06_audit_actions_and_requirements\n========================= 1 failed, 78 passed in 5.42s =========================",
+ "restored": true
+}

@@ -1,0 +1,50 @@
+{
+ "import_main": true,
+ "routes": 201,
+ "catalogs": true,
+ "migrations": 12,
+ "statements": 74,
+ "kinds": [
+  "D01",
+  "D02",
+  "D03",
+  "D04",
+  "D05",
+  "D06",
+  "D07",
+  "D08",
+  "D09",
+  "D10",
+  "D11"
+ ],
+ "audit_actions": 21,
+ "states": [
+  "draft",
+  "ready_for_review",
+  "approved",
+  "published",
+  "rejected",
+  "retracted",
+  "superseded"
+ ],
+ "events": [
+  "approval_requested",
+  "approved",
+  "published",
+  "rejected",
+  "retracted",
+  "superseded"
+ ],
+ "protected": [
+  "approved",
+  "published",
+  "retracted",
+  "superseded"
+ ],
+ "retention_default_days": 30,
+ "bundle_prefix": "d6arch-",
+ "documentation_routes": true,
+ "documentation_route_count": 17,
+ "product_tree_clean": true,
+ "product_tree_status": ""
+}

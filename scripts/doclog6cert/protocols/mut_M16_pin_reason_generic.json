@@ -1,0 +1,12 @@
+{
+ "name": "M16_pin_reason_generic",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestApprovalFlow::test_full_flow_request_approve_publish\n======================== 1 failed, 325 passed in 10.77s ========================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a06_pin_exact_reason_and_creator\n========================= 1 failed, 78 passed in 5.25s =========================",
+ "restored": true
+}

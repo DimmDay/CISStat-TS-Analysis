@@ -1,0 +1,22 @@
+{
+ "finding": "F-D6C1",
+ "diff_call": "diff(drev-2359f8c770fd45ff876..., against=drev-ed8e5bcc0b6c49e1989...)",
+ "claims_added": [],
+ "claims_removed": [
+  "НОВОЕ утверждение v2 (появилось в v2)"
+ ],
+ "new_claim_lands_in": "removed",
+ "ui_label_added": "Добавлено утверждений: {diff.claims.added.length}",
+ "ui_label_removed": "Убрано утверждений: {diff.claims.removed.length}",
+ "ui_would_show": {
+  "Добавлено": 0,
+  "Убрано": 1
+ },
+ "natural_reading": {
+  "Добавлено": 1,
+  "Убрано": 0
+ },
+ "direction_inverted_vs_ui_labels": true,
+ "severity": "low (UI-семантика; данные честны и заморожены, recalculated=false; метаданные/validity не зависят от направления)",
+ "recommendation": "поменять местами семантику added/removed в diff_revisions ЛИБО подписи панели doclog6-diff; закрепить пин направления в repo-сюите (a35 дизъюнктен repo)"
+}

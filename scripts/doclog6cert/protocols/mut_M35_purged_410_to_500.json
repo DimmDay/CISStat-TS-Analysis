@@ -1,0 +1,12 @@
+{
+ "name": "M35_purged_410_to_500",
+ "kind": "battle",
+ "file": "documentation.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetention::test_sweep_purges_stale_draft_rendition\n======================== 1 failed, 325 passed in 10.57s ========================",
+ "oracle_tail": ".F..............                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a28_purge_removes_object_bytes_tombstone_kept\n========================= 1 failed, 78 passed in 6.25s =========================",
+ "restored": true
+}

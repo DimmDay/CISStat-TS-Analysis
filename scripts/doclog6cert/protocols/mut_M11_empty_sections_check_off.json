@@ -1,0 +1,12 @@
+{
+ "name": "M11_empty_sections_check_off",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog2_snapshots.py .................................... [ 59%]\n.....................................                                    [ 70%]\ntests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n============================= 326 passed in 10.44s =============================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a22_empty_sections_block_publish\n========================= 1 failed, 78 passed in 5.39s =========================",
+ "restored": true
+}

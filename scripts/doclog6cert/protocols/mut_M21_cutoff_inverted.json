@@ -1,0 +1,12 @@
+{
+ "name": "M21_cutoff_inverted",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetention::test_sweep_purges_stale_draft_rendition\n======================== 1 failed, 325 passed in 10.24s ========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a27_sweep_own_env_value_and_no_double_purge\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a28_purge_removes_object_bytes_tombstone_kept\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a41_sweep_purges_exactly_aged_rendition\n========================= 3 failed, 76 passed in 5.22s =========================",
+ "restored": true
+}

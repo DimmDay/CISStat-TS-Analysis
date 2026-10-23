@@ -1,0 +1,12 @@
+{
+ "name": "M33_policy_unknown_to_two_person",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestTwoPersonPolicy::test_unknown_policy_fails_closed_to_single_with_warning\n======================== 1 failed, 325 passed in 10.54s ========================",
+ "oracle_tail": "................                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_unit.py::test_u04_policy_garbage_fail_closed\n========================= 1 failed, 78 passed in 5.41s =========================",
+ "restored": true
+}

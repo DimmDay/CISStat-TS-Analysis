@@ -1,0 +1,12 @@
+{
+ "name": "M02_state_published_branch_off",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog6_approvals_archive.py::TestApprovalFlow::test_full_flow_request_approve_publish\nFAILED tests/api/test_doclog6_approvals_archive.py::TestApprovalFlow::test_repeat_publish_422\nFAILED tests/api/test_doclog6_approvals_archive.py::TestMandatoryAuditFailClosed::test_publish_fails_closed\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetractSupersede::test_retract_with_reason_append_only\nFAILED tests/api/test_doclog6_approvals_archive.py::TestRetractSupersede::test_new_publication_supersedes_previous\n======================== 5 failed, 321 passed in 10.72s ========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a07_publish_after_retract_422\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a08_supersede_both_sides_honest\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a09_republish_superseded_422\n========================= 3 failed, 76 passed in 5.89s =========================",
+ "restored": true
+}

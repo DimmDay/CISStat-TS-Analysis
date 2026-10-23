@@ -1,0 +1,12 @@
+{
+ "name": "M30_validity_changed_off",
+ "kind": "battle",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "ERROR tests/api/test_doclog3_telemetry_audit.py::TestRunAccessHTTPAudit::test_owner_allowed_with_correlation\nERROR tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_request_id_header_on_main_app\nERROR tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_health_ops_blocks\nERROR tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_health_ops_free_of_sentinels_after_events\nERROR tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface\n======================= 162 passed, 164 errors in 8.02s ========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nERROR scripts/doclog6cert/test_d6cert_oracle_unit.py\nERROR scripts/doclog6cert/test_d6cert_oracle_static.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!\n============================== 2 errors in 0.50s ===============================",
+ "restored": true
+}
