@@ -1,0 +1,71 @@
+{
+  "worktree": "/home/z/my-project/wt-d3-parent",
+  "static_facts": [
+    {
+      "fact": "telemetry.py отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "security_audit.py отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "тест поставки отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "дизайн-док поставки отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "миграция 0009 отсутствует",
+      "exists": false,
+      "red": true
+    },
+    {
+      "fact": "MIGRATION_STATEMENTS_0009 отсутствует в research_runs",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "COMPONENT_TELEMETRY отсутствует в storage_diagnostics",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "TelemetryContextMiddleware не в main",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "_audit_authn_denied не в auth (401-аудит)",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "_audit_access_decision не в identity",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "build_telemetry_health отсутствует",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "build_audit_health отсутствует",
+      "found": false,
+      "red": true
+    },
+    {
+      "fact": "api.startup lifecycle не эммитится",
+      "found": false,
+      "red": true
+    }
+  ],
+  "all_static_red": true
+}

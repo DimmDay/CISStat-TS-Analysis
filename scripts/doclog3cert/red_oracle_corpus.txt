@@ -1,0 +1,4 @@
+ERROR ../CISStat-TS-Analysis/scripts/doclog3cert/test_doclog3cert_oracle_unit2.py::TestMigration0009::test_insert_only_telemetry_sql
+ERROR ../CISStat-TS-Analysis/scripts/doclog3cert/test_doclog3cert_oracle_unit2.py::TestMigration0009::test_no_new_http_routes
+ERROR ../CISStat-TS-Analysis/scripts/doclog3cert/test_doclog3cert_oracle_unit2.py::test_part2_sentinels_absent
+======================== 1 warning, 107 errors in 1.08s ========================
