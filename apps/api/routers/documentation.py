@@ -36,6 +36,8 @@ from fastapi.responses import HTMLResponse
 from apps.api.document_jobs import (
     DocumentAccessDenied,
     DocumentIntegrityError,
+    DocumentQuotaExceeded,
+    DocumentRetryLimitExceeded,
     DocumentDeliveryService,
     UnsupportedFormatError,
 )
@@ -113,12 +115,31 @@ def _authorized_run_or_404(request: Request, run_id: str, *, action: str) -> Any
 
 
 def _map_service_errors(exc: Exception) -> HTTPException:
-    """§17: 400 unsupported_format; 409 конфликт; 404 uniform; 503."""
+    """§17: 400 unsupported_format; 409 конфликт; 404 uniform; 429
+    пределы очереди/попыток (§18, DOCLOG-5); 503."""
     if isinstance(exc, UnsupportedFormatError):
         return HTTPException(
             status_code=400,
             detail={
                 "code": "unsupported_format",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, DocumentRetryLimitExceeded):
+        # §18 retries: исчерпаны попытки рендера -- честный 429.
+        return HTTPException(
+            status_code=429,
+            detail={
+                "code": "retry_limit_exceeded",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, DocumentQuotaExceeded):
+        # §18 backpressure: tenant-очередь переполнена -- честный 429.
+        return HTTPException(
+            status_code=429,
+            detail={
+                "code": "quota_exceeded",
                 "message": str(exc),
             },
         )
@@ -454,7 +475,9 @@ def request_rendition(
     """§17 POST /revisions/{revision_id}/renditions: заказать
     format/profile для frozen snapshot -> 202 job/status_url; повтор с
     тем же (snapshot, format, profile) возвращает ПРЕЖНИЙ job/rendition
-    (AC09). Тяжёлые форматы -- 400 unsupported_format (DOCLOG-5)."""
+    (AC09). P0 рендерится синхронно; тяжёлые форматы (§7 P1, DOCLOG-5)
+    ставятся в очередь рендера (§18) -- рендер выполняет
+    document_render_worker."""
     fmt = str(payload.get("format", "")).strip().lower()
     if not fmt:
         raise HTTPException(

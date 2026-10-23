@@ -51,6 +51,7 @@ from apps.api.knowledge import router as knowledge_router_module
 # operational-диагностика /health/ops.
 from apps.api.storage_diagnostics import get_storage_mode
 from apps.api import delivery_worker
+from apps.api import document_render_worker
 
 
 @asynccontextmanager
@@ -82,9 +83,14 @@ async def _lifespan(app: FastAPI):
         outcome="success",
     )
     delivery_worker.start_delivery_worker()
+    # DOCLOG-5 (§18): in-process worker асинхронного рендера тяжёлых
+    # форматов документов (env CISSTAT_DOCUMENT_RENDER_WORKER_*);
+    # shutdown останавливает (паритет DeliveryWorker).
+    document_render_worker.start_document_render_worker()
     try:
         yield
     finally:
+        document_render_worker.stop_document_render_worker()
         delivery_worker.stop_delivery_worker()
         telemetry_emit(
             "api.shutdown", severity="info", essential=True,
@@ -216,4 +222,17 @@ def health_ops():
         worker_status=delivery_worker.delivery_worker_status(),
         models_dispatch=models_state,
     )
+    # DOCLOG-5 (§18): статус worker'а асинхронного рендера документов
+    # (peek-семантика; диагностика не роняет health и не инициализирует
+    # фабрики).
+    try:
+        snapshot["document_render_worker"] = (
+            document_render_worker.document_render_worker_status()
+        )
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["document_render_worker"] = {
+            "enabled": False,
+            "running": False,
+            "missing": ["<state unavailable>"],
+        }
     return JSONResponse(status_code=200, content=snapshot)

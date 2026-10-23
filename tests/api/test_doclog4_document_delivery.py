@@ -235,9 +235,11 @@ def _seed_snapshot(
 
 class TestRenditionFormats:
     def test_p0_catalog_formats(self):
+        """DOCLOG-5: каталог расширен тяжёлыми форматами §7 P1; P0 --
+        НЕПЕРЕСЕКАЮЩЕЕСЯ подмножество (пин DOCLOG-4 сохранён)."""
         from apps.api.document_renditions import RENDITION_FORMATS
 
-        assert set(RENDITION_FORMATS) == {"json", "jsonl", "md", "html", "csv"}
+        assert {"json", "jsonl", "md", "html", "csv"} <= set(RENDITION_FORMATS)
 
     def test_p0_catalog_media_types_and_extensions(self):
         from apps.api.document_renditions import RENDITION_FORMATS
@@ -252,13 +254,15 @@ class TestRenditionFormats:
             assert item.extension == fmt, fmt
             assert item.label, fmt
 
-    def test_heavy_formats_not_in_p0_catalog(self):
-        """PDF/XLSX/Parquet/SVG/PNG/ZIP -- DOCLOG-5: в каталоге P0 их
-        нет; роутер отвечает 400 unsupported_format (проверяется в
-        HTTP-секции)."""
+    def test_heavy_formats_added_by_doclog5(self):
+        """DOCLOG-5: PDF/XLSX/Parquet/SVG/PNG/ZIP -- в каталоге §7 P1
+        (асинхронный worker-контур); DOCX/PDF-A (§7 P2) по-прежнему
+        отсутствуют (DOCLOG-9)."""
         from apps.api.document_renditions import RENDITION_FORMATS
 
-        assert not ({"pdf", "xlsx", "parquet", "svg", "png", "zip"} & set(RENDITION_FORMATS))
+        assert {"pdf", "xlsx", "parquet", "svg", "png", "zip"} <= set(RENDITION_FORMATS)
+        assert "docx" not in RENDITION_FORMATS
+        assert "pdfa" not in RENDITION_FORMATS
 
     def test_render_json_is_canonical_snapshot_bytes(self):
         from apps.api.artifact_store import canonical_json_bytes
@@ -503,7 +507,7 @@ class TestDocumentJobs:
         service = DocumentDeliveryService.create_default()
         with pytest.raises(UnsupportedFormatError):
             service.request_rendition(
-                snapshot, format="pdf",
+                snapshot, format="docx",
                 subject=_owner_subject(), session_id=SESSION_ID,
             )
 
@@ -736,7 +740,7 @@ class TestNegativeStates:
         ).json()["revision"]["revision_id"]
         resp = client.post(
             f"/v1/documentation/revisions/{rev_id}/renditions",
-            json={"format": "pdf"},
+            json={"format": "docx"},
         )
         assert resp.status_code == 400
         body = resp.json()
@@ -1068,7 +1072,8 @@ class TestOpsWiringAndMigration:
 
         names = [name for name, _statements in MIGRATION_FILES]
         assert "0010_doclog4_documents.sql" in names
-        assert len(names) == 10
+        assert "0011_doclog5_render_formats.sql" in names  # DOCLOG-5
+        assert len(names) == 11
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

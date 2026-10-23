@@ -1219,7 +1219,8 @@ class TestMigrations:
     def test_statement_counts(self):
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
-        # DOCLOG-4 (обновлено): каталог пополнен 0010_doclog4_documents
-        # (4 таблицы + 5 индексов = 9 statement; 53 + 9 = 62).
-        assert len(MIGRATION_FILES) == 10
-        assert len(MIGRATION_STATEMENTS) == 62
+        # DOCLOG-5 (обновлено): каталог пополнен 0011_doclog5_render_formats
+        # (аддитивная: 4 ADD COLUMN + 1 CREATE INDEX = 5 statement;
+        # 62 + 5 = 67).
+        assert len(MIGRATION_FILES) == 11
+        assert len(MIGRATION_STATEMENTS) == 67

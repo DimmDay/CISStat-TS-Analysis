@@ -68,6 +68,7 @@ from apps.api.report_snapshot import (
 # МОДУЛЯ (dispatch через globals() -- оракулы подменяют точки входа
 # document_jobs.render_snapshot_* для негативных сценариев рендера).
 from apps.api.document_renditions import (
+    HEAVY_RENDITION_FORMATS,
     RENDITION_FORMATS,
     render_snapshot_csv,
     render_snapshot_html,
@@ -76,6 +77,22 @@ from apps.api.document_renditions import (
 )
 from apps.api.document_renditions import (
     render_snapshot_markdown as render_snapshot_md,
+)
+# DOCLOG-5: тяжёлые рендеры (§7 P1) -- те же чистые функции, но
+# выполняются асинхронным worker'ом (§18); dispatch -- тот же
+# globals()-механизм (render_snapshot_{fmt}), негативные оракулы
+# подменяют те же точки входа. Evidence ZIP алиасится в
+# render_snapshot_zip под общий диспетчер-паттерн.
+from apps.api.document_renditions import (
+    render_evidence_zip,
+    render_snapshot_parquet,
+    render_snapshot_pdf,
+    render_snapshot_png,
+    render_snapshot_svg,
+    render_snapshot_xlsx,
+)
+from apps.api.document_renditions import (
+    render_evidence_zip as render_snapshot_zip,
 )
 
 DOCUMENTS_BACKEND_ENV = "CISSTAT_DOCUMENTS_BACKEND"
@@ -90,6 +107,14 @@ JOB_STATES = frozenset({JOB_QUEUED, JOB_RENDERING, JOB_READY, JOB_FAILED, JOB_CA
 
 RENDITION_READY = "ready"
 RENDITION_FAILED = "failed"
+
+# DOCLOG-5 (§18/§11): пределы рендер-контура. MAX_JOB_ATTEMPTS --
+# ограничение ПОПЫТОК рендера одной цели (snapshot, format, profile);
+# после исчерпания -- честный 429 retry_limit_exceeded, очередь не
+# крутится вечно. MAX_OPEN_JOBS_PER_TENANT -- backpressure постановки
+# (§18: per-tenant quota); превышение -- 429 quota_exceeded.
+MAX_JOB_ATTEMPTS = 5
+MAX_OPEN_JOBS_PER_TENANT = 10
 
 
 def _new_id(prefix: str) -> str:
@@ -143,6 +168,16 @@ class UnsupportedFormatError(ValueError):
 class DocumentIntegrityError(RuntimeError):
     """T8-дух: расхождение content_sha256 при чтении готового файла --
     битые байты не выдаются за валидные."""
+
+
+class DocumentRetryLimitExceeded(RuntimeError):
+    """§18 retries: исчерпан MAX_JOB_ATTEMPTS попыток рендера цели
+    (snapshot, format, profile) -- честный 429 retry_limit_exceeded."""
+
+
+class DocumentQuotaExceeded(RuntimeError):
+    """§18 backpressure: tenant-очередь открытых jobs переполнена --
+    честный 429 quota_exceeded (не тихое переполнение очереди)."""
 
 
 # ── Записи ───────────────────────────────────────────────────────────
@@ -210,6 +245,9 @@ class DocumentRenditionRecord:
     job_id: Optional[str] = None
     created_by: Optional[str] = None
     created_at: str = field(default_factory=_now_iso)
+    # DOCLOG-5 (критерий завершения §19): все rendition одной ревизии
+    # несут ОДИН snapshot hash из registry-метаданных снимка.
+    snapshot_payload_sha256: str = ""
     # Байты -- только в Memory-реестре (dev/тесты); durable-слой хранит
     # их в object store (content-addressed), как DOCLOG-1/2.
     content_bytes: Optional[bytes] = field(default=None, repr=False)
@@ -230,6 +268,7 @@ class DocumentRenditionRecord:
             "job_id": self.job_id,
             "created_by": self.created_by,
             "created_at": self.created_at,
+            "snapshot_payload_sha256": self.snapshot_payload_sha256,
         }
 
 
@@ -248,6 +287,12 @@ class DocumentJobRecord:
     created_by: Optional[str] = None
     created_at: str = field(default_factory=_now_iso)
     updated_at: str = field(default_factory=_now_iso)
+    # DOCLOG-5 (§11/§18): lease-поля worker'а и tenant для per-tenant
+    # concurrency. claimed_at/lease_expires_at ставятся воркером при
+    # захвате job'а; просроченный lease -- честный реклейм (AC08).
+    tenant_id: Optional[str] = None
+    claimed_at: Optional[str] = None
+    lease_expires_at: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -264,6 +309,9 @@ class DocumentJobRecord:
             "created_by": self.created_by,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "tenant_id": self.tenant_id,
+            "claimed_at": self.claimed_at,
+            "lease_expires_at": self.lease_expires_at,
         }
 
 
@@ -335,6 +383,11 @@ class DocumentRegistry(ABC):
         raise NotImplementedError
 
     def list_jobs(self, run_id: str) -> list[DocumentJobRecord]:  # pragma: no cover
+        raise NotImplementedError
+
+    def list_open_jobs(self, limit: int = 100) -> list[DocumentJobRecord]:  # pragma: no cover
+        """DOCLOG-5 (§11/§18): открытые (queued/rendering) jobs всего
+        контура в порядке FIFO -- очередь воркера + backpressure."""
         raise NotImplementedError
 
     def readiness_probe(self) -> dict[str, Any]:  # pragma: no cover - контракт
@@ -463,6 +516,17 @@ class MemoryDocumentRegistry(DocumentRegistry):
         with self._lock:
             jobs = [job for job in self._jobs.values() if job.run_id == run_id]
         return sorted(jobs, key=lambda item: (item.created_at, item.job_id))
+
+    def list_open_jobs(self, limit: int = 100) -> list[DocumentJobRecord]:
+        with self._lock:
+            open_states = (JOB_QUEUED, JOB_RENDERING)
+            jobs = [
+                job
+                for job in self._jobs.values()
+                if job.state in open_states
+            ]
+        jobs.sort(key=lambda item: (item.created_at, item.job_id))
+        return jobs[:limit]
 
     def readiness_probe(self) -> dict[str, Any]:
         return {"ok": True, "backend": "memory"}
@@ -643,7 +707,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
     _RENDITION_SELECT = (
         "SELECT rendition_id, revision_id, snapshot_id, run_id, format, "
         "redaction_profile, state, media_type, size_bytes, content_sha256, "
-        "storage_key, job_id, created_by, created_at FROM document_renditions"
+        "storage_key, job_id, created_by, created_at, "
+        "snapshot_payload_sha256 FROM document_renditions"
     )
 
     @staticmethod
@@ -663,6 +728,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
             job_id=row[11],
             created_by=row[12],
             created_at=row[13].isoformat() if row[13] else _now_iso(),
+            snapshot_payload_sha256=str(row[14] or ""),
         )
 
     def register_rendition(
@@ -673,13 +739,14 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "INSERT INTO document_renditions (rendition_id, revision_id, "
                 "snapshot_id, run_id, format, redaction_profile, state, "
                 "media_type, size_bytes, content_sha256, storage_key, job_id, "
-                "created_by, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, "
-                "%s, %s, %s, %s, %s, %s, %s) "
+                "created_by, created_at, snapshot_payload_sha256) VALUES "
+                "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "ON CONFLICT (snapshot_id, format, redaction_profile) "
                 "DO UPDATE SET state = EXCLUDED.state, media_type = "
                 "EXCLUDED.media_type, size_bytes = EXCLUDED.size_bytes, "
                 "content_sha256 = EXCLUDED.content_sha256, storage_key = "
-                "EXCLUDED.storage_key, job_id = EXCLUDED.job_id",
+                "EXCLUDED.storage_key, job_id = EXCLUDED.job_id, "
+                "snapshot_payload_sha256 = EXCLUDED.snapshot_payload_sha256",
                 (
                     rendition.rendition_id,
                     rendition.revision_id,
@@ -695,6 +762,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.job_id,
                     rendition.created_by,
                     rendition.created_at,
+                    rendition.snapshot_payload_sha256,
                 ),
             )
         return rendition
@@ -706,7 +774,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
             cur.execute(
                 "UPDATE document_renditions SET state = %s, media_type = %s, "
                 "size_bytes = %s, content_sha256 = %s, storage_key = %s, "
-                "job_id = %s WHERE rendition_id = %s",
+                "job_id = %s, snapshot_payload_sha256 = %s "
+                "WHERE rendition_id = %s",
                 (
                     rendition.state,
                     rendition.media_type,
@@ -714,6 +783,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.content_sha256,
                     rendition.storage_key,
                     rendition.job_id,
+                    rendition.snapshot_payload_sha256,
                     rendition.rendition_id,
                 ),
             )
@@ -756,7 +826,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
     _JOB_SELECT = (
         "SELECT job_id, run_id, snapshot_id, format, redaction_profile, "
         "revision_id, rendition_id, state, error_code, attempt, created_by, "
-        "created_at, updated_at FROM document_jobs"
+        "created_at, updated_at, tenant_id, claimed_at, lease_expires_at "
+        "FROM document_jobs"
     )
 
     @staticmethod
@@ -775,6 +846,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
             created_by=row[10],
             created_at=row[11].isoformat() if row[11] else _now_iso(),
             updated_at=row[12].isoformat() if row[12] else _now_iso(),
+            tenant_id=row[13],
+            claimed_at=row[14].isoformat() if row[14] else None,
+            lease_expires_at=row[15].isoformat() if row[15] else None,
         )
 
     def register_job(self, job: DocumentJobRecord) -> DocumentJobRecord:
@@ -782,8 +856,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
             cur.execute(
                 "INSERT INTO document_jobs (job_id, run_id, snapshot_id, "
                 "format, redaction_profile, revision_id, rendition_id, state, "
-                "error_code, attempt, created_by, created_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "error_code, attempt, created_by, created_at, updated_at, "
+                "tenant_id, claimed_at, lease_expires_at) VALUES (%s, %s, "
+                "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     job.job_id,
                     job.run_id,
@@ -798,6 +873,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     job.created_by,
                     job.created_at,
                     job.updated_at,
+                    job.tenant_id,
+                    job.claimed_at,
+                    job.lease_expires_at,
                 ),
             )
         return job
@@ -807,14 +885,16 @@ class PostgresDocumentRegistry(DocumentRegistry):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "UPDATE document_jobs SET state = %s, error_code = %s, "
-                "attempt = %s, rendition_id = %s, updated_at = %s "
-                "WHERE job_id = %s",
+                "attempt = %s, rendition_id = %s, updated_at = %s, "
+                "claimed_at = %s, lease_expires_at = %s WHERE job_id = %s",
                 (
                     job.state,
                     job.error_code,
                     job.attempt,
                     job.rendition_id,
                     job.updated_at,
+                    job.claimed_at,
+                    job.lease_expires_at,
                     job.job_id,
                 ),
             )
@@ -831,6 +911,17 @@ class PostgresDocumentRegistry(DocumentRegistry):
             cur.execute(
                 self._JOB_SELECT + " WHERE run_id = %s ORDER BY created_at, job_id",
                 (run_id,),
+            )
+            rows = cur.fetchall()
+        return [self._job_from_row(row) for row in rows]
+
+    def list_open_jobs(self, limit: int = 100) -> list[DocumentJobRecord]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._JOB_SELECT
+                + " WHERE state IN ('queued', 'rendering') "
+                "ORDER BY created_at, job_id LIMIT %s",
+                (limit,),
             )
             rows = cur.fetchall()
         return [self._job_from_row(row) for row in rows]
@@ -1058,6 +1149,15 @@ class DocumentDeliveryService:
         redaction_profile: str = DEFAULT_REDACTION_PROFILE,
         revision_id: Optional[str] = None,
     ) -> tuple[DocumentJobRecord, Optional[DocumentRenditionRecord]]:
+        """§10.3/§11/§17/§18, AC08/AC09: P0-форматы рендерятся
+        синхронно (пин DOCLOG-4), тяжёлые (HEAVY_RENDITION_FORMATS §7
+        P1) -- ТОЛЬКО через очередь (job queued; рендер выполняет
+        document_render_worker; §18: «тяжёлый PDF не создаётся
+        синхронно»). Идемпотентность (AC09): ready-цель возвращает
+        прежний job/rendition; АКТИВНАЯ (queued/rendering) -- тот же
+        job без нового задания; исчерпанные попытки -- честный
+        DocumentRetryLimitExceeded; переполненная tenant-очередь --
+        DocumentQuotaExceeded (§18 backpressure)."""
         from apps.api.artifact_store import artifact_content_sha256
 
         run_id = snapshot.research_run_id
@@ -1065,7 +1165,7 @@ class DocumentDeliveryService:
         spec = RENDITION_FORMATS.get(format)
         if spec is None:
             raise UnsupportedFormatError(
-                f"Формат {format!r} не входит в каталог P0 (§7)"
+                f"Формат {format!r} не входит в каталог P0+P1 (§7)"
             )
         existing = self.registry.find_rendition(
             snapshot.snapshot_id, format, redaction_profile
@@ -1081,15 +1181,49 @@ class DocumentDeliveryService:
             job = self.registry.get_job(existing.job_id)
             return job, existing
 
-        attempt = len(
-            [
+        prior_jobs = [
+            job
+            for job in self.registry.list_jobs(run_id)
+            if job.snapshot_id == snapshot.snapshot_id
+            and job.format == format
+            and job.redaction_profile == redaction_profile
+        ]
+        # AC09 (worker-режим): активное задание цели -- возврат ТОГО ЖЕ
+        # job (двойной клик / гонка polling'а не плодят очередь версий).
+        active = next(
+            (
                 job
-                for job in self.registry.list_jobs(run_id)
-                if job.snapshot_id == snapshot.snapshot_id
-                and job.format == format
-                and job.redaction_profile == redaction_profile
-            ]
-        ) + 1
+                for job in prior_jobs
+                if job.state in (JOB_QUEUED, JOB_RENDERING)
+            ),
+            None,
+        )
+        if active is not None:
+            return active, None
+        # §18 retries: попытки рендера цели ограничены (MAX_JOB_ATTEMPTS)
+        # -- честный отказ вместо вечной очереди.
+        if len(prior_jobs) >= MAX_JOB_ATTEMPTS:
+            raise DocumentRetryLimitExceeded(
+                "retry_limit_exceeded: исчерпаны попытки рендера "
+                f"({len(prior_jobs)}/{MAX_JOB_ATTEMPTS}) для "
+                f"{format!r}; перечитайте версию или обратитесь в "
+                "поддержку"
+            )
+        # §18 backpressure: per-tenant квота ОТКРЫТЫХ jobs (вся очередь
+        # контура, не только этот run).
+        tenant_id = getattr(subject, "tenant_id", None) or None
+        open_jobs = self.registry.list_open_jobs()
+        tenant_open = [
+            job for job in open_jobs if (job.tenant_id or None) == tenant_id
+        ]
+        if len(tenant_open) >= MAX_OPEN_JOBS_PER_TENANT:
+            raise DocumentQuotaExceeded(
+                "quota_exceeded: очередь открытых заданий tenant "
+                f"{tenant_id or 'default'} переполнена "
+                f"({len(tenant_open)}/{MAX_OPEN_JOBS_PER_TENANT}); "
+                "повторите позднее"
+            )
+        attempt = len(prior_jobs) + 1
         job = self.registry.register_job(
             DocumentJobRecord(
                 job_id=new_job_id(),
@@ -1102,52 +1236,76 @@ class DocumentDeliveryService:
                 state=JOB_QUEUED,
                 attempt=attempt,
                 created_by=getattr(subject, "subject_id", None),
+                tenant_id=tenant_id,
             )
         )
+        if format in HEAVY_RENDITION_FORMATS:
+            # §18: тяжёлый рендер -- асинхронный; 202 queued, rendition
+            # появится после stage+commit worker'ом (AC08: никаких
+            # broken ready refs по построению).
+            return job, None
         job = self.registry.update_job(
             replace_dataclass(job, state=JOB_RENDERING)
         )
         try:
             content = _render_snapshot_by_format(snapshot, format)
         except UnsupportedFormatError:
-            job = self.registry.update_job(
-                replace_dataclass(job, state=JOB_FAILED, error_code="unsupported_format")
-            )
+            job = self.fail_render(job, "unsupported_format")
             raise
         except Exception:
-            job = self.registry.update_job(
-                replace_dataclass(job, state=JOB_FAILED, error_code="render_failed")
-            )
-            if existing is not None:
-                self.registry.update_rendition(
-                    replace_dataclass(
-                        existing, state=RENDITION_FAILED, job_id=job.job_id
-                    )
-                )
+            job = self.fail_render(job, "render_failed")
             return job, None
+        job, rendition = self.complete_render(job, spec, content, snapshot)
+        return job, rendition
 
+    # -- финализация рендера (общий код AC08 для sync-пути и worker'а) --
+
+    def complete_render(
+        self,
+        job: DocumentJobRecord,
+        spec: Any,
+        content: bytes,
+        snapshot: ReportSnapshot,
+    ) -> tuple[DocumentJobRecord, DocumentRenditionRecord]:
+        """Готовность ТОЛЬКО в порядке AC08: stage байтов -> commit в
+        object store -> register/update rendition (с ЕДИНЫМ snapshot
+        hash -- критерий завершения §19) -> job ready. Crash на любом
+        шаге оставляет job в явном состоянии без broken ready refs."""
+        from apps.api.artifact_store import artifact_content_sha256
+
+        existing = self.registry.find_rendition(
+            job.snapshot_id, job.format, job.redaction_profile
+        )
         staged = self.objects.stage_bytes(content, spec.media_type)
         storage_key = self.objects.commit_staged(staged)
         rendition = DocumentRenditionRecord(
             rendition_id=(
-                existing.rendition_id if existing is not None else new_rendition_id()
+                existing.rendition_id
+                if existing is not None
+                else new_rendition_id()
             ),
             revision_id=(
-                revision_id
-                or (existing.revision_id if existing is not None else "")
+                existing.revision_id
+                if existing is not None
+                else (job.revision_id or "")
             ),
-            snapshot_id=snapshot.snapshot_id,
-            run_id=run_id,
-            format=format,
-            redaction_profile=redaction_profile,
+            snapshot_id=job.snapshot_id,
+            run_id=job.run_id,
+            format=job.format,
+            redaction_profile=job.redaction_profile,
             state=RENDITION_READY,
             media_type=spec.media_type,
             size_bytes=len(content),
             content_sha256=artifact_content_sha256(content),
             storage_key=storage_key,
             job_id=job.job_id,
-            created_by=getattr(subject, "subject_id", None),
-            content_bytes=content if isinstance(self.registry, MemoryDocumentRegistry) else None,
+            created_by=job.created_by,
+            snapshot_payload_sha256=snapshot.payload_sha256 or "",
+            content_bytes=(
+                content
+                if isinstance(self.registry, MemoryDocumentRegistry)
+                else None
+            ),
         )
         if existing is not None:
             rendition = self.registry.update_rendition(rendition)
@@ -1159,6 +1317,26 @@ class DocumentDeliveryService:
             )
         )
         return job, rendition
+
+    def fail_render(
+        self, job: DocumentJobRecord, error_code: str
+    ) -> DocumentJobRecord:
+        """Честная неудача попытки: job failed + error_code; существующая
+        failed rendition (если была) помечается failed с этим job --
+        готовые байты НЕ выдаются (AC08/§10.3)."""
+        job = self.registry.update_job(
+            replace_dataclass(job, state=JOB_FAILED, error_code=error_code)
+        )
+        existing = self.registry.find_rendition(
+            job.snapshot_id, job.format, job.redaction_profile
+        )
+        if existing is not None:
+            self.registry.update_rendition(
+                replace_dataclass(
+                    existing, state=RENDITION_FAILED, job_id=job.job_id
+                )
+            )
+        return job
 
     def get_job(
         self, job_id: str, subject: Any, *, session_id: str = ""

@@ -1049,12 +1049,23 @@ MIGRATION_STATEMENTS_0010: tuple[str, ...] = (
     "ON document_jobs (snapshot_id)",
 )
 
+MIGRATION_STATEMENTS_0011: tuple[str, ...] = (
+    "ALTER TABLE document_renditions ADD COLUMN IF NOT EXISTS "
+    "snapshot_payload_sha256 TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE document_jobs ADD COLUMN IF NOT EXISTS tenant_id TEXT",
+    "ALTER TABLE document_jobs ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ",
+    "ALTER TABLE document_jobs ADD COLUMN IF NOT EXISTS lease_expires_at TIMESTAMPTZ",
+    "CREATE INDEX IF NOT EXISTS idx_document_jobs_state "
+    "ON document_jobs (state, created_at)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
     + MIGRATION_STATEMENTS_0005 + MIGRATION_STATEMENTS_0006
     + MIGRATION_STATEMENTS_0007 + MIGRATION_STATEMENTS_0008
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
+    + MIGRATION_STATEMENTS_0011
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1070,6 +1081,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0008_doclog2_snapshots.sql", MIGRATION_STATEMENTS_0008),
     ("0009_doclog3_telemetry_audit.sql", MIGRATION_STATEMENTS_0009),
     ("0010_doclog4_documents.sql", MIGRATION_STATEMENTS_0010),
+    ("0011_doclog5_render_formats.sql", MIGRATION_STATEMENTS_0011),
 )
 
 

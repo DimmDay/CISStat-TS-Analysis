@@ -53,6 +53,17 @@ redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
 # он объявлен ЯВНО, а сборка Dockerfile проверяет импорт (см. Dockerfile).
 psycopg[binary]>=3.1.0        # apps/api/research_runs.py PostgresResearchRunStore
 
+# DOCLOG-5 (spec_documentation_logging.md §7 очередь P1, §19 строка
+# DOCLOG-5): рендеры тяжёлых форматов документов. reportlab -- PDF с
+# кириллицей (встроенный TTF из allowlist, §7 «кириллица/встроенные
+# шрифты»); pyarrow -- Parquet typed-таблицы claims (§7 «Parquet +
+# schema.json»). openpyxl уже объявлен выше (file_loader); ленивые
+# импорты сохраняют dev-режим без БД/данных рабочим, но в образе Render
+# зависимости объявлены ЯВНО (урок F14: не полагаться на недоказанную
+# установку).
+reportlab>=4.0.0              # apps/api/document_renditions.py -- render_snapshot_pdf
+pyarrow>=14.0.0               # apps/api/document_renditions.py -- render_snapshot_parquet
+
 # UPLOAD-DB-4 (фаза B): драйверы БД-дорожки «Загрузки» в контуре API.
 # psycopg v3 уже объявлен выше (одна зависимость на два назначения --
 # скоуп-решение S1). SQLAlchemy -- универсальный слой ядра Фазы A
