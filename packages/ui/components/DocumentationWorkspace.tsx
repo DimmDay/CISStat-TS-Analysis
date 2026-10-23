@@ -98,6 +98,21 @@ function formatDate(value: string | null | undefined): string {
   return parsed.toLocaleString("ru-RU");
 }
 
+// ── Бейдж-заголовок области (§12.1) — точечная UI-правка (следом за
+// DOCLOG-4) ──
+// Дизайн РАМКИ и ФОНА — по образцу бейджа «Знакомство с платформой»
+// (RouteCard главной страницы): border-brand/60 + bg-brand-light/60 +
+// скругление rounded-xl, БЕЗ иконок (постановка тимлида: «рамка и фон,
+// а не шрифт»). Токены theme-adaptive (tailwind-preset → CSS-переменные):
+// в тёмной теме рамка → #4A4ED9/60, фон → #1E2034/60 — отдельные dark:
+// ревизии не требуются (контракт «имена классов не меняются — меняются
+// значения»). inline-block — рамка компактно обнимает текст, а не
+// растягивается на всю панель; шрифт заголовка h2 НЕ меняется
+// (text-sm font-semibold text-neutral-900 dark:text-neutral-100
+// остаются на h2 и наследуются бейджем).
+const SECTION_BADGE_FRAME =
+  "inline-block rounded-xl border border-brand/60 bg-brand-light/60 px-3 py-1.5";
+
 interface DocumentationWorkspaceProps {
   runId?: string | null;
   initialKind?: string | null;
@@ -327,7 +342,7 @@ export function DocumentationWorkspace({
         className={`hidden shrink-0 flex-col gap-1 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 lg:block lg:w-[240px]`}
       >
         <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Виды документов
+          <span className={SECTION_BADGE_FRAME}>Виды документов</span>
         </h2>
         {KIND_CODES.map((code) => {
           const counts = kindCounts.get(code) ?? { documents: 0, versions: 0, incomplete: 0 };
@@ -374,7 +389,9 @@ export function DocumentationWorkspace({
         className={`hidden shrink-0 flex-col gap-2 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 lg:block lg:w-[320px]`}
       >
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          {activeKind ? KIND_TITLES[activeKind] : "Версии"}
+          <span className={SECTION_BADGE_FRAME}>
+            {activeKind ? KIND_TITLES[activeKind] : "Версии"}
+          </span>
         </h2>
         <p role="status" data-testid="doclog4-status" className="text-xs text-neutral-500">
           {listStatus ?? ""}
@@ -440,7 +457,7 @@ export function DocumentationWorkspace({
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Предпросмотр
+            <span className={SECTION_BADGE_FRAME}>Предпросмотр</span>
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             {(["brief", "methodology", "basis"] as const).map((mode) => (

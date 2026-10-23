@@ -264,6 +264,9 @@ export { ProgressDrawer } from "./components/ProgressDrawer";
 export { DocumentationWorkspace } from "./components/DocumentationWorkspace";
 export { DocumentPreview } from "./components/DocumentPreview";
 export type { DocumentViewMode } from "./components/DocumentPreview";
+// Точечная UI-правка (следом за DOCLOG-4): фон страницы «Документы» —
+// усечённый сверху вариант фона «О платформе» (HomeWavesBackground).
+export { DocumentationWavesBackground } from "./components/DocumentationWavesBackground";
 export { ProgressCheckpointBar } from "./components/ProgressCheckpointBar";
 export { ProgressStageFlow } from "./components/ProgressStageFlow";
 export { ProgressTraceLog } from "./components/ProgressTraceLog";

@@ -39,6 +39,20 @@
 // белый фон. Шапка ProductHeader над меню правится так же (симметрично),
 // чтобы над/под строкой бейджей не было разделителей. Геометрия бейджей,
 // аккордеон и «Логи событий» не затронуты.
+//
+// Точечная правка UI (следом за DOCLOG-4) по постановке тимлида:
+// кнопка-ссылка «Документы» ЛОГИЧЕСКИ не может продолжать пайплайн
+// исследования (О платформе → Загрузка → … → Задачи), поэтому:
+//   1) она выведена из сетки бейджей-этапов (отделена от «Задач») и
+//      отцентрирована в ПРАВОЙ группе рядом с кнопкой «Прогресс»
+//      (смещена правее; «Прогресс» сохраняет крайний правый слот §4.1);
+//   2) её дизайн следует ПАТТЕРНУ КНОПКИ «Прогресс» (§4.1), а не паттерну
+//      модульных бейджей: неактивная — белый фон + тонкая (1px) фирменная
+//      рамка + индиго-текст; активная (pathname /documentation) — заливка
+//      индиго + белый ПОЛУЖИРНЫЙ текст (font-semibold). Геометрия та же
+//      (BADGE_BASE: pill rounded-full, h-9, адаптив px-3/[13px] ↔ px-4/sm),
+//      focus-visible ring. Без иконки — правка не добавляет пиктограмм.
+//      Навигационная семантика ссылки сохранена (href + aria-current).
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -66,10 +80,11 @@ const MODULES: ModuleLink[] = [
   { label: "Моделирование", href: "/modeling" },
   { label: "Прогнозирование", href: "/forecasting" },
   { label: "Задачи", href: "/tasks" },
-  // DOCLOG-4 (спека §12.1): раздел «Документы исследования» доступен из
-  // общей оболочки; открытие не меняет степпер и не создаёт документ
-  // фактом открытия (только ссылка на отфильтрованный список).
-  { label: "Документы", href: "/documentation" },
+  // Точечная правка UI (следом за DOCLOG-4): «Документы» БОЛЬШЕ НЕ в этой
+  // сетке — она логически не продолжает пайплайн исследования. Раздел
+  // остаётся доступен из общей оболочки (спека §12.1) ссылкой-кнопкой в
+  // правой группе рядом с «Прогрессом» (ниже), открытие не меняет степпер
+  // и не создаёт документ фактом открытия.
 ];
 
 // ── Классы бейджа ──────────────────────────────────────────────
@@ -118,6 +133,11 @@ export function ModuleNav() {
   // аккордеона не обрезалась.
   const handleDropdownEnter = useCallback(() => setDropdownOpen(true), []);
   const handleDropdownLeave = useCallback(() => setDropdownOpen(false), []);
+
+  // Точечная правка UI (следом за DOCLOG-4): активное состояние
+  // ссылки-кнопки «Документы» (та же механика isActive, что у модулей).
+  const isDocumentsActive =
+    pathname === "/documentation" || pathname.startsWith("/documentation/");
 
   return (
     <>
@@ -201,20 +221,38 @@ export function ModuleNav() {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setProgressOpen((previous) => !previous)}
-            aria-expanded={progressOpen}
-            aria-controls="progress-drawer"
-            className={
-              progressOpen
-                ? `${PROGRESS_TRIGGER_BASE} bg-brand font-semibold text-white`
-                : `${PROGRESS_TRIGGER_BASE} bg-white border border-brand text-brand hover:bg-brand-light/40`
-            }
-          >
-            <Workflow size={14} aria-hidden="true" />
-            <span className="hidden sm:inline">Прогресс</span>
-          </button>
+          {/* ── Правая группа: «Документы» + «Прогресс» ──
+              Точечная правка UI (следом за DOCLOG-4): «Документы»
+              отцентрирована рядом с «Прогрессом» (items-center), смещена
+              правее относительно прежнего места в сетке бейджей;
+              «Прогресс» сохраняет крайний правый слот (§4.1). */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/documentation"
+              aria-current={isDocumentsActive ? "page" : undefined}
+              className={
+                isDocumentsActive
+                  ? `${PROGRESS_TRIGGER_BASE} bg-brand font-semibold text-white`
+                  : `${PROGRESS_TRIGGER_BASE} bg-white border border-brand text-brand hover:bg-brand-light/40`
+              }
+            >
+              Документы
+            </Link>
+            <button
+              type="button"
+              onClick={() => setProgressOpen((previous) => !previous)}
+              aria-expanded={progressOpen}
+              aria-controls="progress-drawer"
+              className={
+                progressOpen
+                  ? `${PROGRESS_TRIGGER_BASE} bg-brand font-semibold text-white`
+                  : `${PROGRESS_TRIGGER_BASE} bg-white border border-brand text-brand hover:bg-brand-light/40`
+              }
+            >
+              <Workflow size={14} aria-hidden="true" />
+              <span className="hidden sm:inline">Прогресс</span>
+            </button>
+          </div>
         </div>
       </nav>
 

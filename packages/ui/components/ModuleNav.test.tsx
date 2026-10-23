@@ -18,9 +18,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ModuleNav } from "./ModuleNav";
 
 // Мокаем usePathname — по умолчанию на /validation, чтобы не было
-// ложных срабатываний isActive на корневом пути.
+// ложных срабатываний isActive на корневом пути. Мок-функция изменяемая:
+// тест активного состояния «Документов» переключает pathname на
+// /documentation (имя с префиксом mock — требование jest.mock-хойстинга).
+const mockUsePathname = jest.fn(() => "/validation");
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/validation",
+  usePathname: () => mockUsePathname(),
 }));
 
 // ModuleNav (PROGR-4): кнопка «Прогресс» рендерит ProgressDrawer, который
@@ -33,7 +36,9 @@ const NAV_LABEL = /Навигация по модулям анализа/i;
 
 // Открытие панели «Прогресс» триггит fetch трассы — глушим сеть, чтобы
 // тесты кнопки не зависели от бэкенда (панель best-effort, §6.1).
+// usePathname возвращаем к дефолту /validation (изолированность тестов).
 beforeEach(() => {
+  mockUsePathname.mockImplementation(() => "/validation");
   global.fetch = jest.fn().mockResolvedValue({ ok: false, json: () => Promise.resolve({}) }) as jest.Mock;
 });
 
@@ -72,19 +77,23 @@ describe("ModuleNav", () => {
 
   // ── Бейджи-«таблетки» (Task w/n, образец Apple localnav) ────────
 
-  it("renders exactly 9 clickable pill badges (main menu items)", () => {
+  it("renders exactly 8 clickable pill badges in the pipeline grid (Документы выведен из пайплайна)", () => {
     const { container } = render(<ModuleNav />);
-    const badges = getBadges(container);
-    // DOCLOG-4 (спека §12.1): к оболочке добавлен раздел «Документы» --
-    // 8 прежних бейджей + «Документы» (9).
-    expect(badges).toHaveLength(9);
-    // Каждая бейдж-ссылка ведёт на свой маршрут.
-    const hrefs = badges.map((b) => b.getAttribute("href"));
+    // Точечная правка UI (следом за DOCLOG-4): «Документы» логически не
+    // продолжает пайплайн исследования — она больше НЕ бейдж сетки
+    // этапов (Загрузка → … → Задачи), а отдельная кнопка у «Прогресса».
+    const row = container.querySelector("[class*='grid-flow-col']");
+    const gridBadges = Array.from(row?.querySelectorAll("a") ?? []).filter((a) =>
+      a.className.includes("rounded-full"),
+    );
+    expect(gridBadges).toHaveLength(8);
+    // Каждая бейдж-ссылка ведёт на свой маршрут; /documentation в сетке нет.
+    const hrefs = gridBadges.map((b) => b.getAttribute("href"));
     expect(hrefs).toEqual([
       "/", "/upload", "/validation", "/preprocessing",
       "/eda", "/modeling", "/forecasting", "/tasks",
-      "/documentation",
     ]);
+    expect(hrefs).not.toContain("/documentation");
   });
 
   it("badge row uses the equal-width grid contract (inline-grid + grid-flow-col + auto-cols-fr)", () => {
@@ -312,6 +321,79 @@ describe("ModuleNav", () => {
     expect(nav.className).not.toContain("border-neutral-200");
     // Фон навигации не изменился.
     expect(nav.className).toContain("bg-white");
+  });
+
+  // ── Кнопка-ссылка «Документы» рядом с «Прогрессом» ──────────────
+  // Точечная правка UI (следом за DOCLOG-4) по постановке тимлида:
+  // «Документы» логически не может продолжать пайплайн исследования
+  // (О платформе/Загрузка/Валидация/…/Задачи), поэтому она отделяется
+  // от вкладки «Задачи», отцентрируется рядом с кнопкой «Прогресс»
+  // (смещается правее), а её дизайн следует паттерну кнопки «Прогресс»:
+  // неактивная — белый фон + тонкая (1px) фирменная рамка + индиго-текст,
+  // активная — заливка индиго + белый полужирный текст.
+
+  it("«Документы» — ссылка вне ряда бейджей пайплайна (отделена от «Задач»)", () => {
+    const { container } = render(<ModuleNav />);
+    const link = screen.getByText("Документы").closest("a");
+    expect(link).not.toBeNull();
+    expect(link).toHaveAttribute("href", "/documentation");
+    // НЕ в сетке равных ширин (row.grid-flow-col) — вне пайплайна.
+    const row = container.querySelector("[class*='grid-flow-col']");
+    expect(row?.contains(link ?? null)).toBe(false);
+  });
+
+  it("«Документы» отцентрирована в правой группе рядом с «Прогрессом» (первая в группе, Прогресс — крайний справа)", () => {
+    render(<ModuleNav />);
+    const link = screen.getByText("Документы").closest("a");
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    const group = link?.parentElement;
+    // Общая группа справа: оба элемента в одном flex-контейнере.
+    expect(group?.contains(btn ?? null)).toBe(true);
+    expect(group?.className).toContain("flex");
+    expect(group?.className).toContain("items-center");
+    // «Документы» — ПЕРВАЯ в группе (левее «Прогресса»), «Прогресс»
+    // сохраняет крайний правый слот (§4.1).
+    expect(group?.firstElementChild).toBe(link);
+  });
+
+  it("дизайн по паттерну «Прогресс»: pill h-9 + rounded-full + whitespace-nowrap + focus-visible", () => {
+    render(<ModuleNav />);
+    const link = screen.getByText("Документы").closest("a");
+    expect(link?.className).toContain("h-9");
+    expect(link?.className).toContain("rounded-full");
+    expect(link?.className).toContain("whitespace-nowrap");
+    expect(link?.className).toContain("focus-visible");
+    expect(link?.className).not.toContain("border-2");
+  });
+
+  it("неактивное состояние: bg-white + тонкая border-brand + text-brand (паттерн «Прогресс»)", () => {
+    render(<ModuleNav />); // usePathname = /validation → «Документы» неактивна
+    const link = screen.getByText("Документы").closest("a");
+    expect(link?.className).toContain("bg-white");
+    expect(link?.className).toContain("border-brand");
+    expect(link?.className).toContain("text-brand");
+    // Сплошной заливки и белого текста нет (токены с границами слов).
+    expect(link?.className.match(/(?:^|\s)bg-brand(?:\s|$)/)).toBeNull();
+    expect(link?.className.match(/(?:^|\s)text-white(?:\s|$)/)).toBeNull();
+  });
+
+  it("активное состояние на /documentation: bg-brand + text-white + font-semibold + aria-current (паттерн «Прогресс»)", () => {
+    mockUsePathname.mockReturnValue("/documentation");
+    render(<ModuleNav />);
+    const link = screen.getByText("Документы").closest("a");
+    // Токены с границами слова: bg-brand ≠ bg-brand-light (hover).
+    expect(link?.className.match(/(?:^|\s)bg-brand(?:\s|$)/)).not.toBeNull();
+    expect(link?.className.match(/(?:^|\s)text-white(?:\s|$)/)).not.toBeNull();
+    // semibold «Прогресса», а не font-medium модульных бейджей.
+    expect(link?.className).toContain("font-semibold");
+    expect(link?.className).not.toContain("font-medium");
+    expect(link).toHaveAttribute("aria-current", "page");
+  });
+
+  it("без иконки — текстовая кнопка (правка не добавляет пиктограмм)", () => {
+    render(<ModuleNav />);
+    const link = screen.getByText("Документы").closest("a");
+    expect(link?.querySelector("svg")).toBeNull();
   });
 
   it("does NOT render 'Навигатор' tab (renamed to 'О платформе' in Task 25)", () => {
