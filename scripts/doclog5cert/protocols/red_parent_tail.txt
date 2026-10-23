@@ -1,0 +1,25 @@
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestParquetOracle::test_d5o16_parquet_roundtrip_typed_schema
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestParquetOracle::test_d5o17_parquet_rowcount_and_null_preserved
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestParquetOracle::test_d5o18_parquet_deterministic_bytes
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestParquetOracle::test_d5o19_parquet_dependency_honest
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o20_svg_wellformed_xml
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o21_svg_no_script_no_xlink_no_external
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o22_svg_hostile_label_escaped
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o23_svg_deterministic_bytes
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o24_svg_empty_series_honest
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestSvgOracle::test_d5o25_svg_fixed_light_theme_and_size
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestPngOracle::test_d5o26_png_signature_and_structure
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestPngOracle::test_d5o27_png_pil_opens_with_size
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestPngOracle::test_d5o28_png_deterministic_bytes
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o29_zip_members_exact_set
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o30_zip_manifest_checksums_match_members
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o31_zip_manifest_no_self_hash
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o32_zip_fixed_datetime_deterministic
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o33_zip_data_not_included_honest
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o34_zip_no_path_traversal
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o35_zip_report_member_is_canonical_snapshot
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o36_facts_match_across_formats
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o37_format_hashes_all_differ
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o38_chart_spec_series_from_own_data
+ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o39_claims_table_schema_types
+============================== 73 errors in 1.30s ==============================

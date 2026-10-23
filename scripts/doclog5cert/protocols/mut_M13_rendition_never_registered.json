@@ -1,0 +1,12 @@
+{
+ "name": "M13_rendition_never_registered",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog4_document_delivery.py::TestDocumentJobs::test_rendition_idempotent_no_duplicate_jobs\nFAILED tests/api/test_doclog4_document_delivery.py::TestDocumentJobs::test_different_format_separate_rendition\nFAILED tests/api/test_doclog4_document_delivery.py::TestDocumentJobs::test_renderer_failure_job_failed_science_untouched\nFAILED tests/api/test_doclog4_document_delivery.py::TestDocumentationRoutesAuth::test_owner_full_path_list_create_preview_rendition_content\nFAILED tests/api/test_doclog4_document_delivery.py::TestDeliveryAudit::test_download_triple_distinct_and_ordered\n======================== 12 failed, 97 passed in 7.38s =========================",
+ "oracle_tail": "FAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o42_p0_and_p1_share_same_snapshot_hash\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o44_ready_dup_same_rendition_no_rerender\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o45_content_download_integrity\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAc08FaultInjection::test_d5o48_register_crash_no_broken_refs_then_recover\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestCancelSemantics::test_d5o60_cancel_race_probe_documented\n======================== 6 failed, 67 passed in 10.40s =========================",
+ "restored": true
+}

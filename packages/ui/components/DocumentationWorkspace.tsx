@@ -345,11 +345,13 @@ export function DocumentationWorkspace({
       aria-label="Документы исследования"
     >
       {/* Область 1: этапы/виды документов (§12.1: 220-260px desktop).
-          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6.
+          Маркер doclog4-badge — носитель scoped-ревизии тёмной темы
+          (весь текст бейджа белый; globals.css, гвард doclog4-badge-dark). */}
       <nav
         data-testid="doclog4-kind-list"
         aria-label="Виды документов"
-        className={`hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]`}
+        className={`doclog4-badge hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]`}
       >
         <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           Виды документов
@@ -393,11 +395,12 @@ export function DocumentationWorkspace({
       </nav>
 
       {/* Область 2: список версий (§12.1: 300-360px desktop).
-          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6;
+          маркер doclog4-badge — см. область 1. */}
       <section
         data-testid="doclog4-version-list"
         aria-label="Версии документа"
-        className={`hidden shrink-0 flex-col gap-2 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[320px]`}
+        className={`doclog4-badge hidden shrink-0 flex-col gap-2 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[320px]`}
       >
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           {activeKind ? KIND_TITLES[activeKind] : "Версии"}
@@ -457,11 +460,12 @@ export function DocumentationWorkspace({
       </section>
 
       {/* Область 3: предпросмотр (оставшееся пространство; fullscreen §12.1).
-          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6;
+          маркер doclog4-badge — см. область 1. */}
       <section
         data-testid="doclog4-preview-pane"
         aria-label="Предпросмотр документа"
-        className={`flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-4 pb-6 ${
+        className={`doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-4 pb-6 ${
           fullscreen ? "fixed inset-4 z-50 overflow-auto" : "lg:flex-1"
         }`}
       >

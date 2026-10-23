@@ -1,0 +1,12 @@
+{
+ "name": "M24_zip_fixed_date_changed",
+ "kind": "battle",
+ "file": "document_renditions.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog5_formats_worker.py ............................... [ 28%]\n..............................                                           [ 55%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 81%]\n....................                                                     [100%]\n\n============================= 109 passed in 7.67s ==============================",
+ "oracle_tail": "scripts/doclog5cert/test_d5cert_oracle_unit.py ......................... [ 81%]\n......F.......                                                           [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o32_zip_fixed_datetime_deterministic\n======================== 1 failed, 73 passed in 10.44s =========================",
+ "restored": true
+}

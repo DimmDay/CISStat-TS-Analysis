@@ -1,0 +1,12 @@
+{
+ "name": "M18_heavy_rendered_sync",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog5_formats_worker.py::TestWorkerFailuresAndRetries::test_dependency_unavailable_is_terminal\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerFailuresAndRetries::test_snapshot_unavailable_honest_terminal\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerLimits::test_batch_limit_backpressure_keeps_jobs_queued\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerLimits::test_per_tenant_limit_defers_same_tenant\nFAILED tests/api/test_doclog5_formats_worker.py::TestHTTPHeavyFormats::test_post_heavy_returns_202_queued_with_status_url\n======================== 13 failed, 96 passed in 7.38s =========================",
+ "oracle_tail": "FAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o54_retry_limit_boundary_and_429\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o55_retry_429_http_mapping_code\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o56_quota_exceeded_429_and_other_tenant_ok\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o57_quota_429_http_mapping_code\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestCancelSemantics::test_d5o58_cancel_queued_worker_skips\n======================== 13 failed, 60 passed in 9.88s =========================",
+ "restored": true
+}

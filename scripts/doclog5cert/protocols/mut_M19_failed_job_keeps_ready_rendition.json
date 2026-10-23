@@ -1,0 +1,12 @@
+{
+ "name": "M19_failed_job_keeps_ready_rendition",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": true,
+ "classification": "SURVIVED",
+ "repo_tail": "tests/api/test_doclog5_formats_worker.py ............................... [ 28%]\n..............................                                           [ 55%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 81%]\n....................                                                     [100%]\n\n============================= 109 passed in 7.34s ==============================",
+ "oracle_tail": "scripts/doclog5cert/test_d5cert_oracle_api.py ........................   [ 32%]\nscripts/doclog5cert/test_d5cert_oracle_static.py ..........              [ 46%]\nscripts/doclog5cert/test_d5cert_oracle_unit.py ......................... [ 80%]\n..............                                                           [100%]\n\n============================= 73 passed in 11.01s ==============================",
+ "restored": true
+}

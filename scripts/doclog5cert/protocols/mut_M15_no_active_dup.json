@@ -1,0 +1,12 @@
+{
+ "name": "M15_no_active_dup",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 81%]\n....................                                                     [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_duplicate_request_while_active_returns_same_job\n======================== 1 failed, 108 passed in 7.17s =========================",
+ "oracle_tail": "..............                                                           [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o43_active_dup_returns_same_job\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o55_retry_429_http_mapping_code\n======================== 2 failed, 71 passed in 10.41s =========================",
+ "restored": true
+}

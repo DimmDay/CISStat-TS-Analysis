@@ -1,0 +1,10 @@
+{
+ "total": 30,
+ "DUAL-KILLED": 17,
+ "REPO-ONLY": 3,
+ "ORACLE-ONLY": 6,
+ "SURVIVED": 4,
+ "PATCH-FAIL": 0,
+ "RESTORE-FAIL": 0,
+ "controls_alive": 3
+}

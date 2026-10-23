@@ -1,0 +1,12 @@
+{
+ "name": "M16_retry_limit_off_by_one",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "....................                                                     [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerLimits::test_retry_limit_exceeded_429_after_max_attempts\nFAILED tests/api/test_doclog5_formats_worker.py::TestHTTPHeavyFormats::test_retry_limit_exceeded_maps_429\n======================== 2 failed, 107 passed in 7.09s =========================",
+ "oracle_tail": "..............                                                           [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o54_retry_limit_boundary_and_429\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestRetryLimitAndQuota::test_d5o55_retry_429_http_mapping_code\n======================== 2 failed, 71 passed in 10.54s =========================",
+ "restored": true
+}

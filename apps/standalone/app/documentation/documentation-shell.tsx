@@ -27,6 +27,14 @@
 //      байт-равно главной странице. Прежняя правка «без своей подложки,
 //      24px обеспечивает main» давала контенту 24px вместо 48px и
 //      НЕ соответствовала эталону «О платформе» — исправлено.
+//   4. ФОН НИЖЕ БЕЙДЖЕЙ +24px (DOCLOG-4-UI-FIX-3, п.1 постановки): от
+//      нижней границы бейджей до нижней границы фоновой коробки —
+//      расстояние 24px (pb-6 на обёртке контента); высота фоновой
+//      коробки увеличена на 24px (root растёт за счёт потока, фон
+//      absolute inset-0 заполняет). Инсет стоит на ОБЁРТКЕ, а не на
+//      бейджах, — полоса волн ниже бейджей сохраняется при любом
+//      динамическом содержимом областей (списки версий/предпросмотр
+//      рендерятся условно).
 //
 // Серверный компонент без «use client» — только разметка, без состояния;
 // клиентский workspace подключается в page.tsx под Suspense.
@@ -38,7 +46,7 @@ export function DocumentationPageShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative isolate -mt-6 pt-6 mx-auto w-full max-w-[1600px]">
       <DocumentationWavesBackground />
-      <div className="relative px-6">
+      <div className="relative px-6 pb-6">
         <header className="mb-4">
           <h1 className="text-xl font-semibold text-brand">
             Документы исследования

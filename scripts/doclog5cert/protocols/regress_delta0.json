@@ -1,0 +1,9 @@
+{
+ "target": "ebbfa87+cert (продукт = ebbfa87)",
+ "base": "2caf08e",
+ "target_failed": 103,
+ "base_failed": 103,
+ "only_in_target": [],
+ "only_in_base": [],
+ "delta0_identical": true
+}

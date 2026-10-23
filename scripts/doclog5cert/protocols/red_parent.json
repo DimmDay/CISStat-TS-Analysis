@@ -1,0 +1,16 @@
+{
+ "parent": "2caf08e",
+ "exit_code": 1,
+ "expected": "collection errors / failures (corpus RED)",
+ "is_red": true,
+ "tail": [
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o33_zip_data_not_included_honest",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o34_zip_no_path_traversal",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestZipOracle::test_d5o35_zip_report_member_is_canonical_snapshot",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o36_facts_match_across_formats",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o37_format_hashes_all_differ",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o38_chart_spec_series_from_own_data",
+  "ERROR scripts/doclog5cert/test_d5cert_oracle_unit.py::TestAc03CrossFormat::test_d5o39_claims_table_schema_types",
+  "============================== 73 errors in 1.30s =============================="
+ ]
+}

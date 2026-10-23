@@ -1,0 +1,12 @@
+{
+ "name": "M14_p1_snapshot_hash_empty",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog5_formats_worker.py::TestCrossFormatFactsConsistency::test_renditions_share_single_snapshot_hash\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_worker_run_once_renders_queued_job_ready\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_all_heavy_formats_end_to_end\n======================== 3 failed, 106 passed in 7.34s =========================",
+ "oracle_tail": "..............                                                           [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o41_worker_completes_and_unified_hash\nFAILED scripts/doclog5cert/test_d5cert_oracle_api.py::TestAsyncHeavyFlow::test_d5o42_p0_and_p1_share_same_snapshot_hash\n======================== 2 failed, 71 passed in 10.43s =========================",
+ "restored": true
+}

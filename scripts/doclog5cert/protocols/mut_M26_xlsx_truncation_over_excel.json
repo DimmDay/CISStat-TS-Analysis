@@ -1,0 +1,12 @@
+{
+ "name": "M26_xlsx_truncation_over_excel",
+ "kind": "battle",
+ "file": "document_renditions.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 81%]\n....................                                                     [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog5_formats_worker.py::TestXlsxRender::test_xlsx_long_text_truncated_honestly\n======================== 1 failed, 108 passed in 7.05s =========================",
+ "oracle_tail": "..............                                                           [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog5cert/test_d5cert_oracle_unit.py::TestXlsxOracle::test_d5o10_xlsx_truncation_honest_with_marker\nFAILED scripts/doclog5cert/test_d5cert_oracle_unit.py::TestXlsxOracle::test_d5o11_xlsx_truncation_warned\n======================== 2 failed, 71 passed in 10.49s =========================",
+ "restored": true
+}

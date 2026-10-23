@@ -1,0 +1,42 @@
+{
+ "import_main": true,
+ "routes": 192,
+ "catalogs": true,
+ "migrations": 11,
+ "statements": 67,
+ "formats": [
+  "csv",
+  "html",
+  "json",
+  "jsonl",
+  "md",
+  "parquet",
+  "pdf",
+  "png",
+  "svg",
+  "xlsx",
+  "zip"
+ ],
+ "heavy": [
+  "parquet",
+  "pdf",
+  "png",
+  "svg",
+  "xlsx",
+  "zip"
+ ],
+ "max_job_attempts": 5,
+ "max_open_per_tenant": 10,
+ "lease_seconds": 120,
+ "worker_max_attempts": 5,
+ "health_worker": true,
+ "worker_config": {
+  "enabled": true,
+  "interval_seconds": 10,
+  "batch_size": 4,
+  "per_tenant_limit": 2,
+  "render_timeout_seconds": 60.0
+ },
+ "product_tree_clean": true,
+ "product_tree_status": ""
+}

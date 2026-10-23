@@ -81,6 +81,22 @@ describe("Standalone documentation page — точечные UI-правки DOC
     expect(content?.textContent).toContain("проверка");
   });
 
+  it("фон +24px ниже нижней границы бейджей: обёртка контента несёт pb-6 (высота фоновой коробки +24px, зазор динамико-устойчив)", () => {
+    const { container } = render(<DocumentationPageShell>проверка</DocumentationPageShell>);
+    const root = container.firstElementChild;
+    const content = root?.children[1];
+
+    // Постановка DOCLOG-4-UI-FIX-3 п.1: от нижней границы бейджей до
+    // границы фона — расстояние 24px; высота фона увеличена на 24px.
+    // pb-6 стоит на обёртке контента (root растёт за счёт потока), фон
+    // absolute inset-0 заполняет — полоса волн ниже бейджей сохраняется
+    // при любом динамическом содержимом.
+    expect(content?.className).toContain("pb-6");
+    // Фоновая коробка при этом своей подложки снизу не несёт (растёт
+    // содержимым, а не паддингом — иначе фон не дошёл бы до низа).
+    expect(root?.className).not.toMatch(/\bpb-\d/);
+  });
+
   it("контент остаётся над фоном: relative-обёртка содержимого после фона", () => {
     const { container } = render(<DocumentationPageShell>проверка</DocumentationPageShell>);
     const root = container.firstElementChild;

@@ -1,0 +1,12 @@
+{
+ "name": "M06_extra_attempt_before_terminal",
+ "kind": "battle",
+ "file": "document_render_worker.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": true,
+ "classification": "REPO-ONLY",
+ "repo_tail": "\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerFailuresAndRetries::test_render_crash_job_failed_no_broken_ready_refs\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerFailuresAndRetries::test_worker_auto_retry_bounded_by_max_attempts\nFAILED tests/api/test_doclog5_formats_worker.py::TestWorkerFailuresAndRetries::test_render_timeout_honest_failure_not_corrupt_file\n======================== 3 failed, 106 passed in 6.98s =========================",
+ "oracle_tail": "scripts/doclog5cert/test_d5cert_oracle_api.py ........................   [ 32%]\nscripts/doclog5cert/test_d5cert_oracle_static.py ..........              [ 46%]\nscripts/doclog5cert/test_d5cert_oracle_unit.py ......................... [ 80%]\n..............                                                           [100%]\n\n============================= 73 passed in 10.34s ==============================",
+ "restored": true
+}
