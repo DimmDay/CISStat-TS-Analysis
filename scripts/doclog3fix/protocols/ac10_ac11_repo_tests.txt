@@ -1,0 +1,35 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: cov-7.1.0, xdist-3.8.0, typeguard-4.6.0, syrupy-6.1.1, anyio-4.15.1, fugue-0.9.7
+collected 111 items / 78 deselected / 33 selected
+
+<Dir CISStat-TS-Analysis>
+  <Package tests>
+    <Dir api>
+      <Module test_doclog3_telemetry_audit.py>
+        <Class TestRedactionSentinels>
+          <Function test_message_channel[kv-password]>
+          <Function test_message_channel[dsn]>
+          <Function test_message_channel[bearer]>
+          <Function test_message_channel[api-key-header]>
+          <Function test_message_channel[cookie]>
+          <Function test_message_channel[signed-url]>
+          <Function test_message_channel[url-encoded]>
+          <Function test_message_channel[multiline]>
+          <Function test_message_channel[session-id]>
+          <Function test_message_channel[crlf-injection]>
+          <Function test_attribute_value_channel[kv-password]>
+          <Function test_attribute_value_channel[dsn]>
+          <Function test_attribute_value_channel[bearer]>
+          <Function test_attribute_value_channel[api-key-header]>
+          <Function test_attribute_value_channel[cookie]>
+          <Function test_attribute_value_channel[signed-url]>
+          <Function test_attribute_value_channel[url-encoded]>
+          <Function test_attribute_value_channel[multiline]>
+          <Function test_attribute_value_channel[session-id]>
+          <Function test_attribute_value_channel[crlf-injection]>
+          <Function test_sql_literal_attribute_dropped_by_allowlist>
+          <Function test_health_and_error_response_free_of_sentinels>

@@ -1,0 +1,45 @@
+{
+  "mutants": [
+    {
+      "id": "M29",
+      "file": "apps/api/telemetry.py",
+      "description": "telemetry INSERT: сдвиг severity_text/number (F-D2C1 класс)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 0,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.11s ===================",
+      "repo_tail": "======================== 96 passed, 1 warning in 2.96s =========================",
+      "verdict": "ORACLE-ONLY",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M30",
+      "file": "apps/api/security_audit.py",
+      "description": "audit INSERT: сдвиг actor_via/tenant_id (F-D2C1 класс)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 0,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.22s ===================",
+      "repo_tail": "======================== 96 passed, 1 warning in 3.07s =========================",
+      "verdict": "ORACLE-ONLY",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M31",
+      "file": "apps/api/telemetry.py",
+      "description": "PostgresTelemetrySink.write возвращает False (потеря записи)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 0,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.18s ===================",
+      "repo_tail": "======================== 96 passed, 1 warning in 3.11s =========================",
+      "verdict": "ORACLE-ONLY",
+      "restored_md5_ok": true
+    }
+  ],
+  "controls": [],
+  "passports_ok": true
+}

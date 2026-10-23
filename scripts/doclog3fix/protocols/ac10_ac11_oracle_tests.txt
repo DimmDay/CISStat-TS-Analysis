@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: cov-7.1.0, xdist-3.8.0, typeguard-4.6.0, syrupy-6.1.1, anyio-4.15.1, fugue-0.9.7
+collected 107 items / 86 deselected / 21 selected
+
+<Dir CISStat-TS-Analysis>
+  <Dir scripts>
+    <Dir doclog3cert>
+      <Module test_doclog3cert_oracle_api.py>
+        <Class TestSentinelBattery>
+          <Function test_message_channel_clean_everywhere>
+          <Function test_attribute_channel_allowlist_and_redaction>
+          <Function test_health_ops_content_is_facts_only>
+          <Function test_health_not_initialized_peeks>
+        <Function test_part3_sentinels_absent>
+      <Module test_doclog3cert_oracle_unit.py>
+        <Class TestEmitContract>
+          <Function test_nonfinite_duration_dropped>
+        <Function test_sql_sentinel_not_in_any_record>
+      <Module test_doclog3cert_oracle_unit2.py>
+        <Class TestPipelineResilience>
+          <Function test_sink_exception_spools_and_never_raises>

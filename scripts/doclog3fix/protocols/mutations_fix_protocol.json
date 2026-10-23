@@ -1,0 +1,111 @@
+{
+  "mutants": [
+    {
+      "id": "M29",
+      "file": "apps/api/telemetry.py",
+      "description": "telemetry INSERT: сдвиг severity_text/number (F-D2C1 класс)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 1,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.14s ===================",
+      "repo_tail": "=================== 2 failed, 109 passed, 1 warning in 2.99s ===================",
+      "verdict": "DUAL-KILLED",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M30",
+      "file": "apps/api/security_audit.py",
+      "description": "audit INSERT: сдвиг actor_via/tenant_id (F-D2C1 класс)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 1,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.08s ===================",
+      "repo_tail": "=================== 1 failed, 110 passed, 1 warning in 3.03s ===================",
+      "verdict": "DUAL-KILLED",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M31",
+      "file": "apps/api/telemetry.py",
+      "description": "PostgresTelemetrySink.write возвращает False (потеря записи)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 1,
+      "oracle_tail": "=================== 1 failed, 106 passed, 1 warning in 3.12s ===================",
+      "repo_tail": "=================== 2 failed, 109 passed, 1 warning in 2.99s ===================",
+      "verdict": "DUAL-KILLED",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M32",
+      "file": "apps/api/main.py",
+      "description": "N4: reorder -- телеметрия внешнее CORS (preflight получает X-Request-ID)",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 0,
+      "repo_rc": 1,
+      "oracle_tail": "======================== 107 passed, 1 warning in 3.10s ========================",
+      "repo_tail": "=================== 2 failed, 109 passed, 1 warning in 3.13s ===================",
+      "verdict": "REPO-ONLY",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M33",
+      "file": "apps/api/telemetry.py",
+      "description": "telemetry _INSERT_SQL: сдвиг severity_text/number в SQL",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 1,
+      "oracle_tail": "=================== 2 failed, 105 passed, 1 warning in 3.18s ===================",
+      "repo_tail": "=================== 3 failed, 108 passed, 1 warning in 3.14s ===================",
+      "verdict": "DUAL-KILLED",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "M34",
+      "file": "apps/api/security_audit.py",
+      "description": "audit _INSERT_SQL: сдвиг actor_via/tenant_id в SQL",
+      "applied": true,
+      "control": false,
+      "oracle_rc": 1,
+      "repo_rc": 1,
+      "oracle_tail": "=================== 2 failed, 105 passed, 1 warning in 3.18s ===================",
+      "repo_tail": "=================== 2 failed, 109 passed, 1 warning in 3.09s ===================",
+      "verdict": "DUAL-KILLED",
+      "restored_md5_ok": true
+    }
+  ],
+  "controls": [
+    {
+      "id": "C4",
+      "file": "tests/api/test_doclog3_telemetry_audit.py",
+      "description": "no-op: комментарий в repo-сюите",
+      "applied": true,
+      "control": true,
+      "oracle_rc": 0,
+      "repo_rc": 0,
+      "oracle_tail": "======================== 107 passed, 1 warning in 3.08s ========================",
+      "repo_tail": "======================== 111 passed, 1 warning in 3.01s ========================",
+      "verdict": "ALIVE",
+      "restored_md5_ok": true
+    },
+    {
+      "id": "C5",
+      "file": "apps/api/main.py",
+      "description": "no-op: комментарий в main.py",
+      "applied": true,
+      "control": true,
+      "oracle_rc": 0,
+      "repo_rc": 0,
+      "oracle_tail": "======================== 107 passed, 1 warning in 3.05s ========================",
+      "repo_tail": "======================== 111 passed, 1 warning in 3.09s ========================",
+      "verdict": "ALIVE",
+      "restored_md5_ok": true
+    }
+  ],
+  "passports_ok": true
+}
