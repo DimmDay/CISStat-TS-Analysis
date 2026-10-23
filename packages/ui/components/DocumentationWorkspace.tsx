@@ -347,7 +347,11 @@ export function DocumentationWorkspace({
       {/* Область 1: этапы/виды документов (§12.1: 220-260px desktop).
           Бейдж = вся область: рамка/фон эталона RouteCard + pb-6.
           Маркер doclog4-badge — носитель scoped-ревизии тёмной темы
-          (весь текст бейджа белый; globals.css, гвард doclog4-badge-dark). */}
+          (весь текст бейджа белый, специфичность правила (0,3,0) —
+          удвоенный маркер; globals.css, гвард doclog4-badge-dark).
+          FIX-4 п.3: hover строк темнеет (dark:hover:bg-black/30; прежний
+          dark:hover:bg-neutral-800 = #E3E5EA — почти белая поверхность
+          под белым текстом). */}
       <nav
         data-testid="doclog4-kind-list"
         aria-label="Виды документов"
@@ -369,7 +373,7 @@ export function DocumentationWorkspace({
               className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 isActive
                   ? "bg-brand font-medium text-white"
-                  : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"
               }`}
             >
               <span>
@@ -465,11 +469,14 @@ export function DocumentationWorkspace({
       <section
         data-testid="doclog4-preview-pane"
         aria-label="Предпросмотр документа"
-        className={`doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-4 pb-6 ${
+        className={`doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-3 pb-6 ${
           fullscreen ? "fixed inset-4 z-50 overflow-auto" : "lg:flex-1"
         }`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* FIX-4 п.1: строка шапки items-start — заголовок по верху строки,
+            как h2 бейджей 1/2 (паттерн: pt-3 + заголовок top-aligned);
+            прежний items-center опускал h2 к центру высоких пилюль. */}
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Предпросмотр
           </h2>
@@ -561,7 +568,7 @@ export function DocumentationWorkspace({
                   key={format}
                   type="button"
                   onClick={() => void handleBuild(format)}
-                  className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:bg-neutral-800 dark:text-neutral-200"
+                  className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:bg-white/10 dark:text-neutral-200"
                 >
                   {label}
                 </button>
