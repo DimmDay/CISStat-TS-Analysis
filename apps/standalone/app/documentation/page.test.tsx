@@ -1,6 +1,7 @@
 // apps/standalone/app/documentation/page.test.tsx
 //
-// Точечные UI-правки DOCLOG-4 на странице «Документы исследования»:
+// Точечные UI-правки DOCLOG-4 + полировка (следом за DOCLOG-4-UI-FIX)
+// на странице «Документы исследования»:
 //   1. Заголовок «Документы исследования» — брендовый индиго (text-brand;
 //      тёмная ревизия .dark .text-brand → brand-bright — автоматическая,
 //      utility-ревизия globals.css §3).
@@ -8,11 +9,15 @@
 //      (DocumentationWavesBackground, viewBox без верхней половины),
 //      подключён по паттерну главной: relative isolate -mt-6 pt-6, фон —
 //      первый ребёнок, позади контента.
-//   3. Отступы бейджей от краёв страницы (слева/справа) — 24px по паттерну
-//      сайта: инсет даёт <main class="px-6"> (24px), обёртка страницы
-//      НЕ добавляет собственной горизонтальной подложки (иначе отступ
-//      задублировался бы до 48px), ширина ограничена max-w-[1600px]
-//      с центрированием — тот же каркас, что у остальных вкладок.
+//   3. Отступы ТЕКСТА и БЕЙДЖЕЙ от границ страницы (слева/справа) — по
+//      паттерну главной страницы («О платформе»): собственные поля 24px
+//      (px-6) у обёртки КОНТЕНТА — как сетки бейджей px-6 на главной
+//      (HomeHero/HomeCapabilities/NavigatorHero: «px-6 — собственные
+//      поля от границ фоновой коробки»). Фоновая коробка (root) при
+//      этом остаётся БЕЗ горизонтальной подложки — её границы совпадают
+//      с content-box <main>, а контент ужат внутри на 24px с каждой
+//      стороны. Итог от страницы: текст/бейджи — 48px (24px <main px-6>
+//      + 24px px-6 контента), фон — 24px; байт-равно главной странице.
 //
 // Тест целится в DocumentationPageShell — синхронная статическая оболочка
 // страницы (каркас правок, documentation-shell.tsx; Next.js разрешает
@@ -53,15 +58,27 @@ describe("Standalone documentation page — точечные UI-правки DOC
     expect(svg).toHaveAttribute("viewBox", "0 800 1600 800");
   });
 
-  it("отступы бейджей 24px от краёв страницы: max-w-[1600px] + mx-auto, БЕЗ собственной гориз. подложки (инсет даёт main px-6)", () => {
+  it("фоновая коробка (root) без собственной гориз. подложки — её границы совпадают с content-box <main>", () => {
     const { container } = render(<DocumentationPageShell>проверка</DocumentationPageShell>);
     const root = container.firstElementChild;
 
     expect(root?.className).toContain("max-w-[1600px]");
     expect(root?.className).toContain("mx-auto");
-    // Дубль горизонтальной подложки на обёртке задвоил бы 24px до 48px —
-    // запрещено контрактом правки (24px обеспечивает <main class="px-6">).
+    // Подложка на фоновой коробке сдвинула бы и фон, и границы бокса —
+    // инсеты контента даёт обёртка содержимого (px-6), не root.
     expect(root?.className).not.toMatch(/\bpx-\d/);
+  });
+
+  it("инсеты текста и бейджей по паттерну главной: обёртка контента несёт собственные поля 24px (px-6)", () => {
+    const { container } = render(<DocumentationPageShell>проверка</DocumentationPageShell>);
+    const root = container.firstElementChild;
+    const content = root?.children[1];
+
+    expect(content?.className).toContain("relative");
+    // Паттерн главной страницы (сетка RouteCard/NavigatorHero): px-6 —
+    // собственные поля 24px контента от границ фоновой коробки.
+    expect(content?.className).toContain("px-6");
+    expect(content?.textContent).toContain("проверка");
   });
 
   it("контент остаётся над фоном: relative-обёртка содержимого после фона", () => {

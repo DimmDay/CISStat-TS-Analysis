@@ -98,20 +98,29 @@ function formatDate(value: string | null | undefined): string {
   return parsed.toLocaleString("ru-RU");
 }
 
-// ── Бейдж-заголовок области (§12.1) — точечная UI-правка (следом за
-// DOCLOG-4) ──
-// Дизайн РАМКИ и ФОНА — по образцу бейджа «Знакомство с платформой»
-// (RouteCard главной страницы): border-brand/60 + bg-brand-light/60 +
-// скругление rounded-xl, БЕЗ иконок (постановка тимлида: «рамка и фон,
-// а не шрифт»). Токены theme-adaptive (tailwind-preset → CSS-переменные):
-// в тёмной теме рамка → #4A4ED9/60, фон → #1E2034/60 — отдельные dark:
-// ревизии не требуются (контракт «имена классов не меняются — меняются
-// значения»). inline-block — рамка компактно обнимает текст, а не
-// растягивается на всю панель; шрифт заголовка h2 НЕ меняется
-// (text-sm font-semibold text-neutral-900 dark:text-neutral-100
-// остаются на h2 и наследуются бейджем).
-const SECTION_BADGE_FRAME =
-  "inline-block rounded-xl border border-brand/60 bg-brand-light/60 px-3 py-1.5";
+// ── Бейджи-области (§12.1) — полировка страницы «Документы» (следом за
+// DOCLOG-4-UI-FIX), контракт пересмотрен постановкой тимлида ──
+//
+// БЕЙДЖ — это НЕ чип-заголовок, а ВСЯ область целиком: заголовок «Виды
+// документов» + поле с границей вокруг него и списка документов (соседние
+// области «Версии»/«Предпросмотр» — такие же бейджи). Следствия:
+//   1. Заголовки h2 — ОБЫЧНЫЙ текст (чип-обёртка SECTION_BADGE_FRAME
+//      устранена); шрифт заголовков НЕ меняется (text-sm font-semibold
+//      text-neutral-900 dark:text-neutral-100 остаются на h2).
+//   2. РАМКА и ФОН больших бейджей — по эталону бейджа «Знакомство с
+//      платформой» (RouteCard главной страницы): border-brand/60 +
+//      bg-brand-light/60 + скругление rounded-xl. Прежние нейтральные
+//      рамка/фон (border-neutral-200 bg-white + dark:-ревизии) устранены.
+//      Токены theme-adaptive (tailwind-preset → CSS-переменные): в тёмной
+//      теме рамка → #4A4ED9/60, фон → #1E2034/60 — отдельные dark:
+//      ревизии не требуются (контракт «имена классов не меняются —
+//      меняются значения»).
+//   3. Нижний инсет 24px (pb-6) — у ВСЕХ трёх бейджей, даже при
+//      динамическом содержимом: класс стоит на самой области, поэтому
+//      полоса фона под контентом сохраняется в любом состоянии (пустой
+//      список, загрузка, таблица версий, предпросмотр). Состав полей
+//      записан явными непересекающимися утилитами (px-*/pt-*/pb-*),
+//      чтобы нижний инсет не зависел от порядка p-/pb- в CSS-выдаче.
 
 interface DocumentationWorkspaceProps {
   runId?: string | null;
@@ -335,14 +344,15 @@ export function DocumentationWorkspace({
       className="flex flex-col gap-4 lg:flex-row lg:items-stretch"
       aria-label="Документы исследования"
     >
-      {/* Область 1: этапы/виды документов (§12.1: 220-260px desktop) */}
+      {/* Область 1: этапы/виды документов (§12.1: 220-260px desktop).
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
       <nav
         data-testid="doclog4-kind-list"
         aria-label="Виды документов"
-        className={`hidden shrink-0 flex-col gap-1 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 lg:block lg:w-[240px]`}
+        className={`hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]`}
       >
         <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          <span className={SECTION_BADGE_FRAME}>Виды документов</span>
+          Виды документов
         </h2>
         {KIND_CODES.map((code) => {
           const counts = kindCounts.get(code) ?? { documents: 0, versions: 0, incomplete: 0 };
@@ -382,16 +392,15 @@ export function DocumentationWorkspace({
         )}
       </nav>
 
-      {/* Область 2: список версий (§12.1: 300-360px desktop) */}
+      {/* Область 2: список версий (§12.1: 300-360px desktop).
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
       <section
         data-testid="doclog4-version-list"
         aria-label="Версии документа"
-        className={`hidden shrink-0 flex-col gap-2 rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 lg:block lg:w-[320px]`}
+        className={`hidden shrink-0 flex-col gap-2 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[320px]`}
       >
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          <span className={SECTION_BADGE_FRAME}>
-            {activeKind ? KIND_TITLES[activeKind] : "Версии"}
-          </span>
+          {activeKind ? KIND_TITLES[activeKind] : "Версии"}
         </h2>
         <p role="status" data-testid="doclog4-status" className="text-xs text-neutral-500">
           {listStatus ?? ""}
@@ -447,17 +456,18 @@ export function DocumentationWorkspace({
         )}
       </section>
 
-      {/* Область 3: предпросмотр (оставшееся пространство; fullscreen §12.1) */}
+      {/* Область 3: предпросмотр (оставшееся пространство; fullscreen §12.1).
+          Бейдж = вся область: рамка/фон эталона RouteCard + pb-6. */}
       <section
         data-testid="doclog4-preview-pane"
         aria-label="Предпросмотр документа"
-        className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-4 pb-6 ${
           fullscreen ? "fixed inset-4 z-50 overflow-auto" : "lg:flex-1"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            <span className={SECTION_BADGE_FRAME}>Предпросмотр</span>
+            Предпросмотр
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             {(["brief", "methodology", "basis"] as const).map((mode) => (
