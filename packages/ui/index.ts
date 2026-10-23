@@ -258,6 +258,12 @@ export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { ActiveDataset } from "./context/AppShellContext";
 // Панель «Прогресс» (Task PROGR-4, spec_progress.md §6 + аддендум §4.1-4.2).
 export { ProgressDrawer } from "./components/ProgressDrawer";
+// DOCLOG-4 (спека §12, §19.1): раздел «Документы исследования» -- общее
+// представление поверх снимков DOCLOG-2 (состояния §12.3, негативные
+// состояния AC17; preview -- sandboxed iframe, §12.3/AC16).
+export { DocumentationWorkspace } from "./components/DocumentationWorkspace";
+export { DocumentPreview } from "./components/DocumentPreview";
+export type { DocumentViewMode } from "./components/DocumentPreview";
 export { ProgressCheckpointBar } from "./components/ProgressCheckpointBar";
 export { ProgressStageFlow } from "./components/ProgressStageFlow";
 export { ProgressTraceLog } from "./components/ProgressTraceLog";

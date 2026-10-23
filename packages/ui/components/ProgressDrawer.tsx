@@ -337,6 +337,22 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           />
         )}
 
+        {/* DOCLOG-4 (спека §12.1): «Из Прогресса -- Открыть отчёт истории»
+            и переход к документам; открытие раздела не меняет степпер и
+            не создаёт документ фактом открытия. Ссылка только при запуске
+            (run_id трассы); паттерн ссылок панели -- onClose сохранён. */}
+        {trace.runId && (
+          <div className="px-4 pb-2">
+            <Link
+              href={`/documentation?run=${encodeURIComponent(trace.runId)}`}
+              onClick={onClose}
+              className="text-sm text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            >
+              Открыть отчёт истории →
+            </Link>
+          </div>
+        )}
+
         {/* Секция «Наставник» (§6.2/§7.1) -- внутри панели, N-4. */}
         {trace.runId && mentorOpen && <MentorPanel runId={trace.runId} />}
 

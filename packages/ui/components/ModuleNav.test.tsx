@@ -72,15 +72,18 @@ describe("ModuleNav", () => {
 
   // ── Бейджи-«таблетки» (Task w/n, образец Apple localnav) ────────
 
-  it("renders exactly 8 clickable pill badges (main menu items)", () => {
+  it("renders exactly 9 clickable pill badges (main menu items)", () => {
     const { container } = render(<ModuleNav />);
     const badges = getBadges(container);
-    expect(badges).toHaveLength(8);
+    // DOCLOG-4 (спека §12.1): к оболочке добавлен раздел «Документы» --
+    // 8 прежних бейджей + «Документы» (9).
+    expect(badges).toHaveLength(9);
     // Каждая бейдж-ссылка ведёт на свой маршрут.
     const hrefs = badges.map((b) => b.getAttribute("href"));
     expect(hrefs).toEqual([
       "/", "/upload", "/validation", "/preprocessing",
       "/eda", "/modeling", "/forecasting", "/tasks",
+      "/documentation",
     ]);
   });
 

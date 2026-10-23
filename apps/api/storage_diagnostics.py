@@ -66,6 +66,10 @@ COMPONENT_TELEMETRY = "telemetry"
 # DOCLOG-3 (§14.1): отдельный durable security audit
 # (security_audit_records) -- НЕ смешивается с sampling техлогов.
 COMPONENT_AUDIT = "audit"
+# DOCLOG-4 (§19): слой документов/выдачи (documents/revisions/
+# renditions/jobs) -- адаптер над снимками; байты rendition -- в том
+# же object store (документный слой).
+COMPONENT_DOCUMENTS = "documents"
 
 
 def get_storage_mode() -> str:
@@ -339,6 +343,30 @@ def build_snapshots_health() -> dict[str, Any]:
     }
 
 
+def build_documents_health() -> dict[str, Any]:
+    """DOCLOG-4 (§19.1): documents-блок /health/ops -- честные факты
+    слоя выдачи БЕЗ путей/DSN/содержимого (T6/T10; паритет
+    build_artifacts_health/build_snapshots_health): backend реестра
+    документов (peek БЕЗ провокации фабрики), тип object store и факт
+    конфигурации root'а (bool, не значение)."""
+    from apps.api.document_jobs import peek_document_registry
+
+    registry = peek_document_registry()
+    backend = (
+        "not_initialized"
+        if registry is None
+        else type(registry).__name__.replace("DocumentRegistry", "").lower()
+        or "unknown"
+    )
+    return {
+        "registry_backend": backend,
+        "object_store": "local_fs",
+        "data_root_configured": bool(
+            (os.environ.get("CISSTAT_DATA_DIR") or "").strip()
+        ),
+    }
+
+
 def build_telemetry_health() -> dict[str, Any]:
     """DOCLOG-3 (§13.4, §19.1): telemetry-блок /health/ops -- facts-only
     наблюдаемость тех-контурa: backend приёмника (peek БЕЗ провокации
@@ -499,4 +527,7 @@ def build_ops_health(
         # DOCLOG-3 (§14.1/§19.1): отдельный durable security audit --
         # backend/счётчики сбоев, без содержимого записей (T6).
         "audit": build_audit_health(),
+        # DOCLOG-4 (§19.1): слой документов/выдачи -- backend реестра,
+        # тот же object store (паритет facts-only, T6/T10).
+        "documents": build_documents_health(),
     }
