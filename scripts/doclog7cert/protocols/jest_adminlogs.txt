@@ -1,0 +1,116 @@
+  console.error
+    Warning: Encountered two children with the same key, `ev-d7-1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+        at tbody
+        at table
+        at div
+        at div
+        at section
+        at Section (/home/z/CISStat-TS-Analysis/packages/ui/components/AdminLogsDashboard.tsx:77:20)
+        at div
+        at AdminLogsDashboard (/home/z/CISStat-TS-Analysis/packages/ui/components/AdminLogsDashboard.tsx:160:43)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnOnInvalidKey (node_modules/react-dom/cjs/react-dom.development.js:13529:11)
+      at reconcileChildrenArray (node_modules/react-dom/cjs/react-dom.development.js:13566:21)
+      at reconcileChildFibers (node_modules/react-dom/cjs/react-dom.development.js:14057:16)
+      at reconcileChildren (node_modules/react-dom/cjs/react-dom.development.js:19193:28)
+      at updateFragment (node_modules/react-dom/cjs/react-dom.development.js:19543:3)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21679:14)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25777:74)
+      at workLoop (node_modules/scheduler/cjs/scheduler.development.js:266:34)
+      at flushWork (node_modules/scheduler/cjs/scheduler.development.js:239:14)
+      at performWorkUntilDeadline (node_modules/scheduler/cjs/scheduler.development.js:533:21)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  console.error
+    Warning: An update to AdminLogsDashboard inside a test was not wrapped in act(...).
+    
+    When testing, code that causes React state updates should be wrapped into act(...):
+    
+    act(() => {
+      /* fire events that update state */
+    });
+    /* assert on the output */
+    
+    This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+        at AdminLogsDashboard (/home/z/CISStat-TS-Analysis/packages/ui/components/AdminLogsDashboard.tsx:160:43)
+
+      273 |     const id = setInterval(() => {
+      274 |       if (!liveTailRef.current) {
+    > 275 |         setSkippedTicks((n) => n + 1);
+          |         ^
+      276 |         return;
+      277 |       }
+      278 |       void loadStream(tab, apiKey);
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/AdminLogsDashboard.tsx:275:9
+      at callTimer (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1525:24)
+      at runTimersInRange (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2223:25)
+      at doTickInner (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2318:21)
+      at doTick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2334:20)
+      at Object.tick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2342:20)
+      at FakeTimers.advanceTimersByTime (node_modules/@jest/fake-timers/build/index.js:580:19)
+      at Object.<anonymous> (packages/ui/components/adminLogs-dashboard.test.tsx:191:10)
+
+  console.error
+    Warning: An update to AdminLogsDashboard inside a test was not wrapped in act(...).
+    
+    When testing, code that causes React state updates should be wrapped into act(...):
+    
+    act(() => {
+      /* fire events that update state */
+    });
+    /* assert on the output */
+    
+    This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+        at AdminLogsDashboard (/home/z/CISStat-TS-Analysis/packages/ui/components/AdminLogsDashboard.tsx:160:43)
+
+      273 |     const id = setInterval(() => {
+      274 |       if (!liveTailRef.current) {
+    > 275 |         setSkippedTicks((n) => n + 1);
+          |         ^
+      276 |         return;
+      277 |       }
+      278 |       void loadStream(tab, apiKey);
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/AdminLogsDashboard.tsx:275:9
+      at callTimer (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1525:24)
+      at runTimersInRange (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2223:25)
+      at doTickInner (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2318:21)
+      at doTick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2334:20)
+      at Object.tick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:2342:20)
+      at FakeTimers.advanceTimersByTime (node_modules/@jest/fake-timers/build/index.js:580:19)
+      at Object.<anonymous> (packages/ui/components/adminLogs-dashboard.test.tsx:191:10)
+
+PASS packages/ui/components/adminLogs-dashboard.test.tsx
+  AdminLogsDashboard (DOCLOG-7)
+    ✓ 401 -- честное состояние неверного ключа (77 ms)
+    ✓ 403 -- различимое состояние не-админа (16 ms)
+    ✓ три вкладки + открытая вкладка загружает поток (45 ms)
+    ✓ whitelist-фильтры: нет свободного SQL/regex ввода (40 ms)
+    ✓ cursor pagination -- кнопка следующей страницы передаёт курсор (89 ms)
+    ✓ live tail пауза показывает счётчик пропусков (51 ms)
+    ✓ диагностический пакет: кнопка + честный перечень исключений (47 ms)
+    ✓ гранты: список + создание + отзыв (45 ms)
+    ✓ ключ не попадает в localStorage/sessionStorage (18 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+Snapshots:   0 total
+Time:        2.198 s, estimated 4 s
+Ran all test suites matching packages/ui/components/adminLogs-dashboard.test.tsx.

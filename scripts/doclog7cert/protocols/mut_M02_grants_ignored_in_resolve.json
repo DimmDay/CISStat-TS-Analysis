@@ -1,0 +1,12 @@
+{
+ "name": "M02_grants_ignored_in_resolve",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestEffectiveAccess::test_grant_narrows_scope\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_grantee_narrowed_to_grant_tenant\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_lifecycle_api\n======================== 3 failed, 228 passed in 8.19s =========================",
+ "oracle_tail": "FAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a12_grant_narrows_to_tenant_and_meta_reveals\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a13_explicit_filter_outside_grant_403_not_empty_list\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a14_grant_grants_access_only_within_boundary\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a29_bundle_grant_narrowed_bundle_honest\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a33_run_scoped_grant_narrows_runs\n========================= 6 failed, 67 passed in 5.05s =========================",
+ "restored": true
+}

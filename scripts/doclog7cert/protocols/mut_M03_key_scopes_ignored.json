@@ -1,0 +1,12 @@
+{
+ "name": "M03_key_scopes_ignored",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 70%]\n....................                                                     [ 78%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n============================= 231 passed in 8.55s ==============================",
+ "oracle_tail": "=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u10_scopes_map_to_streams\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a03_access_summary_honest_and_not_audited\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a11_registry_scoped_key_reads_and_meta\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a24_grant_management_requires_scope_not_admin_role_only\n========================= 4 failed, 69 passed in 4.88s =========================",
+ "restored": true
+}

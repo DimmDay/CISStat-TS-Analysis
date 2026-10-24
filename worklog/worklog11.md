@@ -79,3 +79,23 @@ next build apps/embedded: ✓ Compiled successfully, типы валидны, 15
 ### Deliverable
 
 ZIP cisstat-doclog8.zip пересобран (полный состав поставки DOCLOG-8 -- 23 файла + worklog11.md с этой записью; относительно предыдущей поставки изменены ТОЛЬКО MonitoringComparisonPanel.tsx (добавлена директива) и worklog11.md) → открытый контейнер сессии (download) + веб-приложение :3000 (страница поставки с кнопкой скачивания). Без commit/push (AGENTS.md). Манифест sha256 не ведётся (указание тимлида, прецедент DOCLOG-2-FIX/3/4/5/6).
+
+---
+
+## Task ID: DOCLOG-7-CERT (2026-10-24) — Независимая сертификация DOCLOG-7 «Журналы и поддержка»: оракулы на своих данных, мутанты на своих мутантах, дельта-0, акт с находками F-D7C1–F-D7C5
+
+Постановка: «Синхронизируйся до 3634052. Изучи spec_documentation_logging.md и текущую кодовую базу. Твоя задача — честно сертифицируй задачу Task ID: DOCLOG-7 (2026-10-24) — Журналы и поддержка. При аудите используй мутантов на своих мутантах и оракулов на своих данных. Следуй правилам AGENTS.md. По завершении работы выложи в открытый контейнер сессии zip новых/обновленных файлов для скачивания (download/), продублируй через веб-приложение сессии (превью на порту 3000) с кнопкой скачивания». База: main@3634052 (клон, рабочее дерево чистое; в комплекте c9b87a1 DOCLOG-6-CERT и 6d50550 DOCLOG-6-CERT-FIX). Среда пересоздана (python-зависимости доустановлены: psycopg[binary]/pandera/PyWavelets/syrupy/sqlalchemy/duckdb/pyarrow/statsforecast/arch/tbats; npm install).
+
+### Корпус сертификатора (оракулы на своих данных)
+
+scripts/doclog7cert/: conftest.py + test_d7cert_oracle_{unit,api,static}.py = **73 оракула GREEN ×2 на 3634052** (unit 26: u01–u26; API 35: a01–a35; static 12: s01–s12). Namespace дизъюнктен repo и предыдущим сертификаторам: RUN-D7C*, d7c-*, d7grant-d7cert-*, tenant-d7cert-*, subj-d7c* (subj-хвосты ровно hex16 — паттерн identity), 6 своих ключей 6-сегментного формата (admin / без-scope / logs.read+audit.read+logs.export / ro / support.grant у НЕ-админа / чужой tenant), свои сиды telemetry/audit/delivery-цепочки D02, свои grants (tenant-wide и run-scoped), свой AC10-сентинел env. Изоляция — паттерн repo-корпуса DOCLOG-7 (tmp CISSTAT_DATA_DIR, сброс фабрик, memory-бекенды).
+
+### RED на родителе и мутационная кампания
+
+RED на родителе DOCLOG-7 6d50550 через git-worktree: collection RED 0.48 s — ImportError admin_logs (3 ошибки коллекции; protocols/red_parent_summary.txt). Кампания «мутанты на своих мутантах»: REPO = test_doclog7+3+4+6 (231 тест, ~9 s) + ORACLE = корпус (73); **38 боевых мутантов + 3 no-op контроля над 4 файлами (admin_logs.py, routers/logs.py, document_jobs.py, security_audit.py): 23 DUAL-KILLED + 15 ORACLE-ONLY + 0 REPO-ONLY + 0 боевых SURVIVED; контроли 3/3 ALIVE; PATCH-FAIL 0; RESTORE-FAIL 0**; MV1 dry-run 41/41 якорей; MV2 self-test классификатора; MV3 md5-восстановление всех целей (после кампании md5 == HEAD по 7 файлам); MV4 контроли ALIVE; MV5 скан хвостов — посторонних файлов в киллах нет (ложных киллов нет; урок N2 DOCLOG-6-CERT). Слабый мутант M38 (SELECT-колонка list_recent) изначально SURVIVED — усилен статический оракул s09 (сверка SELECT-колонок с кортежем проекции), перепрогон → ORACLE-ONLY. Ключевые DUAL-KILLED: admin-role bypass, игнор грантов, tenant/run 403-гейты, narrowing off, расширение whitelist грантов data-правом, TTL-граница, отозванные/истёкшие гранты, окно/лимиты/cursor, retention-горизонты, саможурналирование off/mandatory, authz_denied off, mandatory→standard экспорта, download-тройка, **«пакет с полным доступом вне границ» (M27)**, members_sha256/excluded/даты ZIP, утечка content_bytes в delivery-проекции, uniform 401/403/404.
+
+### Регресс дельта-0, сборка, jest
+
+Полный tests/api дельта-0 (scripts/doclog7cert/regress_delta0.py): цель 3634052+корпус **37F/2729P/42S** vs база 3634052 (git-worktree) **37F/2656P/42S** — **FAILED-ID байт-идентичны 37/37**, +73 passed = ровно корпус; все 37F — предсуществующие средовые классы (psycopg-DSN progress_audit_5b/6c, forecasting-session, modeling/candidates, structural-breaks/profile, upload-db/duckdb, progress-panel). Сборка: import apps.api.main OK — 209 маршрутов (ровно 7 путей /v1/logs), миграции 13/78, AUDIT_ACTIONS=21, GRANT_SCOPES/TTL/WINDOW/LIMIT/EXPORT по контракту, продуктовое дерево чистое (md5 == HEAD) — build_check.json BUILD: OK. Jest: adminLogs-dashboard 9/9 (включая «ключ не попадает в localStorage/sessionStorage») + doclog6-lifecycle-ui 15/15.
+
+### Находки (акт docs/cert_doclog7_2026-10-24.md)

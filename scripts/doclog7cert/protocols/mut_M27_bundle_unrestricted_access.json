@@ -1,0 +1,12 @@
+{
+ "name": "M27_bundle_unrestricted_access",
+ "kind": "battle",
+ "file": "logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_requires_export_scope\n======================== 1 failed, 230 passed in 8.89s =========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a02_403_uniform_body_and_authz_denied_audited\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a27_bundle_requires_export_scope_finding_f3_pinned\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a29_bundle_grant_narrowed_bundle_honest\n========================= 3 failed, 70 passed in 5.29s =========================",
+ "restored": true
+}

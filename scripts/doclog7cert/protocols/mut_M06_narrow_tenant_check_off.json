@@ -1,0 +1,12 @@
+{
+ "name": "M06_narrow_tenant_check_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_grantee_narrowed_to_grant_tenant\n======================== 1 failed, 230 passed in 9.39s =========================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u17_narrow_fail_closed\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a29_bundle_grant_narrowed_bundle_honest\n========================= 2 failed, 71 passed in 5.30s =========================",
+ "restored": true
+}

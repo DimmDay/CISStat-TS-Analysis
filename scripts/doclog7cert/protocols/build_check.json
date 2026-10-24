@@ -1,0 +1,27 @@
+{
+ "import_main": {
+  "ok": true,
+  "routes_total": 209,
+  "routes_logs": 7,
+  "expected_routes_total": 209,
+  "expected_routes_logs": 7
+ },
+ "catalogs": {
+  "ok": true,
+  "raw": "13 78 21 ['audit.read', 'logs.export', 'logs.read'] 168 31 200 2000",
+  "expected": "13 files / 78 statements / 21 audit actions / GRANT_SCOPES [audit.read, logs.export, logs.read] / TTL 168 / window 31 / limit 200 / export 2000"
+ },
+ "product_tree_clean": {
+  "ok": true,
+  "targets": [
+   "apps/api/admin_logs.py",
+   "apps/api/routers/logs.py",
+   "apps/api/document_jobs.py",
+   "apps/api/security_audit.py",
+   "apps/api/telemetry.py",
+   "apps/api/main.py",
+   "apps/api/research_runs.py"
+  ]
+ },
+ "verdict": "OK"
+}

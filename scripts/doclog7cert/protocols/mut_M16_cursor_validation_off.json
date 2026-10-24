@@ -1,0 +1,12 @@
+{
+ "name": "M16_cursor_validation_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 70%]\n....................                                                     [ 78%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n============================= 231 passed in 8.66s ==============================",
+ "oracle_tail": ".........                                                                [ 83%]\nscripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u12_cursor_roundtrip_and_fail_closed\n========================= 1 failed, 72 passed in 5.12s =========================",
+ "restored": true
+}

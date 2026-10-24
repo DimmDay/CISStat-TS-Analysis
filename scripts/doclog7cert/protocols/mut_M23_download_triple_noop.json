@@ -1,0 +1,12 @@
+{
+ "name": "M23_download_triple_noop",
+ "kind": "battle",
+ "file": "logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_audited_with_download_triple\n======================== 1 failed, 230 passed in 8.96s =========================",
+ "oracle_tail": ".........                                                                [ 83%]\nscripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a26_bundle_self_audit_and_download_triple\n========================= 1 failed, 72 passed in 5.10s =========================",
+ "restored": true
+}

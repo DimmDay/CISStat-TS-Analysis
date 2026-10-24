@@ -1,0 +1,12 @@
+{
+ "name": "M18_retention_note_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 70%]\n....................                                                     [ 78%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n============================= 231 passed in 8.79s ==============================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u16_retention_meta_horizons\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a10_retention_note_honest_reporting\n========================= 2 failed, 71 passed in 5.10s =========================",
+ "restored": true
+}

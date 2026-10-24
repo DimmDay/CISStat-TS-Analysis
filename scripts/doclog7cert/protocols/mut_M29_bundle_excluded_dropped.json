@@ -1,0 +1,12 @@
+{
+ "name": "M29_bundle_excluded_dropped",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_zip_contract\n======================== 1 failed, 230 passed in 9.14s =========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u21_bundle_zip_contract_and_determinism\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u22_bundle_manifest_exclusions_and_scope_meta\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a25_bundle_ac10_sentinels_absent\n========================= 3 failed, 70 passed in 5.08s =========================",
+ "restored": true
+}

@@ -1,0 +1,12 @@
+{
+ "name": "M25_export_window_parse_bogus",
+ "kind": "battle",
+ "file": "logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_zip_contract\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_requires_export_scope\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_audited_with_download_triple\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_deterministic\n======================== 4 failed, 227 passed in 9.21s =========================",
+ "oracle_tail": "FAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a29_bundle_grant_narrowed_bundle_honest\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a31_ac05_tripwire_reads_do_not_mutate_delivery_state\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a32_export_empty_body_all_streams_default_window\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a34_bundle_jsonl_concatenation_finding_f4_pinned\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a35_export_mandatory_fail_closed\n======================== 10 failed, 63 passed in 5.28s =========================",
+ "restored": true
+}

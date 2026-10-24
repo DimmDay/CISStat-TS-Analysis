@@ -1,0 +1,12 @@
+{
+ "name": "M30_zip_dates_not_fixed",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_deterministic\n======================== 1 failed, 230 passed in 8.71s =========================",
+ "oracle_tail": ".........                                                                [ 83%]\nscripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u21_bundle_zip_contract_and_determinism\n========================= 1 failed, 72 passed in 5.27s =========================",
+ "restored": true
+}

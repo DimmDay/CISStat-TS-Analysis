@@ -1,0 +1,12 @@
+{
+ "name": "C1_docstring_only",
+ "kind": "control",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": true,
+ "classification": "SURVIVED",
+ "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 70%]\n....................                                                     [ 78%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n============================= 231 passed in 8.96s ==============================",
+ "oracle_tail": ".                                                                        [ 35%]\nscripts/doclog7cert/test_d7cert_oracle_api.py .......................... [ 71%]\n.........                                                                [ 83%]\nscripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n============================== 73 passed in 5.35s ==============================",
+ "restored": true
+}

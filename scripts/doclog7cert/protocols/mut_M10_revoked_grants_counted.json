@@ -1,0 +1,12 @@
+{
+ "name": "M10_revoked_grants_counted",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": ".....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantValidation::test_revoke_and_expiry\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_lifecycle_api\n======================== 2 failed, 229 passed in 8.91s =========================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u11_grants_union_boundaries_expired_revoked_excluded\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a14_grant_grants_access_only_within_boundary\n========================= 2 failed, 71 passed in 5.06s =========================",
+ "restored": true
+}

@@ -1,0 +1,12 @@
+{
+ "name": "M13_window_check_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_window_validation_422\n======================== 1 failed, 230 passed in 8.37s =========================",
+ "oracle_tail": "\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u13_parse_query_defaults_and_window\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a08_window_validation_and_honest_default\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a28_bundle_validation_and_stream_subset\n========================= 3 failed, 70 passed in 5.27s =========================",
+ "restored": true
+}

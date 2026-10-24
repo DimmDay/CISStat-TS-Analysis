@@ -1,0 +1,12 @@
+{
+ "name": "M34_denied_403_to_404",
+ "kind": "battle",
+ "file": "logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "FAILED tests/api/test_doclog7_logs_support.py::TestLogsAuth::test_403_uniform_body_without_grant\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_grantee_narrowed_to_grant_tenant\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_lifecycle_api\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_management_requires_scope\nFAILED tests/api/test_doclog7_logs_support.py::TestDiagnosticBundle::test_bundle_requires_export_scope\n======================== 5 failed, 226 passed in 8.95s =========================",
+ "oracle_tail": "FAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a14_grant_grants_access_only_within_boundary\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a15_expired_grant_fail_closed\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a24_grant_management_requires_scope_not_admin_role_only\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a27_bundle_requires_export_scope_finding_f3_pinned\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a29_bundle_grant_narrowed_bundle_honest\n========================= 7 failed, 66 passed in 5.22s =========================",
+ "restored": true
+}

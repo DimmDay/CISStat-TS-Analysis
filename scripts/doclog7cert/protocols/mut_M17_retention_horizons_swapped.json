@@ -1,0 +1,12 @@
+{
+ "name": "M17_retention_horizons_swapped",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_query_returns_records_and_meta\n======================== 1 failed, 230 passed in 8.63s =========================",
+ "oracle_tail": "FAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u16_retention_meta_horizons\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u22_bundle_manifest_exclusions_and_scope_meta\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a04_admin_reads_own_seeded_records_and_meta\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a10_retention_note_honest_reporting\nFAILED scripts/doclog7cert/test_d7cert_oracle_static.py::test_s05_constants_catalog\n========================= 5 failed, 68 passed in 5.30s =========================",
+ "restored": true
+}

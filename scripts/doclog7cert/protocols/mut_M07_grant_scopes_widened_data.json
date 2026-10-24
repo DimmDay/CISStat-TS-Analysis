@@ -1,0 +1,12 @@
+{
+ "name": "M07_grant_scopes_widened_data",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_validation_api_422\n======================== 1 failed, 230 passed in 8.93s =========================",
+ "oracle_tail": "=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u02_scopes_whitelist_no_data_rights\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u26_grant_scopes_catalog_frozen\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a20_grant_validation_422_catalog\nFAILED scripts/doclog7cert/test_d7cert_oracle_static.py::test_s05_constants_catalog\n========================= 4 failed, 69 passed in 5.24s =========================",
+ "restored": true
+}

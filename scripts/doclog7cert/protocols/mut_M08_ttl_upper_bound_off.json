@@ -1,0 +1,12 @@
+{
+ "name": "M08_ttl_upper_bound_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": ".....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantValidation::test_ttl_bounds\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_validation_api_422\n======================== 2 failed, 229 passed in 8.80s =========================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u03_ttl_bounds - ...\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a20_grant_validation_422_catalog\n========================= 2 failed, 71 passed in 5.14s =========================",
+ "restored": true
+}

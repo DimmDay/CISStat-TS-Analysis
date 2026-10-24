@@ -1,0 +1,12 @@
+{
+ "name": "M14_limit_upper_off",
+ "kind": "battle",
+ "file": "admin_logs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestTelemetryStream::test_invalid_cursor_and_limit_422\n======================== 1 failed, 230 passed in 9.26s =========================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_unit.py::test_u14_limit_bounds\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a09_limit_and_cursor_pagination_no_loss_no_dup\n========================= 2 failed, 71 passed in 5.58s =========================",
+ "restored": true
+}

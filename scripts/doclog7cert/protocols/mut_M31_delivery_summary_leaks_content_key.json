@@ -1,0 +1,12 @@
+{
+ "name": "M31_delivery_summary_leaks_content_key",
+ "kind": "battle",
+ "file": "document_jobs.py",
+ "patch_applies": true,
+ "repo_pass": false,
+ "oracle_pass": false,
+ "classification": "DUAL-KILLED",
+ "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 90%]\n.....................                                                    [100%]\n\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestDeliveryStream::test_delivery_summary_no_content\n======================== 1 failed, 230 passed in 8.83s =========================",
+ "oracle_tail": "scripts/doclog7cert/test_d7cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a17_delivery_metadata_only_no_content_bytes\nFAILED scripts/doclog7cert/test_d7cert_oracle_api.py::test_a25_bundle_ac10_sentinels_absent\n========================= 2 failed, 71 passed in 5.36s =========================",
+ "restored": true
+}
