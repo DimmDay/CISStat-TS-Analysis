@@ -1,0 +1,14 @@
+{
+  "id": "M33",
+  "file": "apps/api/routers/monitoring.py",
+  "desc": "units mismatch теряет собственный код (AC15)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.38,
+  "oracle_seconds": 7.06,
+  "repo_tail": "\n=================================== FAILURES ===================================\n______ TestMonitoringApi.test_comparison_roundtrip_and_units_mismatch_422 ______\ntests/api/test_doclog8_monitoring.py:1177: in test_comparison_roundtrip_and_units_mismatch_422\n    assert mismatch.json()[\"code\"] == \"monitoring_units_mismatch\"\nE   AssertionError: assert 'monitoring_validation_error' == 'monitoring_units_mismatch'\nE     \nE     - monitoring_units_mismatch\nE     + monitoring_validation_error\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_roundtrip_and_units_mismatch_422\n======================== 1 failed, 184 passed in 4.47s =========================",
+  "oracle_tail": "E   AssertionError: assert 'monitoring_validation_error' == 'monitoring_units_mismatch'\nE     \nE     - monitoring_units_mismatch\nE     + monitoring_validation_error\n_______________ TestRouterSurface.test_s05_error_mapping_source ________________\nscripts/doclog8cert/test_d8cert_oracle_static.py:106: in test_s05_error_mapping_source\n    assert '\"monitoring_units_mismatch\"' in source\nE   assert '\"monitoring_units_mismatch\"' in '# apps/api/routers/monitoring.py\\n\"\"\"\\nDOCLOG-8 (spec_documentation_logging.md §6 D12, §17, §19 строка\\nDOCLOG-8): AP...sponse(exc)\\n    return {\\n        \"items\": [item.to_dict() for item in items],\\n        \"total\": len(items),\\n    }\\n'\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a05_units_mismatch_distinct_code\nFAILED scripts/doclog8cert/test_d8cert_oracle_static.py::TestRouterSurface::test_s05_error_mapping_source\n========================= 2 failed, 76 passed in 3.16s =========================",
+  "status": "DUAL-KILLED"
+}

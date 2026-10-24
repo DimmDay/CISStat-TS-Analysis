@@ -1,0 +1,14 @@
+{
+  "id": "M13",
+  "file": "apps/api/monitoring.py",
+  "desc": "покрытие интервала считается при неполных границах",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 7.81,
+  "oracle_seconds": 7.04,
+  "repo_tail": ".....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n____________ TestMetricsHonesty.test_interval_bounds_missing_honest ____________\ntests/api/test_doclog8_monitoring.py:697: in test_interval_bounds_missing_honest\n    assert aggregates[\"interval_coverage\"] is None\nE   assert 0.0 is None\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_interval_bounds_missing_honest\n======================== 1 failed, 184 passed in 4.23s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_static.py ..............          [ 46%]\nscripts/doclog8cert/test_d8cert_oracle_unit.py .......F................. [ 78%]\n.................                                                        [100%]\n\n=================================== FAILURES ===================================\n__________ TestComputeMetrics.test_u08_interval_bounds_missing_honest __________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:173: in test_u08_interval_bounds_missing_honest\n    assert agg[\"interval_coverage\"] is None\nE   assert 0.5 is None\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeMetrics::test_u08_interval_bounds_missing_honest\n========================= 1 failed, 77 passed in 3.10s =========================",
+  "status": "DUAL-KILLED"
+}

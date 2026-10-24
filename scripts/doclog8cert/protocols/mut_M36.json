@@ -1,0 +1,14 @@
+{
+  "id": "M36",
+  "file": "apps/api/snapshot_builder.py",
+  "desc": "пустая секция D12 фабрикует current вместо unknown",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.19,
+  "oracle_seconds": 7.33,
+  "repo_tail": "\n=================================== FAILURES ===================================\n_____________ TestD12KindAndAdapter.test_d12_section_empty_honest ______________\ntests/api/test_doclog8_monitoring.py:1085: in test_d12_section_empty_honest\n    assert section[\"claims\"][0][\"validity\"] == \"unknown\"\nE   AssertionError: assert 'current' == 'unknown'\nE     \nE     - unknown\nE     + current\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestD12KindAndAdapter::test_d12_section_empty_honest\n======================== 1 failed, 184 passed in 4.53s =========================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n__________ TestSnapshotIntegration.test_a19_d12_section_empty_honest ___________\nscripts/doclog8cert/test_d8cert_oracle_api.py:496: in test_a19_d12_section_empty_honest\n    assert section[\"claims\"][0][\"validity\"] == \"unknown\"\nE   AssertionError: assert 'current' == 'unknown'\nE     \nE     - unknown\nE     + current\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSnapshotIntegration::test_a19_d12_section_empty_honest\n========================= 1 failed, 77 passed in 3.14s =========================",
+  "status": "DUAL-KILLED"
+}

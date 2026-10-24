@@ -1,0 +1,14 @@
+{
+  "id": "M25",
+  "file": "apps/api/monitoring.py",
+  "desc": "факты вне горизонта скрываются",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.06,
+  "oracle_seconds": 7.13,
+  "repo_tail": "\n=================================== FAILURES ===================================\n_______________ TestMaturity.test_out_of_horizon_actuals_counted _______________\ntests/api/test_doclog8_monitoring.py:567: in test_out_of_horizon_actuals_counted\n    assert record.result[\"alignment\"][\"out_of_horizon_labels\"] == [\nE   AssertionError: assert [] == ['2025-06-01']\nE     \nE     Right contains one more item: '2025-06-01'\nE     Use -v to get more diff\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_out_of_horizon_actuals_counted\n======================== 1 failed, 184 passed in 4.20s =========================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n_____________ TestComputeAlignment.test_u03_out_of_horizon_sorted ______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:80: in test_u03_out_of_horizon_sorted\n    assert align[\"out_of_horizon_labels\"] == [\nE   AssertionError: assert [] == ['2025-01-01', '2027-06-01']\nE     \nE     Right contains 2 more items, first extra item: '2025-01-01'\nE     Use -v to get more diff\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeAlignment::test_u03_out_of_horizon_sorted\n========================= 1 failed, 77 passed in 3.17s =========================",
+  "status": "DUAL-KILLED"
+}

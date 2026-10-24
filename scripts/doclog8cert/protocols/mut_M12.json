@@ -1,0 +1,14 @@
+{
+  "id": "M12",
+  "file": "apps/api/monitoring.py",
+  "desc": "MASE фабрикуется из MAE без явного scale",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 7.97,
+  "oracle_seconds": 7.37,
+  "repo_tail": ".....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_________________ TestMetricsHonesty.test_mase_requires_scale __________________\ntests/api/test_doclog8_monitoring.py:647: in test_mase_requires_scale\n    assert aggregates[\"mase\"] is None\nE   assert 0.20000000000000018 is None\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mase_requires_scale\n======================== 1 failed, 184 passed in 4.39s =========================",
+  "oracle_tail": "E   assert 0.20000000000000018 is None\n___________ TestComputeThreshold.test_u11_not_evaluable_with_reason ____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:217: in test_u11_not_evaluable_with_reason\n    assert th[\"status\"] == \"not_evaluable\"\nE   AssertionError: assert 'within' == 'not_evaluable'\nE     \nE     - not_evaluable\nE     + within\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeMetrics::test_u06_mase_scale_semantics\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeThreshold::test_u11_not_evaluable_with_reason\n========================= 2 failed, 76 passed in 3.18s =========================",
+  "status": "DUAL-KILLED"
+}

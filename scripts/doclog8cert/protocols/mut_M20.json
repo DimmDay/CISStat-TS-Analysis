@@ -1,0 +1,14 @@
+{
+  "id": "M20",
+  "file": "apps/api/monitoring.py",
+  "desc": "дубликаты периодов внутри партии допускаются",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.42,
+  "oracle_seconds": 7.68,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n____ TestActualBatchValidation.test_duplicate_periods_within_batch_rejected ____\ntests/api/test_doclog8_monitoring.py:356: in test_duplicate_periods_within_batch_rejected\n    with pytest.raises(Exception, match=\"дубл\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'Exception'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestActualBatchValidation::test_duplicate_periods_within_batch_rejected\n======================== 1 failed, 184 passed in 4.64s =========================",
+  "oracle_tail": "E   AssertionError: {'values': [{'period': 'p', 'value': 1.0}, {'period': 'p', 'value': 2.0}]}\nE   assert 201 == 422\nE    +  where 201 = <Response [201 Created]>.status_code\n_______________ TestValidation.test_u30_batch_validation_catalog _______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:499: in test_u30_batch_validation_catalog\n    with pytest.raises(MonitoringValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a04_validation_422_flat_body\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestValidation::test_u30_batch_validation_catalog\n========================= 2 failed, 76 passed in 3.33s =========================",
+  "status": "DUAL-KILLED"
+}

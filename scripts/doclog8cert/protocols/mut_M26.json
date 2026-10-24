@@ -1,0 +1,14 @@
+{
+  "id": "M26",
+  "file": "apps/api/monitoring.py",
+  "desc": "честное unknown единиц фабрикуется как as_is",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 7.93,
+  "oracle_seconds": 7.5,
+  "repo_tail": "\n=================================== FAILURES ===================================\n_________________ TestUnitsAlignment.test_units_unknown_honest _________________\ntests/api/test_doclog8_monitoring.py:468: in test_units_unknown_honest\n    assert record.units_check == \"unknown\"\nE   AssertionError: assert 'as_is' == 'unknown'\nE     \nE     - unknown\nE     + as_is\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_unknown_honest\n======================== 1 failed, 184 passed in 4.32s =========================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n___________________ TestServiceUnits.test_u15_unknown_honest ___________________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:268: in test_u15_unknown_honest\n    assert record.units_check == \"unknown\"\nE   AssertionError: assert 'as_is' == 'unknown'\nE     \nE     - unknown\nE     + as_is\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u15_unknown_honest\n========================= 1 failed, 77 passed in 3.30s =========================",
+  "status": "DUAL-KILLED"
+}

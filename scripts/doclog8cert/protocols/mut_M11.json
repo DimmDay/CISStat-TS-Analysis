@@ -1,0 +1,14 @@
+{
+  "id": "M11",
+  "file": "apps/api/monitoring.py",
+  "desc": "§6.1 off: незрелый горизонт получает нулевую ошибку",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.31,
+  "oracle_seconds": 7.41,
+  "repo_tail": "E   assert 5 == 2\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_matured_and_excluded_counts\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_excluded_horizons_have_no_error\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_no_matured_horizons_null_not_zero\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_pair_metrics_known_numbers\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mape_zero_actual_null_with_reason\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mape_all_defined_computed\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mase_with_scale_computed\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_interval_coverage_with_bounds\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_roundtrip_and_units_mismatch_422\n======================== 9 failed, 176 passed in 4.47s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_unit.py:185: in test_u09_no_matured_null_not_zero\n    assert agg[key] is None, key\nE   AssertionError: mae\nE   assert 6.5 is None\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestComparisonContract::test_a09_comparison_201_shape_and_idempotency\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSnapshotIntegration::test_a22_d12_no_matured_aggregates_dash_honest\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeAlignment::test_u02_immature_horizons_explicit_not_zero\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeAlignment::test_u03_out_of_horizon_sorted\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeMetrics::test_u06_mase_scale_semantics\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeMetrics::test_u09_no_matured_null_not_zero\n========================= 6 failed, 72 passed in 3.20s =========================",
+  "status": "DUAL-KILLED"
+}

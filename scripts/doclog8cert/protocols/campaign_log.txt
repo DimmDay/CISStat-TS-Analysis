@@ -1,0 +1,34 @@
+[M01] DUAL-KILLED (repo 1, oracle 1) units mismatch молча принимается как as_is (AC15 off)
+[M02] DUAL-KILLED (repo 1, oracle 1) фактор конверсии единиц игнорируется
+[M26] DUAL-KILLED (repo 1, oracle 1) честное unknown единиц фабрикуется как as_is
+[M29] ORACLE-ONLY (repo 0, oracle 1) каталог source_kind открыт (fail-open)
+[M03] DUAL-KILLED (repo 1, oracle 1) T8-проверка sha256 байтов прогноза выключена
+[M04] DUAL-KILLED (repo 1, oracle 1) чужой run-артефакт принимается (T7 off)
+[M05] DUAL-KILLED (repo 1, oracle 1) kind-гейт прогноза выключен
+[M06] ORACLE-ONLY (repo 0, oracle 1) run-граница партии факта выключена
+[M27] ORACLE-ONLY (repo 0, oracle 1) прогноз без точек принимается (пустая сверка)
+[M07] DUAL-KILLED (repo 1, oracle 1) конфликт идемпотентности сверок выключен (тихий дубль тела)
+[M08] DUAL-KILLED (repo 1, oracle 1) идемпотентный повтор партий отключён (дубли vintage)
+[M09] DUAL-KILLED (repo 1, oracle 1) MAPE фабрикуется в 0 при нулевом факте (AC12 off)
+[M10] DUAL-KILLED (repo 1, oracle 1) нет зрелых горизонтов -- 0 вместо null+reason (AC12 off)
+[M11] DUAL-KILLED (repo 1, oracle 1) §6.1 off: незрелый горизонт получает нулевую ошибку
+[M12] DUAL-KILLED (repo 1, oracle 1) MASE фабрикуется из MAE без явного scale
+[M13] DUAL-KILLED (repo 1, oracle 1) покрытие интервала считается при неполных границах
+[M25] DUAL-KILLED (repo 1, oracle 1) факты вне горизонта скрываются
+[M28] DUAL-KILLED (repo 1, oracle 1) as_of fail-open: мусорная дата тихо заменяется на now
+[M14] DUAL-KILLED (repo 1, oracle 1) not_evaluable фабрикуется как within
+[M15] ORACLE-ONLY (repo 0, oracle 1) оператор >= тихо сужен до >
+[M16] DUAL-KILLED (repo 1, oracle 1) §6.1 off: автопереобучение следует из статуса порога
+[M17] DUAL-KILLED (repo 1, oracle 1) каталог действий решений открыт (fail-open)
+[M18] DUAL-KILLED (repo 1, oracle 1) основание решения перестаёт быть обязательным
+[M19] DUAL-KILLED (repo 1, oracle 1) решение ссылается на чужую сверку (run-граница off)
+[M20] DUAL-KILLED (repo 1, oracle 1) дубликаты периодов внутри партии допускаются
+[M21] DUAL-KILLED (repo 1, oracle 1) NaN/Infinity/bool в значениях факта допускаются
+[M22] ORACLE-ONLY (repo 0, oracle 1) аудит-действие регистрации вне каталога AUDIT_ACTIONS
+[M23] ORACLE-ONLY (repo 0, oracle 1) standard-аудит превращён в ломучий (§8 off)
+[M24] ORACLE-ONLY (repo 0, oracle 1) payload_sha256 сверке не вычисляется
+[M30] ORACLE-ONLY (repo 0, oracle 1) uniform 404 заменён на 403 (дисклоужение существования)
+[M31] DUAL-KILLED (repo 1, oracle 1) конфликт идемпотентности 409 -> 422
+[M32] DUAL-KILLED (repo 1, oracle 1) код 422-каталога изменён вне контракта
+[M33] DUAL-KILLED (repo 1, oracle 1) units mismatch теряет собственный код (AC15)
+[M34] DUAL-KILLED (repo 1, oracle 1) флаг created инвертирован

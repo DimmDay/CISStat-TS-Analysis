@@ -1,0 +1,14 @@
+{
+  "id": "M34",
+  "file": "apps/api/routers/monitoring.py",
+  "desc": "флаг created инвертирован",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 7.87,
+  "oracle_seconds": 7.65,
+  "repo_tail": ".....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_______________ TestMonitoringApi.test_register_and_list_actuals _______________\ntests/api/test_doclog8_monitoring.py:1122: in test_register_and_list_actuals\n    assert body[\"created\"] is True\nE   assert False is True\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_register_and_list_actuals\n======================== 1 failed, 184 passed in 4.33s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_api.py:181: in test_a06_idempotency_repeat_and_conflict\n    assert second.json()[\"created\"] is False\nE   assert True is False\n_____________ TestAuditSemantics.test_a14_standard_class_no_break ______________\nscripts/doclog8cert/test_d8cert_oracle_api.py:351: in test_a14_standard_class_no_break\n    assert resp.json()[\"created\"] is True\nE   assert False is True\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a03_register_201_shape\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a06_idempotency_repeat_and_conflict\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestAuditSemantics::test_a14_standard_class_no_break\n========================= 3 failed, 75 passed in 3.28s =========================",
+  "status": "DUAL-KILLED"
+}

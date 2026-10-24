@@ -1,0 +1,14 @@
+{
+  "id": "M17",
+  "file": "apps/api/monitoring.py",
+  "desc": "каталог действий решений открыт (fail-open)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.4,
+  "oracle_seconds": 7.96,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n___ TestThresholdDecision.test_decision_requires_rationale_and_known_action ____\ntests/api/test_doclog8_monitoring.py:995: in test_decision_requires_rationale_and_known_action\n    with pytest.raises(MonitoringValidationError, match=\"action\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_decision_requires_rationale_and_known_action\n======================== 1 failed, 184 passed in 4.52s =========================",
+  "oracle_tail": "E   AssertionError: {'action': 'retrain', 'rationale': 'x'}\nE   assert 201 == 422\nE    +  where 201 = <Response [201 Created]>.status_code\n________ TestDecisions.test_u36_catalog_fail_closed_and_retrain_record _________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:607: in test_u36_catalog_fail_closed_and_retrain_record\n    with pytest.raises(MonitoringValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestDecisionContract::test_a11_decision_422_catalog\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestDecisions::test_u36_catalog_fail_closed_and_retrain_record\n========================= 2 failed, 76 passed in 3.52s =========================",
+  "status": "DUAL-KILLED"
+}

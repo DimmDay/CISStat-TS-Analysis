@@ -1,0 +1,14 @@
+{
+  "id": "M06",
+  "file": "apps/api/monitoring.py",
+  "desc": "run-граница партии факта выключена",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 8.27,
+  "oracle_seconds": 7.11,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0, xdist-3.8.0, syrupy-6.1.1, fugue-0.9.7\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 185 items\n\ntests/api/test_doclog8_monitoring.py ................................... [ 18%]\n............................                                             [ 34%]\ntests/api/test_doclog2_snapshots.py .................................... [ 53%]\n.....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n============================= 185 passed in 4.44s ==============================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_unit.py .......................F. [ 78%]\n.................                                                        [100%]\n\n=================================== FAILURES ===================================\n_____________ TestForecastIntegrity.test_u42_foreign_batch_refused _____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:397: in test_u42_foreign_batch_refused\n    with pytest.raises(MonitoringNotFoundError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringNotFoundError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestForecastIntegrity::test_u42_foreign_batch_refused\n========================= 1 failed, 77 passed in 3.19s =========================",
+  "status": "ORACLE-ONLY"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M03",
+  "file": "apps/api/monitoring.py",
+  "desc": "T8-проверка sha256 байтов прогноза выключена",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.26,
+  "oracle_seconds": 8.39,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_________ TestForecastIntegrity.test_corrupted_forecast_bytes_refused __________\ntests/api/test_doclog8_monitoring.py:739: in test_corrupted_forecast_bytes_refused\n    with pytest.raises(MonitoringForecastUnavailable, match=\"Целостность\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringForecastUnavailable'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestForecastIntegrity::test_corrupted_forecast_bytes_refused\n======================== 1 failed, 184 passed in 4.41s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_static.py ..............          [ 46%]\nscripts/doclog8cert/test_d8cert_oracle_unit.py ....................F.... [ 78%]\n.................                                                        [100%]\n\n=================================== FAILURES ===================================\n____________ TestForecastIntegrity.test_u21_corrupted_bytes_refused ____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:358: in test_u21_corrupted_bytes_refused\n    with pytest.raises(MonitoringForecastUnavailable,\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringForecastUnavailable'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestForecastIntegrity::test_u21_corrupted_bytes_refused\n========================= 1 failed, 77 passed in 3.55s =========================",
+  "status": "DUAL-KILLED"
+}

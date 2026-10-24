@@ -1,0 +1,14 @@
+{
+  "id": "M05",
+  "file": "apps/api/monitoring.py",
+  "desc": "kind-гейт прогноза выключен",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.4,
+  "oracle_seconds": 7.54,
+  "repo_tail": "E   apps.api.monitoring.MonitoringForecastUnavailable: Прогноз без точек (points) -- сверить нечего\n\nDuring handling of the above exception, another exception occurred:\ntests/api/test_doclog8_monitoring.py:755: in test_wrong_kind_refused\n    with pytest.raises(MonitoringForecastUnavailable, match=\"kind\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Regex pattern did not match.\nE     Expected regex: 'kind'\nE     Actual message: 'Прогноз без точек (points) -- сверить нечего'\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestForecastIntegrity::test_wrong_kind_refused\n======================== 1 failed, 184 passed in 4.53s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_unit.py .....................F... [ 78%]\n.................                                                        [100%]\n\n=================================== FAILURES ===================================\n______________ TestForecastIntegrity.test_u22_wrong_kind_refused _______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:372: in test_u22_wrong_kind_refused\n    with pytest.raises(MonitoringForecastUnavailable):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringForecastUnavailable'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestForecastIntegrity::test_u22_wrong_kind_refused\n========================= 1 failed, 77 passed in 3.32s =========================",
+  "status": "DUAL-KILLED"
+}

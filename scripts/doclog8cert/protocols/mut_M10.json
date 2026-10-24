@@ -1,0 +1,14 @@
+{
+  "id": "M10",
+  "file": "apps/api/monitoring.py",
+  "desc": "нет зрелых горизонтов -- 0 вместо null+reason (AC12 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.35,
+  "oracle_seconds": 7.7,
+  "repo_tail": ".....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_____________ TestMaturity.test_no_matured_horizons_null_not_zero ______________\ntests/api/test_doclog8_monitoring.py:583: in test_no_matured_horizons_null_not_zero\n    assert aggregates[\"mae\"] is None\nE   assert 0.0 is None\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_no_matured_horizons_null_not_zero\n======================== 1 failed, 184 passed in 4.47s =========================",
+  "oracle_tail": "    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Сверка mon-339197938a9545fca76b60ea32cbf925: прогноз art-b65baa70f3204f608464ce273b661920 vs факт (vintage act-99f93f710b3849b296ed11798acb2ce7); зрелых горизонтов 0, исключено незрелых 4 (не нулевая ошибка, §6.1); MAE=0, bias=—, покрытие=—; единицы: unknown; порог не задан; решение человека: — (автопереобучение не следует из порога, §6.1).\nE   assert 'MAE=—' in 'Сверка mon-339197938a9545fca76b60ea32cbf925: прогноз art-b65baa70f3204f608464ce273b661920 vs факт (vintage act-99f93f...as=—, покрытие=—; единицы: unknown; порог не задан; решение человека: — (автопереобучение не следует из порога, §6.1).'\n_____________ TestComputeMetrics.test_u09_no_matured_null_not_zero _____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:185: in test_u09_no_matured_null_not_zero\n    assert agg[key] is None, key\nE   AssertionError: mae\nE   assert 0.0 is None\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSnapshotIntegration::test_a22_d12_no_matured_aggregates_dash_honest\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeMetrics::test_u09_no_matured_null_not_zero\n========================= 2 failed, 76 passed in 3.35s =========================",
+  "status": "DUAL-KILLED"
+}

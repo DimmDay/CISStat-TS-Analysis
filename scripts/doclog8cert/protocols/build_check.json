@@ -1,0 +1,46 @@
+{
+  "routes_total": 216,
+  "monitoring_routes": 7,
+  "monitoring_paths": [
+    "/v1/documentation/runs/{run_id}/monitoring/actuals",
+    "/v1/documentation/runs/{run_id}/monitoring/comparisons",
+    "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}",
+    "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions"
+  ],
+  "migrations": 14,
+  "migration_statements": 85,
+  "last_migration": "0014_doclog8_monitoring.sql",
+  "document_kinds": 12,
+  "d12_kind": [
+    "forecast_vs_actual",
+    "Сверка прогноза с фактом",
+    null
+  ],
+  "audit_actions": 24,
+  "monitoring_actions": [
+    "monitoring_actual_registered",
+    "monitoring_comparison_created",
+    "monitoring_decision_recorded"
+  ],
+  "decision_actions": [
+    "accept",
+    "investigate",
+    "none",
+    "retrain_requested"
+  ],
+  "threshold_metrics": [
+    "bias_abs",
+    "mae",
+    "mape",
+    "mase"
+  ],
+  "schema_versions": {
+    "monitoring": "doclog.monitoring/1",
+    "actual_vintage": "doclog.actual_vintage/1",
+    "comparison": "doclog.monitoring_comparison/1",
+    "decision": "doclog.monitoring_decision/1",
+    "result": "doclog.monitoring_result/1"
+  },
+  "product_tree_md5_eq_head": true,
+  "BUILD": "OK"
+}

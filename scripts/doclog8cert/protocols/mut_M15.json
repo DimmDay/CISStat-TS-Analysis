@@ -1,0 +1,14 @@
+{
+  "id": "M15",
+  "file": "apps/api/monitoring.py",
+  "desc": "оператор >= тихо сужен до >",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 7.93,
+  "oracle_seconds": 7.27,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0, xdist-3.8.0, syrupy-6.1.1, fugue-0.9.7\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 185 items\n\ntests/api/test_doclog8_monitoring.py ................................... [ 18%]\n............................                                             [ 34%]\ntests/api/test_doclog2_snapshots.py .................................... [ 53%]\n.....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n============================= 185 passed in 4.23s ==============================",
+  "oracle_tail": "=================================== FAILURES ===================================\n_______________ TestComputeThreshold.test_u10_boundary_operators _______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:207: in test_u10_boundary_operators\n    assert gte[\"threshold\"][\"status\"] == \"exceeded\"  # 1.0 >= 1.0\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: assert 'within' == 'exceeded'\nE     \nE     - exceeded\nE     + within\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeThreshold::test_u10_boundary_operators\n========================= 1 failed, 77 passed in 3.24s =========================",
+  "status": "ORACLE-ONLY"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M21",
+  "file": "apps/api/monitoring.py",
+  "desc": "NaN/Infinity/bool в значениях факта допускаются",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.39,
+  "oracle_seconds": 7.82,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n___________ TestActualBatchValidation.test_non_finite_value_rejected ___________\ntests/api/test_doclog8_monitoring.py:332: in test_non_finite_value_rejected\n    with pytest.raises(Exception, match=\"числ\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'Exception'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestActualBatchValidation::test_non_finite_value_rejected\n======================== 1 failed, 184 passed in 4.53s =========================",
+  "oracle_tail": "E   AssertionError: {'values': [{'period': 'p', 'value': 'oops'}]}\nE   assert 500 == 422\nE    +  where 500 = <Response [500 Internal Server Error]>.status_code\n_______________ TestValidation.test_u30_batch_validation_catalog _______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:499: in test_u30_batch_validation_catalog\n    with pytest.raises(MonitoringValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a04_validation_422_flat_body\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestValidation::test_u30_batch_validation_catalog\n========================= 2 failed, 76 passed in 3.40s =========================",
+  "status": "DUAL-KILLED"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M01",
+  "file": "apps/api/monitoring.py",
+  "desc": "units mismatch молча принимается как as_is (AC15 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.93,
+  "oracle_seconds": 7.82,
+  "repo_tail": "E   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n______ TestMonitoringApi.test_comparison_roundtrip_and_units_mismatch_422 ______\ntests/api/test_doclog8_monitoring.py:1176: in test_comparison_roundtrip_and_units_mismatch_422\n    assert mismatch.status_code == 422\nE   assert 201 == 422\nE    +  where 201 = <Response [201 Created]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_mismatch_refused_with_reason\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_conversion_explicit_factor\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_zero_conversion_factor_rejected\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_roundtrip_and_units_mismatch_422\n======================== 4 failed, 181 passed in 4.68s =========================",
+  "oracle_tail": "    assert record.units_check == \"converted\"\nE   AssertionError: assert 'as_is' == 'converted'\nE     \nE     - converted\nE     + as_is\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a05_units_mismatch_distinct_code\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u17_mismatch_refused_no_comparison_saved\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u18_conversion_scales\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u19_conversion_invalid_factor\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u20_conversion_note_optional_pin\n========================= 5 failed, 73 passed in 3.41s =========================",
+  "status": "DUAL-KILLED"
+}

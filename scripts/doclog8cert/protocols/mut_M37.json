@@ -1,0 +1,14 @@
+{
+  "id": "M37",
+  "file": "apps/api/snapshot_builder.py",
+  "desc": "отсутствующие агрегаты/решение фабрикуются как 0",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 7.59,
+  "oracle_seconds": 7.93,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0, xdist-3.8.0, syrupy-6.1.1, fugue-0.9.7\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 185 items\n\ntests/api/test_doclog8_monitoring.py ................................... [ 18%]\n............................                                             [ 34%]\ntests/api/test_doclog2_snapshots.py .................................... [ 53%]\n.....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n============================= 185 passed in 4.19s ==============================",
+  "oracle_tail": ".................                                                        [100%]\n\n=================================== FAILURES ===================================\n____ TestSnapshotIntegration.test_a22_d12_no_matured_aggregates_dash_honest ____\nscripts/doclog8cert/test_d8cert_oracle_api.py:521: in test_a22_d12_no_matured_aggregates_dash_honest\n    assert \"MAE=—\" in text, text          # честное «—»\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Сверка mon-53ac4f4690ca46f5a941ba90a7a17141: прогноз art-e424a02402204fc491c7a1c394216737 vs факт (vintage act-165ef9ebb8884aa38504cc08b86039ac); зрелых горизонтов 0, исключено незрелых 4 (не нулевая ошибка, §6.1); MAE=0, bias=0, покрытие=0; единицы: unknown; порог не задан; решение человека: — (автопереобучение не следует из порога, §6.1).\nE   assert 'MAE=—' in 'Сверка mon-53ac4f4690ca46f5a941ba90a7a17141: прогноз art-e424a02402204fc491c7a1c394216737 vs факт (vintage act-165ef9...as=0, покрытие=0; единицы: unknown; порог не задан; решение человека: — (автопереобучение не следует из порога, §6.1).'\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSnapshotIntegration::test_a22_d12_no_matured_aggregates_dash_honest\n========================= 1 failed, 77 passed in 3.43s =========================",
+  "status": "ORACLE-ONLY"
+}

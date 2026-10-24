@@ -1,0 +1,14 @@
+{
+  "id": "M14",
+  "file": "apps/api/monitoring.py",
+  "desc": "not_evaluable фабрикуется как within",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 7.68,
+  "oracle_seconds": 6.95,
+  "repo_tail": "\n=================================== FAILURES ===================================\n__________ TestThresholdDecision.test_threshold_not_evaluable_honest ___________\ntests/api/test_doclog8_monitoring.py:948: in test_threshold_not_evaluable_honest\n    assert threshold[\"status\"] == \"not_evaluable\"\nE   AssertionError: assert 'within' == 'not_evaluable'\nE     \nE     - not_evaluable\nE     + within\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_threshold_not_evaluable_honest\n======================== 1 failed, 184 passed in 4.20s =========================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n___________ TestComputeThreshold.test_u11_not_evaluable_with_reason ____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:217: in test_u11_not_evaluable_with_reason\n    assert th[\"status\"] == \"not_evaluable\"\nE   AssertionError: assert 'within' == 'not_evaluable'\nE     \nE     - not_evaluable\nE     + within\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeThreshold::test_u11_not_evaluable_with_reason\n========================= 1 failed, 77 passed in 3.08s =========================",
+  "status": "DUAL-KILLED"
+}

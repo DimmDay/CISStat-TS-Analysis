@@ -1,0 +1,14 @@
+{
+  "id": "M18",
+  "file": "apps/api/monitoring.py",
+  "desc": "основание решения перестаёт быть обязательным",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.44,
+  "oracle_seconds": 7.19,
+  "repo_tail": "    with pytest.raises(MonitoringValidationError, match=\"rationale\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n________________ TestMonitoringApi.test_decision_api_roundtrip _________________\ntests/api/test_doclog8_monitoring.py:1245: in test_decision_api_roundtrip\n    assert bad.status_code == 422\nE   assert 201 == 422\nE    +  where 201 = <Response [201 Created]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_decision_requires_rationale_and_known_action\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_decision_api_roundtrip\n======================== 2 failed, 183 passed in 4.68s =========================",
+  "oracle_tail": "E   AssertionError: {'action': 'accept', 'rationale': ''}\nE   assert 201 == 422\nE    +  where 201 = <Response [201 Created]>.status_code\n__________________ TestDecisions.test_u37_rationale_required ___________________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:622: in test_u37_rationale_required\n    with pytest.raises(MonitoringValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestDecisionContract::test_a11_decision_422_catalog\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestDecisions::test_u37_rationale_required\n========================= 2 failed, 76 passed in 3.16s =========================",
+  "status": "DUAL-KILLED"
+}

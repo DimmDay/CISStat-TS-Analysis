@@ -1,0 +1,14 @@
+{
+  "id": "M28",
+  "file": "apps/api/monitoring.py",
+  "desc": "as_of fail-open: мусорная дата тихо заменяется на now",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.29,
+  "oracle_seconds": 7.49,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n______________ TestActualBatchValidation.test_bad_as_of_rejected _______________\ntests/api/test_doclog8_monitoring.py:368: in test_bad_as_of_rejected\n    with pytest.raises(Exception, match=\"as_of\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'Exception'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestActualBatchValidation::test_bad_as_of_rejected\n======================== 1 failed, 184 passed in 4.35s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_unit.py:504: in test_u31_as_of_roundtrip_z_and_naive\n    assert b1.as_of == \"2026-12-01T00:00:00+00:00\"\nE   AssertionError: assert '2026-10-24T1....768820+00:00' == '2026-12-01T00:00:00+00:00'\nE     \nE     - 2026-12-01T00:00:00+00:00\nE     + 2026-10-24T16:41:08.768820+00:00\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a03_register_201_shape\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a04_validation_422_flat_body\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestValidation::test_u30_batch_validation_catalog\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestValidation::test_u31_as_of_roundtrip_z_and_naive\n========================= 4 failed, 74 passed in 3.37s =========================",
+  "status": "DUAL-KILLED"
+}

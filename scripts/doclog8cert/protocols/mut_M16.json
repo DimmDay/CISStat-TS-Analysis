@@ -1,0 +1,14 @@
+{
+  "id": "M16",
+  "file": "apps/api/monitoring.py",
+  "desc": "§6.1 off: автопереобучение следует из статуса порога",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.26,
+  "oracle_seconds": 9.7,
+  "repo_tail": ".....................................                                    [ 73%]\ntests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n____ TestThresholdDecision.test_threshold_exceeded_recorded_no_autoretrain _____\ntests/api/test_doclog8_monitoring.py:932: in test_threshold_exceeded_recorded_no_autoretrain\n    assert record.result[\"decision_action\"] is None\nE   AssertionError: assert 'exceeded' is None\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_threshold_exceeded_recorded_no_autoretrain\n======================== 1 failed, 184 passed in 4.43s =========================",
+  "oracle_tail": "    assert \"решение человека: —\" in text     # решения ещё нет\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: assert 'решение человека: —' in 'Сверка mon-36520fad63e94cb6baaf90ce9ead063a: прогноз art-ddea8f07bf38435295d7975bd75fee94 vs факт (vintage act-2b974b...ие=1; единицы: unknown; порог mae: exceeded; решение человека: exceeded (автопереобучение не следует из порога, §6.1).'\n__________ TestComputeThreshold.test_u13_decision_action_always_null ___________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:240: in test_u13_decision_action_always_null\n    assert result[\"decision_action\"] is None\nE   AssertionError: assert 'exceeded' is None\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestComparisonContract::test_a09_comparison_201_shape_and_idempotency\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSnapshotIntegration::test_a18_d12_section_reads_frozen\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestComputeThreshold::test_u13_decision_action_always_null\n========================= 3 failed, 75 passed in 4.63s =========================",
+  "status": "DUAL-KILLED"
+}

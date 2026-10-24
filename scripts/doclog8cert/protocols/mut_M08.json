@@ -1,0 +1,14 @@
+{
+  "id": "M08",
+  "file": "apps/api/monitoring.py",
+  "desc": "идемпотентный повтор партий отключён (дубли vintage)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.19,
+  "oracle_seconds": 7.95,
+  "repo_tail": "tests/api/test_doclog8_monitoring.py:420: in test_idempotent_registration_same_body\n    assert created2 is False\nE   assert True is False\n_____ TestActualVintageSemantics.test_idempotency_conflict_different_body ______\ntests/api/test_doclog8_monitoring.py:433: in test_idempotency_conflict_different_body\n    with pytest.raises(MonitoringIdempotencyConflictError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringIdempotencyConflictError'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestActualVintageSemantics::test_idempotent_registration_same_body\nFAILED tests/api/test_doclog8_monitoring.py::TestActualVintageSemantics::test_idempotency_conflict_different_body\n======================== 2 failed, 183 passed in 4.43s =========================",
+  "oracle_tail": "E     + act-f1e1f9f3de644c51878c5c53691b3395\n____________ TestIdempotency.test_u26_batch_conflict_different_body ____________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:429: in test_u26_batch_conflict_different_body\n    with pytest.raises(MonitoringIdempotencyConflictError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringIdempotencyConflictError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a06_idempotency_repeat_and_conflict\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestErrorHygiene::test_a17_422_404_409_code_catalog_disjoint\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestIdempotency::test_u25_batch_same_body_created_false\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestIdempotency::test_u26_batch_conflict_different_body\n========================= 4 failed, 74 passed in 3.42s =========================",
+  "status": "DUAL-KILLED"
+}

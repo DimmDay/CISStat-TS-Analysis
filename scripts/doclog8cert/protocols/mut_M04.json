@@ -1,0 +1,14 @@
+{
+  "id": "M04",
+  "file": "apps/api/monitoring.py",
+  "desc": "чужой run-артефакт принимается (T7 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.93,
+  "oracle_seconds": 8.09,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n____________ TestForecastIntegrity.test_foreign_run_forecast_denied ____________\ntests/api/test_doclog8_monitoring.py:770: in test_foreign_run_forecast_denied\n    with pytest.raises(MonitoringAccessDenied):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringAccessDenied'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestForecastIntegrity::test_foreign_run_forecast_denied\n======================== 1 failed, 184 passed in 4.97s =========================",
+  "oracle_tail": "------------------------------ Captured log call -------------------------------\nWARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-D8CA0001 action=read subject=anonymous via=anonymous reason=anonymous\n_________ TestForecastIntegrity.test_u23_foreign_run_forecast_refused __________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:382: in test_u23_foreign_run_forecast_refused\n    with pytest.raises(MonitoringAccessDenied):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringAccessDenied'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestComparisonContract::test_a08_foreign_forecast_uniform_404_code\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestErrorHygiene::test_a21_gateway_vs_service_404_shape_pin\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestForecastIntegrity::test_u23_foreign_run_forecast_refused\n========================= 3 failed, 75 passed in 3.54s =========================",
+  "status": "DUAL-KILLED"
+}

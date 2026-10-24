@@ -1,0 +1,14 @@
+{
+  "id": "M32",
+  "file": "apps/api/routers/monitoring.py",
+  "desc": "код 422-каталога изменён вне контракта",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.48,
+  "oracle_seconds": 7.84,
+  "repo_tail": "\n=================================== FAILURES ===================================\n________________ TestMonitoringApi.test_register_validation_422 ________________\ntests/api/test_doclog8_monitoring.py:1135: in test_register_validation_422\n    assert resp.json()[\"code\"] == \"monitoring_validation_error\"\nE   AssertionError: assert 'monitoring_bad_request' == 'monitoring_validation_error'\nE     \nE     - monitoring_validation_error\nE     + monitoring_bad_request\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_register_validation_422\n======================== 1 failed, 184 passed in 4.59s =========================",
+  "oracle_tail": "E     + monitoring_bad_request\n_______________ TestRouterSurface.test_s05_error_mapping_source ________________\nscripts/doclog8cert/test_d8cert_oracle_static.py:105: in test_s05_error_mapping_source\n    assert '\"monitoring_validation_error\"' in source\nE   assert '\"monitoring_validation_error\"' in '# apps/api/routers/monitoring.py\\n\"\"\"\\nDOCLOG-8 (spec_documentation_logging.md §6 D12, §17, §19 строка\\nDOCLOG-8): AP...sponse(exc)\\n    return {\\n        \"items\": [item.to_dict() for item in items],\\n        \"total\": len(items),\\n    }\\n'\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a04_validation_422_flat_body\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestDecisionContract::test_a11_decision_422_catalog\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestErrorHygiene::test_a17_422_404_409_code_catalog_disjoint\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSurfaceContract::test_a20_source_kind_artifact_reserved_accepted\nFAILED scripts/doclog8cert/test_d8cert_oracle_static.py::TestRouterSurface::test_s05_error_mapping_source\n========================= 5 failed, 73 passed in 3.36s =========================",
+  "status": "DUAL-KILLED"
+}

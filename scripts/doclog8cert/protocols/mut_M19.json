@@ -1,0 +1,14 @@
+{
+  "id": "M19",
+  "file": "apps/api/monitoring.py",
+  "desc": "решение ссылается на чужую сверку (run-граница off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.06,
+  "oracle_seconds": 8.22,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_______ TestThresholdDecision.test_decision_on_foreign_comparison_denied _______\ntests/api/test_doclog8_monitoring.py:1016: in test_decision_on_foreign_comparison_denied\n    with pytest.raises(MonitoringNotFoundError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringNotFoundError'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_decision_on_foreign_comparison_denied\n======================== 1 failed, 184 passed in 4.18s =========================",
+  "oracle_tail": "    assert resp.status_code == 404\nE   assert 201 == 404\nE    +  where 201 = <Response [201 Created]>.status_code\n______________ TestDecisions.test_u38_foreign_comparison_refused _______________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:641: in test_u38_foreign_comparison_refused\n    with pytest.raises(MonitoringNotFoundError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringNotFoundError'>\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestDecisionContract::test_a12_decision_foreign_comparison_404_code\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestDecisions::test_u38_foreign_comparison_refused\n========================= 2 failed, 76 passed in 3.66s =========================",
+  "status": "DUAL-KILLED"
+}

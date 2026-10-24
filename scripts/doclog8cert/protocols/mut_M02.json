@@ -1,0 +1,14 @@
+{
+  "id": "M02",
+  "file": "apps/api/monitoring.py",
+  "desc": "фактор конверсии единиц игнорируется",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.35,
+  "oracle_seconds": 7.48,
+  "repo_tail": "=================================== FAILURES ===================================\n___________ TestUnitsAlignment.test_units_conversion_explicit_factor ___________\ntests/api/test_doclog8_monitoring.py:495: in test_units_conversion_explicit_factor\n    assert pair[\"actual_value\"] == pytest.approx(480.0)\nE   assert 4.8 == 480.0 ± 4.8e-04\nE     \nE     comparison failed\nE     Obtained: 4.8\nE     Expected: 480.0 ± 4.8e-04\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_conversion_explicit_factor\n======================== 1 failed, 184 passed in 4.51s =========================",
+  "oracle_tail": "=================================== FAILURES ===================================\n_________________ TestServiceUnits.test_u18_conversion_scales __________________\nscripts/doclog8cert/test_d8cert_oracle_unit.py:298: in test_u18_conversion_scales\n    assert pair[\"actual_value\"] == pytest.approx(4.8 * 1000.0)\nE   assert 4.8 == 4800.0 ± 0.0048\nE     \nE     comparison failed\nE     Obtained: 4.8\nE     Expected: 4800.0 ± 0.0048\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_unit.py::TestServiceUnits::test_u18_conversion_scales\n========================= 1 failed, 77 passed in 3.27s =========================",
+  "status": "DUAL-KILLED"
+}

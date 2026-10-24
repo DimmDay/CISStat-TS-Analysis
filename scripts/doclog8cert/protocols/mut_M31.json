@@ -1,0 +1,14 @@
+{
+  "id": "M31",
+  "file": "apps/api/routers/monitoring.py",
+  "desc": "конфликт идемпотентности 409 -> 422",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.31,
+  "oracle_seconds": 7.79,
+  "repo_tail": "tests/api/test_doclog6_approvals_archive.py ............................ [ 88%]\n.....................                                                    [100%]\n\n=================================== FAILURES ===================================\n__________ TestMonitoringApi.test_comparison_idempotency_conflict_409 __________\ntests/api/test_doclog8_monitoring.py:1218: in test_comparison_idempotency_conflict_409\n    assert conflict.status_code == 409\nE   assert 422 == 409\nE    +  where 422 = <Response [422 Unprocessable Entity]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_idempotency_conflict_409\n======================== 1 failed, 184 passed in 4.47s =========================",
+  "oracle_tail": "scripts/doclog8cert/test_d8cert_oracle_unit.py ......................... [ 78%]\n.................                                                        [100%]\n\n=================================== FAILURES ===================================\n______ TestRegistrationContract.test_a06_idempotency_repeat_and_conflict _______\nscripts/doclog8cert/test_d8cert_oracle_api.py:186: in test_a06_idempotency_repeat_and_conflict\n    assert conflict.status_code == 409\nE   assert 422 == 409\nE    +  where 422 = <Response [422 Unprocessable Entity]>.status_code\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a06_idempotency_repeat_and_conflict\n========================= 1 failed, 77 passed in 3.36s =========================",
+  "status": "DUAL-KILLED"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M35",
+  "file": "apps/api/routers/monitoring.py",
+  "desc": "201 создание тихо становится 200",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 8.44,
+  "oracle_seconds": 8.03,
+  "repo_tail": ".....................                                                    [100%]\n\n=================================== FAILURES ===================================\n_______________ TestMonitoringApi.test_register_and_list_actuals _______________\ntests/api/test_doclog8_monitoring.py:1120: in test_register_and_list_actuals\n    assert resp.status_code == 201, resp.text\nE   AssertionError: {\"created\":true,\"batch\":{\"batch_id\":\"act-d82c1aa00a7d4433b92cffbbe333202a\",\"run_id\":\"RUN-D8A00001\",\"tenant_id\":\"tenant-default\",\"target_name\":\"gdp_growth\",\"entity_id\":null,\"units\":\"percent\",\"as_of\":\"2026-12-01T00:00:00+00:00\",\"source_kind\":\"manual\",\"source_ref\":null,\"notes\":\"\",\"values\":[{\"period\":\"2026-09-01\",\"value\":4.8},{\"period\":\"2026-10-01\",\"value\":6.1}],\"point_count\":2,\"schema_version\":\"doclog.actual_vintage/1\",\"created_by\":\"subj-65fd8033cd7b550b\",\"created_at\":\"2026-10-24T16:45:36.311346+00:00\"}}\nE   assert 200 == 201\nE    +  where 200 = <Response [200 OK]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_register_and_list_actuals\n======================== 1 failed, 184 passed in 4.54s =========================",
+  "oracle_tail": "E    +  where 200 = <Response [200 OK]>.status_code\n_____ TestSurfaceContract.test_a20_source_kind_artifact_reserved_accepted ______\nscripts/doclog8cert/test_d8cert_oracle_api.py:530: in test_a20_source_kind_artifact_reserved_accepted\n    assert resp.status_code == 201\nE   assert 200 == 201\nE    +  where 200 = <Response [200 OK]>.status_code\n=========================== short test summary info ============================\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a03_register_201_shape\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestRegistrationContract::test_a06_idempotency_repeat_and_conflict\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestAuditSemantics::test_a14_standard_class_no_break\nFAILED scripts/doclog8cert/test_d8cert_oracle_api.py::TestSurfaceContract::test_a20_source_kind_artifact_reserved_accepted\n========================= 4 failed, 74 passed in 3.49s =========================",
+  "status": "DUAL-KILLED"
+}
