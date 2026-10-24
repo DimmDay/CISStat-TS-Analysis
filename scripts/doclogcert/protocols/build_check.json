@@ -1,0 +1,64 @@
+{
+  "routes_total": 221,
+  "documentation_routes": 25,
+  "logs_routes": 7,
+  "migrations": 15,
+  "migration_statements": 93,
+  "last_migration": "0015_doclog9_profiles.sql",
+  "document_kinds": 12,
+  "d12_kind": [
+    "forecast_vs_actual",
+    "Сверка прогноза с фактом",
+    null
+  ],
+  "audit_actions": 28,
+  "grant_scopes": [
+    "audit.read",
+    "logs.export",
+    "logs.read"
+  ],
+  "grant_ttl_max_hours": 168,
+  "profile_formats": [
+    "docx",
+    "pdfa"
+  ],
+  "rendition_formats": [
+    "csv",
+    "docx",
+    "html",
+    "json",
+    "jsonl",
+    "md",
+    "parquet",
+    "pdf",
+    "pdfa",
+    "png",
+    "svg",
+    "xlsx",
+    "zip"
+  ],
+  "heavy_formats": [
+    "docx",
+    "parquet",
+    "pdf",
+    "pdfa",
+    "png",
+    "svg",
+    "xlsx",
+    "zip"
+  ],
+  "decision_actions": [
+    "accept",
+    "investigate",
+    "none",
+    "retrain_requested"
+  ],
+  "threshold_metrics": [
+    "bias_abs",
+    "mae",
+    "mape",
+    "mase"
+  ],
+  "product_tree_md5_eq_head": true,
+  "BUILD": "OK"
+}

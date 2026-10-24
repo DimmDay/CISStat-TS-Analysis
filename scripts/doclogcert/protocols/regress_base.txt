@@ -1,0 +1,43 @@
+ximum Likelihood optimization failed to "
+
+tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+tests/api/test_progress_defects_progr13.py::test_mentor_phase_stays_upload_after_upload_page_actions
+tests/api/test_progress_defects_progr13.py::test_passport_start_event_attributed_to_upload_stage
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:955: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2*np.log(2*np.pi) - nobs2*np.log(ssr / nobs) - nobs2
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:866: UserWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    warn('Too few observations to estimate starting parameters%s.'
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_forecasting_session.py::test_forecast_naive_full_run_shape_and_storage
+FAILED tests/api/test_forecasting_session.py::test_forecast_horizon_defaults_to_card_training_horizon
+FAILED tests/api/test_forecasting_session.py::test_forecast_custom_horizon_and_alpha_are_honored
+FAILED tests/api/test_forecasting_session.py::test_forecast_ets_runs_parametric_simulation_end_to_end
+FAILED tests/api/test_forecasting_session.py::test_forecast_history_returns_all_runs
+FAILED tests/api/test_forecasting_session.py::test_forecast_get_by_id - KeyEr...
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_csv_contains_history_and_forecast_columns
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_json_is_self_contained_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_png_export_event_is_recorded_via_trace_endpoint
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_returns_referenced_runs_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_requires_two_distinct_existing_forecasts
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_uses_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_covers_exact_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_rejects_empty_param_space
+FAILED tests/api/test_forecasting_session.py::test_forecasts_are_invalidated_together_with_model_cards
+FAILED tests/api/test_forecasting_session.py::test_forecast_run_survives_session_roundtrip
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+FAILED tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+==== 27 failed, 2782 passed, 42 skipped, 1291 warnings in 228.64s (0:03:48) ====

@@ -1,0 +1,14 @@
+{
+  "id": "M07",
+  "file": "apps/api/document_lifecycle.py",
+  "desc": "two_person policy выключена (самоутверждение разрешено)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 18.09,
+  "oracle_seconds": 11.56,
+  "repo_tail": "E    +  where 200 = <Response [200 OK]>.status_code\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestTwoPersonPolicy::test_self_approval_forbidden_under_two_person\n================== 1 failed, 581 passed, 5 warnings in 13.01s ==================",
+  "oracle_tail": "............                                                             [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 51%]\nscripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 73%]\n..............................                                           [100%]\n\n=================================== FAILURES ===================================\n____________ TestApprovalFlowApi.test_two_person_self_approval_422 _____________\nscripts/doclogcert/test_e2cert_oracle_api.py:424: in test_two_person_self_approval_422\n    assert resp.status_code == 422\nE   assert 200 == 422\nE    +  where 200 = <Response [200 OK]>.status_code\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestApprovalFlowApi::test_two_person_self_approval_422\n======================== 1 failed, 114 passed in 5.91s =========================",
+  "status": "DUAL-KILLED"
+}

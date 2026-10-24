@@ -1,0 +1,14 @@
+{
+  "id": "M16",
+  "file": "apps/api/monitoring.py",
+  "desc": "units mismatch молча принимается как as_is (AC15 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.29,
+  "oracle_seconds": 11.33,
+  "repo_tail": "tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_mismatch_refused_with_reason\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_units_conversion_explicit_factor\nFAILED tests/api/test_doclog8_monitoring.py::TestUnitsAlignment::test_zero_conversion_factor_rejected\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_roundtrip_and_units_mismatch_422\n================== 4 failed, 578 passed, 5 warnings in 12.52s ==================",
+  "oracle_tail": "scripts/doclogcert/test_e2cert_oracle_unit.py:688: in test_units_mismatch_rejected_without_conversion\n    with pytest.raises(MonitoringUnitsMismatchError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringUnitsMismatchError'>\n_____ TestMonitoringHonesty.test_units_mismatch_rejected_with_zero_factor ______\nscripts/doclogcert/test_e2cert_oracle_unit.py:699: in test_units_mismatch_rejected_with_zero_factor\n    with pytest.raises(MonitoringValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.monitoring.MonitoringValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestMonitoringApi::test_units_mismatch_422_with_own_code\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_units_mismatch_rejected_without_conversion\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_units_mismatch_rejected_with_zero_factor\n======================== 3 failed, 114 passed in 5.88s =========================",
+  "status": "DUAL-KILLED"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "C3",
+  "file": "apps/api/document_renditions.py",
+  "desc": "контроль: хвостовой комментарий",
+  "control": true,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 0,
+  "repo_seconds": 17.67,
+  "oracle_seconds": 11.24,
+  "repo_tail": "tests/api/test_doclog9_profiles.py ..................................... [ 97%]\n................                                                         [100%]\n\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 582 passed, 5 warnings in 12.69s =======================",
+  "oracle_tail": "Fugue tests will be initialized with options:\nrootdir: /home/z/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0, fugue-0.9.7, syrupy-6.1.1\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 118 items\n\nscripts/doclogcert/test_e2cert_oracle_api.py ........................... [ 22%]\n.............                                                            [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 50%]\nscripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 72%]\n................................                                         [100%]\n\n============================= 118 passed in 5.74s ==============================",
+  "status": "ALIVE"
+}

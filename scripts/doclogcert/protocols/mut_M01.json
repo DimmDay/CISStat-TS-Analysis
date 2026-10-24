@@ -1,0 +1,14 @@
+{
+  "id": "M01",
+  "file": "apps/api/report_snapshot.py",
+  "desc": "конфликт идемпотентности снимка выключен (AC09 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 17.48,
+  "oracle_seconds": 11.27,
+  "repo_tail": "tests/api/test_doclog9_profiles.py ..................................... [ 97%]\n................                                                         [100%]\n\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 582 passed, 5 warnings in 12.52s =======================",
+  "oracle_tail": "............                                                             [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 50%]\nscripts/doclogcert/test_e2cert_oracle_unit.py ....F..................... [ 72%]\n................................                                         [100%]\n\n=================================== FAILURES ===================================\n_____ TestSnapshotFreezeContract.test_memory_registry_conflict_gate_direct _____\nscripts/doclogcert/test_e2cert_oracle_unit.py:142: in test_memory_registry_conflict_gate_direct\n    with pytest.raises(SnapshotIdempotencyConflictError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.report_snapshot.SnapshotIdempotencyConflictError'>\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestSnapshotFreezeContract::test_memory_registry_conflict_gate_direct\n======================== 1 failed, 116 passed in 5.78s =========================",
+  "status": "ORACLE-ONLY"
+}

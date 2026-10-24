@@ -1,0 +1,14 @@
+{
+  "id": "M24",
+  "file": "apps/api/routers/logs.py",
+  "desc": "саможурналирование ломается (действие вне каталога)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.66,
+  "oracle_seconds": 11.12,
+  "repo_tail": "E   AssertionError: assert 'audit_log_accessed' in []\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestAuditStream::test_journal_access_self_audited\n================== 1 failed, 581 passed, 5 warnings in 12.77s ==================",
+  "oracle_tail": ".............                                                            [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 50%]\nscripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 72%]\n................................                                         [100%]\n\n=================================== FAILURES ===================================\n______ TestLogsApiMatrix.test_admin_reads_all_streams_and_self_journaling ______\nscripts/doclogcert/test_e2cert_oracle_api.py:849: in test_admin_reads_all_streams_and_self_journaling\n    assert len(accessed_after) - accessed_before == 1\nE   AssertionError: assert (2 - 2) == 1\nE    +  where 2 = len([{'action': 'audit_log_accessed', 'actor_subject': 'subj-e2ca000000000001', 'actor_via': 'api_key', 'audit_id': 'aud-d...or_subject': 'subj-e2ca000000000001', 'actor_via': 'api_key', 'audit_id': 'aud-7297fde3fed4429fbb79edbb2ba12cb3', ...}])\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestLogsApiMatrix::test_admin_reads_all_streams_and_self_journaling\n======================== 1 failed, 117 passed in 5.66s =========================",
+  "status": "DUAL-KILLED"
+}

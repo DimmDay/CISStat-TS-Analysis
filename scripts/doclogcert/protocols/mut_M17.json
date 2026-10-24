@@ -1,0 +1,14 @@
+{
+  "id": "M17",
+  "file": "apps/api/admin_logs.py",
+  "desc": "whitelist scopes грантов открыт (fail-open)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.66,
+  "oracle_seconds": 11.0,
+  "repo_tail": "=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantValidation::test_scopes_whitelist_fail_closed\nFAILED tests/api/test_doclog7_logs_support.py::TestGrantsAPI::test_grant_validation_api_422\n================== 2 failed, 580 passed, 5 warnings in 12.71s ==================",
+  "oracle_tail": "............                                                             [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 50%]\nscripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 72%]\n..........F.....................                                         [100%]\n\n=================================== FAILURES ===================================\n_____________ TestSupportGrants.test_grant_validation_fail_closed ______________\nscripts/doclogcert/test_e2cert_oracle_unit.py:921: in test_grant_validation_fail_closed\n    with pytest.raises(GrantValidationError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.admin_logs.GrantValidationError'>\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestSupportGrants::test_grant_validation_fail_closed\n======================== 1 failed, 116 passed in 5.64s =========================",
+  "status": "DUAL-KILLED"
+}

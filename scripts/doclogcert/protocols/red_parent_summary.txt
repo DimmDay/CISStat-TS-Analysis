@@ -1,0 +1,35 @@
+est_e2cert_oracle_unit.py::TestMandatoryAuditFailClosed::test_false_sink_mandatory_fails_closed
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMandatoryAuditFailClosed::test_standard_audit_failure_does_not_break_read
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_units_mismatch_rejected_without_conversion
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_units_mismatch_rejected_with_zero_factor
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_units_unknown_honest_not_as_is
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_immature_horizons_excluded_explicitly_not_zero_error
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_out_of_horizon_fact_labeled_not_in_pairs
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_zero_actual_honest_nulls
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_mase_null_without_scale
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_mase_invalid_scale_rejected
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_new_vintage_freezes_old_comparison
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_idempotent_comparison_same_key_same_body
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_threshold_fact_decision_separate_record
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSupportGrants::test_grant_validation_fail_closed
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSupportGrants::test_grant_scopes_catalog_locked
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSupportGrants::test_grant_lifecycle_create_list_revoke
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestEffectiveLogAccess::test_admin_full_catalog
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestEffectiveLogAccess::test_scope_narrowing_honest
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestEffectiveLogAccess::test_no_scope_no_access
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestEffectiveLogAccess::test_grant_extends_subject_and_revoke_closes
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_create_and_resolve_profile
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_resolve_honest_errors
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_policy_admin_required
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_pdfa_validator_structural_not_by_filename
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_pdfa_validator_accepts_conformant_bytes
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSignatureHonesty::test_hmac_signature_roundtrip_and_tamper
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSignatureHonesty::test_sign_without_key_honest_unavailable
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestSignatureHonesty::test_verify_without_key_fails_closed
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestLifecycleApprovalBinding::test_expected_hash_mismatch_rejected
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestLifecycleApprovalBinding::test_publish_requires_approval
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestRetentionHonesty::test_hold_priority_and_purge_tombstone
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestRetentionHonesty::test_published_document_not_swept
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestPublishedSurvivesSessionLoss::test_published_rendition_bytes_survive_session_reset
+ERROR scripts/doclogcert/test_e2cert_oracle_unit.py::TestPublishedSurvivesSessionLoss::test_run_record_and_snapshot_intact_after_session_reset
+============================= 115 errors in 2.57s ==============================

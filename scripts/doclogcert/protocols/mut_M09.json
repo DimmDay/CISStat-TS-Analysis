@@ -1,0 +1,14 @@
+{
+  "id": "M09",
+  "file": "apps/api/document_lifecycle.py",
+  "desc": "publish без согласования разрешён (AC07 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 18.09,
+  "oracle_seconds": 11.12,
+  "repo_tail": "E     + invalid_transition\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestApprovalFlow::test_publish_without_approval_422\n================== 1 failed, 581 passed, 5 warnings in 13.03s ==================",
+  "oracle_tail": "E   AssertionError: assert 'invalid_transition' == 'publish_requires_approval'\nE     \nE     - publish_requires_approval\nE     + invalid_transition\n_________ TestLifecycleApprovalBinding.test_publish_requires_approval __________\nscripts/doclogcert/test_e2cert_oracle_unit.py:1203: in test_publish_requires_approval\n    service.publish(\napps/api/document_lifecycle.py:1010: in publish\n    raise InvalidTransitionError(\nE   apps.api.document_lifecycle.InvalidTransitionError: Публикация возможна только из approved (текущее: draft)\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestApprovalFlowApi::test_publish_without_approval_422\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestLifecycleApprovalBinding::test_publish_requires_approval\n======================== 2 failed, 113 passed in 5.67s =========================",
+  "status": "DUAL-KILLED"
+}

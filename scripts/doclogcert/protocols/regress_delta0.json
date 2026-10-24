@@ -1,0 +1,10 @@
+{
+  "target_summary": "==== 27 failed, 2901 passed, 42 skipped, 1291 warnings in 237.96s (0:03:57) ====",
+  "base_summary": "==== 27 failed, 2782 passed, 42 skipped, 1291 warnings in 228.64s (0:03:48) ====",
+  "target_failed": 27,
+  "base_failed": 27,
+  "byte_identical": true,
+  "only_in_target": [],
+  "only_in_base": [],
+  "passed_delta": 119
+}

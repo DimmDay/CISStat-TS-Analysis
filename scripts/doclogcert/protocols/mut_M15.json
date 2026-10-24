@@ -1,0 +1,14 @@
+{
+  "id": "M15",
+  "file": "apps/api/monitoring.py",
+  "desc": "MAPE фабрикуется в 0 при нулевом факте (AC12 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.36,
+  "oracle_seconds": 11.1,
+  "repo_tail": "=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mape_zero_actual_null_with_reason\nFAILED tests/api/test_doclog8_monitoring.py::TestThresholdDecision::test_threshold_not_evaluable_honest\n================== 2 failed, 580 passed, 5 warnings in 12.55s ==================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n___________ TestMonitoringApi.test_zero_actual_honest_nulls_via_api ____________\nscripts/doclogcert/test_e2cert_oracle_api.py:720: in test_zero_actual_honest_nulls_via_api\n    assert result[\"aggregates\"][\"mape\"] is None\nE   assert 0.0 is None\n_____________ TestMonitoringHonesty.test_zero_actual_honest_nulls ______________\nscripts/doclogcert/test_e2cert_oracle_unit.py:759: in test_zero_actual_honest_nulls\n    assert aggregates[\"mape\"] is None\nE   assert 0.0 is None\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestMonitoringApi::test_zero_actual_honest_nulls_via_api\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_zero_actual_honest_nulls\n======================== 2 failed, 115 passed in 5.68s =========================",
+  "status": "DUAL-KILLED"
+}

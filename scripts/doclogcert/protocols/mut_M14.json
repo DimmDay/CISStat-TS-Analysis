@@ -1,0 +1,14 @@
+{
+  "id": "M14",
+  "file": "apps/api/monitoring.py",
+  "desc": "§6.1 off: незрелый горизонт получает нулевую ошибку",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.7,
+  "oracle_seconds": 11.36,
+  "repo_tail": "    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_matured_and_excluded_counts\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_excluded_horizons_have_no_error\nFAILED tests/api/test_doclog8_monitoring.py::TestMaturity::test_no_matured_horizons_null_not_zero\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_pair_metrics_known_numbers\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mape_zero_actual_null_with_reason\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mape_all_defined_computed\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_mase_with_scale_computed\nFAILED tests/api/test_doclog8_monitoring.py::TestMetricsHonesty::test_interval_coverage_with_bounds\nFAILED tests/api/test_doclog8_monitoring.py::TestMonitoringApi::test_comparison_roundtrip_and_units_mismatch_422\n================== 9 failed, 573 passed, 5 warnings in 12.77s ==================",
+  "oracle_tail": "............                                                             [ 33%]\nscripts/doclogcert/test_e2cert_oracle_static.py ....................     [ 50%]\nscripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 72%]\n..F.............................                                         [100%]\n\n=================================== FAILURES ===================================\n_ TestMonitoringHonesty.test_immature_horizons_excluded_explicitly_not_zero_error _\nscripts/doclogcert/test_e2cert_oracle_unit.py:725: in test_immature_horizons_excluded_explicitly_not_zero_error\n    assert len(pairs) == 2\nE   AssertionError: assert 4 == 2\nE    +  where 4 = len([{'absolute_error': 0.20000000000000018, 'actual_value': 4.8, 'ape': 0.041666666666666706, 'ape_undefined_reason': Non...ual_zero', ...}, {'absolute_error': 8.0, 'actual_value': 0.0, 'ape': None, 'ape_undefined_reason': 'actual_zero', ...}])\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMonitoringHonesty::test_immature_horizons_excluded_explicitly_not_zero_error\n======================== 1 failed, 116 passed in 5.86s =========================",
+  "status": "DUAL-KILLED"
+}

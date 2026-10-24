@@ -1,0 +1,14 @@
+{
+  "id": "M20",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "валидатор PDF/A всегда passed («по имени файла»)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.55,
+  "oracle_seconds": 11.11,
+  "repo_tail": "tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestValidators::test_pdfa_validator_fails_plain_pdf\nFAILED tests/api/test_doclog9_profiles.py::TestValidators::test_pdfa_validator_fails_truncated_bytes\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_validation_failed_blocks_ready\n================== 3 failed, 579 passed, 5 warnings in 12.64s ==================",
+  "oracle_tail": "scripts/doclogcert/test_e2cert_oracle_unit.py .......................... [ 72%]\n....................F...........                                         [100%]\n\n=================================== FAILURES ===================================\n____ TestOrgProfileContract.test_pdfa_validator_structural_not_by_filename _____\nscripts/doclogcert/test_e2cert_oracle_unit.py:1114: in test_pdfa_validator_structural_not_by_filename\n    assert verdict.result == \"failed\"\nE   AssertionError: assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestOrgProfileContract::test_pdfa_validator_structural_not_by_filename\n======================== 1 failed, 116 passed in 5.80s =========================",
+  "status": "DUAL-KILLED"
+}

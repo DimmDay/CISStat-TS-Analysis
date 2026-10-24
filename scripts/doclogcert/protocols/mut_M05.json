@@ -1,0 +1,14 @@
+{
+  "id": "M05",
+  "file": "apps/api/document_renditions.py",
+  "desc": "HTML-экранирование выключено (AC16 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.83,
+  "oracle_seconds": 11.17,
+  "repo_tail": "E     ...Full output truncated (15 lines hidden), use '-vv' to show\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog4_document_delivery.py::TestRenderers::test_render_html_escapes_untrusted_content\n================== 1 failed, 581 passed, 5 warnings in 12.83s ==================",
+  "oracle_tail": "    assert \"<script>\" not in html_text\nE   assert '<script>' not in '<!doctype h...body></html>'\nE     \nE     '<script>' is contained here:\nE       cts\">\nE       <li><script>alert(1)</script>javascript&#58;alert(2) <span class=\"status\">[актуально]</span>\nE     ?    ++++++++\nE       <div class=\"basis\">Основание: <code>server_result</code></div>\nE       </li>...\nE     \nE     ...Full output truncated (4 lines hidden), use '-vv' to show\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestOutputSafety::test_html_escapes_script_and_uri\n======================== 1 failed, 114 passed in 5.72s =========================",
+  "status": "DUAL-KILLED"
+}

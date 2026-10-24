@@ -1,0 +1,14 @@
+{
+  "id": "M10",
+  "file": "apps/api/document_lifecycle.py",
+  "desc": "mandatory audit заменён best-effort standard (AC11 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.92,
+  "oracle_seconds": 11.4,
+  "repo_tail": "=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestMandatoryAuditFailClosed::test_approve_fails_closed\nFAILED tests/api/test_doclog6_approvals_archive.py::TestMandatoryAuditFailClosed::test_publish_fails_closed\n================== 2 failed, 580 passed, 5 warnings in 12.84s ==================",
+  "oracle_tail": "____ TestMandatoryAuditFailClosed.test_approve_fails_closed_on_broken_sink _____\nscripts/doclogcert/test_e2cert_oracle_unit.py:575: in test_approve_fails_closed_on_broken_sink\n    with pytest.raises(MandatoryAuditFailure):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.security_audit.MandatoryAuditFailure'>\n_____ TestMandatoryAuditFailClosed.test_false_sink_mandatory_fails_closed ______\nscripts/doclogcert/test_e2cert_oracle_unit.py:607: in test_false_sink_mandatory_fails_closed\n    with pytest.raises(MandatoryAuditFailure):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.security_audit.MandatoryAuditFailure'>\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMandatoryAuditFailClosed::test_approve_fails_closed_on_broken_sink\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestMandatoryAuditFailClosed::test_false_sink_mandatory_fails_closed\n======================== 2 failed, 113 passed in 5.90s =========================",
+  "status": "DUAL-KILLED"
+}

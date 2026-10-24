@@ -1,0 +1,14 @@
+{
+  "id": "M08",
+  "file": "apps/api/document_lifecycle.py",
+  "desc": "bound-hash при approve выключен (AC07 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 18.0,
+  "oracle_seconds": 11.43,
+  "repo_tail": "E    +  where 200 = <Response [200 OK]>.status_code\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog6_approvals_archive.py::TestApprovalBoundHash::test_expected_snapshot_hash_mismatch_409\n================== 1 failed, 581 passed, 5 warnings in 12.98s ==================",
+  "oracle_tail": "_______________ TestApprovalFlowApi.test_wrong_expected_hash_409 _______________\nscripts/doclogcert/test_e2cert_oracle_api.py:461: in test_wrong_expected_hash_409\n    assert resp.status_code == 409\nE   assert 200 == 409\nE    +  where 200 = <Response [200 OK]>.status_code\n______ TestLifecycleApprovalBinding.test_expected_hash_mismatch_rejected _______\nscripts/doclogcert/test_e2cert_oracle_unit.py:1181: in test_expected_hash_mismatch_rejected\n    with pytest.raises(ApprovalHashMismatchError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.document_lifecycle.ApprovalHashMismatchError'>\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_api.py::TestApprovalFlowApi::test_wrong_expected_hash_409\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestLifecycleApprovalBinding::test_expected_hash_mismatch_rejected\n======================== 2 failed, 113 passed in 5.82s =========================",
+  "status": "DUAL-KILLED"
+}

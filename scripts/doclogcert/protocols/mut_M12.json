@@ -1,0 +1,14 @@
+{
+  "id": "M12",
+  "file": "apps/api/telemetry.py",
+  "desc": "потеря записи телеметрии невидима (AC11 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 17.69,
+  "oracle_seconds": 11.37,
+  "repo_tail": "E    +    where <built-in method get of dict object at 0x7f188d7b3540> = {'telemetry_sink_failures_total': 2}.get\n=============================== warnings summary ===============================\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\ntests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins\n  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.\n    return super().request(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog3_telemetry_audit.py::TestCollectorFailure::test_memory_sink_bounded_overflow_dropped\n================== 1 failed, 581 passed, 5 warnings in 12.82s ==================",
+  "oracle_tail": "................................                                         [100%]\n\n=================================== FAILURES ===================================\n____________ TestTelemetryResilience.test_false_sink_counts_dropped ____________\nscripts/doclogcert/test_e2cert_oracle_unit.py:574: in test_false_sink_counts_dropped\n    assert pipeline.counters().get(\"telemetry_dropped_total\", 0) >= 1\nE   AssertionError: assert 0 >= 1\nE    +  where 0 = <built-in method get of dict object at 0x7f62cac62380>('telemetry_dropped_total', 0)\nE    +    where <built-in method get of dict object at 0x7f62cac62380> = {'telemetry_sink_failures_total': 1}.get\nE    +      where {'telemetry_sink_failures_total': 1} = counters()\nE    +        where counters = <apps.api.telemetry._TelemetryPipeline object at 0x7f62f171e4e0>.counters\n=========================== short test summary info ============================\nFAILED scripts/doclogcert/test_e2cert_oracle_unit.py::TestTelemetryResilience::test_false_sink_counts_dropped\n======================== 1 failed, 116 passed in 5.90s =========================",
+  "status": "DUAL-KILLED"
+}
