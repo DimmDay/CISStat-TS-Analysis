@@ -36,6 +36,8 @@ export interface RenditionSummary {
   job_id: string | null;
   created_by: string | null;
   created_at: string;
+  // DOCLOG-9: организационный профиль выпуска ('' -- безпрофильный).
+  org_profile_id?: string;
 }
 
 export interface RevisionSummary {
@@ -189,10 +191,16 @@ export function getRevision(
 export function requestRendition(
   revisionId: string,
   format: string,
+  options?: { org_profile_id?: string },
 ): Promise<ApiResult<{ job: JobPayload; status_url: string }>> {
   return requestJson(documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/renditions`), {
     method: "POST",
-    body: JSON.stringify({ format }),
+    // DOCLOG-9 (§19): организационный профиль -- часть формы выпуска
+    // (обязателен для docx/pdfa; resolve/валидатор -- сервер).
+    body: JSON.stringify({
+      format,
+      ...(options?.org_profile_id ? { org_profile_id: options.org_profile_id } : {}),
+    }),
   });
 }
 
@@ -214,6 +222,77 @@ export function renditionContentUrl(renditionId: string): string {
 /** Прямая ссылка на preview HTML (GET, §17) -- для iframe src, не fetch. */
 export function revisionPreviewUrl(revisionId: string): string {
   return documentationApiUrl(`/revisions/${encodeURIComponent(revisionId)}/preview`);
+}
+
+// ── DOCLOG-9: профили организации (§15, §19 строка DOCLOG-9) ─────────
+
+export interface OrgProfileSummary {
+  profile_id: string;
+  schema_version: string;
+  name: string;
+  version_no: number;
+  format: string;
+  status: "active" | "retired";
+  language: string;
+  title_prefix: string;
+  footer_text: string;
+  organization: string;
+  validate_conformance: boolean;
+  sign_contents: boolean;
+  anchor_registry: boolean;
+  worm_lock: boolean;
+  created_by: string | null;
+  created_at: string;
+  retired_by: string | null;
+  retired_at: string | null;
+}
+
+/** Список профилей организации (фильтр по формату; аноним -- 404). */
+export function listOrgProfiles(
+  format?: string,
+): Promise<ApiResult<{ profiles: OrgProfileSummary[]; count: number }>> {
+  const suffix = format ? `?format=${encodeURIComponent(format)}` : "";
+  return requestJson(documentationApiUrl(`/org-profiles${suffix}`));
+}
+
+export interface RenditionValidationRecord {
+  validation_id: string;
+  rendition_id: string;
+  job_id: string;
+  run_id: string;
+  profile_id: string;
+  profile_version_no: number;
+  format: string;
+  validator: string;
+  result: "passed" | "failed";
+  findings: string[];
+  signature_manifest: Record<string, unknown> | null;
+  checked_at: string;
+}
+
+/** Записи валидации выпуска (passed/failed -- обе честно). */
+export function getRenditionValidations(
+  renditionId: string,
+): Promise<ApiResult<{ validations: RenditionValidationRecord[]; count: number }>> {
+  return requestJson(
+    documentationApiUrl(`/renditions/${encodeURIComponent(renditionId)}/validations`),
+  );
+}
+
+export interface SignatureVerification {
+  validator: string;
+  result: "passed" | "failed" | "not_signed";
+  findings: string[];
+}
+
+/** Верификация detached-подписи (HMAC; НЕ юридическая ЭП). */
+export function verifyRenditionSignature(
+  renditionId: string,
+): Promise<ApiResult<{ verification: SignatureVerification }>> {
+  return requestJson(
+    documentationApiUrl(`/renditions/${encodeURIComponent(renditionId)}/verify-signature`),
+    { method: "POST" },
+  );
 }
 
 // ── DOCLOG-6: согласование и архив (§11, §16, §17) ──────────────────

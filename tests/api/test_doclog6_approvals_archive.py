@@ -1146,12 +1146,12 @@ class TestMigration0012:
     def test_catalog_counts(self):
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
-        assert len(MIGRATION_FILES) == 14
-        # DOCLOG-8 (честное обновление пина): последний файл каталога --
-        # 0014; сами миграции 0012/0013 -- предпоследние (пин по имени).
+        assert len(MIGRATION_FILES) == 15
+        # DOCLOG-9 (честное обновление пина): последний файл каталога --
+        # 0015; сами миграции 0012/0013 -- предпоследние (пин по имени).
         assert "0012_doclog6_approvals_archive.sql" in [n for n, _ in MIGRATION_FILES]
-        # 78 (0013) + 7 statement 0014 (3 таблицы + 4 индекса).
-        assert len(MIGRATION_STATEMENTS) == 85
+        # 85 (0014) + 8 statement 0015 (2 ALTER + 3 таблицы + 3 индекса).
+        assert len(MIGRATION_STATEMENTS) == 93
 
     def test_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

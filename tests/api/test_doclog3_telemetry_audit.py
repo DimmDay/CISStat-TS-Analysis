@@ -1228,5 +1228,8 @@ class TestMigrations:
         # DOCLOG-8 (обновлено честно): каталог пополнен
         # 0014_doclog8_monitoring (аддитивная: 3 таблицы + 4 индекса =
         # 7 statement; 78 + 7 = 85).
-        assert len(MIGRATION_FILES) == 14
-        assert len(MIGRATION_STATEMENTS) == 85
+        # DOCLOG-9 (обновлено честно): каталог пополнен
+        # 0015_doclog9_profiles (аддитивная: 2 ALTER + 3 таблицы +
+        # 3 индекса = 8 statement; 85 + 8 = 93).
+        assert len(MIGRATION_FILES) == 15
+        assert len(MIGRATION_STATEMENTS) == 93

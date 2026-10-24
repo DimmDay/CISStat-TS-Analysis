@@ -127,11 +127,27 @@ RENDITION_FORMATS: dict[str, RenditionFormatSpec] = {
     "zip": RenditionFormatSpec(
         "zip", "application/zip", "zip", "ZIP (evidence-пакет)"
     ),
+    # ── DOCLOG-9: профили организации (§7 P2) -- тяжёлые форматы,
+    #    выпуск ТОЛЬКО через организационный профиль (обязателен);
+    #    профиль подтверждается ВАЛИДАТОРОМ, не названием файла.
+    "docx": RenditionFormatSpec(
+        "docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "docx",
+        "DOCX (редактируемая копия с указанием происхождения)",
+    ),
+    "pdfa": RenditionFormatSpec(
+        "pdfa", "application/pdf", "pdfa",
+        "PDF/A-1b (архивный профиль, проверяемая конформность)",
+    ),
 }
 
 # Тяжёлые форматы (§7 P1): рендер выполняет worker (§18), POST только
 # ставит job в очередь. P0 остаются синхронными (пин DOCLOG-4).
-HEAVY_RENDITION_FORMATS = frozenset({"pdf", "xlsx", "parquet", "svg", "png", "zip"})
+# DOCLOG-9 (§7 P2): docx/pdfa -- тяжёлые форматы профилей организации.
+HEAVY_RENDITION_FORMATS = frozenset(
+    {"pdf", "xlsx", "parquet", "svg", "png", "zip", "docx", "pdfa"}
+)
 
 JSONL_SCHEMA_VERSION = "doclog.rendition/1"
 CSV_SCHEMA_VERSION = "doclog.rendition.csv/1"
@@ -1283,3 +1299,352 @@ def filename_for(revision_id: str, fmt: str) -> str:
     extension = spec.extension if spec is not None else "bin"
     safe_id = re.sub(r"[^A-Za-z0-9_-]", "", str(revision_id)) or "unknown"
     return f"document-{safe_id}.{extension}"
+
+
+# ── DOCLOG-9: профили организации (§7 P2) ────────────────────────────
+#
+# Рендеры -- ЧИСТЫЕ функции от (снимок, профиль) (R06/AC03/AC05):
+# оформление профиля входит в байты, профиль версионирован и
+# иммутабелен (retire -- статусная запись). Детерминизм: фиксированные
+# даты в ZIP-entry/docProps, никакой времени стенки (паритет
+# _ZIP_FIXED_DATE_TIME и invariant=1).
+
+
+_DOCX_FIXED_DATE_TIME = (2026, 1, 1, 0, 0, 0)
+
+
+def _docx_escape(value: Any) -> str:
+    """Недоверенный текст -> безопасный XML-текст OOXML (AC16)."""
+    return _html.escape(str(value if value is not None else ""), quote=True)
+
+
+def _docx_par(text: str, *, style: str = "Normal", bold: bool = False) -> str:
+    runs = f'<w:r><w:t xml:space="preserve">{text}</w:t></w:r>'
+    if bold:
+        runs = f'<w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">{text}</w:t></w:r>'
+    return f'<w:p><w:pPr><w:pStyle w:val="{style}"/></w:pPr>{runs}</w:p>'
+
+
+def render_snapshot_docx(snapshot: ReportSnapshot, profile: Any = None) -> bytes:
+    """§7 P2 DOCX: редактируемая копия с указанием происхождения;
+    изменённый вне платформы файл -- external rendition, не обновлённый
+    canonical report. OOXML WordprocessingML без внешних связей
+    (TARGETMODE External запрещён -- AC16); недоверенный текст
+    экранируется; кириллица -- UTF-8 XML. Оформление профиля (§19
+    DOCLOG-9): префикс заголовка, футер, организация -- входят в байты.
+    Обязательная пометка generated (§12.2): «Автоматически
+    сгенерировано»."""
+    import zipfile
+
+    profile = profile or {}
+    title_prefix = str(
+        getattr(profile, "title_prefix", None)
+        or (profile.get("title_prefix", "") if isinstance(profile, dict) else "")
+        or ""
+    )
+    footer_text = str(
+        getattr(profile, "footer_text", None)
+        or (profile.get("footer_text", "") if isinstance(profile, dict) else "")
+        or ""
+    )
+    organization = str(
+        getattr(profile, "organization", None)
+        or (profile.get("organization", "") if isinstance(profile, dict) else "")
+        or ""
+    )
+
+    heading_title = f"{title_prefix} · Документ исследования" if title_prefix else "Документ исследования"
+
+    body: list[str] = [
+        _docx_par(_docx_escape(heading_title), style="Title", bold=True),
+        _docx_par(
+            "Автоматически сгенерировано из frozen-снимка; редактирование "
+            "вне платформы делает файл external rendition и не сохраняет "
+            "платформенное approval (§7/§11).",
+            style="Meta",
+        ),
+        _docx_par(
+            _docx_escape(
+                f"Снимок: {snapshot.snapshot_id} | Запуск: "
+                f"{snapshot.research_run_id} | Дата снимка: "
+                f"{_iso_date(snapshot.captured_at) or '—'} | Хэш снимка: "
+                f"{str(getattr(snapshot, 'payload_sha256', '') or '')[:32]}"
+            ),
+            style="Meta",
+        ),
+        _docx_par(
+            _docx_escape(
+                f"Контекст: {snapshot.context_id or '—'} | Ревизия данных: "
+                f"{snapshot.data_revision if snapshot.data_revision is not None else '—'} "
+                f"| Классификация: {snapshot.classification} | Профиль "
+                f"раскрытия: {snapshot.redaction_profile}"
+            ),
+            style="Meta",
+        ),
+        _docx_par(
+            _docx_escape(
+                f"Полнота: {snapshot.completeness.get('status', 'unknown')} | "
+                f"Воспроизводимость: "
+                f"{snapshot.reproducibility.get('status', 'limited')}"
+            ),
+            style="Meta",
+        ),
+        _docx_par(
+            _docx_escape(
+                f"Организация: {organization or '—'}"
+                + (f" | {footer_text}" if footer_text else "")
+            ),
+            style="Meta",
+        ),
+    ]
+    if snapshot.completeness.get("missing_refs"):
+        body.append(
+            _docx_par(
+                "Отсутствующие зависимости (gaps): "
+                + _docx_escape(", ".join(snapshot.completeness["missing_refs"])),
+                style="Meta",
+            )
+        )
+    for section in snapshot.sections:
+        body.append(
+            _docx_par(
+                _docx_escape(
+                    f"{section.get('title', '—')} ({section.get('code', '—')})"
+                ),
+                style="Heading2",
+                bold=True,
+            )
+        )
+        claims = section.get("claims", [])
+        if not claims:
+            body.append(_docx_par("Утверждений секция не зафиксировала.", style="Meta"))
+        for item in claims:
+            validity = _VALIDITY_LABELS.get(
+                str(item.get("validity", "unknown")),
+                str(item.get("validity", "unknown")),
+            )
+            body.append(
+                _docx_par(
+                    f"• {_docx_escape(item.get('text', ''))} "
+                    f"[{_docx_escape(validity)}]"
+                )
+            )
+            basis_bits = [
+                *([item.get("evidence_level")] if item.get("evidence_level") else []),
+                *list(item.get("event_refs", [])),
+                *list(item.get("result_refs", [])),
+            ]
+            if basis_bits:
+                body.append(
+                    _docx_par(
+                        "Основание: " + _docx_escape(", ".join(basis_bits)),
+                        style="Meta",
+                    )
+                )
+    body.append(
+        _docx_par(
+            _docx_escape(
+                footer_text or "Пакет подготовлен платформой CISStat TS Analysis"
+            ),
+            style="Footer",
+        )
+    )
+
+    document_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        "<w:body>" + "".join(body) + "</w:body></w:document>"
+    )
+    styles_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:style w:type="paragraph" w:styleId="Normal" w:default="1"><w:name w:val="Normal"/></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Meta"><w:name w:val="Meta"/><w:basedOn w:val="Normal"/></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="Footer"/><w:basedOn w:val="Normal"/></w:style>'
+        "</w:styles>"
+    )
+    content_types_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+        '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
+        "</Types>"
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
+        "</Relationships>"
+    )
+    core_props = {
+        "title": heading_title,
+        "creator": f"CISStat TS Analysis; организация: {organization or '—'}",
+        "subject": f"Снимок {snapshot.snapshot_id}; "
+        f"хэш {str(getattr(snapshot, 'payload_sha256', '') or '')[:32]}; "
+        "generated (автоматически сгенерировано)",
+        "description": footer_text or "Frozen snapshot rendition",
+    }
+    core_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<cp:coreProperties '
+        'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+        'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        f"<dc:title>{_docx_escape(core_props['title'])}</dc:title>"
+        f"<dc:creator>{_docx_escape(core_props['creator'])}</dc:creator>"
+        f"<dc:subject>{_docx_escape(core_props['subject'])}</dc:subject>"
+        f"<dc:description>{_docx_escape(core_props['description'])}</dc:description>"
+        "</cp:coreProperties>"
+    )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        members = {
+            "[Content_Types].xml": content_types_xml,
+            "_rels/.rels": rels_xml,
+            "word/document.xml": document_xml,
+            "word/styles.xml": styles_xml,
+            "docProps/core.xml": core_xml,
+        }
+        for name, payload in members.items():
+            info = zipfile.ZipInfo(name, date_time=_DOCX_FIXED_DATE_TIME)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o600 << 16
+            archive.writestr(info, payload)
+    return buffer.getvalue()
+
+
+def _srgb_icc_bytes() -> bytes:
+    """sRGB ICC-профиль программно (Pillow/littlecms) для OutputIntent
+    PDF/A. Отсутствие littlecms -- честный RenderDependencyError: тихий
+    рендер без OutputIntent запрещён (§7 P2 «проверяемый PDF/A»)."""
+    try:
+        from PIL import ImageCms
+    except Exception as exc:  # noqa: BLE001 -- честная причина
+        raise RenderDependencyError(
+            f"icc_unavailable: Pillow/ImageCms недоступен ({type(exc).__name__})"
+        ) from None
+    try:
+        profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))
+        data = profile.tobytes()
+    except Exception as exc:  # noqa: BLE001 -- честная причина
+        raise RenderDependencyError(
+            f"icc_unavailable: littlecms не смог сгенерировать sRGB профиль "
+            f"({type(exc).__name__})"
+        ) from None
+    if not data or data[36:40] != b"acsp":
+        raise RenderDependencyError(
+            "icc_unavailable: сгенерированный профиль без сигнатуры acsp"
+        )
+    return data
+
+
+def _pdfa_postprocess(base_pdf: bytes, snapshot: ReportSnapshot, profile: Any) -> bytes:
+    """Добавляет PDF/A-1b маркеры к базовому PDF (pypdf): XMP metadata
+    (pdfaid:part=1, conformance=B), OutputIntent GTS_PDFA1 с sRGB ICC,
+    DocumentInfo. Детерминизм: фиксированные даты (пин AC03)."""
+    import pypdf
+    from pypdf.generic import (
+        ArrayObject,
+        ByteStringObject,
+        DecodedStreamObject,
+        DictionaryObject,
+        NameObject,
+        TextStringObject,
+    )
+
+    title_prefix = str(getattr(profile, "title_prefix", "") or "")
+    footer_text = str(getattr(profile, "footer_text", "") or "")
+    organization = str(getattr(profile, "organization", "") or "")
+    title = f"{title_prefix} · Документ исследования" if title_prefix else "Документ исследования"
+
+    reader = pypdf.PdfReader(io.BytesIO(base_pdf))
+    writer = pypdf.PdfWriter()
+    writer.append(reader)
+
+    icc = _srgb_icc_bytes()
+    icc_stream = DecodedStreamObject()
+    icc_stream.set_data(icc)
+    icc_stream.update(
+        {
+            NameObject("/N"): NameObject("/RGB"),
+            NameObject("/Length"): NameObject(str(len(icc))),
+        }
+    )
+    icc_ref = writer._add_object(icc_stream)
+
+    output_intent = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/OutputIntent"),
+            NameObject("/S"): NameObject("/GTS_PDFA1"),
+            NameObject("/OutputConditionIdentifier"): TextStringObject("sRGB IEC61966-2.1"),
+            NameObject("/Info"): TextStringObject("sRGB IEC61966-2.1 (programmatic, littlecms)"),
+            NameObject("/DestOutputProfile"): icc_ref,
+        }
+    )
+    intent_ref = writer._add_object(output_intent)
+
+    root = writer._root_object
+    root[NameObject("/OutputIntents")] = ArrayObject([intent_ref])
+
+    captured = _iso_date(snapshot.captured_at) or "unknown"
+    xmp = f"""<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+        xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
+        xmlns:xmp="http://ns.adobe.com/xap/1.0/"
+        xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
+      <dc:title><rdf:Alt><rdf:li xml:lang="x-default">{_docx_escape(title)}</rdf:li></rdf:Alt></dc:title>
+      <dc:creator><rdf:Seq><rdf:li>CISStat TS Analysis</rdf:li></rdf:Seq></dc:creator>
+      <dc:description><rdf:Alt><rdf:li xml:lang="x-default">{_docx_escape(f"Снимок {snapshot.snapshot_id}; организация: {organization or '-'}; {footer_text}")}</rdf:li></rdf:Alt></dc:description>
+      <xmp:CreatorTool>CISStat TS Analysis (DOCLOG-9)</xmp:CreatorTool>
+      <xmp:CreateDate>{captured}</xmp:CreateDate>
+      <pdf:Producer>CISStat TS Analysis</pdf:Producer>
+      <pdfaid:part>1</pdfaid:part>
+      <pdfaid:conformance>B</pdfaid:conformance>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>"""
+    xmp_stream = DecodedStreamObject()
+    xmp_stream.set_data(xmp.encode("utf-8"))
+    xmp_stream.update(
+        {
+            NameObject("/Type"): NameObject("/Metadata"),
+            NameObject("/Subtype"): NameObject("/XML"),
+            NameObject("/Length"): NameObject(str(len(xmp.encode("utf-8")))),
+        }
+    )
+    xmp_ref = writer._add_object(xmp_stream)
+    root[NameObject("/Metadata")] = xmp_ref
+
+    writer.add_metadata(
+        {
+            "/Title": title,
+            "/Author": "CISStat TS Analysis",
+            "/Subject": f"Снимок {snapshot.snapshot_id} (PDF/A-1b профиль организации)",
+        }
+    )
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def render_snapshot_pdfa(snapshot: ReportSnapshot, profile: Any = None) -> bytes:
+    """§7 P2 PDF/A-1b: отдельный архивный профиль, НЕ переименованный
+    обычный PDF. Базовая сборка -- тот же ReportLab-конвейер pdf
+    (встроенные шрифты/кириллица/экранирование), затем пост-обработка:
+    XMP pdfaid + OutputIntent GTS_PDFA1 с sRGB ICC. Оформление профиля
+    (префикс заголовка/футер/организация) -- в XMP-метаданных (в байтах
+    содержимого -- DC-поля). Без Encrypt/JavaScript/внешних URI (AC16);
+    валидатор doc_profiles.validate_profile_output подтверждает
+    маркеры («не названием файла»)."""
+    base = render_snapshot_pdf(snapshot)
+    return _pdfa_postprocess(base, snapshot, profile)

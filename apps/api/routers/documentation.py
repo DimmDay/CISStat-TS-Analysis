@@ -143,7 +143,10 @@ def _map_service_errors(exc: Exception) -> HTTPException:
     insufficient_scope (ресурс свой, права нет); 409
     approval_hash_mismatch/approval_not_applicable (AC07); 422
     invalid_transition/self_approval_forbidden/publish_*; 410
-    purged_artifact (§16.1); 503 mandatory_audit_unavailable (AC11)."""
+    purged_artifact (§16.1); 503 mandatory_audit_unavailable (AC11).
+    DOCLOG-9: 409 org_profile_mismatch/org_profile_retired; 404
+    org_profile_not_found; 422 org_profile_invalid (required/format)."""
+    from apps.api import doc_profiles as _dp_module  # noqa: F401 -- маппинг ниже
     if isinstance(exc, UnsupportedFormatError):
         return HTTPException(
             status_code=400,
@@ -187,6 +190,35 @@ def _map_service_errors(exc: Exception) -> HTTPException:
                     "Состояние запуска изменилось; перечитайте и повторите"
                 ),
             },
+        )
+    # ── DOCLOG-9 (§19 строка DOCLOG-9): ошибки организационного профиля ──
+    if isinstance(exc, _dp_module.OrgProfileMismatchError):
+        # §11/AC09: одна визуальная форма на цель; другой профиль той же
+        # цели -- честный 409, не вторая версия.
+        return HTTPException(
+            status_code=409,
+            detail={"code": "org_profile_mismatch", "message": str(exc)},
+        )
+    if isinstance(exc, _dp_module.OrgProfileRetired):
+        return HTTPException(
+            status_code=409,
+            detail={"code": "org_profile_retired", "message": str(exc)},
+        )
+    if isinstance(exc, _dp_module.OrgProfileNotFound):
+        return HTTPException(
+            status_code=404,
+            detail={"code": "org_profile_not_found", "message": str(exc)},
+        )
+    if isinstance(exc, _dp_module.OrgProfileAccessDenied):
+        return HTTPException(
+            status_code=403,
+            detail={"code": "insufficient_scope", "message": str(exc)},
+        )
+    if isinstance(exc, _dp_module.OrgProfileError):
+        # OrgProfileRequired / OrgProfileFormatMismatch -- 422.
+        return HTTPException(
+            status_code=422,
+            detail={"code": "org_profile_invalid", "message": str(exc)},
         )
     if isinstance(exc, (DocumentAccessDenied, LifecycleAccessDenied)):
         # DOCLOG-6: LifecycleAccessDenied -- тот же uniform-404 контракт
@@ -607,6 +639,9 @@ def request_rendition(
                 "message": "Формат не указан",
             },
         )
+    # DOCLOG-9 (§19): организационный профиль выпуска (обязателен для
+    # docx/pdfa; resolve/ошибки -- в сервисном слое).
+    org_profile_id = str(payload.get("org_profile_id", "") or "").strip()
     subject, session_id = _subject_and_session(request)
     service = _delivery_service()
     try:
@@ -623,6 +658,7 @@ def request_rendition(
                 or snapshot.redaction_profile
             ),
             revision_id=revision.revision_id,
+            org_profile_id=org_profile_id,
         )
     except DocumentAccessDenied as exc:
         raise _map_service_errors(exc) from None

@@ -94,6 +94,13 @@ from apps.api.document_renditions import (
 from apps.api.document_renditions import (
     render_evidence_zip as render_snapshot_zip,
 )
+# DOCLOG-9 (§7 P2): рендеры профилей организации -- те же чистые
+# функции от (снимок, профиль); профиль применяется ТОЛЬКО к этим
+# форматам (docx/pdfa), обязательный параметр выпуска.
+from apps.api.document_renditions import (
+    render_snapshot_docx,
+    render_snapshot_pdfa,
+)
 
 DOCUMENTS_BACKEND_ENV = "CISSTAT_DOCUMENTS_BACKEND"
 
@@ -265,6 +272,9 @@ class DocumentRenditionRecord:
     # DOCLOG-5 (критерий завершения §19): все rendition одной ревизии
     # несут ОДИН snapshot hash из registry-метаданных снимка.
     snapshot_payload_sha256: str = ""
+    # DOCLOG-9 (§19 строка DOCLOG-9): организационный профиль выпуска
+    # (фиксируется в metadata; '' -- безпрофильный legacy-выпуск).
+    org_profile_id: str = ""
     # Байты -- только в Memory-реестре (dev/тесты); durable-слой хранит
     # их в object store (content-addressed), как DOCLOG-1/2.
     content_bytes: Optional[bytes] = field(default=None, repr=False)
@@ -286,6 +296,7 @@ class DocumentRenditionRecord:
             "created_by": self.created_by,
             "created_at": self.created_at,
             "snapshot_payload_sha256": self.snapshot_payload_sha256,
+            "org_profile_id": self.org_profile_id,
         }
 
 
@@ -310,6 +321,10 @@ class DocumentJobRecord:
     tenant_id: Optional[str] = None
     claimed_at: Optional[str] = None
     lease_expires_at: Optional[str] = None
+    # DOCLOG-9 (§19): организационный профиль выпуска -- resolve на
+    # постановке И повторная policy-проверка на момент исполнения
+    # (retire между постановкой и рендером -- честный failed).
+    org_profile_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -329,6 +344,7 @@ class DocumentJobRecord:
             "tenant_id": self.tenant_id,
             "claimed_at": self.claimed_at,
             "lease_expires_at": self.lease_expires_at,
+            "org_profile_id": self.org_profile_id,
         }
 
 
@@ -817,7 +833,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
         "SELECT rendition_id, revision_id, snapshot_id, run_id, format, "
         "redaction_profile, state, media_type, size_bytes, content_sha256, "
         "storage_key, job_id, created_by, created_at, "
-        "snapshot_payload_sha256 FROM document_renditions"
+        "snapshot_payload_sha256, org_profile_id FROM document_renditions"
     )
 
     @staticmethod
@@ -838,6 +854,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
             created_by=row[12],
             created_at=row[13].isoformat() if row[13] else _now_iso(),
             snapshot_payload_sha256=str(row[14] or ""),
+            org_profile_id=str(row[15] or ""),
         )
 
     def register_rendition(
@@ -848,14 +865,15 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "INSERT INTO document_renditions (rendition_id, revision_id, "
                 "snapshot_id, run_id, format, redaction_profile, state, "
                 "media_type, size_bytes, content_sha256, storage_key, job_id, "
-                "created_by, created_at, snapshot_payload_sha256) VALUES "
-                "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "created_by, created_at, snapshot_payload_sha256, org_profile_id) VALUES "
+                "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "ON CONFLICT (snapshot_id, format, redaction_profile) "
                 "DO UPDATE SET state = EXCLUDED.state, media_type = "
                 "EXCLUDED.media_type, size_bytes = EXCLUDED.size_bytes, "
                 "content_sha256 = EXCLUDED.content_sha256, storage_key = "
                 "EXCLUDED.storage_key, job_id = EXCLUDED.job_id, "
-                "snapshot_payload_sha256 = EXCLUDED.snapshot_payload_sha256",
+                "snapshot_payload_sha256 = EXCLUDED.snapshot_payload_sha256, "
+                "org_profile_id = EXCLUDED.org_profile_id",
                 (
                     rendition.rendition_id,
                     rendition.revision_id,
@@ -872,6 +890,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.created_by,
                     rendition.created_at,
                     rendition.snapshot_payload_sha256,
+                    rendition.org_profile_id,
                 ),
             )
         return rendition
@@ -935,8 +954,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
     _JOB_SELECT = (
         "SELECT job_id, run_id, snapshot_id, format, redaction_profile, "
         "revision_id, rendition_id, state, error_code, attempt, created_by, "
-        "created_at, updated_at, tenant_id, claimed_at, lease_expires_at "
-        "FROM document_jobs"
+        "created_at, updated_at, tenant_id, claimed_at, lease_expires_at, "
+        "org_profile_id FROM document_jobs"
     )
 
     @staticmethod
@@ -958,6 +977,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
             tenant_id=row[13],
             claimed_at=row[14].isoformat() if row[14] else None,
             lease_expires_at=row[15].isoformat() if row[15] else None,
+            org_profile_id=str(row[16] or ""),
         )
 
     def register_job(self, job: DocumentJobRecord) -> DocumentJobRecord:
@@ -966,8 +986,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "INSERT INTO document_jobs (job_id, run_id, snapshot_id, "
                 "format, redaction_profile, revision_id, rendition_id, state, "
                 "error_code, attempt, created_by, created_at, updated_at, "
-                "tenant_id, claimed_at, lease_expires_at) VALUES (%s, %s, "
-                "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "tenant_id, claimed_at, lease_expires_at, org_profile_id) VALUES (%s, %s, "
+                "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     job.job_id,
                     job.run_id,
@@ -985,6 +1005,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     job.tenant_id,
                     job.claimed_at,
                     job.lease_expires_at,
+                    job.org_profile_id,
                 ),
             )
         return job
@@ -1316,6 +1337,7 @@ class DocumentDeliveryService:
         session_id: str = "",
         redaction_profile: str = DEFAULT_REDACTION_PROFILE,
         revision_id: Optional[str] = None,
+        org_profile_id: str = "",
     ) -> tuple[DocumentJobRecord, Optional[DocumentRenditionRecord]]:
         """§10.3/§11/§17/§18, AC08/AC09: P0-форматы рендерятся
         синхронно (пин DOCLOG-4), тяжёлые (HEAVY_RENDITION_FORMATS §7
@@ -1325,7 +1347,16 @@ class DocumentDeliveryService:
         прежний job/rendition; АКТИВНАЯ (queued/rendering) -- тот же
         job без нового задания; исчерпанные попытки -- честный
         DocumentRetryLimitExceeded; переполненная tenant-очередь --
-        DocumentQuotaExceeded (§18 backpressure)."""
+        DocumentQuotaExceeded (§18 backpressure).
+
+        DOCLOG-9 (§19 строка DOCLOG-9): организационный профиль --
+        часть формы выпуска. Форматы docx/pdfa ТРЕБУЮТ профиль
+        (безымянный выпуск PDF/A запрещён -- «выбранный профиль
+        подтверждён валидатором и policy, не названием файла»);
+        профиль применим ТОЛЬКО к форматам своего каталога; профиль
+        resolve'ится ДО постановки (существует + ACTIVE + формат);
+        готовая/активная цель с ДРУГИМ профилем -- честный 409
+        org_profile_mismatch (одна визуальная форма на цель, §11)."""
         from apps.api.artifact_store import artifact_content_sha256
 
         run_id = snapshot.research_run_id
@@ -1335,6 +1366,26 @@ class DocumentDeliveryService:
             raise UnsupportedFormatError(
                 f"Формат {format!r} не входит в каталог P0+P1 (§7)"
             )
+        # ── DOCLOG-9: организационный профиль выпуска ──────────────
+        profile_service = None
+        if org_profile_id or format in ("docx", "pdfa"):
+            from apps.api import doc_profiles as _dp
+
+            profile_service = _dp.org_profile_service()
+            if format not in _dp.PROFILE_FORMATS:
+                raise _dp.OrgProfileFormatMismatch(
+                    f"Организационный профиль применим только к форматам "
+                    f"{sorted(_dp.PROFILE_FORMATS)}; запрошен {format!r}"
+                )
+            if not org_profile_id:
+                raise _dp.OrgProfileRequired(
+                    f"Формат {format!r} требует организационный профиль "
+                    "(§19: выбранный профиль подтверждён валидатором и "
+                    "organisational policy, не названием файла)"
+                )
+            profile_service.resolve_profile(
+                org_profile_id, fmt=format, subject=subject
+            )  # NotFound/Retired/FormatMismatch -- честные ошибки сервисного слоя
         existing = self.registry.find_rendition(
             snapshot.snapshot_id, format, redaction_profile
         )
@@ -1344,6 +1395,17 @@ class DocumentDeliveryService:
             and existing.job_id
             and self.registry.get_job(existing.job_id) is not None
         ):
+            # DOCLOG-9 (§11/AC09): одна визуальная форма на цель --
+            # готовая цель с ДРУГИМ профилем: честный 409, не вторая
+            # версия и не тихий возврат чужой формы.
+            if org_profile_id and existing.org_profile_id != org_profile_id:
+                from apps.api.doc_profiles import OrgProfileMismatchError
+
+                raise OrgProfileMismatchError(
+                    "Rendition этой цели уже выпущена с другим "
+                    f"профилем ({existing.org_profile_id!r}); профиль -- "
+                    "часть формы выпуска (§11): создайте новую ревизию"
+                )
             # AC09/§12.2: повторный клик -- прежний job/rendition, БЕЗ
             # нового задания и БЕЗ повторного рендера.
             job = self.registry.get_job(existing.job_id)
@@ -1367,6 +1429,16 @@ class DocumentDeliveryService:
             None,
         )
         if active is not None:
+            # DOCLOG-9: активное задание той же цели с другим профилем
+            # -- та же честная политика mismatch.
+            if org_profile_id and active.org_profile_id != org_profile_id:
+                from apps.api.doc_profiles import OrgProfileMismatchError
+
+                raise OrgProfileMismatchError(
+                    "Активное задание этой цели выпущено с другим "
+                    f"профилем ({active.org_profile_id!r}); профиль -- "
+                    "часть формы выпуска (§11)"
+                )
             return active, None
         # §18 retries: попытки рендера цели ограничены (MAX_JOB_ATTEMPTS)
         # -- честный отказ вместо вечной очереди.
@@ -1405,6 +1477,7 @@ class DocumentDeliveryService:
                 attempt=attempt,
                 created_by=getattr(subject, "subject_id", None),
                 tenant_id=tenant_id,
+                org_profile_id=org_profile_id,
             )
         )
         if format in HEAVY_RENDITION_FORMATS:
@@ -1434,24 +1507,85 @@ class DocumentDeliveryService:
         spec: Any,
         content: bytes,
         snapshot: ReportSnapshot,
-    ) -> tuple[DocumentJobRecord, DocumentRenditionRecord]:
-        """Готовность ТОЛЬКО в порядке AC08: stage байтов -> commit в
-        object store -> register/update rendition (с ЕДИНЫМ snapshot
-        hash -- критерий завершения §19) -> job ready. Crash на любом
-        шаге оставляет job в явном состоянии без broken ready refs."""
+    ) -> tuple[DocumentJobRecord, Optional[DocumentRenditionRecord]]:
+        """Готовность ТОЛЬКО в порядке AC08: (DOCLOG-9: resolve профиля
+        и ВАЛИДАТОР ДО stage -- failed-валидация не даёт ни байтов в
+        object store) stage байтов -> commit в object store ->
+        register/update rendition (с ЕДИНЫМ snapshot hash -- критерий
+        завершения §19) -> job ready. Crash на любом шаге оставляет job
+        в явном состоянии без broken ready refs. DOCLOG-9 (§19):
+        профиль подтверждается ВАЛИДАТОРОМ, не названием файла --
+        passed/failed записи пишутся ДОЛЖНЫ (доказательство); подпись/
+        якорь/WORM применяются только к passed-выпуску."""
         from apps.api.artifact_store import artifact_content_sha256
+
+        # ── DOCLOG-9: организационный профиль выпуска ───────────────
+        profile = None
+        profile_service = None
+        passed_validation = None
+        signature_manifest: Optional[dict[str, Any]] = None
+        if job.org_profile_id:
+            from apps.api import doc_profiles as _dp
+
+            profile_service = _dp.org_profile_service()
+            profile = profile_service.registry.get_profile(job.org_profile_id)
+            if (
+                profile is None
+                or profile.status != _dp.PROFILE_ACTIVE
+                or profile.format != job.format
+            ):
+                # Policy-проверка на момент ИСПОЛНЕНИЯ (retire между
+                # постановкой и рендером -- честный terminal failed).
+                return self.fail_render(job, "org_profile_unavailable"), None
+            validation = profile_service.validate_output(
+                content, job.format, profile
+            )
+            if validation.result != "passed":
+                # «Профиль подтверждён валидатором»: failed -- честный
+                # отказ выпуска (запись пишется с rendition_id="" --
+                # ready-файла нет, AC08 по построению).
+                profile_service.record_validation(
+                    profile,
+                    validation=validation,
+                    fmt=job.format,
+                    rendition_id="",
+                    job_id=job.job_id,
+                    run_id=job.run_id,
+                    subject=None,
+                )
+                return (
+                    self.fail_render(job, "profile_validation_failed"),
+                    None,
+                )
+            passed_validation = validation
+            if profile.sign_contents:
+                try:
+                    signature_manifest = _dp.sign_content(
+                        content,
+                        snapshot_sha256=snapshot.payload_sha256 or "",
+                        profile_id=profile.profile_id,
+                        profile_version_no=profile.version_no,
+                        media_type=spec.media_type,
+                        signed_by=job.created_by,
+                    )
+                except _dp.SignatureKeyUnavailable:
+                    # Честный отказ (AC12-дух): тихая неподписанная
+                    # ready запрещена.
+                    return (
+                        self.fail_render(job, "sign_key_unavailable"),
+                        None,
+                    )
 
         existing = self.registry.find_rendition(
             job.snapshot_id, job.format, job.redaction_profile
         )
+        rendition_id = (
+            existing.rendition_id if existing is not None else new_rendition_id()
+        )
         staged = self.objects.stage_bytes(content, spec.media_type)
         storage_key = self.objects.commit_staged(staged)
         rendition = DocumentRenditionRecord(
-            rendition_id=(
-                existing.rendition_id
-                if existing is not None
-                else new_rendition_id()
-            ),
+            rendition_id=rendition_id,
             revision_id=(
                 existing.revision_id
                 if existing is not None
@@ -1469,6 +1603,7 @@ class DocumentDeliveryService:
             job_id=job.job_id,
             created_by=job.created_by,
             snapshot_payload_sha256=snapshot.payload_sha256 or "",
+            org_profile_id=job.org_profile_id,
             content_bytes=(
                 content
                 if isinstance(self.registry, MemoryDocumentRegistry)
@@ -1479,6 +1614,51 @@ class DocumentDeliveryService:
             rendition = self.registry.update_rendition(rendition)
         else:
             rendition = self.registry.register_rendition(rendition)
+        if profile_service is not None and profile is not None:
+            # ── DOCLOG-9: доказательства подтверждённого выпуска ──
+            # (passed-валидация -- та же проверка, что до stage; запись
+            # с rendition_id -- доказательство подтверждения).
+            profile_service.record_validation(
+                profile,
+                validation=passed_validation,
+                fmt=job.format,
+                rendition_id=rendition.rendition_id,
+                job_id=job.job_id,
+                run_id=job.run_id,
+                subject=None,
+            )
+            if signature_manifest is not None:
+                profile_service.record_signature(
+                    profile,
+                    manifest=signature_manifest,
+                    fmt=job.format,
+                    rendition_id=rendition.rendition_id,
+                    job_id=job.job_id,
+                    run_id=job.run_id,
+                    subject=None,
+                )
+            if profile.anchor_registry:
+                profile_service.record_anchor(
+                    profile,
+                    content_sha256=rendition.content_sha256,
+                    rendition_id=rendition.rendition_id,
+                    subject=None,
+                )
+            if profile.worm_lock:
+                revision = (
+                    self.registry.get_revision(job.revision_id)
+                    if job.revision_id
+                    else None
+                )
+                document_id = (
+                    str(revision.document_id) if revision is not None else ""
+                )
+                profile_service.apply_worm_hold(
+                    profile,
+                    document_id=document_id,
+                    run_id=job.run_id,
+                    subject=None,
+                )
         job = self.registry.update_job(
             replace_dataclass(
                 job, state=JOB_READY, rendition_id=rendition.rendition_id
@@ -1578,17 +1758,22 @@ def replace_dataclass(record: Any, **changes: Any) -> Any:
     return replace(record, **changes)
 
 
-def _render_snapshot_by_format(snapshot: ReportSnapshot, fmt: str) -> bytes:
+def _render_snapshot_by_format(
+    snapshot: ReportSnapshot, fmt: str, profile: Any = None
+) -> bytes:
     """Диспетчер чистого рендера (document_renditions): lookup по
     globals() МОДУЛЯ -- негативные оракулы подменяют
     document_jobs.render_snapshot_* (job failed), при этом рендеры
-    остаются чистыми функциями от снимка (AC05)."""
+    остаются чистыми функциями от снимка (AC05). DOCLOG-9: профиль
+    организации -- второй аргумент рендеров docx/pdfa (f(снимок,
+    профиль)); профиль не входит в identity идемпотентности (AC09),
+    но входит в байты (R06 -- оформление профиля)."""
     func = globals().get(f"render_snapshot_{fmt}")
     if func is None or not callable(func):
         raise UnsupportedFormatError(
             f"Формат {fmt!r} не входит в каталог P0 (§7)"
         )
-    result = func(snapshot)
+    result = func(snapshot, profile) if fmt in ("docx", "pdfa") else func(snapshot)
     if isinstance(result, bytes):
         return result
     return str(result).encode("utf-8")

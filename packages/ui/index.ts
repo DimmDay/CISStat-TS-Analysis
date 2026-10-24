@@ -290,6 +290,9 @@ export { AdminLogsDashboard } from "./components/AdminLogsDashboard";
 // DOCLOG-8 (§6 D12, §12): контур мониторинга -- панель сверки прогноза
 // с фактом + клиент API.
 export { MonitoringComparisonPanel } from "./components/MonitoringComparisonPanel";
+// DOCLOG-9 (§19 строка DOCLOG-9): панель выпуска по профилю организации
+// (DOCX/PDF-A; профиль подтверждается валидатором и policy).
+export { Doclog9ProfileControls } from "./components/Doclog9ProfileControls";
 export type {
   ComparisonSummary,
   ComparisonDetail,

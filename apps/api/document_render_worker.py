@@ -102,6 +102,10 @@ DEFAULT_MAX_ATTEMPTS = 5
 # детерминированные и терминальны (очередь не крутится впустую).
 TRANSIENT_ERROR_CODES = frozenset({"render_failed", "render_timeout"})
 
+# DOCLOG-9 (§19): профильные отказы -- детерминированные (policy-решение
+# или валидатор): terminal failed сразу, очередь не крутится впустую.
+# org_profile_unavailable здесь НЕ числится намеренно.
+
 
 def worker_enabled_from_env() -> bool:
     """CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED: «0»/«false»/«no» -- выкл."""
@@ -403,12 +407,30 @@ class DocumentRenderWorker:
             return self._fail_or_requeue(
                 claimed, "snapshot_unavailable"
             )
-        # 2. Рендер чистой функцией с soft-timeout (§18).
+        # 2. DOCLOG-9 (§19): resolve организационного профиля на момент
+        #    ИСПОЛНЕНИЯ (retire/unavailable -- честный terminal failed,
+        #    не тихий рендер по старому профилю).
+        profile = None
+        if claimed.org_profile_id:
+            from apps.api import doc_profiles as _dp
+
+            profile = _dp.org_profile_service().registry.get_profile(
+                claimed.org_profile_id
+            )
+            if (
+                profile is None
+                or profile.status != _dp.PROFILE_ACTIVE
+                or profile.format != claimed.format
+            ):
+                return self._fail_or_requeue(
+                    claimed, "org_profile_unavailable"
+                )
+        # 3. Рендер чистой функцией с soft-timeout (§18).
         try:
-            content = self._render_with_timeout(claimed.format, snapshot)
+            content = self._render_with_timeout(claimed.format, snapshot, profile)
         except Exception as exc:
             return self._fail_or_requeue(claimed, self._error_code(exc))
-        # 3. Готовность ТОЛЬКО после stage+commit+register (AC08).
+        # 4. Готовность ТОЛЬКО после stage+commit+register (AC08).
         from apps.api.document_renditions import RENDITION_FORMATS
 
         spec = RENDITION_FORMATS.get(claimed.format)
@@ -464,10 +486,12 @@ class DocumentRenderWorker:
         )
         return "failed"
 
-    def _render_with_timeout(self, fmt: str, snapshot: Any) -> bytes:
+    def _render_with_timeout(self, fmt: str, snapshot: Any, profile: Any = None) -> bytes:
         """Рендер в daemon-потоке + join(timeout). Превышение -- честный
         RenderTimeoutError (поток завершится в фоне и не блокирует выход
-        процесса; платформенное ограничение задокументировано)."""
+        процесса; платформенное ограничение задокументировано).
+        DOCLOG-9: профиль организации передаётся в диспетчер (f(снимок,
+        профиль) для docx/pdfa)."""
         from apps.api import document_jobs
 
         box: dict[str, Any] = {}
@@ -475,7 +499,7 @@ class DocumentRenderWorker:
         def _target() -> None:
             try:
                 box["result"] = document_jobs._render_snapshot_by_format(
-                    snapshot, fmt
+                    snapshot, fmt, profile
                 )
             except BaseException as exc:  # noqa: BLE001 -- передаём наверх
                 box["error"] = exc

@@ -90,6 +90,15 @@ ACTION_MONITORING_ACTUAL_REGISTERED = "monitoring_actual_registered"
 ACTION_MONITORING_COMPARISON_CREATED = "monitoring_comparison_created"
 ACTION_MONITORING_DECISION_RECORDED = "monitoring_decision_recorded"
 
+# DOCLOG-9 (§14.1 «смену шаблона/retention policy», §15, §19 строка
+# DOCLOG-9): управление профилями организации -- обязательный аудит
+# (fail-closed); подтверждение валидатором/якорь -- standard durable
+# (сбой виден счётчиком, но не ломает выпуск, §14.1 таблица классов).
+ACTION_ORG_PROFILE_CREATED = "org_profile_created"
+ACTION_ORG_PROFILE_RETIRED = "org_profile_retired"
+ACTION_RENDITION_VALIDATED = "rendition_validated"
+ACTION_RENDITION_ANCHORED = "rendition_anchored"
+
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTHN_DENIED,
     ACTION_AUTHZ_DENIED,
@@ -115,6 +124,10 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_MONITORING_ACTUAL_REGISTERED,
     ACTION_MONITORING_COMPARISON_CREATED,
     ACTION_MONITORING_DECISION_RECORDED,
+    ACTION_ORG_PROFILE_CREATED,
+    ACTION_ORG_PROFILE_RETIRED,
+    ACTION_RENDITION_VALIDATED,
+    ACTION_RENDITION_ANCHORED,
 })
 
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/
@@ -143,6 +156,13 @@ AUDIT_REQUIREMENTS: dict[str, str] = {
     ACTION_MONITORING_ACTUAL_REGISTERED: "standard",
     ACTION_MONITORING_COMPARISON_CREATED: "standard",
     ACTION_MONITORING_DECISION_RECORDED: "standard",
+    # DOCLOG-9: управление профилями организации -- класс «смена
+    # шаблона/policy» (§14.1) -- обязательный, fail-closed; валидация/
+    # якорь выпуска -- standard durable.
+    ACTION_ORG_PROFILE_CREATED: "mandatory",
+    ACTION_ORG_PROFILE_RETIRED: "mandatory",
+    ACTION_RENDITION_VALIDATED: "standard",
+    ACTION_RENDITION_ANCHORED: "standard",
 }
 
 # Допустимые решения (§14.1: разрешено/отказано/прервано).

@@ -46,6 +46,7 @@ import {
   type SnapshotPayload,
 } from "../lib/documentation";
 import { MonitoringComparisonPanel } from "./MonitoringComparisonPanel";
+import { Doclog9ProfileControls } from "./Doclog9ProfileControls";
 
 // Виды документов D01-D11 (спека §6/§12.2 «Левый список»; D10/D11 --
 // DOCLOG-6 «Согласование и архив»); заголовки -- серверный реестр
@@ -196,6 +197,9 @@ export function DocumentationWorkspace({
   const [job, setJob] = useState<JobPayload | null>(null);
   const [creating, setCreating] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  // DOCLOG-9 (§19 строка DOCLOG-9): формат выпуска по профилю
+  // организации (docx/pdfa); null -- панель скрыта.
+  const [profileFormat, setProfileFormat] = useState<"docx" | "pdfa" | null>(null);
   const [viewMode, setViewMode] = useState<"brief" | "methodology" | "basis">("brief");
   // DOCLOG-6: ось содержания (§11) -- история/действия/diff.
   const [lifecycleRecords, setLifecycleRecords] = useState<LifecycleRecordPayload[]>([]);
@@ -723,6 +727,36 @@ export function DocumentationWorkspace({
                 </button>
               )}
             </div>
+
+            {/* DOCLOG-9 (§19 строка DOCLOG-9): выпуск DOCX/PDF-A -- ТОЛЬКО
+                по организационному профилю (подтверждается валидатором и
+                policy, не названием файла); панель выбора профиля.
+                Повторный клик по активному формату скрывает панель. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-neutral-500">Профиль организации:</span>
+              {(["docx", "pdfa"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  data-testid={`doclog9-profile-toggle-${fmt}`}
+                  aria-pressed={profileFormat === fmt}
+                  onClick={() => setProfileFormat(profileFormat === fmt ? null : fmt)}
+                  className={`rounded-full px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                    profileFormat === fmt
+                      ? "bg-brand/20 font-medium text-brand"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/10 dark:text-neutral-200"
+                  }`}
+                >
+                  {fmt === "docx" ? "DOCX" : "PDF/A"}
+                </button>
+              ))}
+            </div>
+            {previewPhase === "ready" && profileFormat && (
+              <Doclog9ProfileControls
+                format={profileFormat}
+                activeRevisionId={activeRevisionId}
+              />
+            )}
 
             {job && (
               <p

@@ -218,7 +218,26 @@ def _delivery():
     return DocumentDeliveryService.create_default()
 
 
-HEAVY = ("pdf", "xlsx", "parquet", "svg", "png", "zip")
+def _make_org_profile(fmt: str, name: str):
+    """DOCLOG-9: локальный хелпер профиля организации (admin-субъект,
+    свои данные; корпус DOCLOG-9 -- tests/api/test_doclog9_profiles.py)."""
+    from dataclasses import replace
+
+    from apps.api.doc_profiles import org_profile_service
+    from apps.api.identity import SubjectRef
+
+    base = SubjectRef.from_session("d5-admin-seed")
+    subject = replace(base, role="admin")
+    return org_profile_service().create_profile(
+        name=name,
+        version_no=1,
+        format=fmt,
+        subject=subject,
+    )
+
+
+# DOCLOG-9 (честное обновление пина): HEAVY расширен docx/pdfa.
+HEAVY = ("pdf", "xlsx", "parquet", "svg", "png", "zip", "docx", "pdfa")
 P0 = ("json", "jsonl", "md", "html", "csv")
 
 
@@ -255,12 +274,15 @@ class TestHeavyFormatCatalog:
         assert RENDITION_FORMATS["png"].media_type == "image/png"
         assert RENDITION_FORMATS["zip"].media_type == "application/zip"
 
-    def test_docx_and_pdfa_still_absent(self):
-        """§7 P2 (DOCX/PDF/A) вне границы DOCLOG-5 -- честный 400."""
+    def test_docx_and_pdfa_present_as_org_profile_formats(self):
+        """DOCLOG-9 (честное обновление пина, §7 P2/§19): DOCX/PDF/A --
+        форматы профилей организации (DOCLOG-5 граница честно расширена
+        последующей задачей; выпуск ТОЛЬКО через профиль, §19 строка
+        DOCLOG-9). Прецедент: DOCLOG-4 (9/53→10/62)."""
         from apps.api.document_renditions import RENDITION_FORMATS
 
-        assert "docx" not in RENDITION_FORMATS
-        assert "pdfa" not in RENDITION_FORMATS
+        assert "docx" in RENDITION_FORMATS
+        assert "pdfa" in RENDITION_FORMATS
 
 
 class TestPdfRender:
@@ -781,17 +803,28 @@ class TestHeavyAsyncPath:
 
         snapshot = _seed_snapshot()
         service = _delivery()
+        # DOCLOG-9 (честное обновление пина): docx/pdfa требуют
+        # организационный профиль -- создаётся на месте (выпуск ТОЛЬКО
+        # по профилю, §19 строка DOCLOG-9).
+        profiles = {
+            "docx": _make_org_profile("docx", "d5pin-docx"),
+            "pdfa": _make_org_profile("pdfa", "d5pin-pdfa"),
+        }
         jobs = []
         for fmt in HEAVY:
             job, _ = service.request_rendition(
                 snapshot, format=fmt,
+                org_profile_id=(
+                    profiles[fmt].profile_id if fmt in profiles else ""
+                ),
                 subject=_owner_subject(), session_id=SESSION_ID,
             )
             jobs.append((fmt, job.job_id))
-        # Явные лимиты: все 6 jobs одного tenant за один цикл
-        # (дефолт per_tenant_limit=2 -- проверен отдельным тестом).
+        # Явные лимиты: все 8 jobs одного tenant за один цикл
+        # (DOCLOG-9, честное обновление пина: HEAVY расширен docx/pdfa;
+        # дефолт per_tenant_limit=2 -- проверен отдельным тестом).
         summary = DocumentRenderWorker(
-            batch_size=6, per_tenant_limit=6
+            batch_size=8, per_tenant_limit=8
         ).run_once()
         assert summary["ready"] == len(HEAVY)
         for fmt, job_id in jobs:
@@ -1091,9 +1124,18 @@ class TestWorkerFailuresAndRetries:
 
         snapshot = _seed_snapshot()
         service = _delivery()
+        # DOCLOG-9 (честное обновление пина): профильные форматы -- с
+        # профилем (выпуск ТОЛЬКО по профилю).
+        profiles = {
+            "docx": _make_org_profile("docx", "d5pin-ac08-docx"),
+            "pdfa": _make_org_profile("pdfa", "d5pin-ac08-pdfa"),
+        }
         for fmt in HEAVY:
             service.request_rendition(
                 snapshot, format=fmt,
+                org_profile_id=(
+                    profiles[fmt].profile_id if fmt in profiles else ""
+                ),
                 subject=_owner_subject(), session_id=SESSION_ID,
             )
         DocumentRenderWorker().run_once()
@@ -1293,9 +1335,10 @@ class TestHTTPHeavyFormats:
         assert body["job"]["format"] == "pdf"
         assert body["status_url"].startswith("/v1/documentation/jobs/")
 
-    def test_post_docx_still_400_unsupported(self, client):
-        """DOCX -- §7 P2 (DOCLOG-9): по-прежнему честный 400
-        unsupported_format."""
+    def test_post_docx_requires_org_profile(self, client):
+        """DOCLOG-9 (честное обновление пина): docx -- валидный формат,
+        но без профиля -- честный 422 org_profile_invalid (§19 строка
+        DOCLOG-9: выпуск ТОЛЬКО по подтверждённому профилю)."""
         _seed_snapshot()
         _cookie(client)
         rev_id = _revision_id(client)
@@ -1303,10 +1346,10 @@ class TestHTTPHeavyFormats:
             f"/v1/documentation/revisions/{rev_id}/renditions",
             json={"format": "docx"},
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
         detail = resp.json().get("detail")
         code = detail.get("code") if isinstance(detail, dict) else None
-        assert code == "unsupported_format"
+        assert code == "org_profile_invalid"
 
     def test_job_polling_to_ready_and_content_download(self, client):
         """§17: POST 202 queued -> worker run_once -> GET job ready ->
@@ -1460,7 +1503,8 @@ class TestMigration0011:
         assert "0011_doclog5_render_formats.sql" in names
         assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
         assert "0014_doclog8_monitoring.sql" in names  # DOCLOG-8
-        assert len(names) == 14
+        assert "0015_doclog9_profiles.sql" in names  # DOCLOG-9
+        assert len(names) == 15
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

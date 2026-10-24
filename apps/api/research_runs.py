@@ -1210,6 +1210,74 @@ MIGRATION_STATEMENTS_0014: tuple[str, ...] = (
     "ON monitoring_decisions (comparison_id, decided_at)",
 )
 
+# DOCLOG-9 (§19): профили организации -- org-сущность tenant-уровня
+# (БЕЗ FK на research_runs -- паритет грантов 0013: переживает run
+# намеренно), доказательства валидатора, append-only якорь; профиль
+# выпуска фиксируется в rendition/job metadata (2 ALTER, паттерн 0011).
+# 8 statement: 2 ALTER + 3 таблицы + 3 индекса (85 + 8 = 93). DDL-дубль
+# apps/api/migrations/0015_doclog9_profiles.sql.
+MIGRATION_STATEMENTS_0015: tuple[str, ...] = (
+    "ALTER TABLE document_renditions "
+    "ADD COLUMN IF NOT EXISTS org_profile_id TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE document_jobs "
+    "ADD COLUMN IF NOT EXISTS org_profile_id TEXT NOT NULL DEFAULT ''",
+    """
+    CREATE TABLE IF NOT EXISTS doc_profiles (
+        profile_id TEXT PRIMARY KEY,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.org_profile/1',
+        name TEXT NOT NULL,
+        version_no INTEGER NOT NULL,
+        format TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        language TEXT NOT NULL DEFAULT 'ru',
+        title_prefix TEXT NOT NULL DEFAULT '',
+        footer_text TEXT NOT NULL DEFAULT '',
+        organization TEXT NOT NULL DEFAULT '',
+        validate_conformance BOOLEAN NOT NULL DEFAULT TRUE,
+        sign_contents BOOLEAN NOT NULL DEFAULT FALSE,
+        anchor_registry BOOLEAN NOT NULL DEFAULT FALSE,
+        worm_lock BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        retired_by TEXT,
+        retired_at TIMESTAMPTZ,
+        UNIQUE (name, version_no)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS doc_rendition_validations (
+        validation_id TEXT PRIMARY KEY,
+        rendition_id TEXT NOT NULL,
+        job_id TEXT NOT NULL DEFAULT '',
+        run_id TEXT NOT NULL DEFAULT '',
+        profile_id TEXT NOT NULL,
+        profile_version_no INTEGER NOT NULL DEFAULT 1,
+        format TEXT NOT NULL,
+        validator TEXT NOT NULL,
+        result TEXT NOT NULL,
+        findings JSONB NOT NULL DEFAULT '[]'::jsonb,
+        signature_manifest JSONB,
+        checked_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS doc_anchor_records (
+        anchor_id TEXT PRIMARY KEY,
+        rendition_id TEXT NOT NULL,
+        content_sha256 TEXT NOT NULL,
+        profile_id TEXT NOT NULL,
+        anchored_by TEXT,
+        anchored_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_doc_profiles_format "
+    "ON doc_profiles (format, status)",
+    "CREATE INDEX IF NOT EXISTS idx_doc_validations_rendition "
+    "ON doc_rendition_validations (rendition_id, checked_at)",
+    "CREATE INDEX IF NOT EXISTS idx_doc_anchors_rendition "
+    "ON doc_anchor_records (rendition_id, anchored_at)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1218,6 +1286,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
     + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
+    + MIGRATION_STATEMENTS_0015
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1237,6 +1306,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0012_doclog6_approvals_archive.sql", MIGRATION_STATEMENTS_0012),
     ("0013_doclog7_logs_support.sql", MIGRATION_STATEMENTS_0013),
     ("0014_doclog8_monitoring.sql", MIGRATION_STATEMENTS_0014),
+    ("0015_doclog9_profiles.sql", MIGRATION_STATEMENTS_0015),
 )
 
 

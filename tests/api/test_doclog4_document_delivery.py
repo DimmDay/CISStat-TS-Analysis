@@ -256,13 +256,14 @@ class TestRenditionFormats:
 
     def test_heavy_formats_added_by_doclog5(self):
         """DOCLOG-5: PDF/XLSX/Parquet/SVG/PNG/ZIP -- в каталоге §7 P1
-        (асинхронный worker-контур); DOCX/PDF-A (§7 P2) по-прежнему
-        отсутствуют (DOCLOG-9)."""
+        (асинхронный worker-контур). DOCLOG-9 (честное обновление пина):
+        DOCX/PDF-A (§7 P2) введены как форматы профилей организации
+        (выпуск ТОЛЬКО по профилю, §19 строка DOCLOG-9)."""
         from apps.api.document_renditions import RENDITION_FORMATS
 
         assert {"pdf", "xlsx", "parquet", "svg", "png", "zip"} <= set(RENDITION_FORMATS)
-        assert "docx" not in RENDITION_FORMATS
-        assert "pdfa" not in RENDITION_FORMATS
+        assert "docx" in RENDITION_FORMATS
+        assert "pdfa" in RENDITION_FORMATS
 
     def test_render_json_is_canonical_snapshot_bytes(self):
         from apps.api.artifact_store import canonical_json_bytes
@@ -505,9 +506,12 @@ class TestDocumentJobs:
 
         snapshot = _seed_snapshot()
         service = DocumentDeliveryService.create_default()
+        # DOCLOG-9 (честное обновление пина): docx/pdfa -- валидные
+        # форматы, но требуют организационный профиль; честный
+        # unsupported_format проверяется форматом ВНЕ каталога ("doc").
         with pytest.raises(UnsupportedFormatError):
             service.request_rendition(
-                snapshot, format="docx",
+                snapshot, format="doc",
                 subject=_owner_subject(), session_id=SESSION_ID,
             )
 
@@ -738,9 +742,12 @@ class TestNegativeStates:
         rev_id = client.post(
             f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D02"}
         ).json()["revision"]["revision_id"]
+        # DOCLOG-9 (честное обновление пина): формат вне каталога --
+        # по-прежнему честный 400 unsupported_format (docx/pdfa теперь
+        # валидны и требуют профиль -- проверяется корпусом DOCLOG-9).
         resp = client.post(
             f"/v1/documentation/revisions/{rev_id}/renditions",
-            json={"format": "docx"},
+            json={"format": "doc"},
         )
         assert resp.status_code == 400
         body = resp.json()
@@ -1086,7 +1093,8 @@ class TestOpsWiringAndMigration:
         assert "0011_doclog5_render_formats.sql" in names  # DOCLOG-5
         assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
         assert "0014_doclog8_monitoring.sql" in names  # DOCLOG-8
-        assert len(names) == 14
+        assert "0015_doclog9_profiles.sql" in names  # DOCLOG-9
+        assert len(names) == 15
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

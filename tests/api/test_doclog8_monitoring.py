@@ -1263,10 +1263,12 @@ class TestStaticCatalogs:
     def test_migration_catalog_counts(self):
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
-        assert len(MIGRATION_FILES) == 14
-        assert MIGRATION_FILES[-1][0] == "0014_doclog8_monitoring.sql"
-        # 78 (0013) + 7 statement 0014 (3 таблицы + 4 индекса).
-        assert len(MIGRATION_STATEMENTS) == 85
+        assert len(MIGRATION_FILES) == 15
+        # DOCLOG-9 (честное обновление пина): последний файл каталога --
+        # 0015; миграция DOCLOG-8 пинуется по имени (предпоследняя).
+        assert "0014_doclog8_monitoring.sql" in [n for n, _ in MIGRATION_FILES]
+        # 85 (0014) + 8 statement 0015 (2 ALTER + 3 таблицы + 3 индекса).
+        assert len(MIGRATION_STATEMENTS) == 93
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES
@@ -1299,7 +1301,10 @@ class TestStaticCatalogs:
             "monitoring_decision_recorded",
         ):
             assert action in security_audit.AUDIT_ACTIONS, action
-        assert len(security_audit.AUDIT_ACTIONS) == 24
+        # DOCLOG-9 (честное обновление пина): +4 действия профилей
+        # организации (created/retired mandatory, validated/anchored
+        # standard); 24 + 4 = 28.
+        assert len(security_audit.AUDIT_ACTIONS) == 28
 
     def test_routes_registered(self):
         from apps.api.main import app

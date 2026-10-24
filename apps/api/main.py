@@ -44,6 +44,7 @@ from apps.api.routers import upload_db
 # DOCLOG-4 (§17/§19): MVP выдачи документов поверх frozen снимков --
 # первые HTTP-маршруты эпика документирования.
 from apps.api.routers import documentation
+from apps.api.routers import doc_profiles
 from apps.api.routers import monitoring
 from apps.api.routers import logs
 # PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
@@ -175,6 +176,10 @@ app.include_router(documentation.router, prefix="/v1/documentation", tags=["docu
 # DOCLOG-8 (§19): контур мониторинга -- /v1/documentation/runs/{run_id}/monitoring/*
 # (единая объектная авторизация R09; сверка не мутирует научный слой).
 app.include_router(monitoring.router, prefix="/v1/documentation", tags=["monitoring"])
+# DOCLOG-9 (§19): профили организации -- /v1/documentation/org-profiles* и
+# /v1/documentation/renditions/{id}/validations|verify-signature (§15:
+# policy.admin на управление; §14.1: mandatory-аудит создания/retire).
+app.include_router(doc_profiles.router, prefix="/v1/documentation", tags=["doc-profiles"])
 app.include_router(logs.router, prefix="/v1/logs", tags=["logs"])
 
 
