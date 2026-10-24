@@ -414,6 +414,44 @@ class PostgresTelemetrySink(TelemetrySink):
             conn.commit()
         return True
 
+    def list_recent(self, limit: int = 100) -> list[dict[str, Any]]:
+        """DOCLOG-7 (§14.2): чтение durable-журнала тех-событий
+        (паритет PostgresAuditSink.list_recent). Безопасная проекция
+        whitelist-колонок, порядок (occurred_at, event_id) DESC,
+        bounded limit. Атрибуты -- как записаны (redacted при записи)."""
+        sql = (
+            "SELECT event_id, schema_version, event_name, occurred_at,"
+            " observed_at, severity_text, severity_number, message_template,"
+            " attributes, service, service_version, environment, instance,"
+            " request_id, trace_id, span_id, operation_id, execution_id,"
+            " research_run_id, context_id, subject_surrogate, tenant_id,"
+            " outcome, method, error_code, error_fingerprint, duration_ms,"
+            " retry_attempt, sampled"
+            " FROM telemetry_events"
+            " ORDER BY occurred_at DESC, event_id DESC LIMIT %s"
+        )
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, (max(0, int(limit)),))
+            rows = cur.fetchall()
+        columns = (
+            "event_id", "schema_version", "event_name", "occurred_at",
+            "observed_at", "severity_text", "severity_number",
+            "message_template", "attributes", "service", "service_version",
+            "environment", "instance", "request_id", "trace_id", "span_id",
+            "operation_id", "execution_id", "research_run_id", "context_id",
+            "subject_surrogate", "tenant_id", "outcome", "method",
+            "error_code", "error_fingerprint", "duration_ms",
+            "retry_attempt", "sampled",
+        )
+        records: list[dict[str, Any]] = []
+        for row in rows:
+            record = dict(zip(columns, row))
+            for key, value in list(record.items()):
+                if isinstance(value, datetime):
+                    record[key] = value.isoformat()
+            records.append(record)
+        return records
+
     def readiness_probe(self) -> dict[str, Any]:
         import psycopg
 

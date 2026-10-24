@@ -1080,7 +1080,7 @@ class TestOpsWiringAndMigration:
         assert "0010_doclog4_documents.sql" in names
         assert "0011_doclog5_render_formats.sql" in names  # DOCLOG-5
         assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
-        assert len(names) == 12
+        assert len(names) == 13
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

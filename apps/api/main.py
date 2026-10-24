@@ -44,6 +44,7 @@ from apps.api.routers import upload_db
 # DOCLOG-4 (§17/§19): MVP выдачи документов поверх frozen снимков --
 # первые HTTP-маршруты эпика документирования.
 from apps.api.routers import documentation
+from apps.api.routers import logs
 # PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
 from apps.api.routers import progress
 from apps.api.knowledge import router as knowledge_router_module
@@ -170,6 +171,7 @@ app.include_router(upload_db.public_router, prefix="/v1/public/upload/db", tags=
 # DOCLOG-4 (§17/§19): каждый маршрут документирования проходит одну
 # объектную авторизацию (R09); выдача -- через audit-тройку §14.1.
 app.include_router(documentation.router, prefix="/v1/documentation", tags=["documentation"])
+app.include_router(logs.router, prefix="/v1/logs", tags=["logs"])
 
 
 @app.exception_handler(SessionConflictError)

@@ -280,6 +280,14 @@ export { MentorInlineWarning } from "./components/MentorInlineWarning";
 // аналитика; компонент самостоятелен (без AppShellProvider).
 export { AdminProgressDashboard } from "./components/AdminProgressDashboard";
 
+// DOCLOG-7 (спека §14.2/§15): «Администрирование → Журналы» -- область
+// РЯДОМ с агрегатами «Прогресса» (§14.2 дословно). Три вкладки
+// (telemetry/audit/delivery), whitelist-фильтры, cursor pagination,
+// live tail с честной паузой, диагностический пакет, гранты поддержки.
+// Компонент самостоятелен (без AppShellProvider) -- тот же паттерн,
+// что AdminProgressDashboard.
+export { AdminLogsDashboard } from "./components/AdminLogsDashboard";
+
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
 // Standalone-версия (с auth-веткой) живёт в apps/standalone/components --
 // см. обсуждение с тимлидом про разные ответственности embedded/standalone.

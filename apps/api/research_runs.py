@@ -1111,6 +1111,33 @@ MIGRATION_STATEMENTS_0012: tuple[str, ...] = (
     "ON document_retention (run_id)",
 )
 
+MIGRATION_STATEMENTS_0013: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS support_grants (
+        grant_id TEXT PRIMARY KEY,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.support_grant/1',
+        ticket TEXT NOT NULL,
+        purpose TEXT NOT NULL DEFAULT '',
+        subject_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        run_id TEXT,
+        scopes TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        revoked_by TEXT,
+        revoke_reason TEXT NOT NULL DEFAULT ''
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_support_grants_subject "
+    "ON support_grants (subject_id, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_support_grants_tenant "
+    "ON support_grants (tenant_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_support_grants_ticket "
+    "ON support_grants (ticket)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1118,6 +1145,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0007 + MIGRATION_STATEMENTS_0008
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
+    + MIGRATION_STATEMENTS_0013
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1135,6 +1163,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0010_doclog4_documents.sql", MIGRATION_STATEMENTS_0010),
     ("0011_doclog5_render_formats.sql", MIGRATION_STATEMENTS_0011),
     ("0012_doclog6_approvals_archive.sql", MIGRATION_STATEMENTS_0012),
+    ("0013_doclog7_logs_support.sql", MIGRATION_STATEMENTS_0013),
 )
 
 

@@ -322,10 +322,36 @@ class PostgresAuditSink(AuditSink):
         return True
 
     def list_recent(self, limit: int = 100) -> list[dict[str, Any]]:
-        raise NotImplementedError(
-            "Чтение durable-журнала -- контур DOCLOG-7 (admin logs UI); "
-            "в этой поставке durable-записи через health не выдаются (T6)."
+        """DOCLOG-7 (§14.2): чтение durable-журнала аудита. Отложенный
+        в DOCLOG-3 гэп закрыт: безопасная проекция (те же whitelist-
+        колонки, что пишет append), порядок (occurred_at, audit_id)
+        DESC, bounded limit. Читающий контур (routers/logs.py) сам
+        журналирует доступ (audit_log_accessed)."""
+        sql = (
+            "SELECT audit_id, schema_version, occurred_at, actor_subject,"
+            " actor_via, tenant_id, action, decision, resource_kind,"
+            " resource_id, resource_version, policy_basis, request_id,"
+            " operation_id, run_id, details"
+            " FROM security_audit_records"
+            " ORDER BY occurred_at DESC, audit_id DESC LIMIT %s"
         )
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, (max(0, int(limit)),))
+            rows = cur.fetchall()
+        columns = (
+            "audit_id", "schema_version", "occurred_at", "actor_subject",
+            "actor_via", "tenant_id", "action", "decision", "resource_kind",
+            "resource_id", "resource_version", "policy_basis", "request_id",
+            "operation_id", "run_id", "details",
+        )
+        records: list[dict[str, Any]] = []
+        for row in rows:
+            record = dict(zip(columns, row))
+            for key, value in list(record.items()):
+                if isinstance(value, datetime):
+                    record[key] = value.isoformat()
+            records.append(record)
+        return records
 
     def readiness_probe(self) -> dict[str, Any]:
         import psycopg

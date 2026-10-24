@@ -97,6 +97,14 @@ from apps.api.document_renditions import (
 
 DOCUMENTS_BACKEND_ENV = "CISSTAT_DOCUMENTS_BACKEND"
 
+# DOCLOG-7 (§14.2): колонки безопасной проекции доставки (list_delivery_summary).
+_DELIVERY_SUMMARY_COLUMNS = (
+    "job_id", "run_id", "tenant_id", "snapshot_id", "format",
+    "redaction_profile", "state", "error_code", "attempt",
+    "created_at", "updated_at", "revision_id", "rendition_id",
+    "document_id", "kind_code",
+)
+
 # §11: состояния оси генерации.
 JOB_QUEUED = "queued"
 JOB_RENDERING = "rendering"
@@ -399,6 +407,23 @@ class DocumentRegistry(ABC):
         контура в порядке FIFO -- очередь воркера + backpressure."""
         raise NotImplementedError
 
+    def list_delivery_summary(
+        self,
+        *,
+        from_ts: Optional[str] = None,
+        to_ts: Optional[str] = None,
+        state: Optional[str] = None,
+        format_filter: Optional[str] = None,
+        run_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:  # pragma: no cover - контракт
+        """DOCLOG-7 (§14.2 вкладка «Доставка и документы»): безопасные
+        metadata доставки (jobs + rendition/document цепочка) для админ-
+        журналов. БЕЗ content_bytes/payload -- только состояния. Порядок
+        (created_at DESC, job_id DESC). Структурный паритет Memory/
+        Postgres обязателен (урок F-D2C1)."""
+        raise NotImplementedError
+
     def readiness_probe(self) -> dict[str, Any]:  # pragma: no cover - контракт
         raise NotImplementedError
 
@@ -536,6 +561,81 @@ class MemoryDocumentRegistry(DocumentRegistry):
             ]
         jobs.sort(key=lambda item: (item.created_at, item.job_id))
         return jobs[:limit]
+
+    def list_delivery_summary(
+        self,
+        *,
+        from_ts: Optional[str] = None,
+        to_ts: Optional[str] = None,
+        state: Optional[str] = None,
+        format_filter: Optional[str] = None,
+        run_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """DOCLOG-7 (§14.2): безопасные metadata доставки. Memory:
+        join jobs -> renditions -> revisions -> documents по словарям;
+        БЕЗ content_bytes (repr=False поле не попадает в dict-проекцию)."""
+        with self._lock:
+            jobs = list(self._jobs.values())
+        rows: list[dict[str, Any]] = []
+        for job in jobs:
+            if state is not None and job.state != state:
+                continue
+            if format_filter is not None and job.format != format_filter:
+                continue
+            if run_id is not None and job.run_id != run_id:
+                continue
+            if tenant_id is not None and job.tenant_id != tenant_id:
+                continue
+            if from_ts is not None and job.created_at < from_ts:
+                continue
+            if to_ts is not None and job.created_at >= to_ts:
+                continue
+            rendition = (
+                self._renditions.get(job.rendition_id)
+                if job.rendition_id
+                else None
+            )
+            revision_id = (
+                job.revision_id
+                or (rendition.revision_id if rendition else None)
+            )
+            revision = (
+                self._revisions.get(revision_id) if revision_id else None
+            )
+            document = (
+                self._documents.get(revision.document_id)
+                if revision is not None
+                else None
+            )
+            rows.append(
+                {
+                    "job_id": job.job_id,
+                    "run_id": job.run_id,
+                    "tenant_id": job.tenant_id,
+                    "snapshot_id": job.snapshot_id,
+                    "format": job.format,
+                    "redaction_profile": job.redaction_profile,
+                    "state": job.state,
+                    "error_code": job.error_code,
+                    "attempt": job.attempt,
+                    "created_at": job.created_at,
+                    "updated_at": job.updated_at,
+                    "revision_id": revision_id,
+                    "rendition_id": job.rendition_id,
+                    "document_id": (
+                        document.document_id if document is not None else None
+                    ),
+                    "kind_code": (
+                        document.kind_code if document is not None else None
+                    ),
+                }
+            )
+        rows.sort(
+            key=lambda item: (str(item["created_at"]), item["job_id"]),
+            reverse=True,
+        )
+        return rows
 
     def readiness_probe(self) -> dict[str, Any]:
         return {"ok": True, "backend": "memory"}
@@ -934,6 +1034,65 @@ class PostgresDocumentRegistry(DocumentRegistry):
             )
             rows = cur.fetchall()
         return [self._job_from_row(row) for row in rows]
+
+    def list_delivery_summary(
+        self,
+        *,
+        from_ts: Optional[str] = None,
+        to_ts: Optional[str] = None,
+        state: Optional[str] = None,
+        format_filter: Optional[str] = None,
+        run_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """DOCLOG-7 (§14.2): SQL-join jobs -> renditions -> revisions ->
+        documents; whitelist-колонки, БЕЗ content/payload."""
+        sql = (
+            "SELECT j.job_id, j.run_id, j.tenant_id, j.snapshot_id,"
+            " j.format, j.redaction_profile, j.state, j.error_code,"
+            " j.attempt, j.created_at, j.updated_at, j.revision_id,"
+            " j.rendition_id, rev.document_id, d.kind_code"
+            " FROM document_jobs j"
+            " LEFT JOIN document_renditions r"
+            " ON r.rendition_id = j.rendition_id"
+            " LEFT JOIN document_revisions rev"
+            " ON rev.revision_id = COALESCE(j.revision_id, r.revision_id)"
+            " LEFT JOIN documents d ON d.document_id = rev.document_id"
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if state is not None:
+            clauses.append("j.state = %s")
+            params.append(state)
+        if format_filter is not None:
+            clauses.append("j.format = %s")
+            params.append(format_filter)
+        if run_id is not None:
+            clauses.append("j.run_id = %s")
+            params.append(run_id)
+        if tenant_id is not None:
+            clauses.append("j.tenant_id = %s")
+            params.append(tenant_id)
+        if from_ts is not None:
+            clauses.append("j.created_at >= %s")
+            params.append(from_ts)
+        if to_ts is not None:
+            clauses.append("j.created_at < %s")
+            params.append(to_ts)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY j.created_at DESC, j.job_id DESC"
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            record = dict(zip(_DELIVERY_SUMMARY_COLUMNS, row))
+            for key, value in list(record.items()):
+                if isinstance(value, datetime):
+                    record[key] = value.isoformat()
+            result.append(record)
+        return result
 
 
 # ── Фабрики (паритет get_artifact_registry / get_snapshot_registry) ──

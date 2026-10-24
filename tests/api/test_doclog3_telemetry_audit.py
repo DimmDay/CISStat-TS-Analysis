@@ -1153,18 +1153,20 @@ class TestMainAppWiring:
         assert SENTINEL_PASSWORD not in body
 
     def test_no_new_http_surface(self, client):
-        """Граница §19 (обновлено DOCLOG-4): маршруты /v1/documentation --
-        ПЛАНОВАЯ поставка DOCLOG-4 (§17: «префикс нового API --
-        /v1/documentation»); журналы UI -- DOCLOG-7 (/v1/audit|/v1/logs
-        по-прежнему отсутствуют)."""
+        """Граница §19 (обновлено DOCLOG-4, затем DOCLOG-7): маршруты
+        /v1/documentation -- DOCLOG-4; журналы /v1/logs -- ПЛАНОВАЯ
+        поставка DOCLOG-7 (§14.2/§19, теперь присутствуют). Префикс
+        /v1/audit НЕ используется: чтение audit-потока -- /v1/logs/audit
+        (единая область журналов с whitelist-фильтрами)."""
         from apps.api.main import app
 
         paths = {getattr(r, "path", "") for r in app.routes}
         # DOCLOG-4 (выполнено): выдача документов присутствует.
         assert any(p.startswith("/v1/documentation") for p in paths)
-        # DOCLOG-7 (будущее): журналы/audit-UI ещё не выдаются.
+        # DOCLOG-7 (выполнено): журналы/поддержка присутствуют.
+        assert any(p.startswith("/v1/logs") for p in paths)
+        # Префикс /v1/audit не введён (каталогизирован в /v1/logs).
         assert not any(p.startswith("/v1/audit") for p in paths)
-        assert not any(p.startswith("/v1/logs") for p in paths)
 
 
 # ═════════════════ 15. Миграция 0009 (паритет, append-only) ══════════
@@ -1223,5 +1225,5 @@ class TestMigrations:
         # 0012_doclog6_approvals_archive (аддитивная: 3 таблицы + 4
         # индекса = 7 statement; 67 + 7 = 74). Прецедент честного
         # обновления пина: DOCLOG-4 (9/53→10/62), DOCLOG-5 (10/62→11/67).
-        assert len(MIGRATION_FILES) == 12
-        assert len(MIGRATION_STATEMENTS) == 74
+        assert len(MIGRATION_FILES) == 13
+        assert len(MIGRATION_STATEMENTS) == 78
