@@ -1,0 +1,13 @@
+{
+  "id": "H03",
+  "parts": [
+    "M25",
+    "M27"
+  ],
+  "desc": "гейт обязательности профиля + resolve на постановке",
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_tail": "    with pytest.raises(OrgProfileRequired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRequired'>\n___________ TestHTTPHeavyFormats.test_post_docx_requires_org_profile ___________\ntests/api/test_doclog5_formats_worker.py:1349: in test_post_docx_requires_org_profile\n    assert resp.status_code == 422\nE   assert 202 == 422\nE    +  where 202 = <Response [202 Accepted]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_docx_requires_profile\nFAILED tests/api/test_doclog5_formats_worker.py::TestHTTPHeavyFormats::test_post_docx_requires_org_profile\n================= 2 failed, 159 passed, 1 deselected in 8.73s ==================",
+  "oracle_tail": "E   assert 202 == 404\nE    +  where 202 = <Response [202 Accepted]>.status_code\n________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:874: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileRequired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRequired'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a11_docx_without_profile_422\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 3 failed, 68 passed in 5.87s =========================",
+  "status": "DUAL-KILLED"
+}

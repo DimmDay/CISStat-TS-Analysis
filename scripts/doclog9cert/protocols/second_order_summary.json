@@ -1,0 +1,82 @@
+{
+  "mutants": [
+    {
+      "id": "H01",
+      "parts": [
+        "M01",
+        "M02"
+      ],
+      "desc": "два маркера pdfa-валидатора сняты одновременно",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "....................                                                     [100%]\n\n=================================== FAILURES ===================================\n______________ TestValidators.test_pdfa_validator_fails_plain_pdf ______________\ntests/api/test_doclog9_profiles.py:421: in test_pdfa_validator_fails_plain_pdf\n    assert \"outputintent\" in joined.lower()\nE   AssertionError: assert 'outputintent' in 'pdfaid_missing: xmp-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=b отсутствует icc_missing: destoutputprofile (srgb icc) не привязан'\nE    +  where 'pdfaid_missing: xmp-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=b отсутствует icc_missing: destoutputprofile (srgb icc) не привязан' = <built-in method lower of str object at 0x7f59583bb0f0>()\nE    +    where <built-in method lower of str object at 0x7f59583bb0f0> = 'pdfaid_missing: XMP-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=B отсутствует icc_missing: DestOutputProfile (sRGB ICC) не привязан'.lower\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestValidators::test_pdfa_validator_fails_plain_pdf\n================= 1 failed, 160 passed, 1 deselected in 8.71s ==================",
+      "oracle_tail": "=================================== FAILURES ===================================\n_________ test_u10_pdfa_validator_own_render_passes_and_marker_catalog _________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:291: in test_u10_pdfa_validator_own_render_passes_and_marker_catalog\n    assert res.result == \"failed\", marker\nE   AssertionError: b'GTS_PDFA1'\nE   assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u10_pdfa_validator_own_render_passes_and_marker_catalog\n========================= 1 failed, 70 passed in 5.76s =========================",
+      "status": "DUAL-KILLED"
+    },
+    {
+      "id": "H02",
+      "parts": [
+        "M04",
+        "M05"
+      ],
+      "desc": "подпись: инверсия сравнения + отвязка байтов",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "E     + failed\n__________________ TestHttpRoutes.test_verify_signature_route __________________\ntests/api/test_doclog9_profiles.py:1051: in test_verify_signature_route\n    assert resp.json()[\"verification\"][\"result\"] == \"passed\"\nE   AssertionError: assert 'failed' == 'passed'\nE     \nE     - passed\nE     + failed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestSignature::test_sign_and_verify_roundtrip\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_verify_signature_route\n================= 2 failed, 159 passed, 1 deselected in 8.62s ==================",
+      "oracle_tail": "_____________ test_u23_sign_flow_manifest_persisted_and_verifiable _____________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:755: in test_u23_sign_flow_manifest_persisted_and_verifiable\n    assert verify_signature_manifest(\nE   AssertionError: assert 'failed' == 'passed'\nE     \nE     - passed\nE     + failed\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u13_signature_roundtrip_tamper_binding_and_order\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable\n========================= 3 failed, 68 passed in 5.92s =========================",
+      "status": "DUAL-KILLED"
+    },
+    {
+      "id": "H03",
+      "parts": [
+        "M25",
+        "M27"
+      ],
+      "desc": "гейт обязательности профиля + resolve на постановке",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "    with pytest.raises(OrgProfileRequired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRequired'>\n___________ TestHTTPHeavyFormats.test_post_docx_requires_org_profile ___________\ntests/api/test_doclog5_formats_worker.py:1349: in test_post_docx_requires_org_profile\n    assert resp.status_code == 422\nE   assert 202 == 422\nE    +  where 202 = <Response [202 Accepted]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_docx_requires_profile\nFAILED tests/api/test_doclog5_formats_worker.py::TestHTTPHeavyFormats::test_post_docx_requires_org_profile\n================= 2 failed, 159 passed, 1 deselected in 8.73s ==================",
+      "oracle_tail": "E   assert 202 == 404\nE    +  where 202 = <Response [202 Accepted]>.status_code\n________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:874: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileRequired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRequired'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a11_docx_without_profile_422\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 3 failed, 68 passed in 5.87s =========================",
+      "status": "DUAL-KILLED"
+    },
+    {
+      "id": "H04",
+      "parts": [
+        "M38",
+        "M39"
+      ],
+      "desc": "DOCX: экранирование + гриф профиля сняты вместе",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "\n=================================== FAILURES ===================================\n_______ TestProfileFormatCatalog.test_docx_render_escapes_untrusted_text _______\ntests/api/test_doclog9_profiles.py:344: in test_docx_render_escapes_untrusted_text\n    ET.fromstring(document)  # валидный XML -- без инъекции\n    ^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/xml/etree/ElementTree.py:1335: in XML\n    parser.feed(text)\nE   xml.etree.ElementTree.ParseError: mismatched tag: line 1, column 1476\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileFormatCatalog::test_docx_render_escapes_untrusted_text\n================= 1 failed, 160 passed, 1 deselected in 8.70s ==================",
+      "oracle_tail": "_________________ test_u16_docx_render_escapes_untrusted_text __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:527: in test_u16_docx_render_escapes_untrusted_text\n    assert \"<script>\" not in doc\nE   assert '<script>' not in '<?xml versi.../w:document>'\nE     \nE     '<script>' is contained here:\nE       e\">Секция <script>alert(1)</script> (S1)</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Normal\"/></w:pPr><w:r><w:t xml:space=\"preserve\">• Утверждение <img src=x onerror=alert(2)> & «кавычки» [confirmed]</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Footer\"/></w:pPr><w:r><w:t xml:space=\"preserve\">Пакет подготовлен платформой CISStat TS Analysis</w:t></w:r></w:p></w:body></w:document>\nE     ?           ++++++++\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u15_docx_render_deterministic_members_and_decoration\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u16_docx_render_escapes_untrusted_text\n========================= 2 failed, 69 passed in 6.11s =========================",
+      "status": "DUAL-KILLED"
+    },
+    {
+      "id": "H05",
+      "parts": [
+        "M32",
+        "M34"
+      ],
+      "desc": "манифест подписи + якорь не пишутся вместе",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "__________________ TestHttpRoutes.test_verify_signature_route __________________\ntests/api/test_doclog9_profiles.py:1051: in test_verify_signature_route\n    assert resp.json()[\"verification\"][\"result\"] == \"passed\"\nE   AssertionError: assert 'not_signed' == 'passed'\nE     \nE     - passed\nE     + not_signed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_anchor_registry_append_only\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_signature_profile_signs_and_verifies\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_verify_signature_route\n================= 3 failed, 158 passed, 1 deselected in 9.08s ==================",
+      "oracle_tail": "E    +  where 0 = len([])\n__________________ test_u25_anchor_append_only_bound_to_bytes __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:784: in test_u25_anchor_append_only_bound_to_bytes\n    assert len(anchors) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a18_verify_signature_purged_410\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u25_anchor_append_only_bound_to_bytes\n========================= 4 failed, 67 passed in 6.10s =========================",
+      "status": "DUAL-KILLED"
+    },
+    {
+      "id": "H06",
+      "parts": [
+        "M08",
+        "M28"
+      ],
+      "desc": "retired-резолв + mismatch готовой цели",
+      "repo_exit": 1,
+      "oracle_exit": 1,
+      "repo_tail": "    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n____ TestProfileRenderThroughService.test_profile_mismatch_same_target_409 _____\ntests/api/test_doclog9_profiles.py:710: in test_profile_mismatch_same_target_409\n    with pytest.raises(OrgProfileMismatchError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileMismatchError'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_retire_then_resolve_fails\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_profile_mismatch_same_target_409\n================= 2 failed, 159 passed, 1 deselected in 8.45s ==================",
+      "oracle_tail": "________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:892: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a14_mismatch_409_http\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u09_resolve_profile_policy_gates\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u27_profile_mismatch_same_target_both_phases\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 5 failed, 66 passed in 5.98s =========================",
+      "status": "DUAL-KILLED"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M12",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "passed-запись валидации НЕ пишется (§19-доказательство off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.98,
+  "oracle_seconds": 10.79,
+  "repo_tail": "tests/api/test_doclog9_profiles.py:1051: in test_verify_signature_route\n    assert resp.json()[\"verification\"][\"result\"] == \"passed\"\nE   AssertionError: assert 'not_signed' == 'passed'\nE     \nE     - passed\nE     + not_signed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_worker_renders_docx_with_profile_ready\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_signature_profile_signs_and_verifies\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_http_rendition_with_profile_end_to_end\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_verify_signature_route\n================= 4 failed, 157 passed, 1 deselected in 8.79s ==================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py:746: in test_u23_sign_flow_manifest_persisted_and_verifiable\n    assert len(sig) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a13_docx_end_to_end_ready_validations_download\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a18_verify_signature_purged_410\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a21_standard_audit_broken_sink_does_not_break_rendition\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u21_docx_end_to_end_ready_with_proof_records\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable\n========================= 6 failed, 65 passed in 6.15s =========================",
+  "status": "DUAL-KILLED"
+}

@@ -1,0 +1,30 @@
+{
+  "routes_total": 221,
+  "doclog9_routes": 5,
+  "doclog9_paths": [
+    "/v1/documentation/org-profiles",
+    "/v1/documentation/org-profiles/{profile_id}/retire",
+    "/v1/documentation/renditions/{rendition_id}/validations",
+    "/v1/documentation/renditions/{rendition_id}/verify-signature"
+  ],
+  "migrations": 15,
+  "migration_statements": 93,
+  "last_migration": "0015_doclog9_profiles.sql",
+  "migration_0015_statements": 8,
+  "document_kinds": 12,
+  "audit_actions": 28,
+  "doclog9_audit_actions": [
+    "org_profile_created",
+    "org_profile_retired",
+    "rendition_anchored",
+    "rendition_validated"
+  ],
+  "profile_formats": [
+    "docx",
+    "pdfa"
+  ],
+  "heavy_has_docx_pdfa": true,
+  "profile_schema_version": "doclog.org_profile/1",
+  "product_tree_md5_eq_head": true,
+  "BUILD": "OK"
+}

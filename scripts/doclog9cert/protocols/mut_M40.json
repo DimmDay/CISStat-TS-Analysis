@@ -1,0 +1,14 @@
+{
+  "id": "M40",
+  "file": "apps/api/document_renditions.py",
+  "desc": "pdfa -- переименованный обычный PDF без XMP/OutputIntent (§7 P2 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.31,
+  "oracle_seconds": 13.62,
+  "repo_tail": "tests/api/test_doclog5_formats_worker.py:832: in test_all_heavy_formats_end_to_end\n    assert done.state == JOB_READY, fmt\nE   AssertionError: pdfa\nE   assert 'failed' == 'ready'\nE     \nE     - ready\nE     + failed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileFormatCatalog::test_pdfa_render_carries_profile_decoration\nFAILED tests/api/test_doclog9_profiles.py::TestValidators::test_pdfa_validator_passes_own_render\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_all_heavy_formats_end_to_end\n================= 3 failed, 158 passed, 1 deselected in 8.55s ==================",
+  "oracle_tail": "              ^^^^^^^^^^^^^^^^^^^^^^\n../../.venv/lib/python3.12/site-packages/pypdf/generic/_data_structures.py:472: in __getitem__\n    return dict.__getitem__(self, key).get_object()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   KeyError: '/OutputIntents'\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a23_worker_rendition_metadata_roundtrip\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u10_pdfa_validator_own_render_passes_and_marker_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u17_pdfa_render_markers_no_forbidden_content_decoration\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u18_pdfa_cross_second_nondeterminism_pin_f_d9c1\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u33_pdfa_outputintent_structural_catalog\n========================= 5 failed, 66 passed in 9.61s =========================",
+  "status": "DUAL-KILLED"
+}

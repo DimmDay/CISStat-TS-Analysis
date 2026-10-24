@@ -1,0 +1,14 @@
+{
+  "id": "M39",
+  "file": "apps/api/document_renditions.py",
+  "desc": "оформление профиля (гриф) не входит в байты DOCX",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 12.27,
+  "oracle_seconds": 10.06,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, fugue-0.9.7, typeguard-4.6.0, syrupy-6.1.1\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 162 items / 1 deselected / 161 selected\n\ntests/api/test_doclog9_profiles.py ..................................... [ 22%]\n...............                                                          [ 32%]\ntests/api/test_doclog5_formats_worker.py ............................... [ 51%]\n..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n====================== 161 passed, 1 deselected in 8.60s =======================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py ..............F.......... [ 88%]\n........                                                                 [100%]\n\n=================================== FAILURES ===================================\n__________ test_u15_docx_render_deterministic_members_and_decoration ___________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:499: in test_u15_docx_render_deterministic_members_and_decoration\n    assert \"d9cert · гриф\" in doc            # title_prefix в байтах\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   assert 'd9cert · гриф' in '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordpro...yle w:val=\"Footer\"/></w:pPr><w:r><w:t xml:space=\"preserve\">d9cert-футер-строка</w:t></w:r></w:p></w:body></w:document>'\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u15_docx_render_deterministic_members_and_decoration\n========================= 1 failed, 70 passed in 5.83s =========================",
+  "status": "ORACLE-ONLY"
+}

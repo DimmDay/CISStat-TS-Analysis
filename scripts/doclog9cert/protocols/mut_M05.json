@@ -1,0 +1,14 @@
+{
+  "id": "M05",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "MAC не привязан к байтам содержимого (только метаданные)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 13.21,
+  "oracle_seconds": 10.13,
+  "repo_tail": "\n=================================== FAILURES ===================================\n_______________ TestSignature.test_verify_fails_tampered_content _______________\ntests/api/test_doclog9_profiles.py:484: in test_verify_fails_tampered_content\n    assert verification.result == \"failed\"\nE   AssertionError: assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestSignature::test_verify_fails_tampered_content\n================= 1 failed, 160 passed, 1 deselected in 8.99s ==================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n____________ test_u13_signature_roundtrip_tamper_binding_and_order _____________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:403: in test_u13_signature_roundtrip_tamper_binding_and_order\n    assert res.result == \"failed\"\nE   AssertionError: assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u13_signature_roundtrip_tamper_binding_and_order\n========================= 1 failed, 70 passed in 6.00s =========================",
+  "status": "DUAL-KILLED"
+}

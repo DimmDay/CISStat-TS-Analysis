@@ -1,0 +1,14 @@
+{
+  "id": "M01",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "валидатор пропускает выпуск без GTS_PDFA1 OutputIntent",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.24,
+  "oracle_seconds": 9.9,
+  "repo_tail": "....................                                                     [100%]\n\n=================================== FAILURES ===================================\n______________ TestValidators.test_pdfa_validator_fails_plain_pdf ______________\ntests/api/test_doclog9_profiles.py:421: in test_pdfa_validator_fails_plain_pdf\n    assert \"outputintent\" in joined.lower()\nE   AssertionError: assert 'outputintent' in 'pdfaid_missing: xmp-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=b отсутствует icc_missing: destoutputprofile (srgb icc) не привязан'\nE    +  where 'pdfaid_missing: xmp-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=b отсутствует icc_missing: destoutputprofile (srgb icc) не привязан' = <built-in method lower of str object at 0x7f58de1bb0f0>()\nE    +    where <built-in method lower of str object at 0x7f58de1bb0f0> = 'pdfaid_missing: XMP-идентификация pdfaid:part=1 отсутствует pdfa_conformance_missing: pdfaid:conformance=B отсутствует icc_missing: DestOutputProfile (sRGB ICC) не привязан'.lower\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestValidators::test_pdfa_validator_fails_plain_pdf\n================= 1 failed, 160 passed, 1 deselected in 8.41s ==================",
+  "oracle_tail": "=================================== FAILURES ===================================\n_________ test_u10_pdfa_validator_own_render_passes_and_marker_catalog _________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:291: in test_u10_pdfa_validator_own_render_passes_and_marker_catalog\n    assert res.result == \"failed\", marker\nE   AssertionError: b'GTS_PDFA1'\nE   assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u10_pdfa_validator_own_render_passes_and_marker_catalog\n========================= 1 failed, 70 passed in 5.66s =========================",
+  "status": "DUAL-KILLED"
+}

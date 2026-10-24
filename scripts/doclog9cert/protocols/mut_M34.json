@@ -1,0 +1,14 @@
+{
+  "id": "M34",
+  "file": "apps/api/document_jobs.py",
+  "desc": "append-only якорь не пишется (§16 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.41,
+  "oracle_seconds": 10.86,
+  "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n=================================== FAILURES ===================================\n_______ TestProfileRenderThroughService.test_anchor_registry_append_only _______\ntests/api/test_doclog9_profiles.py:781: in test_anchor_registry_append_only\n    assert len(anchors) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_anchor_registry_append_only\n================= 1 failed, 160 passed, 1 deselected in 8.52s ==================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py ......................... [ 88%]\nF.......                                                                 [100%]\n\n=================================== FAILURES ===================================\n__________________ test_u25_anchor_append_only_bound_to_bytes __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:784: in test_u25_anchor_append_only_bound_to_bytes\n    assert len(anchors) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u25_anchor_append_only_bound_to_bytes\n========================= 1 failed, 70 passed in 6.16s =========================",
+  "status": "DUAL-KILLED"
+}

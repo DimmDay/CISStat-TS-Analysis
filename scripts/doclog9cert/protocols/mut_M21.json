@@ -1,0 +1,14 @@
+{
+  "id": "M21",
+  "file": "apps/api/routers/doc_profiles.py",
+  "desc": "конфликт дубля 409 -> 422 (каталог кодов сломан)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.82,
+  "oracle_seconds": 10.25,
+  "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n=================================== FAILURES ===================================\n________________ TestHttpRoutes.test_duplicate_name_version_409 ________________\ntests/api/test_doclog9_profiles.py:922: in test_duplicate_name_version_409\n    assert second.status_code == 409\nE   assert 422 == 409\nE    +  where 422 = <Response [422 Unprocessable Entity]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_duplicate_name_version_409\n================= 1 failed, 160 passed, 1 deselected in 8.91s ==================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py ......................... [ 88%]\n........                                                                 [100%]\n\n=================================== FAILURES ===================================\n_________________ test_a07_duplicate_409_and_versions_allowed __________________\nscripts/doclog9cert/test_d9cert_oracle_api.py:184: in test_a07_duplicate_409_and_versions_allowed\n    assert second.status_code == 409\nE   assert 422 == 409\nE    +  where 422 = <Response [422 Unprocessable Entity]>.status_code\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a07_duplicate_409_and_versions_allowed\n========================= 1 failed, 70 passed in 5.86s =========================",
+  "status": "DUAL-KILLED"
+}

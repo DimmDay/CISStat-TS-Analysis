@@ -1,0 +1,60 @@
+{
+  "probes": [
+    {
+      "probe": "P1",
+      "finding": "F-D9C1",
+      "pass": true,
+      "icc_header_fields": {
+        "year": 2026,
+        "month": 10,
+        "day": 24,
+        "second": 45
+      }
+    },
+    {
+      "probe": "P2",
+      "finding": "F-D9C2",
+      "healthy_status": 201,
+      "broken_sink_status": 500,
+      "profile_persisted_despite_failure": true,
+      "pass": true
+    },
+    {
+      "probe": "P3",
+      "finding": "F-D9C4",
+      "raises_without_key": true,
+      "pass": true
+    },
+    {
+      "probe": "P4",
+      "finding": "F-D9C5",
+      "status": 422,
+      "code": "org_profile_invalid",
+      "pass": true
+    },
+    {
+      "probe": "P5",
+      "finding": "N-D9C1",
+      "job_revision_id": null,
+      "job_state": "ready",
+      "retention_present": false,
+      "pass": true
+    },
+    {
+      "probe": "P6",
+      "finding": "N-D9C2",
+      "job_state": "ready",
+      "validation": [
+        {
+          "validator": "docx-structural/1",
+          "result": "passed",
+          "findings": [
+            "validate_conformance=false: валидация отключена политикой профиля"
+          ]
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "all_reproduced": true
+}

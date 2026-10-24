@@ -1,0 +1,14 @@
+{
+  "id": "M07",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "анонимный гейт управления профилями снят (uniform-404 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 12.61,
+  "oracle_seconds": 10.99,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, fugue-0.9.7, typeguard-4.6.0, syrupy-6.1.1\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 162 items / 1 deselected / 161 selected\n\ntests/api/test_doclog9_profiles.py ..................................... [ 22%]\n...............                                                          [ 32%]\ntests/api/test_doclog5_formats_worker.py ............................... [ 51%]\n..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n====================== 161 passed, 1 deselected in 8.53s =======================",
+  "oracle_tail": "__________________ test_u06_policy_admin_gate_scopes_vs_role ___________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:150: in test_u06_policy_admin_gate_scopes_vs_role\n    svc.create_profile(name=\"d9cert-anon\", version_no=1, format=\"pdfa\",\napps/api/doc_profiles.py:878: in create_profile\n    self._require_policy_admin(subject)\napps/api/doc_profiles.py:856: in _require_policy_admin\n    raise OrgProfileAccessDenied(\nE   apps.api.doc_profiles.OrgProfileAccessDenied: Управление профилями организации требует policy.admin (§15)\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a01_anonymous_uniform_404_all_routes\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u06_policy_admin_gate_scopes_vs_role\n========================= 2 failed, 69 passed in 6.35s =========================",
+  "status": "ORACLE-ONLY"
+}

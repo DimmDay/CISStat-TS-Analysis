@@ -1,0 +1,14 @@
+{
+  "id": "M06",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "право policy.admin не проверяется (§15 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.79,
+  "oracle_seconds": 10.46,
+  "repo_tail": "    with pytest.raises(OrgProfileAccessDenied):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileAccessDenied'>\n_____________ TestHttpRoutes.test_writer_without_policy_admin_403 ______________\ntests/api/test_doclog9_profiles.py:914: in test_writer_without_policy_admin_403\n    assert resp.status_code == 403\nE   assert 201 == 403\nE    +  where 201 = <Response [201 Created]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_create_requires_policy_admin\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_writer_without_policy_admin_403\n================= 2 failed, 159 passed, 1 deselected in 8.61s ==================",
+  "oracle_tail": "E   assert 200 == 403\nE    +  where 200 = <Response [200 OK]>.status_code\n__________________ test_u06_policy_admin_gate_scopes_vs_role ___________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:160: in test_u06_policy_admin_gate_scopes_vs_role\n    with pytest.raises(OrgProfileAccessDenied):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileAccessDenied'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a04_writer_without_scope_403_code_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a10_retire_route_flow_and_audit\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u06_policy_admin_gate_scopes_vs_role\n========================= 3 failed, 68 passed in 5.97s =========================",
+  "status": "DUAL-KILLED"
+}

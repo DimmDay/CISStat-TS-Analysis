@@ -1,0 +1,14 @@
+{
+  "id": "M15",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "класс аудита инвертирован (mandatory -> standard, fail-open)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 12.68,
+  "oracle_seconds": 11.99,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, fugue-0.9.7, typeguard-4.6.0, syrupy-6.1.1\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 162 items / 1 deselected / 161 selected\n\ntests/api/test_doclog9_profiles.py ..................................... [ 22%]\n...............                                                          [ 32%]\ntests/api/test_doclog5_formats_worker.py ............................... [ 51%]\n..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n====================== 161 passed, 1 deselected in 8.71s =======================",
+  "oracle_tail": "E   assert 'record_mandatory if requirement == \"mandatory\" else record_standard' in '# apps/api/doc_profiles.py\\n\"\"\"\\nDOCLOG-9 (spec_documentation_logging.md §7 P2, §11, §15, §16, §19 строка\\nDOCLOG-9, ...f reset_org_profile_service_for_testing() -> None:\\n    global _ORG_PROFILE_SERVICE\\n    _ORG_PROFILE_SERVICE = None\\n'\n_________________ test_u07_create_audit_mandatory_fail_closed __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:187: in test_u07_create_audit_mandatory_fail_closed\n    with pytest.raises(Exception) as excinfo:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'Exception'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a20_mandatory_audit_broken_sink_http\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a21_standard_audit_broken_sink_does_not_break_rendition\nFAILED scripts/doclog9cert/test_d9cert_oracle_static.py::test_s05_service_audit_calls_match_classes\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u07_create_audit_mandatory_fail_closed\n========================= 4 failed, 67 passed in 7.14s =========================",
+  "status": "ORACLE-ONLY"
+}

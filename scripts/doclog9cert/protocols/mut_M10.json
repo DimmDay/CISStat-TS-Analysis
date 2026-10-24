@@ -1,0 +1,14 @@
+{
+  "id": "M10",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "дубль (name, version_no) допускается (UNIQUE off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.89,
+  "oracle_seconds": 10.92,
+  "repo_tail": "    with pytest.raises(OrgProfileDuplicate):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileDuplicate'>\n________________ TestHttpRoutes.test_duplicate_name_version_409 ________________\ntests/api/test_doclog9_profiles.py:922: in test_duplicate_name_version_409\n    assert second.status_code == 409\nE   assert 201 == 409\nE    +  where 201 = <Response [201 Created]>.status_code\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_duplicate_name_version_rejected\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_duplicate_name_version_409\n================= 2 failed, 159 passed, 1 deselected in 9.06s ==================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py ......................... [ 88%]\n........                                                                 [100%]\n\n=================================== FAILURES ===================================\n_________________ test_a07_duplicate_409_and_versions_allowed __________________\nscripts/doclog9cert/test_d9cert_oracle_api.py:184: in test_a07_duplicate_409_and_versions_allowed\n    assert second.status_code == 409\nE   assert 201 == 409\nE    +  where 201 = <Response [201 Created]>.status_code\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a07_duplicate_409_and_versions_allowed\n========================= 1 failed, 70 passed in 6.27s =========================",
+  "status": "DUAL-KILLED"
+}

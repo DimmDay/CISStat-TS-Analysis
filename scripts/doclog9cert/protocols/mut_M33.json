@@ -1,0 +1,14 @@
+{
+  "id": "M33",
+  "file": "apps/api/document_jobs.py",
+  "desc": "отсутствие ключа подписи -- тихий неподписанный ready",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.9,
+  "oracle_seconds": 10.57,
+  "repo_tail": "\n=================================== FAILURES ===================================\n__ TestProfileRenderThroughService.test_signature_without_key_fails_honestly ___\ntests/api/test_doclog9_profiles.py:827: in test_signature_without_key_fails_honestly\n    assert done.state == JOB_FAILED\nE   AssertionError: assert 'ready' == 'failed'\nE     \nE     - failed\nE     + ready\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_signature_without_key_fails_honestly\n================= 1 failed, 160 passed, 1 deselected in 8.50s ==================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n__________________ test_u24_sign_without_key_is_honest_failed __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:771: in test_u24_sign_without_key_is_honest_failed\n    assert job.state == JOB_FAILED\nE   AssertionError: assert 'ready' == 'failed'\nE     \nE     - failed\nE     + ready\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u24_sign_without_key_is_honest_failed\n========================= 1 failed, 70 passed in 6.03s =========================",
+  "status": "DUAL-KILLED"
+}

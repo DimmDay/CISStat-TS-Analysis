@@ -1,0 +1,14 @@
+{
+  "id": "M31",
+  "file": "apps/api/document_jobs.py",
+  "desc": "failed-запись валидации не пишется (доказательство off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.09,
+  "oracle_seconds": 10.67,
+  "repo_tail": "..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n=================================== FAILURES ===================================\n_____ TestProfileRenderThroughService.test_validation_failed_blocks_ready ______\ntests/api/test_doclog9_profiles.py:687: in test_validation_failed_blocks_ready\n    assert validations\nE   assert []\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_validation_failed_blocks_ready\n================= 1 failed, 160 passed, 1 deselected in 8.39s ==================",
+  "oracle_tail": "    assert len(records) == 1 and records[0].result == \"failed\"\nE   assert (0 == 1)\nE    +  where 0 = len([])\n__________ test_u22_failed_validation_honest_terminal_no_ready_bytes ___________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:724: in test_u22_failed_validation_honest_terminal_no_ready_bytes\n    assert len(failed_records) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a15_failed_validation_via_http_no_ready\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u22_failed_validation_honest_terminal_no_ready_bytes\n========================= 2 failed, 69 passed in 6.31s =========================",
+  "status": "DUAL-KILLED"
+}

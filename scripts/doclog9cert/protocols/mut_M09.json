@@ -1,0 +1,14 @@
+{
+  "id": "M09",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "формат профиля не сверяется с форматом рендера",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.82,
+  "oracle_seconds": 10.72,
+  "repo_tail": "E   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileFormatMismatch'>\n_____________ TestXlsxRender.test_xlsx_five_sheets_and_determinism _____________\ntests/api/test_doclog5_formats_worker.py:357: in test_xlsx_five_sheets_and_determinism\n    assert first == second\nE   AssertionError: assert b'PK\\x03\\x04\\...0\\x00\\x00\\x00' == b'PK\\x03\\x04\\...0\\x00\\x00\\x00'\nE     \nE     At index 10 diff: b'\\xec' != b'\\xed'\nE     Use -v to get more diff\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_resolve_format_mismatch\nFAILED tests/api/test_doclog5_formats_worker.py::TestXlsxRender::test_xlsx_five_sheets_and_determinism\n================= 2 failed, 159 passed, 1 deselected in 8.78s ==================",
+  "oracle_tail": "    with pytest.raises(OrgProfileFormatMismatch):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileFormatMismatch'>\n________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:898: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileFormatMismatch):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileFormatMismatch'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u09_resolve_profile_policy_gates\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 2 failed, 69 passed in 6.19s =========================",
+  "status": "DUAL-KILLED"
+}

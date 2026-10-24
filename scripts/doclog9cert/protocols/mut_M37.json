@@ -1,0 +1,14 @@
+{
+  "id": "M37",
+  "file": "apps/api/document_jobs.py",
+  "desc": "passed-доказательство готового выпуска не пишется (§19 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.45,
+  "oracle_seconds": 10.18,
+  "repo_tail": "_ TestProfileRenderThroughService.test_worker_renders_docx_with_profile_ready __\ntests/api/test_doclog9_profiles.py:650: in test_worker_renders_docx_with_profile_ready\n    assert validations\nE   assert []\n__________ TestHttpRoutes.test_http_rendition_with_profile_end_to_end __________\ntests/api/test_doclog9_profiles.py:1003: in test_http_rendition_with_profile_end_to_end\n    assert records\nE   assert []\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_worker_renders_docx_with_profile_ready\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_http_rendition_with_profile_end_to_end\n================= 2 failed, 159 passed, 1 deselected in 8.56s ==================",
+  "oracle_tail": "    assert records and records[0].result == \"passed\"\nE   assert ([])\n______________ test_u21_docx_end_to_end_ready_with_proof_records _______________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:689: in test_u21_docx_end_to_end_ready_with_proof_records\n    assert len(validations) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a13_docx_end_to_end_ready_validations_download\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a21_standard_audit_broken_sink_does_not_break_rendition\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u21_docx_end_to_end_ready_with_proof_records\n========================= 3 failed, 68 passed in 5.90s =========================",
+  "status": "DUAL-KILLED"
+}

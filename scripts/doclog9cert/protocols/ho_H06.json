@@ -1,0 +1,13 @@
+{
+  "id": "H06",
+  "parts": [
+    "M08",
+    "M28"
+  ],
+  "desc": "retired-резолв + mismatch готовой цели",
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_tail": "    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n____ TestProfileRenderThroughService.test_profile_mismatch_same_target_409 _____\ntests/api/test_doclog9_profiles.py:710: in test_profile_mismatch_same_target_409\n    with pytest.raises(OrgProfileMismatchError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileMismatchError'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_retire_then_resolve_fails\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_profile_mismatch_same_target_409\n================= 2 failed, 159 passed, 1 deselected in 8.45s ==================",
+  "oracle_tail": "________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:892: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a14_mismatch_409_http\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u09_resolve_profile_policy_gates\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u27_profile_mismatch_same_target_both_phases\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 5 failed, 66 passed in 5.98s =========================",
+  "status": "DUAL-KILLED"
+}

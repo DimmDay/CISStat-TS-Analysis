@@ -1,0 +1,9 @@
+{
+  "target_head": "5856764",
+  "parent": "659db3d",
+  "exit": 1,
+  "seconds": 5.33,
+  "summary": "============================== 70 errors in 1.65s ==============================",
+  "tail": "ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u19_srgb_icc_header_carries_wallclock_pin_f_d9c1\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u20_pdfa_diff_confined_to_icc_timestamp_f_d9c1_scope\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u21_docx_end_to_end_ready_with_proof_records\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u22_failed_validation_honest_terminal_no_ready_bytes\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u24_sign_without_key_is_honest_failed\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u25_anchor_append_only_bound_to_bytes\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u26_worm_hold_on_document_with_reason\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u27_profile_mismatch_same_target_both_phases\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u29_worker_rechecks_policy_at_execution_time\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u30_legacy_profileless_rendition_mismatch\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u31_memory_registry_order_filter_and_probe\nERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u32_validation_record_version_binding\n============================== 70 errors in 1.65s ==============================",
+  "RED": true
+}

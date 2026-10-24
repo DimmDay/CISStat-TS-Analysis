@@ -1,0 +1,14 @@
+{
+  "id": "M08",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "retired-профиль резолвится как активный (policy off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 13.21,
+  "oracle_seconds": 9.91,
+  "repo_tail": "tests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n=================================== FAILURES ===================================\n_____________ TestOrgProfileService.test_retire_then_resolve_fails _____________\ntests/api/test_doclog9_profiles.py:548: in test_retire_then_resolve_fails\n    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestOrgProfileService::test_retire_then_resolve_fails\n================= 1 failed, 160 passed, 1 deselected in 8.96s ==================",
+  "oracle_tail": "         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n________________________ test_u28_request_gates_catalog ________________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:892: in test_u28_request_gates_catalog\n    with pytest.raises(OrgProfileRetired):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE <class 'apps.api.doc_profiles.OrgProfileRetired'>\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u09_resolve_profile_policy_gates\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog\n========================= 3 failed, 68 passed in 5.85s =========================",
+  "status": "DUAL-KILLED"
+}

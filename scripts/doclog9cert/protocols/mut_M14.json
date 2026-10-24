@@ -1,0 +1,14 @@
+{
+  "id": "M14",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "WORM-холд никогда не ставится (§16 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.05,
+  "oracle_seconds": 9.92,
+  "repo_tail": "..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n=================================== FAILURES ===================================\n______ TestProfileRenderThroughService.test_worm_lock_sets_retention_hold ______\ntests/api/test_doclog9_profiles.py:762: in test_worm_lock_sets_retention_hold\n    assert retention is not None\nE   assert None is not None\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_worm_lock_sets_retention_hold\n================= 1 failed, 160 passed, 1 deselected in 8.42s ==================",
+  "oracle_tail": "    assert report.get(\"purged_renditions\", 0) == 0\nE   AssertionError: assert 1 == 0\nE    +  where 1 = <built-in method get of dict object at 0x7fc525a607c0>('purged_renditions', 0)\nE    +    where <built-in method get of dict object at 0x7fc525a607c0> = {'draft_days': 30, 'kept_published_documents': 0, 'purged_renditions': 1, 'scanned_documents': 1, ...}.get\n__________________ test_u26_worm_hold_on_document_with_reason __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:808: in test_u26_worm_hold_on_document_with_reason\n    assert retention is not None and retention.hold is True\nE   assert (None is not None)\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a19_worm_blocks_retention_purge\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u26_worm_hold_on_document_with_reason\n========================= 2 failed, 69 passed in 5.91s =========================",
+  "status": "DUAL-KILLED"
+}

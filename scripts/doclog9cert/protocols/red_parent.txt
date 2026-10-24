@@ -1,0 +1,155 @@
+ct_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_________ ERROR at setup of test_u24_sign_without_key_is_honest_failed _________
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_________ ERROR at setup of test_u25_anchor_append_only_bound_to_bytes _________
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_________ ERROR at setup of test_u26_worm_hold_on_document_with_reason _________
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_____ ERROR at setup of test_u27_profile_mismatch_same_target_both_phases ______
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_______________ ERROR at setup of test_u28_request_gates_catalog _______________
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_____ ERROR at setup of test_u29_worker_rechecks_policy_at_execution_time ______
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_______ ERROR at setup of test_u30_legacy_profileless_rendition_mismatch _______
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+______ ERROR at setup of test_u31_memory_registry_order_filter_and_probe _______
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+_________ ERROR at setup of test_u32_validation_record_version_binding _________
+/home/z/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+scripts/doclog9cert/conftest.py:113: in _isolated_environment
+    _reset_all()
+scripts/doclog9cert/conftest.py:119: in _reset_all
+    from apps.api import artifact_store, doc_profiles, report_snapshot
+E   ImportError: cannot import name 'doc_profiles' from 'apps.api' (/tmp/d9cert-red-parent/apps/api/__init__.py)
+=========================== short test summary info ============================
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a01_anonymous_uniform_404_all_routes
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a02_authenticated_foreign_list_ok_rendition_404
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a03_create_contract_201
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a04_writer_without_scope_403_code_catalog
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a05_scope_based_policy_admin_201
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a06_validation_catalog_422
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a07_duplicate_409_and_versions_allowed
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a08_http_bool_version_no_pin_f_d9c2
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a09_router_normalizes_format_filter_and_list_contract
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a10_retire_route_flow_and_audit
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a11_docx_without_profile_422
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a12_profile_gates_http_catalog
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a13_docx_end_to_end_ready_validations_download
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a14_mismatch_409_http
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a15_failed_validation_via_http_no_ready
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a17_verify_signature_not_signed
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a18_verify_signature_purged_410
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a19_worm_blocks_retention_purge
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a20_mandatory_audit_broken_sink_http
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a21_standard_audit_broken_sink_does_not_break_rendition
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a22_error_hygiene_no_sentinel_no_traceback
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a23_worker_rendition_metadata_roundtrip
+ERROR scripts/doclog9cert/test_d9cert_oracle_api.py::test_a24_anon_and_foreign_key_uniform_on_rendition_routes
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s01_migration_catalog_and_statement_counts
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s02_ddl_org_entity_no_run_fk_jsonb_and_defaults
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s03_routes_catalog_exact
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s04_audit_actions_28_and_classes
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s05_service_audit_calls_match_classes
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s06_format_and_signature_catalogs_frozen
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s07_rendition_formats_docx_pdfa_heavy
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s08_document_kinds_unchanged
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s09_render_purity_fixed_dates_no_wallclock_in_docx
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s10_pg_registry_parity_and_append_only
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s11_registry_from_env_backends
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s12_ui_panel_use_client_first_line_and_states
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s13_ui_lib_client_contract
+ERROR scripts/doclog9cert/test_d9cert_oracle_static.py::test_s14_contract_doc_and_honest_boundaries
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u01_profile_catalogs_frozen
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u02_schema_version_and_disclaimer
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u03_create_name_validation_and_strip
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u04_version_no_catalog
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u05_format_catalog_case_sensitive_at_service
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u06_policy_admin_gate_scopes_vs_role
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u07_create_audit_mandatory_fail_closed
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u08_retire_flow_idempotent_and_immutable
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u09_resolve_profile_policy_gates
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u10_pdfa_validator_own_render_passes_and_marker_catalog
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u11_pdfa_validator_fails_plain_pdf
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u12_docx_validator_members_external_rels_xml
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u13_signature_roundtrip_tamper_binding_and_order
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u14_validate_output_dispatcher_and_policy_switch
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u15_docx_render_deterministic_members_and_decoration
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u16_docx_render_escapes_untrusted_text
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u17_pdfa_render_markers_no_forbidden_content_decoration
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u18_pdfa_cross_second_nondeterminism_pin_f_d9c1
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u19_srgb_icc_header_carries_wallclock_pin_f_d9c1
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u20_pdfa_diff_confined_to_icc_timestamp_f_d9c1_scope
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u21_docx_end_to_end_ready_with_proof_records
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u22_failed_validation_honest_terminal_no_ready_bytes
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u24_sign_without_key_is_honest_failed
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u25_anchor_append_only_bound_to_bytes
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u26_worm_hold_on_document_with_reason
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u27_profile_mismatch_same_target_both_phases
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u28_request_gates_catalog
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u29_worker_rechecks_policy_at_execution_time
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u30_legacy_profileless_rendition_mismatch
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u31_memory_registry_order_filter_and_probe
+ERROR scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u32_validation_record_version_binding
+============================== 70 errors in 1.65s ==============================

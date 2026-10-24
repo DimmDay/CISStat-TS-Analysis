@@ -1,0 +1,14 @@
+{
+  "id": "M13",
+  "file": "apps/api/doc_profiles.py",
+  "desc": "WORM-причина теряет привязку к профилю",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 13.15,
+  "oracle_seconds": 10.71,
+  "repo_tail": "\n=================================== FAILURES ===================================\n______ TestProfileRenderThroughService.test_worm_lock_sets_retention_hold ______\ntests/api/test_doclog9_profiles.py:764: in test_worm_lock_sets_retention_hold\n    assert retention.hold_reason.startswith(\"org_profile_worm:\")\nE   AssertionError: assert False\nE    +  where False = <built-in method startswith of str object at 0x7f057ec7e430>('org_profile_worm:')\nE    +    where <built-in method startswith of str object at 0x7f057ec7e430> = 'org_profile_worm'.startswith\nE    +      where 'org_profile_worm' = RetentionRecord(document_id='doc-e03342e7b78242a5a21c7a7844fe2dd8', run_id='RUN-D9A00001', hold=True, hold_reason='org_profile_worm', updated_by=None, updated_at='2026-10-24T18:17:00.207227+00:00').hold_reason\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_worm_lock_sets_retention_hold\n================= 1 failed, 160 passed, 1 deselected in 8.98s ==================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n__________________ test_u26_worm_hold_on_document_with_reason __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:809: in test_u26_worm_hold_on_document_with_reason\n    assert retention.hold_reason == f\"org_profile_worm:{profile.profile_id}\"\nE   AssertionError: assert 'org_profile_worm' == 'org_profile_...97598bc4ef383'\nE     \nE     - org_profile_worm:prof-2315f5bc88dc4e7baf797598bc4ef383\nE     + org_profile_worm\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u26_worm_hold_on_document_with_reason\n========================= 1 failed, 70 passed in 6.08s =========================",
+  "status": "DUAL-KILLED"
+}

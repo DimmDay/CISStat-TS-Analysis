@@ -1,0 +1,12 @@
+{
+  "target_summary": "==== 37 failed, 2843 passed, 42 skipped, 1281 warnings in 208.04s (0:03:28) ====",
+  "base_summary": "==== 37 failed, 2772 passed, 42 skipped, 1281 warnings in 202.64s (0:03:22) ====",
+  "target_failed": 37,
+  "base_failed": 37,
+  "byte_identical": true,
+  "only_in_target": [],
+  "only_in_base": [],
+  "flake_only_diff_f_d9c1": false,
+  "passed_delta": 71,
+  "oracle_corpus_size": 71
+}

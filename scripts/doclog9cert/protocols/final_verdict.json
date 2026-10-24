@@ -1,0 +1,36 @@
+{
+  "target_head": "5856764",
+  "mutants_total": 45,
+  "controls_total": 3,
+  "counts": {
+    "DUAL-KILLED": 27,
+    "ORACLE-ONLY": 16,
+    "EQUIVALENT": 2,
+    "ALIVE": 3
+  },
+  "reclassified_equivalent": [
+    "M26",
+    "M44"
+  ],
+  "dual_killed": 27,
+  "oracle_only": 16,
+  "repo_only": 0,
+  "survived_combat": 0,
+  "equivalent": 2,
+  "controls_alive": 3,
+  "patch_fail": 0,
+  "mv2_classifier_self_test": true,
+  "mv3_all_restored": true,
+  "mv5_foreign_tails": [],
+  "second_order_total": 6,
+  "second_order_killed": 6,
+  "attribution_kill_redundancy": true,
+  "red_on_parent": true,
+  "red_parent": "659db3d",
+  "delta0_byte_identical": true,
+  "delta0_passed_delta": 71,
+  "delta0_corpus_size": 71,
+  "build": "OK",
+  "product_tree_md5_eq_head": true,
+  "VERDICT": "CERTIFIED WITH FINDINGS"
+}

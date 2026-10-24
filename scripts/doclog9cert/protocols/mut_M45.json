@@ -1,0 +1,14 @@
+{
+  "id": "M45",
+  "file": "apps/api/document_render_worker.py",
+  "desc": "код ошибки unavailable профиля подменён чужим кодом",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 13.33,
+  "oracle_seconds": 10.73,
+  "repo_tail": "_ TestProfileRenderThroughService.test_profile_retired_after_queue_fails_honestly _\ntests/api/test_doclog9_profiles.py:851: in test_profile_retired_after_queue_fails_honestly\n    assert done.error_code == \"org_profile_unavailable\"\nE   AssertionError: assert 'snapshot_unavailable' == 'org_profile_unavailable'\nE     \nE     - org_profile_unavailable\nE     + snapshot_unavailable\n------------------------------ Captured log call -------------------------------\nWARNING  apps.api.document_render_worker:document_render_worker.py:483 Document render worker: job djob-c8c874b1388c4b9693c1a601f5b20084 terminal failed (snapshot_unavailable)\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_profile_retired_after_queue_fails_honestly\n================= 1 failed, 160 passed, 1 deselected in 9.02s ==================",
+  "oracle_tail": "______________ test_u29_worker_rechecks_policy_at_execution_time _______________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:923: in test_u29_worker_rechecks_policy_at_execution_time\n    assert done.error_code == \"org_profile_unavailable\"\nE   AssertionError: assert 'snapshot_unavailable' == 'org_profile_unavailable'\nE     \nE     - org_profile_unavailable\nE     + snapshot_unavailable\n------------------------------ Captured log call -------------------------------\nWARNING  apps.api.document_render_worker:document_render_worker.py:483 Document render worker: job djob-149243975028401d9748ea2024c3ec7a terminal failed (snapshot_unavailable)\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u29_worker_rechecks_policy_at_execution_time\n========================= 1 failed, 70 passed in 6.11s =========================",
+  "status": "DUAL-KILLED"
+}

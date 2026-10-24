@@ -1,0 +1,14 @@
+{
+  "id": "M38",
+  "file": "apps/api/document_renditions.py",
+  "desc": "экранирование недоверенного текста в DOCX снято (AC16 off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.81,
+  "oracle_seconds": 10.18,
+  "repo_tail": "\n=================================== FAILURES ===================================\n_______ TestProfileFormatCatalog.test_docx_render_escapes_untrusted_text _______\ntests/api/test_doclog9_profiles.py:344: in test_docx_render_escapes_untrusted_text\n    ET.fromstring(document)  # валидный XML -- без инъекции\n    ^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/xml/etree/ElementTree.py:1335: in XML\n    parser.feed(text)\nE   xml.etree.ElementTree.ParseError: mismatched tag: line 1, column 1476\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileFormatCatalog::test_docx_render_escapes_untrusted_text\n================= 1 failed, 160 passed, 1 deselected in 8.55s ==================",
+  "oracle_tail": "=================================== FAILURES ===================================\n_________________ test_u16_docx_render_escapes_untrusted_text __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:527: in test_u16_docx_render_escapes_untrusted_text\n    assert \"<script>\" not in doc\nE   assert '<script>' not in '<?xml versi.../w:document>'\nE     \nE     '<script>' is contained here:\nE       e\">Секция <script>alert(1)</script> (S1)</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Normal\"/></w:pPr><w:r><w:t xml:space=\"preserve\">• Утверждение <img src=x onerror=alert(2)> & «кавычки» [confirmed]</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Footer\"/></w:pPr><w:r><w:t xml:space=\"preserve\">Пакет подготовлен платформой CISStat TS Analysis</w:t></w:r></w:p></w:body></w:document>\nE     ?           ++++++++\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u16_docx_render_escapes_untrusted_text\n========================= 1 failed, 70 passed in 5.97s =========================",
+  "status": "DUAL-KILLED"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "M42",
+  "file": "apps/api/document_renditions.py",
+  "desc": "docx/pdfa перестают быть тяжёлыми (async-контур off)",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.3,
+  "oracle_seconds": 10.1,
+  "repo_tail": "_____________ TestHeavyAsyncPath.test_all_heavy_formats_end_to_end _____________\ntests/api/test_doclog5_formats_worker.py:829: in test_all_heavy_formats_end_to_end\n    assert summary[\"ready\"] == len(HEAVY)\nE   AssertionError: assert 6 == 8\nE    +  where 8 = len(('pdf', 'xlsx', 'parquet', 'svg', 'png', 'zip', ...))\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileFormatCatalog::test_docx_pdfa_are_heavy_async\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_validation_failed_blocks_ready\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_profile_retired_after_queue_fails_honestly\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyFormatCatalog::test_catalog_contains_p0_plus_heavy\nFAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_all_heavy_formats_end_to_end\n================= 5 failed, 156 passed, 1 deselected in 8.62s ==================",
+  "oracle_tail": "scripts/doclog9cert/test_d9cert_oracle_unit.py:922: in test_u29_worker_rechecks_policy_at_execution_time\n    assert done.state == JOB_FAILED\nE   AssertionError: assert 'ready' == 'failed'\nE     \nE     - failed\nE     + ready\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a13_docx_end_to_end_ready_validations_download\nFAILED scripts/doclog9cert/test_d9cert_oracle_static.py::test_s07_rendition_formats_docx_pdfa_heavy\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u27_profile_mismatch_same_target_both_phases\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u29_worker_rechecks_policy_at_execution_time\n========================= 4 failed, 67 passed in 5.87s =========================",
+  "status": "DUAL-KILLED"
+}

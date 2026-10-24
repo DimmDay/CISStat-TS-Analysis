@@ -1,0 +1,14 @@
+{
+  "id": "M24",
+  "file": "apps/api/routers/doc_profiles.py",
+  "desc": "верификация берёт ПЕРВУЮ подпись вместо последней",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 0,
+  "oracle_exit": 1,
+  "repo_seconds": 11.9,
+  "oracle_seconds": 10.07,
+  "repo_tail": "plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, fugue-0.9.7, typeguard-4.6.0, syrupy-6.1.1\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 162 items / 1 deselected / 161 selected\n\ntests/api/test_doclog9_profiles.py ..................................... [ 22%]\n...............                                                          [ 32%]\ntests/api/test_doclog5_formats_worker.py ............................... [ 51%]\n..............................                                           [ 70%]\ntests/api/test_doclog4_document_delivery.py ............................ [ 87%]\n....................                                                     [100%]\n\n====================== 161 passed, 1 deselected in 8.29s =======================",
+  "oracle_tail": "\n=================================== FAILURES ===================================\n_____________ test_a16_verify_signature_passed_tampered_not_signed _____________\nscripts/doclog9cert/test_d9cert_oracle_api.py:507: in test_a16_verify_signature_passed_tampered_not_signed\n    assert verification2[\"result\"] == \"failed\"\nE   AssertionError: assert 'passed' == 'failed'\nE     \nE     - failed\nE     + passed\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed\n========================= 1 failed, 70 passed in 5.94s =========================",
+  "status": "ORACLE-ONLY"
+}

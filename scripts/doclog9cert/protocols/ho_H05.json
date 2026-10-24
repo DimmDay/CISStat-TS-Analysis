@@ -1,0 +1,13 @@
+{
+  "id": "H05",
+  "parts": [
+    "M32",
+    "M34"
+  ],
+  "desc": "манифест подписи + якорь не пишутся вместе",
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_tail": "__________________ TestHttpRoutes.test_verify_signature_route __________________\ntests/api/test_doclog9_profiles.py:1051: in test_verify_signature_route\n    assert resp.json()[\"verification\"][\"result\"] == \"passed\"\nE   AssertionError: assert 'not_signed' == 'passed'\nE     \nE     - passed\nE     + not_signed\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_anchor_registry_append_only\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_signature_profile_signs_and_verifies\nFAILED tests/api/test_doclog9_profiles.py::TestHttpRoutes::test_verify_signature_route\n================= 3 failed, 158 passed, 1 deselected in 9.08s ==================",
+  "oracle_tail": "E    +  where 0 = len([])\n__________________ test_u25_anchor_append_only_bound_to_bytes __________________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:784: in test_u25_anchor_append_only_bound_to_bytes\n    assert len(anchors) == 1\nE   assert 0 == 1\nE    +  where 0 = len([])\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a16_verify_signature_passed_tampered_not_signed\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a18_verify_signature_purged_410\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u23_sign_flow_manifest_persisted_and_verifiable\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u25_anchor_append_only_bound_to_bytes\n========================= 4 failed, 67 passed in 6.10s =========================",
+  "status": "DUAL-KILLED"
+}

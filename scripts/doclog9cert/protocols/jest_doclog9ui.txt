@@ -1,0 +1,8 @@
+PASS packages/ui/components/doclog9-profiles-ui.test.tsx
+PASS packages/ui/components/doclog6-lifecycle-ui.test.tsx
+
+Test Suites: 2 passed, 2 total
+Tests:       23 passed, 23 total
+Snapshots:   0 total
+Time:        2.505 s, estimated 5 s
+Ran all test suites matching doclog9-profiles-ui|doclog6-lifecycle-ui.

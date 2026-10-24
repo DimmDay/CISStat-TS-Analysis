@@ -1,0 +1,14 @@
+{
+  "id": "M36",
+  "file": "apps/api/document_jobs.py",
+  "desc": "профиль не фиксируется в metadata rendition",
+  "control": false,
+  "restore_ok": true,
+  "repo_exit": 1,
+  "oracle_exit": 1,
+  "repo_seconds": 12.42,
+  "oracle_seconds": 9.99,
+  "repo_tail": "E     \nE     - prof-edd67083d8e04d1aa2f45570d57b1004\n_________ TestProfileRenderThroughService.test_same_profile_idempotent _________\ntests/api/test_doclog9_profiles.py:729: in test_same_profile_idempotent\n    job2, rend2 = service.request_rendition(\napps/api/document_jobs.py:1404: in request_rendition\n    raise OrgProfileMismatchError(\nE   apps.api.doc_profiles.OrgProfileMismatchError: Rendition этой цели уже выпущена с другим профилем (''); профиль -- часть формы выпуска (§11): создайте новую ревизию\n=========================== short test summary info ============================\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_worker_renders_docx_with_profile_ready\nFAILED tests/api/test_doclog9_profiles.py::TestProfileRenderThroughService::test_same_profile_idempotent\n================= 2 failed, 159 passed, 1 deselected in 8.70s ==================",
+  "oracle_tail": "E   assert False\nE    +  where False = any(<generator object test_a23_worker_rendition_metadata_roundtrip.<locals>.<genexpr> at 0x7fbc78732810>)\n______________ test_u21_docx_end_to_end_ready_with_proof_records _______________\nscripts/doclog9cert/test_d9cert_oracle_unit.py:684: in test_u21_docx_end_to_end_ready_with_proof_records\n    assert rendition.org_profile_id == profile.profile_id\nE   AssertionError: assert '' == 'prof-71a7d2c...497670062023b'\nE     \nE     - prof-71a7d2c0be7740688f6497670062023b\n=========================== short test summary info ============================\nFAILED scripts/doclog9cert/test_d9cert_oracle_api.py::test_a23_worker_rendition_metadata_roundtrip\nFAILED scripts/doclog9cert/test_d9cert_oracle_unit.py::test_u21_docx_end_to_end_ready_with_proof_records\n========================= 2 failed, 69 passed in 5.90s =========================",
+  "status": "DUAL-KILLED"
+}
