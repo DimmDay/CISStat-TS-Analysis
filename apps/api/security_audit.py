@@ -83,6 +83,12 @@ ACTION_INTEGRITY_FAILED = "integrity_failed"
 # архивного контура (restore drill несёт собственные restore_started +
 # integrity_verified/failed).
 ACTION_ARCHIVE_BUNDLE_CREATED = "archive_bundle_created"
+# DOCLOG-8 (§6 D12, §19): контур мониторинга -- регистрация actual
+# vintage, frozen сверка, append-only решение. Standard-класс: научный
+# слой не защищённая выдача (§8); саможурналирование без рекурсии.
+ACTION_MONITORING_ACTUAL_REGISTERED = "monitoring_actual_registered"
+ACTION_MONITORING_COMPARISON_CREATED = "monitoring_comparison_created"
+ACTION_MONITORING_DECISION_RECORDED = "monitoring_decision_recorded"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTHN_DENIED,
@@ -106,6 +112,9 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_INTEGRITY_VERIFIED,
     ACTION_INTEGRITY_FAILED,
     ACTION_ARCHIVE_BUNDLE_CREATED,
+    ACTION_MONITORING_ACTUAL_REGISTERED,
+    ACTION_MONITORING_COMPARISON_CREATED,
+    ACTION_MONITORING_DECISION_RECORDED,
 })
 
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/
@@ -131,6 +140,9 @@ AUDIT_REQUIREMENTS: dict[str, str] = {
     ACTION_RESTORE_STARTED: "standard",
     ACTION_INTEGRITY_VERIFIED: "standard",
     ACTION_INTEGRITY_FAILED: "standard",
+    ACTION_MONITORING_ACTUAL_REGISTERED: "standard",
+    ACTION_MONITORING_COMPARISON_CREATED: "standard",
+    ACTION_MONITORING_DECISION_RECORDED: "standard",
 }
 
 # Допустимые решения (§14.1: разрешено/отказано/прервано).

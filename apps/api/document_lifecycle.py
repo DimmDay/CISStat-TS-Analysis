@@ -1060,7 +1060,8 @@ class DocumentLifecycleService:
         if kind_code == "D11" and completeness_status != "complete":
             raise PublishBlockedGapsError(
                 "Итоговый отчёт D11 с незакрытыми gaps не публикуется "
-                "(policy v1, §11); partial допустим для D01-D10"
+                "(policy v1, §11); partial допустим для D01-D10 и D12 "
+                "(DOCLOG-8: сверка честно partial при незрелых горизонтах)"
             )
         # Supersede: предыдущая published ревизия того же документа --
         # append-only запись superseded (байты не переписываются).

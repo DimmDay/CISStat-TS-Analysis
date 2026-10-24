@@ -771,6 +771,66 @@ class SnapshotService:
         ))
         return self._section("D11", claims)
 
+    def _section_d12(self, ctx: _BuildCtx) -> dict[str, Any]:
+        """DOCLOG-8 (§6 D12, §19): «Сверка прогноза с фактом» -- секция
+        ЧИТАЕТ frozen сверки контура monitoring (без пересчёта: сверка
+        вычислена один раз над forecast vintage x actual vintage, §19.1
+        «отсутствие пересчётов»; пересмотр факта -- новая сверка)."""
+        claims: list[dict[str, Any]] = []
+        try:
+            from apps.api.monitoring import get_monitoring_registry
+
+            comparisons = get_monitoring_registry().list_comparisons(
+                str(getattr(ctx.run, "run_id", "")), limit=100
+            )
+        except Exception:
+            comparisons = []
+        if not comparisons:
+            claims.append(self._claim(
+                "Сверки прогноза с фактом не зарегистрированы -- "
+                "мониторинг появляется по поступлении фактической "
+                "версии (§6 D12); выпуск прогноза не переписывается.",
+                validity=VALIDITY_UNKNOWN,
+            ))
+            return self._section("D12", claims)
+        for record in comparisons:
+            aggregates = record.result.get("aggregates", {})
+            threshold = record.result.get("threshold") or {}
+            mae = aggregates.get("mae")
+            bias = aggregates.get("mean_signed_error")
+            coverage = aggregates.get("interval_coverage")
+
+            def _fmt(value: Any) -> str:
+                if value is None:
+                    return "—"
+                if isinstance(value, float):
+                    return f"{value:.4g}"
+                return str(value)
+
+            threshold_text = (
+                f"порог {threshold.get('metric')}: "
+                f"{threshold.get('status')}"
+                if threshold
+                else "порог не задан"
+            )
+            claims.append(self._claim(
+                f"Сверка {record.comparison_id}: прогноз "
+                f"{record.forecast_artifact_id} vs факт (vintage "
+                f"{record.actual_batch_id}); "
+                f"зрелых горизонтов {record.matured_count}, исключено "
+                f"незрелых {record.excluded_count} (не нулевая ошибка, "
+                f"§6.1); MAE={_fmt(mae)}, bias={_fmt(bias)}, "
+                f"покрытие={_fmt(coverage)}; единицы: "
+                f"{record.units_check}; {threshold_text}; решение "
+                f"человека: {record.result.get('decision_action') or '—'} "
+                f"(автопереобучение не следует из порога, §6.1).",
+                result_refs=[
+                    f"{REF_KIND_ARTIFACT}:{record.forecast_artifact_id}"
+                ],
+                validity=VALIDITY_CURRENT,
+            ))
+        return self._section("D12", claims)
+
     _SECTION_ADAPTERS = {
         "D01": _section_d01,
         "D02": _section_d02,
@@ -783,6 +843,7 @@ class SnapshotService:
         "D09": _section_d09,
         "D10": _section_d10,
         "D11": _section_d11,
+        "D12": _section_d12,
     }
 
     # -- Data ref / reproducibility (§10.1, §10.2 п.4) --

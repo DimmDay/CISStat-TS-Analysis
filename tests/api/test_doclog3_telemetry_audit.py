@@ -1225,5 +1225,8 @@ class TestMigrations:
         # 0012_doclog6_approvals_archive (аддитивная: 3 таблицы + 4
         # индекса = 7 statement; 67 + 7 = 74). Прецедент честного
         # обновления пина: DOCLOG-4 (9/53→10/62), DOCLOG-5 (10/62→11/67).
-        assert len(MIGRATION_FILES) == 13
-        assert len(MIGRATION_STATEMENTS) == 78
+        # DOCLOG-8 (обновлено честно): каталог пополнен
+        # 0014_doclog8_monitoring (аддитивная: 3 таблицы + 4 индекса =
+        # 7 statement; 78 + 7 = 85).
+        assert len(MIGRATION_FILES) == 14
+        assert len(MIGRATION_STATEMENTS) == 85

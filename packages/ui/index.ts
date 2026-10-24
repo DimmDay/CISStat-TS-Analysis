@@ -287,6 +287,18 @@ export { AdminProgressDashboard } from "./components/AdminProgressDashboard";
 // Компонент самостоятелен (без AppShellProvider) -- тот же паттерн,
 // что AdminProgressDashboard.
 export { AdminLogsDashboard } from "./components/AdminLogsDashboard";
+// DOCLOG-8 (§6 D12, §12): контур мониторинга -- панель сверки прогноза
+// с фактом + клиент API.
+export { MonitoringComparisonPanel } from "./components/MonitoringComparisonPanel";
+export type {
+  ComparisonSummary,
+  ComparisonDetail,
+  MonitoringPair,
+  MonitoringAggregates,
+  MonitoringResult,
+  MonitoringThreshold,
+  MonitoringAlignment,
+} from "./lib/monitoring";
 
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
 // Standalone-версия (с auth-веткой) живёт в apps/standalone/components --

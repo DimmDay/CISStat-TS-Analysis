@@ -45,15 +45,19 @@ import {
   type RevisionSummary,
   type SnapshotPayload,
 } from "../lib/documentation";
+import { MonitoringComparisonPanel } from "./MonitoringComparisonPanel";
 
 // Виды документов D01-D11 (спека §6/§12.2 «Левый список»; D10/D11 --
 // DOCLOG-6 «Согласование и архив»); заголовки -- серверный реестр
 // (DOCUMENT_KINDS), клиентский фолбэк -- по коду.
-const KIND_CODES = [
+// DOCLOG-8 (§12.2 «Левый список»): D12 «Сверка прогноза с фактом» --
+// плановая поставка DOCLOG-8; каталог экспортируется для UI-оракулов.
+export const KIND_CODES = [
   "D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11",
+  "D12",
 ] as const;
 
-const KIND_TITLES: Record<string, string> = {
+export const KIND_TITLES: Record<string, string> = {
   D01: "План исследования",
   D02: "Паспорт источника",
   D03: "Протокол качества",
@@ -65,6 +69,7 @@ const KIND_TITLES: Record<string, string> = {
   D09: "Приложение панели",
   D10: "Рекомендации и ограничения",
   D11: "Итоговый отчёт",
+  D12: "Сверка прогноза с фактом",
 };
 
 // Форматы P0 (§7) кнопки «Собрать формат» (§12.2 действия); тяжёлые
@@ -652,6 +657,13 @@ export function DocumentationWorkspace({
           <p role="alert" data-testid="doclog4-job-error" className="text-sm text-red-600">
             Ошибка сборки формата {job.format}: {job.error_code ?? "render_failed"}
           </p>
+        )}
+
+        {/* DOCLOG-8 (§6 D12): панель сверки прогноза с фактом -- для
+            D12 читает frozen сверки run (без пересчёта); состояния
+            §12.3 -- внутри панели. */}
+        {activeKind === "D12" && previewPhase === "ready" && (
+          <MonitoringComparisonPanel runId={runId} />
         )}
 
         {previewPhase === "ready" && snapshot && revision && (

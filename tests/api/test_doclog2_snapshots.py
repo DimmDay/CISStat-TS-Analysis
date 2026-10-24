@@ -276,18 +276,21 @@ class TestSnapshotContract:
         assert not is_valid_snapshot_id("art-" + "0" * 32)
         assert not is_valid_snapshot_id(None)
 
-    def test_document_kinds_catalog_covers_d01_d11(self):
+    def test_document_kinds_catalog_covers_d01_d12(self):
         from apps.api.report_snapshot import DOCUMENT_KINDS
 
         # DOCLOG-6 (обновлено честно): каталог пополнен D10/D11
         # (§19 строка DOCLOG-6: «D10/D11»).
+        # DOCLOG-8 (обновлено честно): каталог пополнен D12 «Сверка
+        # прогноза с фактом» (§19 строка DOCLOG-8).
         assert set(DOCUMENT_KINDS) == {
             *(f"D0{i}" for i in range(1, 10)),
             "D10",
             "D11",
+            "D12",
         }
         kinds = [spec[0] for spec in DOCUMENT_KINDS.values()]
-        assert len(set(kinds)) == 11  # kind-имена уникальны
+        assert len(set(kinds)) == 12  # kind-имена уникальны
         # каждый код несёт title и methodology_stage (методология-ref)
         for code, (_kind, title, stage) in DOCUMENT_KINDS.items():
             assert title, code
@@ -299,10 +302,15 @@ class TestSnapshotContract:
         assert resolve_kinds(["D03", "plan"]) == ["D03", "D01"]
         assert resolve_kinds(["forecast_release"]) == ["D08"]
         # DOCLOG-6 (обновлено честно): D10/D11 -- плановая поставка
-        # DOCLOG-6, резолвятся; вне D01-D11 по-прежнему отказ.
+        # DOCLOG-6, резолвятся.
         assert resolve_kinds(["D11"]) == ["D11"]
+        # DOCLOG-8 (обновлено честно): D12 «Сверка прогноза с фактом» --
+        # плановая поставка DOCLOG-8, резолвится (алиас kind-имени тоже).
+        assert resolve_kinds(["D12"]) == ["D12"]
+        assert resolve_kinds(["forecast_vs_actual"]) == ["D12"]
+        # вне D01-D12 по-прежнему отказ.
         with pytest.raises(ValueError):
-            resolve_kinds(["D12"])  # D12 -- DOCLOG-8 (мониторинг)
+            resolve_kinds(["D99"])
         with pytest.raises(ValueError):
             resolve_kinds([])
 

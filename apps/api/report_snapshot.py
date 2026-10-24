@@ -67,12 +67,15 @@ VALIDITY_CURRENT = "current"
 VALIDITY_STALE = "stale"
 VALIDITY_UNKNOWN = "unknown"
 
-# §6 D01-D11: code -> (kind, title, methodology_stage). methodology_stage
+# §6 D01-D12: code -> (kind, title, methodology_stage). methodology_stage
 # -- ссылка на этап реестра знаний (методология-ref, не текст); D01 --
 # форма планирования, отдельного этапа реестра нет (честное None).
 # DOCLOG-6: D10 «Рекомендации и ограничения» и D11 «Итоговый отчёт» --
 # сквозные документы согласования/публикации (§19 строка DOCLOG-6);
 # отдельного этапа реестра знаний у них нет -- честное None.
+# DOCLOG-8: D12 «Сверка прогноза с фактом» -- мониторинг (§19 строка
+# DOCLOG-8); секция строится из frozen сверок контура monitoring
+# (apps/api/monitoring.py), отдельного этапа реестра нет -- честное None.
 DOCUMENT_KINDS: dict[str, tuple[str, str, Optional[str]]] = {
     "D01": ("plan", "План исследования", None),
     "D02": ("source_passport", "Паспорт источника", "upload"),
@@ -85,6 +88,7 @@ DOCUMENT_KINDS: dict[str, tuple[str, str, Optional[str]]] = {
     "D09": ("panel_appendix", "Приложение панели", "modeling"),
     "D10": ("recommendations_limits", "Рекомендации и ограничения", None),
     "D11": ("final_report", "Итоговый отчёт", None),
+    "D12": ("forecast_vs_actual", "Сверка прогноза с фактом", None),
 }
 
 _KIND_ALIAS: dict[str, str] = {
@@ -127,11 +131,11 @@ def is_valid_snapshot_id(value: Any) -> bool:
 
 
 def resolve_kinds(requested: Any) -> list[str]:
-    """Нормализация запрошенных видов: алиасы kind-имён -> коды D01-D11,
+    """Нормализация запрошенных видов: алиасы kind-имён -> коды D01-D12,
     порядок запроса сохраняется, дубликаты схлопываются. Пустой список
-    и виды вне D01-D11 -- ValueError (D12 -- задача DOCLOG-8 §19)."""
+    и виды вне D01-D12 -- ValueError (D13+ -- будущие срезы §19)."""
     if not isinstance(requested, (list, tuple)) or not requested:
-        raise ValueError("kinds: требуется непустой список видов D01-D11")
+        raise ValueError("kinds: требуется непустой список видов D01-D12")
     resolved: list[str] = []
     for item in requested:
         code = _KIND_ALIAS.get(str(item))

@@ -779,13 +779,18 @@ class TestNegativeStates:
         _seed_snapshot()
         _cookie(client)
         # DOCLOG-6 (обновлено честно): D11 -- плановая поставка DOCLOG-6
-        # (201); некорректный вид -- по-прежнему честный 422 (D12 -- DOCLOG-8).
+        # (201). DOCLOG-8 (обновлено честно): D12 -- плановая поставка
+        # DOCLOG-8 (201); некорректный вид -- по-прежнему честный 422.
         resp_ok = client.post(
             f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D11"}
         )
         assert resp_ok.status_code in {200, 201}
-        resp = client.post(
+        resp_d12 = client.post(
             f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D12"}
+        )
+        assert resp_d12.status_code in {200, 201}
+        resp = client.post(
+            f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D99"}
         )
         assert resp.status_code in {400, 422}
 
@@ -1080,7 +1085,8 @@ class TestOpsWiringAndMigration:
         assert "0010_doclog4_documents.sql" in names
         assert "0011_doclog5_render_formats.sql" in names  # DOCLOG-5
         assert "0012_doclog6_approvals_archive.sql" in names  # DOCLOG-6
-        assert len(names) == 13
+        assert "0014_doclog8_monitoring.sql" in names  # DOCLOG-8
+        assert len(names) == 14
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

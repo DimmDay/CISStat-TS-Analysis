@@ -1138,6 +1138,78 @@ MIGRATION_STATEMENTS_0013: tuple[str, ...] = (
     "ON support_grants (ticket)",
 )
 
+# DOCLOG-8 (§19): monitoring -- actual vintages, frozen сверки,
+# append-only решения (3 таблицы + 4 индекса; DDL-дубль
+# apps/api/migrations/0014_doclog8_monitoring.sql).
+MIGRATION_STATEMENTS_0014: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS monitoring_actual_batches (
+        batch_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.actual_vintage/1',
+        target_name TEXT NOT NULL,
+        entity_id TEXT,
+        units TEXT NOT NULL,
+        as_of TIMESTAMPTZ NOT NULL,
+        source_kind TEXT NOT NULL DEFAULT 'manual',
+        source_ref TEXT,
+        notes TEXT NOT NULL DEFAULT '',
+        point_count INTEGER NOT NULL DEFAULT 0,
+        actual_values JSONB NOT NULL DEFAULT '[]'::jsonb,
+        idempotency_key TEXT NOT NULL,
+        request_fingerprint TEXT NOT NULL DEFAULT '',
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (run_id, idempotency_key)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_mon_batches_run "
+    "ON monitoring_actual_batches (run_id, created_at)",
+    """
+    CREATE TABLE IF NOT EXISTS monitoring_comparisons (
+        comparison_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.monitoring_comparison/1',
+        forecast_artifact_id TEXT NOT NULL,
+        forecast_sha256 TEXT NOT NULL DEFAULT '',
+        actual_batch_id TEXT NOT NULL REFERENCES monitoring_actual_batches(batch_id) ON DELETE CASCADE,
+        target_name TEXT NOT NULL DEFAULT '',
+        entity_id TEXT,
+        units_check TEXT NOT NULL DEFAULT 'unknown',
+        units_note TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'ready',
+        matured_count INTEGER NOT NULL DEFAULT 0,
+        excluded_count INTEGER NOT NULL DEFAULT 0,
+        out_of_horizon_count INTEGER NOT NULL DEFAULT 0,
+        result JSONB NOT NULL DEFAULT '{}'::jsonb,
+        payload_sha256 TEXT NOT NULL DEFAULT '',
+        idempotency_key TEXT NOT NULL,
+        request_fingerprint TEXT NOT NULL DEFAULT '',
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (run_id, idempotency_key)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_mon_comparisons_run "
+    "ON monitoring_comparisons (run_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_mon_comparisons_batch "
+    "ON monitoring_comparisons (actual_batch_id)",
+    """
+    CREATE TABLE IF NOT EXISTS monitoring_decisions (
+        decision_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        comparison_id TEXT NOT NULL REFERENCES monitoring_comparisons(comparison_id) ON DELETE CASCADE,
+        schema_version TEXT NOT NULL DEFAULT 'doclog.monitoring_decision/1',
+        action TEXT NOT NULL,
+        rationale TEXT NOT NULL,
+        decided_by TEXT,
+        decided_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_mon_decisions_comparison "
+    "ON monitoring_decisions (comparison_id, decided_at)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1145,7 +1217,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0007 + MIGRATION_STATEMENTS_0008
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
-    + MIGRATION_STATEMENTS_0013
+    + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1164,6 +1236,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0011_doclog5_render_formats.sql", MIGRATION_STATEMENTS_0011),
     ("0012_doclog6_approvals_archive.sql", MIGRATION_STATEMENTS_0012),
     ("0013_doclog7_logs_support.sql", MIGRATION_STATEMENTS_0013),
+    ("0014_doclog8_monitoring.sql", MIGRATION_STATEMENTS_0014),
 )
 
 
