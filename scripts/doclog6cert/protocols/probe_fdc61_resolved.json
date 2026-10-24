@@ -1,0 +1,27 @@
+{
+ "finding": "F-D6C1",
+ "probe": "DOCLOG-6-CERT-FIX: проверка разрешения (сценарий probe_findings.json: v1={A}, v2={A, NEW})",
+ "diff_call": "diff(drev-c546b6222e164222a5a..., against=drev-1b078ad46ac04e15b9a...)",
+ "claims_added": [
+  "НОВОЕ утверждение v2 (появилось в v2)"
+ ],
+ "claims_removed": [],
+ "new_claim_lands_in": "added",
+ "ui_label_added": "Добавлено утверждений: {diff.claims.added.length}",
+ "ui_label_removed": "Убрано утверждений: {diff.claims.removed.length}",
+ "ui_now_shows": {
+  "Добавлено": 1,
+  "Убрано": 0
+ },
+ "natural_reading": {
+  "Добавлено": 1,
+  "Убрано": 0
+ },
+ "metadata_from_to": {
+  "from": "ctx-d6cert-1",
+  "to": "ctx-d6cert-2"
+ },
+ "direction_inverted_vs_ui_labels": false,
+ "finding_resolved": true,
+ "fix": "DOCLOG-6-CERT-FIX: семантика added/removed/metadata from-to в diff_revisions приведена к естественному чтению (diff(rev, against=prev) = изменения от prev к rev); подписи панели doclog6-diff не менялись; пин направления: repo test_diff_direction_natural_semantics + эволюция оракула a35."
+}

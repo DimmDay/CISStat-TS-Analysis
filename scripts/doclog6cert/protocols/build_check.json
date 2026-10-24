@@ -45,6 +45,6 @@
  "bundle_prefix": "d6arch-",
  "documentation_routes": true,
  "documentation_route_count": 17,
- "product_tree_clean": true,
- "product_tree_status": ""
+ "product_tree_clean": false,
+ "product_tree_status": "M apps/api/document_lifecycle.py\n M tests/api/test_doclog6_approvals_archive.py"
 }

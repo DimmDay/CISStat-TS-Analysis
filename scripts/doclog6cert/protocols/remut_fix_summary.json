@@ -1,0 +1,14 @@
+{
+ "scope": [
+  "M28_diff_cross_doc_off",
+  "M29_recalculated_true",
+  "M30_validity_changed_off"
+ ],
+ "classifications": {
+  "M28_diff_cross_doc_off": "DUAL-KILLED",
+  "M29_recalculated_true": "DUAL-KILLED",
+  "M30_validity_changed_off": "ORACLE-ONLY"
+ },
+ "restore_failures": 0,
+ "lifecycle_md5_stable": true
+}

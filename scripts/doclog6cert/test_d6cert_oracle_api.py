@@ -917,11 +917,12 @@ def test_a34_drill_ok_on_own_bundle(cert_client):
 
 
 def test_a35_diff_direction_contract_and_validity(cert_client):
-    """Контракт направления (закреплён оракулом; UI-подписи см.
-    находку F-D6C1): metadata from = URL-ревизия, to = against;
-    claims.added = есть в AGAINST, нет в URL-ревизии; claims.removed =
-    есть в URL, нет в against; validity_changed: from = URL, to =
-    against. Пересчётов нет."""
+    """Контракт направления (естественное чтение; эволюция пина после
+    исправления F-D6C1 в DOCLOG-6-CERT-FIX): diff(rev, against=prev) =
+    изменения ОТ against К rev. metadata from = against, to = URL-ревизия;
+    claims.added = есть в URL-ревизии, нет в against; claims.removed =
+    есть в against, нет в URL; validity_changed: from = against,
+    to = URL. Пересчётов нет."""
     seed_cert_run()
     document, revision1, revision2, _s1, _s2 = _publish_two_revisions(cert_client)
     cookie(cert_client)
@@ -932,25 +933,26 @@ def test_a35_diff_direction_contract_and_validity(cert_client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["recalculated"] is False
-    # from = URL-ревизия (2: ctx-d6cert-2/rev 8), to = against (1).
-    assert body["metadata"]["context_id"]["from"] == "ctx-d6cert-2"
-    assert body["metadata"]["context_id"]["to"] == "ctx-d6cert-1"
-    assert body["metadata"]["data_revision"]["from"] == 8
-    assert body["metadata"]["data_revision"]["to"] == 7
+    # from = against (1: ctx-d6cert-1/rev 7), to = URL-ревизия (2).
+    assert body["metadata"]["context_id"]["from"] == "ctx-d6cert-1"
+    assert body["metadata"]["context_id"]["to"] == "ctx-d6cert-2"
+    assert body["metadata"]["data_revision"]["from"] == 7
+    assert body["metadata"]["data_revision"]["to"] == 8
     added_texts = [claim["text"] for claim in body["claims"]["added"]]
     removed_texts = [claim["text"] for claim in body["claims"]["removed"]]
-    # added = в AGAINST (rev1, секции A), нет в URL (rev2, секции B):
+    # added = есть в URL (rev2, секция B), нет в against (rev1):
+    # новое утверждение B.
+    assert any("добавлена проверка остатков" in text for text in added_texts)
+    # removed = есть в against (rev1, секции A), нет в URL (rev2):
     # методика D02 и гипотеза-unknown.
-    assert any("скользящее окно 12" in text for text in added_texts)
-    # removed = в URL (rev2), нет в against (rev1): новое утверждение B.
-    assert any("добавлена проверка остатков" in text for text in removed_texts)
-    # validity_changed: тот же текст, from=URL(stale) -> to=against(current).
+    assert any("скользящее окно 12" in text for text in removed_texts)
+    # validity_changed: тот же текст, from=against(current) -> to=URL(stale).
     changed = {
         item["text"]: (item["from"], item["to"])
         for item in body["claims"]["validity_changed"]
     }
     assert any(
-        "коэффициент детерминации 0.83" in text and pair == ("stale", "current")
+        "коэффициент детерминации 0.83" in text and pair == ("current", "stale")
         for text, pair in changed.items()
     )
 

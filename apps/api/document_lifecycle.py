@@ -1633,6 +1633,13 @@ class DocumentLifecycleService:
         session_id: str = "",
         against_revision_id: str = "",
     ) -> dict[str, Any]:
+        """§17 Diff ревизий по замороженным снимкам, без пересчётов.
+
+        Направление (F-D6C1, DOCLOG-6-CERT-FIX): diff(rev,
+        against=prev) = изменения ОТ against К rev --
+        claims.added = появившиеся в rev, claims.removed =
+        существовавшие в against; metadata/validity_changed
+        from = значение against, to = значение rev."""
         revision, document, snapshot = self._resolve_revision(
             revision_id, subject, session_id=session_id
         )
@@ -1659,16 +1666,16 @@ class DocumentLifecycleService:
         for field_name in metadata_fields:
             if a.get(field_name) != b.get(field_name):
                 metadata_diff[field_name] = {
-                    "from": a.get(field_name),
-                    "to": b.get(field_name),
+                    "from": b.get(field_name),
+                    "to": a.get(field_name),
                 }
         for cutoff_field in ("last_sequence", "event_count"):
             a_value = (a.get("source_cutoff") or {}).get(cutoff_field)
             b_value = (b.get("source_cutoff") or {}).get(cutoff_field)
             if a_value != b_value:
                 metadata_diff[f"source_cutoff.{cutoff_field}"] = {
-                    "from": a_value,
-                    "to": b_value,
+                    "from": b_value,
+                    "to": a_value,
                 }
         for completeness_field in ("completeness.status", "reproducibility.status"):
             section_name, field_name = completeness_field.split(".")
@@ -1676,21 +1683,27 @@ class DocumentLifecycleService:
             b_value = (b.get(section_name) or {}).get(field_name)
             if a_value != b_value:
                 metadata_diff[completeness_field] = {
-                    "from": a_value,
-                    "to": b_value,
+                    "from": b_value,
+                    "to": a_value,
                 }
         a_claims = _flatten_claims(a)
         b_claims = _flatten_claims(b)
-        added = [claim for text, claim in b_claims.items() if text not in a_claims]
-        removed = [claim for text, claim in a_claims.items() if text not in b_claims]
+        # Направление diff (F-D6C1, DOCLOG-6-CERT-FIX): diff(rev,
+        # against=prev) читается как изменения ОТ against К rev.
+        # added = утверждения, появившиеся в rev относительно against;
+        # removed = существовавшие в against и отсутствующие в rev --
+        # естественному чтению подписей панели doclog6-diff
+        # («Добавлено утверждений» / «Убрано утверждений»).
+        added = [claim for text, claim in a_claims.items() if text not in b_claims]
+        removed = [claim for text, claim in b_claims.items() if text not in a_claims]
         validity_changed = [
             {
                 "text": text,
-                "from": a_claims[text]["validity"],
+                "from": b_claims[text]["validity"],
                 "to": claim["validity"],
             }
-            for text, claim in b_claims.items()
-            if text in a_claims and claim["validity"] != a_claims[text]["validity"]
+            for text, claim in a_claims.items()
+            if text in b_claims and claim["validity"] != b_claims[text]["validity"]
         ]
         return {
             "revision_id": revision.revision_id,

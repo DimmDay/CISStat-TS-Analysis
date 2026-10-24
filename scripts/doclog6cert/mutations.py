@@ -216,8 +216,8 @@ BATTLE: list[tuple[str, Path, str, str]] = [
      '''            "recalculated": False,''',
      '''            "recalculated": True,'''),
     ("M30_validity_changed_off", LIFECYCLE,
-     '''            if text in a_claims and claim["validity"] != a_claims[text]["validity"]''',
-     '''            if False:'''),
+     '''            if text in b_claims and claim["validity"] != b_claims[text]["validity"]''',
+     '''            if False'''),
     # 10. Права и policy (§15/D5/D6)
     ("M31_admin_catalog_basis_lost", LIFECYCLE,
      '''    if role == "admin":

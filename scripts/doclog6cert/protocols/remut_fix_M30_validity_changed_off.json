@@ -1,0 +1,12 @@
+{
+ "name": "M30_validity_changed_off",
+ "kind": "battle (remutation after F-D6C1 fix)",
+ "file": "document_lifecycle.py",
+ "patch_applies": true,
+ "repo_pass": true,
+ "oracle_pass": false,
+ "classification": "ORACLE-ONLY",
+ "repo_tail": "tests/api/test_doclog2_snapshots.py .................................... [ 59%]\n.....................................                                    [ 70%]\ntests/api/test_doclog3_telemetry_audit.py .............................. [ 79%]\n..................................................................       [100%]\n\n============================= 327 passed in 10.78s =============================",
+ "oracle_tail": "........F.......                                                         [ 84%]\nscripts/doclog6cert/test_d6cert_oracle_static.py ............            [100%]\n\n=========================== short test summary info ============================\nFAILED scripts/doclog6cert/test_d6cert_oracle_api.py::test_a35_diff_direction_contract_and_validity\n========================= 1 failed, 78 passed in 5.14s =========================",
+ "restored": true
+}

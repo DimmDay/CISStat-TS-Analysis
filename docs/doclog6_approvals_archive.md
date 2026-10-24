@@ -115,7 +115,15 @@ duration_ms drill честно замерен (RPO/RTO не декларирую
 **D10. Diff (§17)**: GET /revisions/{id}/diff?against= — обе ревизии
 одного документа и авторизованы; сравнение metadata-полей снимков и
 claims (added/removed/validity_changed) ПО ЗАМОРОЖЕННЫМ данным; никаких
-пересчётов. Чужая/другого документа — 404/422 честно.
+пересчётов. Чужая/другого документа — 404/422 честно. Направление
+(уточнено DOCLOG-6-CERT-FIX после находки сертификации F-D6C1):
+diff(rev, against=prev) читается как изменения ОТ against К rev —
+claims.added = утверждения, появившиеся в rev относительно against;
+claims.removed = существовавшие в against и отсутствующие в rev;
+metadata[...]/validity_changed: from = значение against, to = значение
+rev — естественному чтению подписей панели doclog6-diff
+(«Добавлено утверждений» / «Убрано утверждений»). Пин направления:
+repo test_diff_direction_natural_semantics + оракул a35.
 
 ## 3. Карта изменений
 

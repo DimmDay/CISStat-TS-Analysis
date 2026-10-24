@@ -871,6 +871,42 @@ class TestRevisionDiff:
         # Никакого пересчёта: diff построен из замороженных снимков.
         assert body["recalculated"] is False
 
+    def test_diff_direction_natural_semantics(self, client):
+        """Пин направления diff (F-D6C1; DOCLOG-6-CERT-FIX): diff(rev,
+        against=prev) читается как изменения ОТ against К rev --
+        естественному чтению подписей панели doclog6-diff
+        («Добавлено утверждений» / «Убрано утверждений»).
+        claims.added = утверждения, появившиеся в rev относительно
+        against; claims.removed = существовавшие в against и
+        отсутствующие в rev; metadata.from = значение against,
+        metadata.to = значение rev."""
+        snapshot1 = _seed_snapshot(kinds=["D02"])
+        document, revision1 = _seed_revision(snapshot1)
+        _cookie(client)
+        # Дополнительное upload-событие того же run: уникальный claim
+        # появляется ТОЛЬКО в rev2 (D02-адаптер: «Загружен датасет…»).
+        _seed_event(
+            RUN_ID,
+            event_type="upload_completed",
+            payload={"name": "d6-fix-extra", "rows": 3, "columns": 2},
+        )
+        snapshot2 = _seed_snapshot(kinds=["D02"])
+        _document, revision2 = _seed_revision(snapshot2)
+        resp = client.get(
+            f"/v1/documentation/revisions/{revision2.revision_id}/diff",
+            params={"against": revision1.revision_id},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        added_texts = [claim["text"] for claim in body["claims"]["added"]]
+        removed_texts = [claim["text"] for claim in body["claims"]["removed"]]
+        # NEW-claim rev2 попадает в added, не в removed.
+        assert any("d6-fix-extra" in text for text in added_texts)
+        assert not any("d6-fix-extra" in text for text in removed_texts)
+        # Metadata: from = значение AGAINST (rev1), to = значение rev.
+        assert body["metadata"]["captured_at"]["from"] == snapshot1.captured_at
+        assert body["metadata"]["captured_at"]["to"] == snapshot2.captured_at
+
     def test_diff_across_documents_422(self, client):
         snapshot1 = _seed_snapshot(kinds=["D01"])
         _document1, revision1 = _seed_revision(snapshot1, kind_code="D01")
