@@ -1,0 +1,13 @@
+PASS target_provenance_is_honest
+PASS admin_both_shells
+PASS common_entry_private_actor
+PASS non_rolling_expiry
+PASS human_limit_is_not_faked
+PASS concurrent_metering
+PASS session_not_research_identity
+PASS csrf_and_current_entitlements
+PASS module_name_no_shadow
+PASS implementation_not_claimed
+PASS acceptance_cases
+PASS code_fences_balanced
+{"passed": 12, "failed": 0}

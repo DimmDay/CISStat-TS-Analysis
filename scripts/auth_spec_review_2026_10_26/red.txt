@@ -1,0 +1,13 @@
+FAIL target_provenance_is_honest
+FAIL admin_both_shells
+FAIL common_entry_private_actor
+FAIL non_rolling_expiry
+FAIL human_limit_is_not_faked
+FAIL concurrent_metering
+FAIL session_not_research_identity
+FAIL csrf_and_current_entitlements
+FAIL module_name_no_shadow
+FAIL implementation_not_claimed
+FAIL acceptance_cases
+PASS code_fences_balanced
+{"passed": 1, "failed": 11}

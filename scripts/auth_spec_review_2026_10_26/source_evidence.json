@@ -1,0 +1,47 @@
+{
+  "requested_commit": "21946a7a80878b7dcbe5a9e57f2fa132208914a6",
+  "verified_commit": "bee3f8e300e6d2f5de6f8c9d9e4d6bc6e4091065",
+  "target_verified": false,
+  "blocker": "GitHub installation confirmed, but callable GitHub tools/skill absent from current tool inventory; direct fetch remains unauthenticated",
+  "observed_files": [
+    {
+      "path": "spec_auth.md",
+      "sha256": "61c9c25148bd8f13388c699c3a661bc5a6962e1c98de608f32244499af0fa598"
+    },
+    {
+      "path": "apps/api/auth.py",
+      "sha256": "5031870c6271126cdcb0b6effd77bffb255c68776857d039933382fcc4f0394d"
+    },
+    {
+      "path": "apps/api/plans.py",
+      "sha256": "c3e03d38a5d0791e0f282db61ae8a048c35f5c962c306ec4a3dd9c4092bf6535"
+    },
+    {
+      "path": "packages/ui/lib/admin.ts",
+      "sha256": "13d1cdaa557b6c88e67dab6aeb96671ccbcb194a7e9a101cd00c08cb7efefd51"
+    },
+    {
+      "path": "packages/ui/components/AdminProgressDashboard.tsx",
+      "sha256": "b2c788b8f4d1295c80d9bf175b34a18eee4fef43dc33b047a42bb009ecdb35e5"
+    },
+    {
+      "path": "apps/embedded/app/admin/progress/page.tsx",
+      "sha256": "e9dbb28a7081db9edd9db26ba9f5026610bb305b0b771a6c0f024ca5232c5e24"
+    },
+    {
+      "path": "apps/standalone/next.config.mjs",
+      "sha256": "b8c5a8ec17ae6427f224b402a5eca1a0673e52c05d81ae11bce19e703b7fa569"
+    },
+    {
+      "path": "docs/ROLES_AND_PLANS_SPEC.md",
+      "sha256": "c7600cbb132ae160859e68d68e85ad58ee3a48b76ba18e2b6eebe584af5f86ce"
+    },
+    {
+      "path": "spec_billing_accounts.md",
+      "sha256": "7b3767dd52725387d2e80228038061db598bf2ada89a5b119cdb5fb0d57aad2f"
+    }
+  ],
+  "standalone_admin_page_exists": false,
+  "github_installed_confirmed": true,
+  "github_callable_tools_available": false
+}
