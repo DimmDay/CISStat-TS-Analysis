@@ -262,6 +262,9 @@ export { ProgressDrawer } from "./components/ProgressDrawer";
 // представление поверх снимков DOCLOG-2 (состояния §12.3, негативные
 // состояния AC17; preview -- sandboxed iframe, §12.3/AC16).
 export { DocumentationWorkspace } from "./components/DocumentationWorkspace";
+// DOCLOG-E2E-RECHECK-1-FIX (C01): разрешение текущего исследования для
+// перехода в «Документы» без ?run= (единый источник run_id -- /trace).
+export { resolveCurrentRun } from "./lib/documentation";
 export { DocumentPreview } from "./components/DocumentPreview";
 export type { DocumentViewMode } from "./components/DocumentPreview";
 // Точечная UI-правка (следом за DOCLOG-4): фон страницы «Документы» —

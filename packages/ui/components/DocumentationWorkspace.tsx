@@ -73,17 +73,29 @@ export const KIND_TITLES: Record<string, string> = {
   D12: "Сверка прогноза с фактом",
 };
 
-// Форматы P0 (§7) кнопки «Собрать формат» (§12.2 действия); тяжёлые
-// форматы (PDF/XLSX/Parquet/ZIP) -- DOCLOG-5 (сервер ответит 400).
-const BUILD_FORMATS: Array<{ format: string; label: string }> = [
+// Форматы кнопки «Собрать формат» (§12.2 действия). P0 -- синхронно;
+// C09 (DOCLOG-E2E-RECHECK-1-FIX): к списку подключены реально
+// поддержанные backend'ом тяжёлые форматы (DOCLOG-5: pdf/xlsx/parquet/zip
+// -- рендер выполняет worker §18, POST ставит job в очередь; UI поллит
+// состояние §17). SVG/PNG -- каталог DOCLOG-5 тоже поддерживает; общий
+// селектор ограничен форматами акта C09 (pdf/xlsx/parquet/zip), чтобы
+// панель действий оставалась компактной. DOCX/PDF-A -- НЕ здесь: выпуск
+// только по организационному профилю (панель Doclog9ProfileControls).
+// Зависимость от worker показана честной подписью рядом (акт C09:
+// «показывать зависимость от профиля/валидатора/worker»).
+const BUILD_FORMATS: Array<{ format: string; label: string; heavy?: boolean }> = [
   { format: "md", label: "Markdown" },
   { format: "html", label: "HTML" },
   { format: "json", label: "JSON" },
   { format: "jsonl", label: "JSONL" },
   { format: "csv", label: "CSV" },
+  { format: "pdf", label: "PDF", heavy: true },
+  { format: "xlsx", label: "XLSX", heavy: true },
+  { format: "parquet", label: "Parquet", heavy: true },
+  { format: "zip", label: "ZIP", heavy: true },
 ];
 
-type ListPhase = "loading" | "ready" | "empty" | "forbidden" | "offline";
+type ListPhase = "loading" | "ready" | "empty" | "forbidden" | "offline" | "no-run";
 
 type PreviewPhase = "idle" | "loading" | "ready" | "forbidden" | "conflict" | "error";
 
@@ -115,6 +127,23 @@ const LIFECYCLE_EVENT_LABELS: Record<string, string> = {
   retracted: "Отозвано",
   superseded: "Заменено новой версией",
 };
+
+/** Честный текст отказа создания черновика по HTTP-статусу (C07, §12.3):
+ * видно аналитику, повтор не теряет выбранный вид. */
+export function createErrorText(status: number | null): string {
+  if (status === null)
+    return "Сервис документирования недоступен — создание черновика не выполнено";
+  if (status === 403) return "Создание черновика недоступно вашему субъекту";
+  if (status === 404)
+    return "Исследование не найдено или недоступно — черновик не создан";
+  if (status === 409)
+    return "Состояние исследования изменилось (409) — повторите создание выбранного вида";
+  if (status === 422)
+    return "Вид документа или запрос отклонены (422) — выберите вид и повторите";
+  if (status === 503)
+    return "Сервис документирования недоступен (503) — создание черновика не выполнено, повторите попытку позже";
+  return `Создание черновика не выполнено (ошибка ${status ?? "сети"}) — повторите попытку позже`;
+}
 
 /** Честный текст отказа жизненного цикла по HTTP-статусу/коду (§12.3). */
 export function lifecycleErrorText(status: number | null): string {
@@ -196,6 +225,10 @@ export function DocumentationWorkspace({
   const [renditions, setRenditions] = useState<RenditionSummary[]>([]);
   const [job, setJob] = useState<JobPayload | null>(null);
   const [creating, setCreating] = useState(false);
+  // C07 (DOCLOG-E2E-RECHECK-1-FIX): отказ явного создания черновика
+  // ДОЛЖЕН быть виден аналитику (§12.3/AC17); выбор вида при повторе
+  // не теряется.
+  const [createError, setCreateError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   // DOCLOG-9 (§19 строка DOCLOG-9): формат выпуска по профилю
   // организации (docx/pdfa); null -- панель скрыта.
@@ -213,7 +246,8 @@ export function DocumentationWorkspace({
   // ── Список документов (чтение; НЕ создаёт документы, §12.1) ────────
   const loadDocuments = useCallback(async () => {
     if (!runId) {
-      setListPhase("empty");
+      // C01 (DOCLOG-E2E-RECHECK-1-FIX): отсутствие run -- отдельное
+      setListPhase("no-run");
       return;
     }
     setListPhase("loading");
@@ -227,13 +261,20 @@ export function DocumentationWorkspace({
     const next = result.data?.documents ?? [];
     setDocuments(next);
     setListPhase(next.length === 0 ? "empty" : "ready");
-    // Сохранённый выбор (§12.1 «последовательные панели ... сохранённым
-    // выбором»): активный kind остаётся, если ещё существует.
+    // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+    // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+    // терялись и первый документ было невозможно создать (акт §4 C02:
+    // «после загрузки пустого списка выбор очищается»). На непустом
+    // списке активный kind остаётся, если ещё существует, иначе --
+    // первый существующий документ (прежнее поведение).
     setActiveKind((current) => {
       if (current && next.some((document) => document.kind_code === current)) {
         return current;
       }
-      return next.length > 0 ? next[0].kind_code : null;
+      if (next.length === 0) {
+        return current; // пустой реестр: выбор вида сохраняется
+      }
+      return next[0].kind_code;
     });
   }, [runId]);
 
@@ -378,6 +419,7 @@ export function DocumentationWorkspace({
   const handleCreateDraft = useCallback(async () => {
     if (!runId || !activeKind) return;
     setCreating(true);
+    setCreateError(null);
     // «Создать черновик» (§12.2): явное решение аналитика -- новая
     // заморозка текущего состояния (refresh=true; авто-ключ сборщика
     // включает cutoff -- на неизменном состоянии вернётся прежний снимок).
@@ -385,7 +427,11 @@ export function DocumentationWorkspace({
     setCreating(false);
     if (result.ok) {
       await loadDocuments();
+      return;
     }
+    // C07 (DOCLOG-E2E-RECHECK-1-FIX): отказ создания показывается
+    // аналитику (§12.3/AC17); повтор не теряет выбранный вид.
+    setCreateError(createErrorText(result.status));
   }, [runId, activeKind, loadDocuments]);
 
   // ── DOCLOG-6: действия жизненного цикла (§11/§12.2) ───────────────
@@ -469,9 +515,9 @@ export function DocumentationWorkspace({
     if (listPhase === "forbidden")
       return "Доступ запрещён — документы этого исследования недоступны вашему субъекту";
     if (listPhase === "empty")
-      return runId
-        ? "Документов пока нет — соберите черновик нужного вида"
-        : "Документов пока нет — запуски без документируемых операций не образуют документов";
+      return "Документов пока нет — соберите черновик нужного вида";
+    if (listPhase === "no-run")
+      return "Исследование не выбрано — откройте раздел из исследования («Прогресс» → «Документы») или передайте ?run=…; это не пустой реестр активного датасета";
     return null;
   })();
 
@@ -527,11 +573,31 @@ export function DocumentationWorkspace({
           <button
             type="button"
             onClick={handleCreateDraft}
-            disabled={creating || listPhase !== "ready"}
+            // C02 (DOCLOG-E2E-RECHECK-1-FIX): создание доступно и на
+            // пустом реестре (empty = успешный пустой ответ при известном
+            // run); запрещено только в загрузке/отказах/no-run.
+            disabled={
+              creating ||
+              (listPhase !== "ready" && listPhase !== "empty")
+            }
+            title={
+              listPhase === "empty"
+                ? "Первый документ этого вида в исследовании"
+                : undefined
+            }
             className="mt-3 w-full rounded-lg border border-brand px-2 py-1.5 text-sm text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
           >
             {creating ? "Сборка черновика…" : "Создать черновик"}
           </button>
+        )}
+        {createError && (
+          <p
+            role="alert"
+            data-testid="doclog4-create-error"
+            className="text-xs text-red-600"
+          >
+            {createError}
+          </p>
         )}
       </nav>
 
@@ -727,6 +793,14 @@ export function DocumentationWorkspace({
                 </button>
               )}
             </div>
+            {/* C09 (DOCLOG-E2E-RECHECK-1-FIX): честная зависимость тяжёлых
+                форматов от worker'а (§18) -- формат не предлагается как
+                мгновенный; готовность зависит от очереди и воркера. */}
+            <p className="text-xs text-neutral-500">
+              PDF, XLSX, Parquet и ZIP собираются worker&apos;ом (очередь
+              заданий): готовность зависит от его работы и занятости
+              очереди; Markdown/HTML/JSON/JSONL/CSV собираются сразу.
+            </p>
 
             {/* DOCLOG-9 (§19 строка DOCLOG-9): выпуск DOCX/PDF-A -- ТОЛЬКО
                 по организационному профилю (подтверждается валидатором и

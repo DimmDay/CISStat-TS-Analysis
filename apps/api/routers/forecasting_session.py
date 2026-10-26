@@ -53,6 +53,9 @@ from apps.api.schemas import (
 )
 from apps.api.research_runs import record_run_event
 from apps.api.trace_events import make_trace_event
+# DOCLOG-E2E-RECHECK-1-FIX (C03): промоушен выпуска прогноза в
+# durable-слой в момент фиксации (идемпотентный sweep).
+from apps.api import promotion_integration as _promotion
 from apps.api.routers.modeling_session import (
     _action_context,
     _get_session,
@@ -345,6 +348,10 @@ def create_forecast(
         session.stages["forecasting"] = "in_progress"
     session.touch()
     store.save(session)
+    # C03: промоушен выпуска прогноза в durable-слой (frozen origin §6:
+    # старый выпуск никогда не заменяется новым -- артефакт несёт свой
+    # context/revision, повтор по forecast_id идемпотентен)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return run
 
 

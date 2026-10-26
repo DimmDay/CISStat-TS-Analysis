@@ -1,18 +1,21 @@
 {
   "schema_version": "doclog.report_snapshot/1",
-  "snapshot_id": "rs-f26bdbcfcd234b2eba0b58a09baddd53",
-  "research_run_id": "RUN-C306F95F",
-  "context_id": "ctx-8b5232ee1f515fc3",
+  "snapshot_id": "rs-bbb403486e61491fa79bab2e0af66f58",
+  "research_run_id": "RUN-1506F0DA",
+  "context_id": "ctx-eadfd4d0d5525d8e",
   "data_revision": 2,
-  "data_ref": null,
-  "data_digest": null,
+  "data_ref": "artifact:art-af6246f06176414686e2fd0e4420d04f",
+  "data_digest": {
+    "algorithm": "cisstat-data-v1",
+    "value": "1dc27401596c2e36671d8fde194682c785e5c2463589db00dd15fede06cdb314"
+  },
   "source_cutoff": {
     "event_count": 18,
     "event_id_manifest": null,
     "last_sequence": 18,
     "ordering_quality": "canonical"
   },
-  "captured_at": "2026-10-26T08:48:50.410378+00:00",
+  "captured_at": "2026-10-26T13:24:52.590697+00:00",
   "template": {
     "id": "research-report",
     "version": "1.0"
@@ -24,13 +27,12 @@
   "redaction_profile": "owner-v1",
   "completeness": {
     "status": "complete",
-    "missing_refs": []
+    "missing_refs": [],
+    "missing_mandatory": []
   },
   "reproducibility": {
-    "status": "limited",
-    "reasons": [
-      "missing_data_artifact"
-    ]
+    "status": "ready",
+    "reasons": []
   },
   "sections": [
     {
@@ -42,27 +44,49 @@
         {
           "text": "Применена коррекция «missing».",
           "event_refs": [
-            "event:969c475a-79db-4814-b43b-3fb7e40d4d94"
+            "event:e73d216f-bc08-4f51-b85a-8217930a04ac"
+          ],
+          "result_refs": [],
+          "validity": "stale",
+          "evidence_level": "server_result"
+        },
+        {
+          "text": "Применена коррекция «outliers».",
+          "event_refs": [
+            "event:e89acba9-4e5f-4286-ad4a-beca26e355a6"
           ],
           "result_refs": [],
           "validity": "current",
           "evidence_level": "server_result"
         },
         {
-          "text": "Применена коррекция «outliers».",
-          "event_refs": [
-            "event:fd05a09e-7586-4c97-b77b-7431d0de49c9"
+          "text": "Рецепт «missing» (missing_corrections); стратегия median_mode; колонки: value; изменено значений: 3; строк удалено: 0; ревизия данных после: 1.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-1cedf9be2de44fee81936bcc6bc52729"
           ],
-          "result_refs": [],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Рецепт «outliers» (outlier_corrections); стратегия cap; метод iqr; колонки: value; изменено значений: 4; строк удалено: 0; ревизия данных после: 2.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-db3656e936574cfb96ac7f1abb0518ae"
+          ],
           "validity": "current",
-          "evidence_level": "server_result"
+          "evidence_level": null
         }
       ]
     }
   ],
   "dependencies": [
-    "event:969c475a-79db-4814-b43b-3fb7e40d4d94",
-    "event:fd05a09e-7586-4c97-b77b-7431d0de49c9"
+    "event:e73d216f-bc08-4f51-b85a-8217930a04ac",
+    "event:e89acba9-4e5f-4286-ad4a-beca26e355a6",
+    "artifact:art-1cedf9be2de44fee81936bcc6bc52729",
+    "artifact:art-db3656e936574cfb96ac7f1abb0518ae",
+    "checkpoint:art-90fbb060fc2e46b682aad8816aba98f9",
+    "checkpoint:art-af6246f06176414686e2fd0e4420d04f"
   ],
   "approval": null
 }

@@ -1,18 +1,21 @@
 {
   "schema_version": "doclog.report_snapshot/1",
-  "snapshot_id": "rs-a62a11e339f44de3b694ebad80aa448d",
-  "research_run_id": "RUN-C306F95F",
-  "context_id": "ctx-8b5232ee1f515fc3",
+  "snapshot_id": "rs-a061de5aefc64e9f9260296a8d4dab33",
+  "research_run_id": "RUN-1506F0DA",
+  "context_id": "ctx-eadfd4d0d5525d8e",
   "data_revision": 2,
-  "data_ref": null,
-  "data_digest": null,
+  "data_ref": "artifact:art-af6246f06176414686e2fd0e4420d04f",
+  "data_digest": {
+    "algorithm": "cisstat-data-v1",
+    "value": "1dc27401596c2e36671d8fde194682c785e5c2463589db00dd15fede06cdb314"
+  },
   "source_cutoff": {
     "event_count": 18,
     "event_id_manifest": null,
     "last_sequence": 18,
     "ordering_quality": "canonical"
   },
-  "captured_at": "2026-10-26T08:48:50.336221+00:00",
+  "captured_at": "2026-10-26T13:24:52.518886+00:00",
   "template": {
     "id": "research-report",
     "version": "1.0"
@@ -23,14 +26,15 @@
   "classification": "private",
   "redaction_profile": "owner-v1",
   "completeness": {
-    "status": "complete",
-    "missing_refs": []
+    "status": "partial",
+    "missing_refs": [],
+    "missing_mandatory": [
+      "missing_validation_result_artifact"
+    ]
   },
   "reproducibility": {
-    "status": "limited",
-    "reasons": [
-      "missing_data_artifact"
-    ]
+    "status": "ready",
+    "reasons": []
   },
   "sections": [
     {
@@ -42,107 +46,207 @@
         {
           "text": "Статус проверки «data_types» (валидация): выполнена.",
           "event_refs": [
-            "event:7135b77d-7bd6-498e-8c45-9e728ab2db07"
+            "event:5c7ec761-1f33-4ed6-958c-72e5d01fd94b"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «formats» (валидация): выполнена.",
           "event_refs": [
-            "event:9f6b9901-e6ef-451e-8ada-2be86516ec57"
+            "event:f5b8c810-fb0a-45a6-b425-f38acc7e83ac"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «ranges» (валидация): пропущена.",
           "event_refs": [
-            "event:d62835ce-45af-4b46-93a6-aedabd9651f9"
+            "event:394d3b5f-0255-4a40-a0e8-edbc9b6c8572"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «consistency» (валидация): выполнена.",
           "event_refs": [
-            "event:cc3e8480-e7f8-44cb-ae91-448706083b45"
+            "event:360bebea-4805-4804-859d-d43ddd22a5ca"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «uniqueness» (валидация): выполнена.",
           "event_refs": [
-            "event:352c8e70-3a6c-4fdb-911e-0268c96cf5ff"
+            "event:9206aa5e-a517-4779-9d81-9f52e6829115"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «inclusion» (валидация): пропущена.",
           "event_refs": [
-            "event:d84a8963-0ed6-44fe-8111-f66b23c121a4"
+            "event:f0a06e9f-775b-4800-a89f-c452e70ad0d1"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «referential» (валидация): пропущена.",
           "event_refs": [
-            "event:54407a54-a4b7-4f98-aae3-5eb657a91bd4"
+            "event:849f7f36-d64e-4793-9cd9-0289685b210c"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «text_quality» (валидация): выполнена.",
           "event_refs": [
-            "event:fb0df4ea-eea4-4aa6-b100-a98395c61533"
+            "event:eb415398-838b-4273-924c-7be4cf0dd7b6"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «regularity» (валидация): выполнена.",
           "event_refs": [
-            "event:729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715"
+            "event:55426614-8e6f-42bd-9acb-45d7ab8bae35"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
         },
         {
           "text": "Статус проверки «sufficiency» (валидация): выполнена.",
           "event_refs": [
-            "event:82374197-824e-4fcd-8f55-ddd6cd1e6de1"
+            "event:c1f4226e-4869-453e-b8c9-faed0b017729"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "client_observation"
+        },
+        {
+          "text": "Протокол валидации зафиксирован: источник правил system, шаблон system, строк: 150, колонок: 2.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «consistency»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «data_types»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «formats»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «inclusion»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «ranges»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «referential»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «regularity»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «sufficiency»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «text_quality»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
+        },
+        {
+          "text": "Проверка «uniqueness»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
+          "event_refs": [],
+          "result_refs": [
+            "artifact:art-611888f267b746f5be281534fb929f2c"
+          ],
+          "validity": "stale",
+          "evidence_level": null
         }
       ]
     }
   ],
   "dependencies": [
-    "event:7135b77d-7bd6-498e-8c45-9e728ab2db07",
-    "event:9f6b9901-e6ef-451e-8ada-2be86516ec57",
-    "event:d62835ce-45af-4b46-93a6-aedabd9651f9",
-    "event:cc3e8480-e7f8-44cb-ae91-448706083b45",
-    "event:352c8e70-3a6c-4fdb-911e-0268c96cf5ff",
-    "event:d84a8963-0ed6-44fe-8111-f66b23c121a4",
-    "event:54407a54-a4b7-4f98-aae3-5eb657a91bd4",
-    "event:fb0df4ea-eea4-4aa6-b100-a98395c61533",
-    "event:729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715",
-    "event:82374197-824e-4fcd-8f55-ddd6cd1e6de1"
+    "event:5c7ec761-1f33-4ed6-958c-72e5d01fd94b",
+    "event:f5b8c810-fb0a-45a6-b425-f38acc7e83ac",
+    "event:394d3b5f-0255-4a40-a0e8-edbc9b6c8572",
+    "event:360bebea-4805-4804-859d-d43ddd22a5ca",
+    "event:9206aa5e-a517-4779-9d81-9f52e6829115",
+    "event:f0a06e9f-775b-4800-a89f-c452e70ad0d1",
+    "event:849f7f36-d64e-4793-9cd9-0289685b210c",
+    "event:eb415398-838b-4273-924c-7be4cf0dd7b6",
+    "event:55426614-8e6f-42bd-9acb-45d7ab8bae35",
+    "event:c1f4226e-4869-453e-b8c9-faed0b017729",
+    "artifact:art-611888f267b746f5be281534fb929f2c"
   ],
   "approval": null
 }

@@ -189,6 +189,13 @@ def register_uploaded_dataframe(
     # потеряет изменения при следующем get().
     store.save(session)
 
+    # C03 (DOCLOG-E2E-RECHECK-1-FIX): первая фиксация данных --
+    # durable-версия данных в момент регистрации (§9.3 акта: DataVersion
+    # «сохранённые данные»); best-effort, ответ не меняется.
+    from apps.api import promotion_integration as _promotion
+
+    _promotion.notify_data_version_registered(request, session)
+
     parse_warnings = _compute_parse_warnings(df)
     if extra_parse_warnings:
         parse_warnings = parse_warnings + list(extra_parse_warnings)

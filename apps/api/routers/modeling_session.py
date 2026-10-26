@@ -16,6 +16,10 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.core.passport import prepare_passport_series, series_fingerprint
+# DOCLOG-E2E-RECHECK-1-FIX (C03): единая точка producer→artifact
+# промоушена результатов моделирования (sweep идемпотентен по
+# producer_key -- повтор безопасен, пропущенное добирается).
+from apps.api import promotion_integration as _promotion
 from apps.api.backtesting import (
     BacktestExecutionError,
     build_backtest_plan,
@@ -1374,6 +1378,8 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
         session.modeling_pipeline["backtest"] = "done"
     session.touch()
     store.save(session)
+    # C03: промоушен бэктестов в durable-слой (идемпотентный sweep)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return {
         "status": "success", "cohort_id": plan.cohort_id,
         "backtests": serialized, "failures": failures,
@@ -1592,6 +1598,8 @@ def run_modeling_backtest(
         session.modeling_pipeline["tuning"] = "done" if tuned_matches else "in_progress"
     session.touch()
     store.save(session)
+    # C03: промоушен бэктеста в durable-слой (идемпотентный sweep)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return result
 
 
@@ -1949,6 +1957,8 @@ def tune_modeling_candidate(
         session.modeling_pipeline["diagnostics"] = "in_progress"
     session.touch()
     store.save(session)
+    # C03: промоушен продвинутого бэктеста в durable-слой (sweep)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return result
 
 
@@ -2361,6 +2371,9 @@ def step_modeling_job(
         raise
     if job.get("status") == "failed":
         raise HTTPException(status_code=422, detail=job.get("error"))
+    # C03: промоушен артефактов шага job-тюнинга (идемпотентный sweep;
+    # возврат ответа не меняется)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return _model_job_view(session, job)
 
 
@@ -3299,6 +3312,8 @@ def create_model_card(
     session.set_stage("modeling", "done")
     session.touch()
     store.save(session)
+    # C03: промоушен карточки модели в durable-слой (sweep)
+    _promotion.notify_modeling_artifacts_updated(request, session)
     return result
 
 

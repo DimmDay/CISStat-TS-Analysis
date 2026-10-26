@@ -378,10 +378,16 @@ def _corpus_base(orc_env):
 class TestOrcD01:
     def test_target_event_last_match_and_refs(self, orc_env):
         _corpus_base(orc_env)
+        # DOCLOG-E2E-RECHECK-1-FIX (C04): применимость события -- единый
+        # reducer event_context_validity; событие С контекстом run
+        # (ctx-d2c-alpha = CTX_ALPHA корпуса) -- честный current, legacy
+        # без контекста был бы unknown.
         append_event(event_type="target_column_changed", stage="upload",
-                     payload={"column": "old_target"})
+                     payload={"column": "old_target"},
+                     context_id="ctx-d2c-alpha")
         e2 = append_event(event_type="target_column_changed", stage="upload",
-                          payload={"column": "revenue"})
+                          payload={"column": "revenue"},
+                          context_id="ctx-d2c-alpha")
         snapshot, _ = service().build_snapshot(
             RUN_ID, owner_subject(), session_id=SESSION_ID,
             kinds=["plan"],
@@ -513,8 +519,12 @@ class TestOrcD02:
         d02 = section(snapshot, "D02")
         assert any("не продвинут" in c["text"] for c in d02["claims"])
         assert all(c["result_refs"] == [] for c in d02["claims"])
-        assert snapshot.completeness["status"] == "complete"  # нет битых ref
+        # DOCLOG-E2E-RECHECK-1-FIX (C05): нет битых ref, но паспорт и
+        # data_ref отсутствуют -- честный partial по обязательным
+        # элементам вида (missing_mandatory), не «complete».
         assert snapshot.completeness["missing_refs"] == []
+        assert snapshot.completeness["status"] == "partial"
+        assert "missing_source_passport_artifact" in snapshot.completeness["missing_mandatory"]
 
 
 class TestOrcD03D04D05:

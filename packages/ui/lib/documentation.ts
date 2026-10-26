@@ -154,6 +154,31 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResul
 
 // ── Клиенты §17 ─────────────────────────────────────────────────────
 
+/**
+ * C01 (DOCLOG-E2E-RECHECK-1-FIX): разрешение ТЕКУЩЕГО исследования для
+ * перехода в «Документы» без ?run= (общий пункт меню /documentation не
+ * передаёт активный ResearchRun). Источник -- тот же GET /v1/progress/
+ * trace, что использует ProgressDrawer (единый источник run_id слоя 1):
+ * cookie-сессия -- субъект-суррогат DOCLOG-0. Отсутствие run (нет
+ * датасета/запуска) -- честная { ok: true, data: { run_id: null } },
+ * не ошибка сети.
+ */
+export function resolveCurrentRun(): Promise<
+  ApiResult<{ run_id: string | null }>
+> {
+  return requestJson<{ run_id?: string | null }>(
+    `${getApiBase()}/v1/progress/trace`,
+  ).then((result): ApiResult<{ run_id: string | null }> =>
+    result.ok
+      ? {
+          ok: true,
+          status: result.status,
+          data: { run_id: result.data?.run_id || null },
+        }
+      : { ok: false, status: result.status },
+  );
+}
+
 export function listDocuments(
   runId: string,
   kind?: string | null,

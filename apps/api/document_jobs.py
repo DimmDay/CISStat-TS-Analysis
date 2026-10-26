@@ -1519,6 +1519,17 @@ class DocumentDeliveryService:
         якорь/WORM применяются только к passed-выпуску."""
         from apps.api.artifact_store import artifact_content_sha256
 
+        # F-D5C1 CAS-гейт (DOCLOG-E2E-RECHECK-1-FIX, акт §9.5 «проверить
+        # прежнюю race отмены»): complete_render получает СВЕЖУЮ запись
+        # задания из реестра, а не снимок воркера. Отменённое задание
+        # завершением НЕ перезаписывается: cancel -- решение аналитика,
+        # его исход не переписывается (паритет духа frozen §6).
+        fresh = self.registry.get_job(job.job_id)
+        if fresh is not None and fresh.state != job.state:
+            job = fresh
+        if job.state == JOB_CANCELLED:
+            return job, None
+
         # ── DOCLOG-9: организационный профиль выпуска ───────────────
         profile = None
         profile_service = None
@@ -1659,6 +1670,23 @@ class DocumentDeliveryService:
                     run_id=job.run_id,
                     subject=None,
                 )
+        # F-D5C1 CAS-гейт #2 (DOCLOG-E2E-RECHECK-1-FIX): ПЕРЕД финальной
+        # готовностью -- повторная сверка с реестром. Гонка «cancel в
+        # rendering -> завершение воркера»: отмена побеждает, готовые
+        # байты не выдаются (rendition помечается failed -- паритет
+        # fail_render «готовые байты НЕ выдаются»), job остаётся
+        # cancelled.
+        fresh_before_commit = self.registry.get_job(job.job_id)
+        if (
+            fresh_before_commit is not None
+            and fresh_before_commit.state == JOB_CANCELLED
+        ):
+            self.registry.update_rendition(
+                replace_dataclass(
+                    rendition, state=RENDITION_FAILED, job_id=job.job_id
+                )
+            )
+            return fresh_before_commit, None
         job = self.registry.update_job(
             replace_dataclass(
                 job, state=JOB_READY, rendition_id=rendition.rendition_id

@@ -85,12 +85,24 @@ logger = logging.getLogger(__name__)
 ARTIFACT_SCHEMA_VERSION = "doclog.artifact/1"
 DATA_DIGEST_ALGORITHM = "cisstat-data-v1"
 
+# DOCLOG-E2E-RECHECK-1-FIX (C03, producer integration): каталог
+# расширен артефактами научного протокола, которые продюсеры
+# (capture/check/apply) продвигают в durable-слой в момент фиксации
+# результата:
+#   * validation_result -- полный результат GET /dataset/validate
+#     (правила/пороги/знаменатели, D03-основа);
+#   * correction_recipe -- рецепт фактически применённой коррекции
+#     (стратегия/метод/параметры/масштаб изменений, D04-основа).
+# data_frame (версия данных) существовал ранее (checkpoint-путь);
+# промоушен версии данных при коррекциях использует тот же kind.
 ARTIFACT_KINDS: tuple[str, ...] = (
     "passport",
     "oof_backtest",
     "model_card",
     "forecast",
     "data_frame",
+    "validation_result",
+    "correction_recipe",
 )
 
 ARTIFACT_ID_PATTERN = re.compile(r"^art-[0-9a-f]{32}$")

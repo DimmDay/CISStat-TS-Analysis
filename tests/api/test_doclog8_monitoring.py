@@ -1304,7 +1304,10 @@ class TestStaticCatalogs:
         # DOCLOG-9 (честное обновление пина): +4 действия профилей
         # организации (created/retired mandatory, validated/anchored
         # standard); 24 + 4 = 28.
-        assert len(security_audit.AUDIT_ACTIONS) == 28
+        # DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина): +1
+        # artifact_promotion_failed (standard) -- durable-receipt сбоя
+        # producer→artifact промоушена (акт C03, §9.3); 28 + 1 = 29.
+        assert len(security_audit.AUDIT_ACTIONS) == 29
 
     def test_routes_registered(self):
         from apps.api.main import app

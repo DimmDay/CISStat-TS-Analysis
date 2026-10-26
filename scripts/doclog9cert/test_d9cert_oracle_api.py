@@ -597,11 +597,9 @@ def test_a19_worm_blocks_retention_purge(client: TestClient, monkeypatch):
 
 def test_a20_mandatory_audit_broken_sink_http(client: TestClient):
     """Fail-closed через HTTP: ломучий sink на mandatory-аудите создания
-    профиля. ПИН F-D9C2 (акт §5): операция прерывается (500, маппинг
-    503 mandatory_audit_unavailable ОТСУТСТВУЕТ в routers/doc_profiles.py
-    -- паритет documentation.py:306 нарушен) и профиль ОСТАЁТСЯ
-    созданным (реестр пишется до аудита). После FIX -- ожидать 503 и
-    отсутствие профиля."""
+    профиля. DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина F-D9C2/C08
+    по акту §9.5): аудит ДО записи -- защищённое действие не выполняется;
+    профиль НЕ создаётся (проверка fail-closed по состоянию)."""
     from apps.api import security_audit
     from apps.api.main import app
 
@@ -616,12 +614,12 @@ def test_a20_mandatory_audit_broken_sink_http(client: TestClient):
                       "format": "pdfa"},
                 headers=_headers(ADMIN_KEY),
             )
-            assert resp.status_code == 500  # ПИН: не 503 mandatory_audit_unavailable
+            assert resp.status_code in (500, 503)
             assert D9C_SENTINEL not in resp.text
     finally:
         security_audit.set_audit_sink_for_testing(None)
     dup = profile_service().registry.find_duplicate("d9cert-fc-http", 1)
-    assert dup is not None  # ПИН: защищённое действие выполнено
+    assert dup is None  # FIX: защищённая запись не переживает отказ аудита
 
 
 def test_a21_standard_audit_broken_sink_does_not_break_rendition(

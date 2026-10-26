@@ -370,6 +370,12 @@ class ReportSnapshot:
             "completeness": {
                 "status": self.completeness.get("status", "partial"),
                 "missing_refs": list(self.completeness.get("missing_refs", [])),
+                # C05 (DOCLOG-E2E-RECHECK-1-FIX): обязательные gaps по видам
+                # -- аддитивное поле контракта; старые снимки (без ключа)
+                # честно дают пустой список.
+                "missing_mandatory": list(
+                    self.completeness.get("missing_mandatory", [])
+                ),
             },
             "reproducibility": {
                 "status": self.reproducibility.get("status", "limited"),
@@ -417,6 +423,10 @@ class ReportSnapshot:
             completeness={
                 "status": self.completeness.get("status", "partial"),
                 "missing_refs": list(self.completeness.get("missing_refs", [])),
+                # C05: missing_mandatory сохраняется копией (см. to_dict)
+                "missing_mandatory": list(
+                    self.completeness.get("missing_mandatory", [])
+                ),
             },
             reproducibility={
                 "status": self.reproducibility.get("status", "limited"),

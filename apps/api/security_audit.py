@@ -98,6 +98,10 @@ ACTION_ORG_PROFILE_CREATED = "org_profile_created"
 ACTION_ORG_PROFILE_RETIRED = "org_profile_retired"
 ACTION_RENDITION_VALIDATED = "rendition_validated"
 ACTION_RENDITION_ANCHORED = "rendition_anchored"
+# DOCLOG-E2E-RECHECK-1-FIX (C03): честный durable-receipt сбоя
+# producer→artifact промоушена (§9.3 акта: «при сбое сохранять честный
+# pending/receipt»). Standard -- сбой виден, научную операцию не ломает.
+ACTION_ARTIFACT_PROMOTION_FAILED = "artifact_promotion_failed"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTHN_DENIED,
@@ -128,6 +132,7 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_ORG_PROFILE_RETIRED,
     ACTION_RENDITION_VALIDATED,
     ACTION_RENDITION_ANCHORED,
+    ACTION_ARTIFACT_PROMOTION_FAILED,
 })
 
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/
@@ -163,6 +168,10 @@ AUDIT_REQUIREMENTS: dict[str, str] = {
     ACTION_ORG_PROFILE_RETIRED: "mandatory",
     ACTION_RENDITION_VALIDATED: "standard",
     ACTION_RENDITION_ANCHORED: "standard",
+    # DOCLOG-E2E-RECHECK-1-FIX (C03): receipt сбоя промоушена --
+    # стандартный durable-поток (сбой доставки НЕ ломает научную
+    # операцию, но обязан быть видимым).
+    ACTION_ARTIFACT_PROMOTION_FAILED: "standard",
 }
 
 # Допустимые решения (§14.1: разрешено/отказано/прервано).

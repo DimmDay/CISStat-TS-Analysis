@@ -173,12 +173,11 @@ def test_u06_policy_admin_gate_scopes_vs_role():
 
 def test_u07_create_audit_mandatory_fail_closed():
     """§14.1/AC11: org_profile_created -- mandatory; недоступный sink
-    прерывает запись аудита. ПИН ПОРЯДКА (см. F-D9C2 в акте): реестр
-    пишется ДО аудита -- профиль остаётся созданным при сбойном sink
-    (защищённое действие выполнено, только ответ об ошибке); здесь
-    фиксируем факт both-сторон: сбой sink виден И профиль существует."""
+    прерывает запись аудита. DOCLOG-E2E-RECHECK-1-FIX (честное обновление
+    пина F-D9C2/C08 по акту §9.5): порядок ИНВЕРТИРОВАН -- mandatory-аудит
+    ВЫПОЛНЯЕТСЯ ДО защищённой записи, fail-closed по состоянию: профиль
+    НЕ остаётся созданным при сбойном sink (ретрай не даёт 409)."""
     from apps.api import security_audit
-    from apps.api.doc_profiles import OrgProfileError
 
     from scripts.doclog9cert.conftest import BrokenAuditSink
 
@@ -190,9 +189,9 @@ def test_u07_create_audit_mandatory_fail_closed():
     assert "org_profile_created" in str(excinfo.value)
     assert "AC11 fail-closed" in str(excinfo.value)
     security_audit.set_audit_sink_for_testing(None)
-    # Фактическое состояние: профиль СОЗДАН (порядок write→audit, ПИН).
+    # Фактическое состояние: профиль НЕ создан (audit-before-write, C08).
     dup = svc.registry.find_duplicate("d9cert-fc", 1)
-    assert dup is not None  # ПИН F-D9C2: действие выполнено до отказа
+    assert dup is None  # FIX: защищённая запись не переживает отказ аудита
 
 
 def test_u08_retire_flow_idempotent_and_immutable():

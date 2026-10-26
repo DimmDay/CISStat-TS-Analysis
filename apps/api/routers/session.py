@@ -61,6 +61,10 @@ from apps.api.preprocessing_scaling import (
     build_scaling_profile,
     preview_scaling_recipe,
 )
+# DOCLOG-E2E-RECHECK-1-FIX (C03): единая точка producer→artifact
+# промоушена -- научные результаты фиксируются в durable-слое в момент
+# capture/check/apply (см. apps/api/promotion_integration.py).
+from apps.api import promotion_integration as _promotion
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -1914,6 +1918,15 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
         checks=checks,
     )
 
+    # C03 (DOCLOG-E2E-RECHECK-1-FIX): полный результат проверки качества
+    # (правила/пороги/знаменатели/режимы) продвигается в durable-слой в
+    # момент вычисления (§9.3 акта «check») -- D03 «Протокол качества»
+    # собирается из frozen-артефакта, а не только из клиентских
+    # наблюдений. Best-effort: сбой -- receipt, ответ не меняется.
+    _promotion.notify_validation_result(
+        request, session, result_payload=payload.model_dump(mode="json")
+    )
+
     # R6/вариант C (2026-09-15): артефакт слоя задач «validated» произведён
     # -- stages.validation = "done". До этого момента ни один роутер не
     # выставлял этот этап (мина сертификации IA-1: задача с
@@ -2052,6 +2065,19 @@ def correct_dataset_formats(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="formats",
+            operation="format_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+            },
+            reason="validation:format_corrections",
+        )
 
     return DatasetFormatCorrectionResponse(
         applied=payload.apply,
@@ -2124,6 +2150,20 @@ def correct_dataset_ranges(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="ranges",
+            operation="range_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:range_corrections",
+        )
 
     return DatasetRangeCorrectionResponse(
         applied=payload.apply,
@@ -2327,6 +2367,20 @@ def correct_dataset_missing(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="missing",
+            operation="missing_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:missing_corrections",
+        )
 
     # PROGR-24-ORIGIN-A: профиль после операции -- в канонической области
     # (флаг-колонки операции в него не возвращаются); производные -- в
@@ -2549,6 +2603,19 @@ def apply_dataset_missing_manual_corrections(
             session.dataset.columns = len(work.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт ручной правки -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="missing",
+            operation="missing_manual_corrections",
+            corrected_dataframe=work,
+            recipe={
+                "strategy": "manual",
+                "total_changed": total_changed,
+                "edits_requested": len(payload.edits),
+            },
+            reason="validation:missing_manual_corrections",
+        )
 
     # Профиль ПОСЛЕ (гипотетический при apply=False) -- в канонической
     # области: производные колонки вне статуса (PROGR-24-ORIGIN-A).
@@ -2779,6 +2846,19 @@ def apply_dataset_outlier_manual_corrections(
             session.dataset.columns = len(work.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт ручной правки -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="outliers",
+            operation="outlier_manual_corrections",
+            corrected_dataframe=work,
+            recipe={
+                "strategy": "manual",
+                "total_changed": total_changed,
+                "edits_requested": len(payload.edits),
+            },
+            reason="validation:outlier_manual_corrections",
+        )
 
     # Профиль ПОСЛЕ (гипотетический при apply=False) -- кард-шкала
     # (iqr-1.5) в канонической области: производные колонки вне статуса
@@ -2925,6 +3005,23 @@ def correct_dataset_outliers(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="outliers",
+            operation="outlier_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "method": payload.method,
+                "param": payload.param,
+                "used_residual": bool(payload.use_residual),
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:outlier_corrections",
+        )
 
     # G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале --
     # профиль фиксированным методом карточки (iqr-1.5, param=None -> дефолт;
@@ -3155,6 +3252,20 @@ def correct_dataset_inclusion(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="inclusion",
+            operation="inclusion_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:inclusion_corrections",
+        )
 
     return DatasetInclusionCorrectionResponse(
         applied=payload.apply,
@@ -3235,6 +3346,20 @@ def correct_dataset_referential(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="referential",
+            operation="referential_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "rule_indices": list(payload.rule_indices),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:referential_corrections",
+        )
 
     return DatasetReferentialCorrectionResponse(
         applied=payload.apply,
@@ -3314,6 +3439,20 @@ def correct_dataset_text_quality(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="text_quality",
+            operation="text_quality_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "columns": list(payload.columns),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:text_quality_corrections",
+        )
 
     return DatasetTextQualityCorrectionResponse(
         applied=payload.apply,
@@ -3397,6 +3536,19 @@ def correct_dataset_regularity(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённого преобразования --
+        # в durable-слой (ресемплинг временной сетки -- часть D04)
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="regularity",
+            operation="regularity_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "frequency": getattr(payload, "frequency", None),
+            },
+            reason="validation:regularity_corrections",
+        )
 
     return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
 
@@ -3514,6 +3666,19 @@ def correct_dataset_preprocessing_regularity(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт -- в durable-слой («Регулярность»
+        # «Предобработки» -- та же цепочка D04)
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="regularity",
+            operation="preprocessing_regularity_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "frequency": getattr(payload, "frequency", None),
+            },
+            reason="preprocessing:regularity_correction",
+        )
 
     return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
 
@@ -3611,6 +3776,21 @@ def create_dataset_preprocessing_decomposition_outputs(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт STL-преобразования -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="decomposition",
+            operation="preprocessing_decomposition",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "column": payload.column,
+                "period": payload.period,
+                "robust": bool(payload.robust),
+                "outputs": list(payload.outputs),
+                "output_column": summary.get("output_column"),
+            },
+            reason="preprocessing:decomposition",
+        )
     return DatasetPreprocessingDecompositionResponse(applied=payload.apply, **summary)
 
 
@@ -3691,6 +3871,20 @@ def create_dataset_preprocessing_variance_transformation(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт стабилизации дисперсии -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="variance_stab",
+            operation="preprocessing_variance",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "method": payload.method,
+                "lambda_value": payload.lambda_value,
+                "column": payload.column,
+                "output_column": summary.get("output_column"),
+            },
+            reason="preprocessing:variance_transformation",
+        )
     return DatasetPreprocessingVarianceResponse(applied=payload.apply, **summary)
 
 
@@ -3795,6 +3989,24 @@ def create_dataset_preprocessing_smoothing_transformation(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт сглаживания -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="smoothing",
+            operation="preprocessing_smoothing",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "method": payload.method,
+                "column": payload.column,
+                "window": payload.window,
+                "span": payload.span,
+                "frac": payload.frac,
+                "polyorder": payload.polyorder,
+                "confirm_non_causal": bool(payload.confirm_non_causal),
+                "output_column": summary.get("output_column"),
+            },
+            reason="preprocessing:smoothing",
+        )
     return DatasetPreprocessingSmoothingResponse(applied=payload.apply, **summary)
 
 
@@ -3886,6 +4098,22 @@ def create_dataset_preprocessing_stationarity_transformation(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт приведения к стационарности --
+        # в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="stationarity",
+            operation="preprocessing_stationarity",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "method": payload.method,
+                "column": payload.column,
+                "seasonal_period": payload.seasonal_period,
+                "confirm_non_causal": bool(payload.confirm_non_causal),
+                "output_column": summary.get("output_column"),
+            },
+            reason="preprocessing:stationarity_transformation",
+        )
     return DatasetPreprocessingStationarityResponse(applied=payload.apply, **summary)
 
 
@@ -4065,6 +4293,26 @@ def create_dataset_preprocessing_feature_generation(
             session.dataset.columns = len(featured_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт генерации признаков -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="feature_eng",
+            operation="preprocessing_feature_generation",
+            corrected_dataframe=featured_df,
+            recipe={
+                "column": payload.column,
+                "lags": list(payload.lags or []),
+                "rolling_windows": list(payload.rolling_windows or []),
+                "rolling_statistics": list(payload.rolling_statistics or []),
+                "difference_lags": list(payload.difference_lags or []),
+                "calendar_features": list(payload.calendar_features or []),
+                "fourier_periods": list(payload.fourier_periods or []),
+                "fourier_harmonics": payload.fourier_harmonics,
+                "include_time_index": bool(payload.include_time_index),
+                "drop_warmup_rows": bool(payload.drop_warmup_rows),
+            },
+            reason="preprocessing:feature_generation",
+        )
     return DatasetPreprocessingFeatureGenerationResponse(applied=payload.apply, **summary)
 
 
@@ -4308,6 +4556,20 @@ def correct_dataset_consistency(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="consistency",
+            operation="consistency_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "rule_indices": list(payload.rule_indices),
+                "total_changed": sum(item["changed_count"] for item in raw_results),
+                "rows_removed": rows_removed,
+            },
+            reason="validation:consistency_corrections",
+        )
 
     return DatasetConsistencyCorrectionResponse(
         applied=payload.apply,
@@ -4384,6 +4646,22 @@ def correct_dataset_uniqueness(
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт применённой коррекции -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="uniqueness",
+            operation="uniqueness_corrections",
+            corrected_dataframe=corrected_df,
+            recipe={
+                "strategy": payload.strategy,
+                "summary": {
+                    key: summary[key]
+                    for key in sorted(summary)
+                    if isinstance(summary.get(key), (int, float, str, bool)) or summary.get(key) is None
+                },
+            },
+            reason="validation:uniqueness_corrections",
+        )
 
     return DatasetUniquenessCorrectionResponse(
         applied=payload.apply,
@@ -4937,6 +5215,22 @@ def convert_dataset_types(
             record_run_event(session, cleared)
         session.touch()
         store.save(session)
+        # C03: версия данных + рецепт конвертации типов -- в durable-слой
+        _promotion.notify_corrections_applied(
+            request, session,
+            node_id="data_types",
+            operation="convert_types",
+            corrected_dataframe=converted_df,
+            recipe={
+                "conversions": [
+                    {"column": item.column, "target_type": item.target_type}
+                    for item in payload.conversions
+                ],
+                "invalid_policy": payload.invalid_policy,
+                "target_column_reset": target_column_reset,
+            },
+            reason="validation:convert_types",
+        )
 
     return DatasetTypeConversionResponse(
         applied=payload.apply,
@@ -5063,6 +5357,11 @@ def set_target_column(
     session.sufficiency_plan = {}
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
+    # C03: смена цели меняет контекст исследования -- версия данных
+    # регистрируется для нового контекста (те же байты, идемпотентно)
+    _promotion.notify_data_version_registered(
+        request, session, reason="target_column_changed"
+    )
 
     numeric_columns = _get_numeric_columns(df)
     return TargetColumnResponse(
@@ -5161,6 +5460,11 @@ def set_date_column(
         passport_history_reset = bool(session.passport_history) and session.date_column is not None
         session.set_date_column(None)
         store.save(session)
+        # C03: смена структуры меняет контекст -- версия данных
+        # регистрируется для нового контекста (идемпотентно)
+        _promotion.notify_data_version_registered(
+            request, session, reason="structure_confirmed"
+        )
         return _date_column_response(
             session,
             passport_history_reset=passport_history_reset,
@@ -5207,6 +5511,11 @@ def set_date_column(
     passport_history_reset = bool(session.passport_history) and column != session.date_column
     session.set_date_column(column)
     store.save(session)
+    # C03: подтверждение структуры меняет контекст -- версия данных
+    # регистрируется для нового контекста (идемпотентно)
+    _promotion.notify_data_version_registered(
+        request, session, reason="structure_confirmed"
+    )
     return _date_column_response(
         session,
         passport_history_reset=passport_history_reset,
@@ -5518,6 +5827,9 @@ def capture_dataset_passport(
             created_snapshot=created_snapshot,
         )
         store.save(session)
+        # C03: промоушен паспорта в durable-слой в момент capture
+        # (best-effort: сбой -- receipt, ответ не меняется)
+        _promotion.notify_passport_captured(request, session, stage=stage)
         return DatasetPassportCaptureResponse(
             snapshot_id=snapshot.snapshot_id,
             stage=stage,
@@ -5553,6 +5865,9 @@ def capture_dataset_passport(
         raise HTTPException(status_code=422, detail=str(passport["error"]))
     snapshot = session.append_passport_snapshot(stage, passport, fingerprint)
     store.save(session)
+    # C03: промоушен паспорта в durable-слой в момент capture
+    # (best-effort: сбой -- receipt, ответ не меняется)
+    _promotion.notify_passport_captured(request, session, stage=snapshot.stage)
     return DatasetPassportCaptureResponse(
         snapshot_id=snapshot.snapshot_id,
         stage=snapshot.stage,

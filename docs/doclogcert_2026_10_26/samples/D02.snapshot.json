@@ -1,18 +1,21 @@
 {
   "schema_version": "doclog.report_snapshot/1",
-  "snapshot_id": "rs-d41f1805877f45b1a54daca75fb1b6c4",
-  "research_run_id": "RUN-C306F95F",
-  "context_id": "ctx-8b5232ee1f515fc3",
+  "snapshot_id": "rs-9cc20ce2bbf64050be938065f3acd3a2",
+  "research_run_id": "RUN-1506F0DA",
+  "context_id": "ctx-eadfd4d0d5525d8e",
   "data_revision": 2,
-  "data_ref": null,
-  "data_digest": null,
+  "data_ref": "artifact:art-af6246f06176414686e2fd0e4420d04f",
+  "data_digest": {
+    "algorithm": "cisstat-data-v1",
+    "value": "1dc27401596c2e36671d8fde194682c785e5c2463589db00dd15fede06cdb314"
+  },
   "source_cutoff": {
     "event_count": 18,
     "event_id_manifest": null,
     "last_sequence": 18,
     "ordering_quality": "canonical"
   },
-  "captured_at": "2026-10-26T08:48:50.002621+00:00",
+  "captured_at": "2026-10-26T13:24:52.048024+00:00",
   "template": {
     "id": "research-report",
     "version": "1.0"
@@ -23,14 +26,15 @@
   "classification": "private",
   "redaction_profile": "owner-v1",
   "completeness": {
-    "status": "complete",
-    "missing_refs": []
+    "status": "partial",
+    "missing_refs": [],
+    "missing_mandatory": [
+      "missing_source_passport_artifact"
+    ]
   },
   "reproducibility": {
-    "status": "limited",
-    "reasons": [
-      "missing_data_artifact"
-    ]
+    "status": "ready",
+    "reasons": []
   },
   "sections": [
     {
@@ -40,26 +44,29 @@
       "methodology_stage": "upload",
       "claims": [
         {
-          "text": "Паспорт источника не продвинут в устойчивый слой (promote не выполнялся) -- честное отсутствие результата.",
+          "text": "Паспорт источника (снимок 5d82be0a-0780-43b4-967b-e87444510657).",
           "event_refs": [],
-          "result_refs": [],
-          "validity": "unknown",
+          "result_refs": [
+            "artifact:art-a3a381c9fbe94a00885ac177d2eb10cc"
+          ],
+          "validity": "stale",
           "evidence_level": null
         },
         {
           "text": "Загружен датасет «forecast_monitor_synthetic_n150.csv»: строк: 150, колонок: 2.",
           "event_refs": [
-            "event:3cbd98f2-eae8-4711-876a-fd21461e9aab"
+            "event:3de590d1-fc1e-45f0-86c4-a3c912e8cd6e"
           ],
           "result_refs": [],
-          "validity": "current",
+          "validity": "stale",
           "evidence_level": "server_result"
         }
       ]
     }
   ],
   "dependencies": [
-    "event:3cbd98f2-eae8-4711-876a-fd21461e9aab"
+    "artifact:art-a3a381c9fbe94a00885ac177d2eb10cc",
+    "event:3de590d1-fc1e-45f0-86c4-a3c912e8cd6e"
   ],
   "approval": null
 }

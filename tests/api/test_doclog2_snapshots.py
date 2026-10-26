@@ -354,7 +354,13 @@ class TestSnapshotContract:
                 }
             ],
             dependencies=["event:e1"],
-            completeness={"status": "complete", "missing_refs": []},
+            completeness={
+                "status": "complete",
+                "missing_refs": [],
+                # DOCLOG-E2E-RECHECK-1-FIX (C05): контракт completeness
+                # расширен аддитивно обязательными gaps по видам.
+                "missing_mandatory": [],
+            },
             reproducibility={"status": "limited", "reasons": ["missing_data_artifact"]},
         )
         data = snapshot.to_dict()
@@ -1177,11 +1183,16 @@ class TestAdapterD01Plan:
     def test_target_claim_with_event_ref(self):
         _seed_session()
         _seed_bound_run()
+        # DOCLOG-E2E-RECHECK-1-FIX (C04): применимость события к контексту
+        # снимка -- единый reducer event_context_validity; событие сидится
+        # С контекстом run ("ctx-d2-1") -- честный current. Событие БЕЗ
+        # context_id (legacy) было бы unknown (см. C04-семантику).
         event = _seed_event(
             event_type="target_column_changed",
             stage="validation",
             payload={"column": "value", "source": "user"},
             evidence_level="user_decision",
+            context_id="ctx-d2-1",
         )
         snapshot, _ = _service().build_snapshot(
             RUN_ID, _owner_subject(), session_id=SESSION_ID, kinds=["D01"]
@@ -1195,6 +1206,30 @@ class TestAdapterD01Plan:
         assert matched, "claim цели с event-ref не найден"
         assert matched[0]["validity"] == "current"
         assert matched[0]["evidence_level"] == "user_decision"
+
+    def test_legacy_event_without_context_is_unknown(self):
+        """DOCLOG-E2E-RECHECK-1-FIX (C04): legacy-событие без context_id
+        -- unknown, не current («старый факт без известного контекста
+        остаётся historical/unknown»)."""
+        _seed_session()
+        _seed_bound_run()
+        event = _seed_event(
+            event_type="target_column_changed",
+            stage="validation",
+            payload={"column": "value", "source": "user"},
+            evidence_level="user_decision",
+            context_id=None,
+        )
+        snapshot, _ = _service().build_snapshot(
+            RUN_ID, _owner_subject(), session_id=SESSION_ID, kinds=["D01"]
+        )
+        section = _section(snapshot, "D01")
+        matched = [
+            c for c in section["claims"]
+            if f"event:{event.event_id}" in c["event_refs"]
+        ]
+        assert matched
+        assert matched[0]["validity"] == "unknown"
 
     def test_target_without_event_ref_is_unknown_not_current(self):
         """R07: отсутствие ref -- unknown, не current."""
@@ -1271,27 +1306,50 @@ class TestAdapterD02SourcePassport:
         assert snapshot.completeness["missing_refs"] == []
 
     def test_upload_event_claim_current_with_evidence(self):
+        # DOCLOG-E2E-RECHECK-1-FIX (C04): upload-событие С контекстом run
+        # ("ctx-d2-1") -- честный current; legacy-событие БЕЗ контекста
+        # (сид _seed_passport_artifact) -- unknown (то же событие сидится
+        # и в других тестах класса).
+        current_event = _seed_event(
+            event_type="upload_completed",
+            payload={"rows": 10, "columns": 2, "name": "snapshot-seed-ctx"},
+            context_id="ctx-d2-1",
+        )
         self._seed_passport_artifact()
         snapshot, _ = _service().build_snapshot(
             RUN_ID, _owner_subject(), session_id=SESSION_ID, kinds=["D02"]
         )
         section = _section(snapshot, "D02")
-        event_claims = [c for c in section["claims"] if c["event_refs"]]
-        assert event_claims
-        assert event_claims[0]["validity"] == "current"
-        assert event_claims[0]["evidence_level"] == "server_result"
+        matched = [
+            c for c in section["claims"]
+            if f"event:{current_event.event_id}" in c["event_refs"]
+        ]
+        assert matched
+        assert matched[0]["validity"] == "current"
+        assert matched[0]["evidence_level"] == "server_result"
+        # legacy-событие без контекста честно unknown (C04)
+        legacy_claims = [
+            c for c in section["claims"]
+            if c["event_refs"]
+            and f"event:{current_event.event_id}" not in c["event_refs"]
+        ]
+        assert legacy_claims, "legacy-claim отсутствует"
+        assert legacy_claims[0]["validity"] == "unknown"
 
 
 class TestAdapterD03D04D05:
     def _seed_quality_corpus(self):
         _seed_session()
         _seed_bound_run()
+        # DOCLOG-E2E-RECHECK-1-FIX (C04): события с контекстом run --
+        # честная применимость current (единый reducer).
         validation_event = _seed_event(
             event_type="validation_check_status",
             stage="validation",
             node_id="missing_values",
             payload={"status": "warning", "node_id": "missing_values"},
             evidence_level="client_observation",
+            context_id="ctx-d2-1",
         )
         correction_event = _seed_event(
             event_type="correction_applied",
@@ -1299,6 +1357,7 @@ class TestAdapterD03D04D05:
             node_id="outliers",
             payload={"action": "winsorize", "rows_affected": 3},
             evidence_level="server_result",
+            context_id="ctx-d2-1",
         )
         eda_event = _seed_event(
             event_type="eda_check_status",
@@ -1306,6 +1365,7 @@ class TestAdapterD03D04D05:
             node_id="overview",
             payload={"status": "done"},
             evidence_level="client_observation",
+            context_id="ctx-d2-1",
         )
         return validation_event, correction_event, eda_event
 
@@ -1736,14 +1796,24 @@ class TestIntegrityAndGaps:
             {"kind": "passport", "stage": "start"},
             context_id="ctx-d2-1", data_revision=3,
         )
+        # DOCLOG-E2E-RECHECK-1-FIX (C05): «complete» теперь требует и
+        # обязательные элементы вида -- для D02 добавлен current
+        # data_frame-артефакт (data_ref).
+        _make_artifact(
+            "data_frame", "checkpoint_data:cp-d2-rref",
+            b"date,value\n2026-01-01,5\n",
+            context_id="ctx-d2-1", data_revision=3, media_type="text/csv",
+        )
         _seed_event(
-            payload={"rows": 10}, result_ref={"artifact_id": artifact.artifact_id}
+            payload={"rows": 10}, result_ref={"artifact_id": artifact.artifact_id},
+            context_id="ctx-d2-1",
         )
         snapshot, _ = _service().build_snapshot(
             RUN_ID, _owner_subject(), session_id=SESSION_ID, kinds=["D02"]
         )
         assert snapshot.completeness["status"] == "complete"
         assert snapshot.completeness["missing_refs"] == []
+        assert snapshot.completeness["missing_mandatory"] == []
 
     def test_corrupted_artifact_object_is_honest_failure(self):
         _seed_session()

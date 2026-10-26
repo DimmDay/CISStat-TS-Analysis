@@ -908,15 +908,21 @@ class OrgProfileService:
             worm_lock=bool(worm_lock),
             created_by=getattr(subject, "subject_id", None),
         )
-        created = self.registry.create_profile(profile)
+        # C08 (DOCLOG-E2E-RECHECK-1-FIX; подтверждение F-D9C2): mandatory-
+        # аудит ВЫПОЛНЯЕТСЯ ДО защищённой записи (R09-паттерн
+        # document_lifecycle: «record_mandatory fail-closed ДО действия»).
+        # Прежний порядок create → audit при ломучем sink оставлял
+        # незарегистрированную защищённую запись (профиль создан, аудит
+        # упал, ретрай -- 409 duplicate). Аудит записи создаёт
+        # profile_id ДО записи в реестр -- resource_id корректен.
         self._audit(
             "org_profile_created",
             subject=subject,
-            profile=created,
-            details={"name": created.name, "version_no": created.version_no,
-                     "format": created.format},
+            profile=profile,
+            details={"name": profile.name, "version_no": profile.version_no,
+                     "format": profile.format},
         )
-        return created
+        return self.registry.create_profile(profile)
 
     def retire_profile(
         self, profile_id: str, subject: Any
@@ -927,16 +933,19 @@ class OrgProfileService:
             raise OrgProfileNotFound("Профиль не найден")
         if profile.status == PROFILE_RETIRED:
             return profile  # идемпотентно (паритет cancel_job §17)
+        # C08 (DOCLOG-E2E-RECHECK-1-FIX): тот же порядок fail-closed, что
+        # и для create -- mandatory-аудит ДО смены статуса (retire --
+        # защищённая запись того же класса «смена шаблона/policy»).
+        self._audit(
+            "org_profile_retired",
+            subject=subject,
+            profile=profile,
+            details={"name": profile.name, "version_no": profile.version_no},
+        )
         updated = self.registry.update_status(
             profile_id, PROFILE_RETIRED, getattr(subject, "subject_id", None)
         )
         assert updated is not None
-        self._audit(
-            "org_profile_retired",
-            subject=subject,
-            profile=updated,
-            details={"name": updated.name, "version_no": updated.version_no},
-        )
         return updated
 
     def list_profiles(

@@ -135,12 +135,19 @@ class TestCertDigestSchemes:
         assert is_valid_artifact_id(None) is False
 
     def test_known_kinds_catalog(self):
+        # DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина эпохи
+        # сертификации): каталог расширен producer-интеграцией C03
+        # (validation_result -- протокол валидации для D03;
+        # correction_recipe -- рецепт коррекции для D04). Пин отражает
+        # состояние на момент сертификации DOCLOG-1 + честное расширение.
         assert set(ARTIFACT_KINDS) == {
             "passport",
             "oof_backtest",
             "model_card",
             "forecast",
             "data_frame",
+            "validation_result",
+            "correction_recipe",
         }
 
 

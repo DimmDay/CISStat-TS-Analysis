@@ -232,6 +232,14 @@ class PromotionService:
                 return artifact
         return None
 
+    def find_by_producer(
+        self, run_id: str, producer_key: str
+    ) -> Optional[Any]:
+        """Публичный lookup по producer_key (идемпотентность AC09):
+        используется единой точкой producer-интеграции для честных
+        счётчиков sweep-промоушена (новый артефакт vs no-op повтор)."""
+        return self._find_by_producer(run_id, producer_key)
+
     @staticmethod
     def _session_context(session: Any) -> tuple[Optional[str], Optional[int]]:
         """(context_id, data_revision) сессии на момент промоушена;
@@ -518,3 +526,175 @@ class PromotionService:
             created_by=created_by,
         )
         return artifact
+
+    # ── Промоутеры научного протокола (DOCLOG-E2E-RECHECK-1-FIX, C03) ──
+    #
+    # Спецификация §9.3 акта повторной приёмки: «при успешном
+    # capture/check/apply продвигать точный результат с исходным
+    # context/revision/schema». Промоутеры ниже -- тот же staging-
+    # конвейер _persist (авторизация/идемпотентность AC09/честные
+    # отказы R03), что и у адаптеров DOCLOG-1; вызываются ТОЛЬКО из
+    # единой точки producer-интеграции apps/api/promotion_integration.py
+    # (вторая реализация семантики запрещена).
+
+    def promote_validation_result(
+        self,
+        run_id: str,
+        subject: Any,
+        session: Any,
+        *,
+        session_id: str = "",
+        result_payload: dict[str, Any],
+    ) -> Any:
+        """Полный результат проверки качества (D03-основа): правила/
+        пороги/знаменатели/режимы/статусные причины каждой проверки --
+        КАК ЕСТЬ из ответа GET /dataset/validate (без пересчёта, §19.1).
+        Идемпотентность AC09: producer_key = validation_result:{context}
+        -- повторный GET на неизменном состоянии не плодит дублей."""
+        self._authorized_run(run_id, subject, session_id, action="write")
+        if not isinstance(result_payload, dict) or not result_payload:
+            raise PromotionUnavailable(
+                "Результат валидации отсутствует -- ничего не фабкуется (R03)"
+            )
+        checks = result_payload.get("checks")
+        if not isinstance(checks, dict) or not checks:
+            raise PromotionUnavailable(
+                "Проверки валидации отсутствуют -- ничего не фабкуется (R03)"
+            )
+        context_id, data_revision = self._session_context(session)
+        payload = {
+            "kind": "validation_result",
+            "is_valid": result_payload.get("is_valid"),
+            "rules_source": result_payload.get("rules_source"),
+            "validation_template_id": result_payload.get(
+                "validation_template_id"
+            ),
+            "column": result_payload.get("column"),
+            "total_rows": result_payload.get("total_rows"),
+            "total_columns": result_payload.get("total_columns"),
+            "type_validation_mode": result_payload.get(
+                "type_validation_mode"
+            ),
+            "type_profile": result_payload.get("type_profile"),
+            "checks": checks,
+        }
+        return self._persist(
+            run_id=run_id,
+            subject=subject,
+            kind="validation_result",
+            producer_key=f"validation_result:{context_id or 'unknown'}",
+            payload=payload,
+            input_kind=None,
+            panel=None,
+            dependencies=[],
+            refs={
+                "rules_source": result_payload.get("rules_source"),
+                "validation_template_id": result_payload.get(
+                    "validation_template_id"
+                ),
+            },
+            context_id=context_id,
+            data_revision=data_revision,
+            source_bytes_sha256=self._source_ref(session),
+        )
+
+    def promote_correction_recipe(
+        self,
+        run_id: str,
+        subject: Any,
+        session: Any,
+        *,
+        session_id: str = "",
+        node_id: str,
+        operation: str,
+        recipe: dict[str, Any],
+        data_version_artifact_id: Optional[str] = None,
+    ) -> Any:
+        """Рецепт фактически применённой коррекции (D04-основа):
+        стратегия/метод/параметры/колонки/масштаб изменений/границы
+        ревизий -- КАК ЕСТЬ из точки apply. Событие correction_applied
+        и рецепт -- разные сущности (акт §3): событие фиксирует ФАКТ,
+        артефакт несёт протокол. producer_key =
+        correction:{node_id}:{context_after} -- повторный apply той же
+        операции на том же состоянии данных (no-op) не плодит дублей."""
+        self._authorized_run(run_id, subject, session_id, action="write")
+        if not isinstance(recipe, dict) or not recipe:
+            raise PromotionUnavailable(
+                "Рецепт коррекции отсутствует -- ничего не фабкуется (R03)"
+            )
+        context_id, data_revision = self._session_context(session)
+        payload = {
+            "kind": "correction_recipe",
+            "node_id": node_id,
+            "operation": operation,
+            **recipe,
+            "data_revision_after": data_revision,
+            "context_id_after": context_id,
+        }
+        return self._persist(
+            run_id=run_id,
+            subject=subject,
+            kind="correction_recipe",
+            producer_key=(
+                f"correction:{node_id}:{context_id or 'unknown'}"
+            ),
+            payload=payload,
+            input_kind=None,
+            panel=None,
+            dependencies=(
+                [data_version_artifact_id]
+                if data_version_artifact_id
+                else []
+            ),
+            refs={
+                "node_id": node_id,
+                "operation": operation,
+                "strategy": recipe.get("strategy"),
+            },
+            context_id=context_id,
+            data_revision=data_revision,
+            source_bytes_sha256=self._source_ref(session),
+        )
+
+    def promote_data_version(
+        self,
+        run_id: str,
+        subject: Any,
+        session: Any,
+        *,
+        session_id: str = "",
+        dataframe_csv_bytes: bytes,
+        reason: str = "",
+    ) -> Any:
+        """Версия данных (DataVersion §9.3): точные байты CSV датафрейма
+        ПОСЛЕ применения коррекции как data_frame-артефакт. context_id
+        сессии выводится из содержимого данных+цели+времени
+        (data_context.compute_context_id), поэтому producer_key
+        data_version:{context_id} идемпотентен: та же версия данных --
+        существующий артефакт, изменённые данные -- новый (AC09).
+        data_ref снимков (snapshot_builder._resolve_data_ref) читает
+        ТОЛЬКО current data_frame-артефакты этой вселенной."""
+        self._authorized_run(run_id, subject, session_id, action="write")
+        if not dataframe_csv_bytes:
+            raise PromotionUnavailable(
+                "Байты версии данных пусты -- ничего не фабкуется (R03)"
+            )
+        context_id, data_revision = self._session_context(session)
+        return self._persist(
+            run_id=run_id,
+            subject=subject,
+            kind="data_frame",
+            producer_key=f"data_version:{context_id or 'unknown'}",
+            payload=dataframe_csv_bytes,
+            media_type="text/csv",
+            input_kind=None,
+            panel=None,
+            dependencies=[],
+            refs={
+                "reason": reason,
+                "data_revision": data_revision,
+            },
+            context_id=context_id,
+            data_revision=data_revision,
+            source_bytes_sha256=self._source_ref(session),
+        )

@@ -71,6 +71,10 @@ from apps.api.report_snapshot import (
     resolve_kinds,
 )
 
+from app.core.pipeline_graph import (
+    event_context_validity as _event_context_validity,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -115,6 +119,14 @@ class _BuildCtx:
     target_rev: Optional[int]
     missing_refs: list[str] = field(default_factory=list)
     integrity_failures: list[str] = field(default_factory=list)
+    # C05 (DOCLOG-E2E-RECHECK-1-FIX): обязательные gaps по видам документов
+    # (completeness.missing_mandatory) -- полнота по ВИДУ отдельно от
+    # целостности ссылок (missing_refs) и воспроизводимости.
+    missing_mandatory: list[str] = field(default_factory=list)
+
+    def add_mandatory_gap(self, code: str) -> None:
+        if code not in self.missing_mandatory:
+            self.missing_mandatory.append(code)
 
 
 class SnapshotService:
@@ -247,8 +259,18 @@ class SnapshotService:
     ) -> dict[str, Any]:
         """Claim события: refs, evidence из ledger; result_ref конверта
         разрешается по реестру -- несуществующий артефакт -> честный gap
-        (AC01: удаление ref -- gap, не выдуманная цифра)."""
-        validity = VALIDITY_CURRENT
+        (AC01: удаление ref -- gap, не выдуманная цифра).
+
+        C04 (DOCLOG-E2E-RECHECK-1-FIX): применимость факта к контексту
+        снимка -- ЕДИНЫЙ reducer event_context_validity (§10 R07/§11):
+        событие другого контекста честно stale (историческое достижение
+        сохраняется -- вердикт применимости, не стирание факта, I4),
+        без context_id (legacy) -- unknown. Прежнее поведение «всегда
+        current» обещало актуальность результата события для последней
+        версии данных без сверки контекстов."""
+        validity = _event_context_validity(
+            event.get("context_id"), ctx.target_ctx
+        )
         result_refs: list[str] = []
         result_ref = event.get("result_ref")
         if isinstance(result_ref, dict):
@@ -423,6 +445,59 @@ class SnapshotService:
                     f"{refs.get('snapshot_id') or '—'}){summary}.",
                     ctx,
                 ))
+        # C06 (DOCLOG-E2E-RECHECK-1-FIX): полный научный протокол проверки
+        # -- из продвинутого продюсером артефакта validation_result
+        # (правила/пороги/знаменатели/режимы/причины статусов). Статусы из
+        # клиентских наблюдений выше -- факты доставки, НЕ замена протокола.
+        for artifact in ctx.index.get("validation_result", []):
+            payload = self._read_payload(artifact)
+            if payload is None:
+                ctx.integrity_failures.append(artifact.artifact_id)
+                claims.append(self._claim(
+                    "Протокол валидации: байты артефакта недоступны или "
+                    "повреждены (честный failure, T8).",
+                    result_refs=[self._artifact_ref(artifact)],
+                    validity=VALIDITY_UNKNOWN,
+                ))
+                continue
+            claims.append(self._artifact_claim(
+                artifact,
+                "Протокол валидации зафиксирован: "
+                f"источник правил {payload.get('rules_source') or '—'}, "
+                f"шаблон {payload.get('validation_template_id') or '—'}, "
+                f"строк: {payload.get('total_rows', '—')}, "
+                f"колонок: {payload.get('total_columns', '—')}.",
+                ctx,
+            ))
+            checks = payload.get("checks")
+            if isinstance(checks, dict):
+                for check_id in sorted(checks):
+                    check = checks.get(check_id) or {}
+                    if not isinstance(check, dict):
+                        continue
+                    reason_part = (
+                        f"; причина: {check.get('status_reason')}"
+                        if check.get("status_reason")
+                        else ""
+                    )
+                    error_part = (
+                        f"; ошибка: {check.get('error')}"
+                        if check.get("error")
+                        else ""
+                    )
+                    claims.append(self._claim(
+                        f"Проверка «{check_id}»: статус "
+                        f"{_status_label(check.get('status'))}; нарушений: "
+                        f"{check.get('count') if check.get('count') is not None else '—'}; "
+                        f"область {check.get('scope') or '—'}; режим "
+                        f"{check.get('mode') or '—'}; правило "
+                        f"{check.get('rule_source') or '—'}"
+                        f"{reason_part}{error_part}.",
+                        result_refs=[self._artifact_ref(artifact)],
+                        validity=artifact_validity(
+                            artifact, ctx.target_ctx, ctx.target_rev
+                        ),
+                    ))
         if not claims:
             claims.append(self._claim(
                 "События валидации до cutoff отсутствуют в ledger -- этап "
@@ -453,6 +528,28 @@ class SnapshotService:
                     f"{_status_label(payload.get('status'))}.",
                     ctx,
                 ))
+        # C06 (DOCLOG-E2E-RECHECK-1-FIX): рецепт преобразований -- из
+        # продвинутых продюсером correction_recipe-артефактов: фактически
+        # выбранные стратегия/метод/параметры, масштаб изменений и границы
+        # ревизий образуют воспроизводимый протокол, а не только ссылка на
+        # событие (акт §4 C06: «часть информации есть в ответах/ledger,
+        # однако адаптер её не переносит»).
+        for artifact in ctx.index.get("correction_recipe", []):
+            payload = self._read_payload(artifact)
+            if payload is None:
+                ctx.integrity_failures.append(artifact.artifact_id)
+                claims.append(self._claim(
+                    "Рецепт коррекции: байты артефакта недоступны или "
+                    "повреждены (честный failure, T8).",
+                    result_refs=[self._artifact_ref(artifact)],
+                    validity=VALIDITY_UNKNOWN,
+                ))
+                continue
+            claims.append(self._artifact_claim(
+                artifact,
+                self._recipe_claim_text(payload),
+                ctx,
+            ))
         if not claims:
             claims.append(self._claim(
                 "События преобразований до cutoff отсутствуют в ledger -- "
@@ -460,6 +557,51 @@ class SnapshotService:
                 validity=VALIDITY_UNKNOWN,
             ))
         return self._section("D04", claims)
+
+    @staticmethod
+    def _recipe_claim_text(payload: dict[str, Any]) -> str:
+        """Человекочитаемый текст рецепта применённой коррекции (C06):
+        фактические параметры операции (стратегия/метод/параметры),
+        масштаб изменений и границы ревизий. Отсутствующие поля --
+        честное «—», не нули."""
+        node_id = payload.get("node_id") or "—"
+        operation = payload.get("operation") or "—"
+        parts: list[str] = []
+        strategy = payload.get("strategy")
+        if strategy:
+            parts.append(f"стратегия {strategy}")
+        method = payload.get("method")
+        if method:
+            param = payload.get("param")
+            parts.append(
+                f"метод {method}"
+                + (f" (параметр {param})" if param is not None else "")
+            )
+        if payload.get("used_residual"):
+            parts.append("обнаружение на остатке STL")
+        columns = payload.get("columns")
+        if isinstance(columns, list) and columns:
+            parts.append(f"колонки: {', '.join(str(c) for c in columns)}")
+        total_changed = payload.get("total_changed")
+        if total_changed is not None:
+            parts.append(f"изменено значений: {total_changed}")
+        rows_removed = payload.get("rows_removed")
+        if rows_removed is not None:
+            parts.append(f"строк удалено: {rows_removed}")
+        rev_after = payload.get("data_revision_after")
+        if rev_after is not None:
+            parts.append(f"ревизия данных после: {rev_after}")
+        conversions = payload.get("conversions")
+        if isinstance(conversions, list) and conversions:
+            mapping = ", ".join(
+                f"{item.get('column')}→{item.get('target_type')}"
+                for item in conversions
+                if isinstance(item, dict)
+            )
+            if mapping:
+                parts.append(f"конвертации: {mapping}")
+        detail = ("; " + "; ".join(parts)) if parts else ""
+        return f"Рецепт «{node_id}» ({operation}){detail}."
 
     def _section_d05(self, ctx: _BuildCtx) -> dict[str, Any]:
         claims: list[dict[str, Any]] = []
@@ -914,6 +1056,73 @@ class SnapshotService:
 
     # -- Главная операция: сборка (§10.2) --
 
+    def _mandatory_kind_gaps(
+        self,
+        ctx: _BuildCtx,
+        requested_codes: list[str],
+        data_ref: Optional[str],
+    ) -> None:
+        """C05 (DOCLOG-E2E-RECHECK-1-FIX): каталог ОБЯЗАТЕЛЬНЫХ элементов
+        полноты по видам документов (§10.1 + акт §9.4 п.4). Отсутствие
+        обязательного элемента -- честный gap вида
+        (completeness.missing_mandatory), НЕ маскируемый «отсутствием
+        битых ссылок»: если нужный артефакт вообще не создавался,
+        missing_refs пуст, но документ вида неполон.
+
+        Каталог (минимальный честный; не-запрошенные виды не проверяются):
+          D02 «Паспорт источника»: текущий (current для контекста снимка)
+            паспорт-артефакт + разрешённый data_ref;
+          D03 «Протокол качества»: текущий validation_result-артефакт --
+            ОБЯЗАТЕЛЕН только если валидация выполнялась (в ledger есть
+            validation_check_status);
+          D04 «Рецепт преобразований»: хотя бы один correction_recipe-
+            артефакт -- ОБЯЗАТЕЛЕН только если в ledger есть
+            correction_applied (пустая цепочка -- честное отсутствие).
+        """
+        if "D02" in requested_codes:
+            passports = [
+                artifact
+                for artifact in ctx.index.get("passport", [])
+                if (artifact.refs or {}).get("stage") in (None, "start")
+                and (getattr(artifact, "panel", None) or {}).get("stage")
+                != "panel_entry"
+            ]
+            has_current_passport = any(
+                artifact_validity(artifact, ctx.target_ctx, ctx.target_rev)
+                == VALIDITY_CURRENT
+                for artifact in passports
+            )
+            if not has_current_passport:
+                # Паспорт другого контекста -- исторический факт (stale,
+                # C04), но источником ТЕКУЩЕЙ версии данных он не является.
+                ctx.add_mandatory_gap("missing_source_passport_artifact")
+            if data_ref is None:
+                ctx.add_mandatory_gap("missing_data_artifact")
+        if "D03" in requested_codes:
+            validation_ran = any(
+                event.get("event_type") == "validation_check_status"
+                for event in ctx.events
+            )
+            if validation_ran:
+                has_current_protocol = any(
+                    artifact_validity(artifact, ctx.target_ctx, ctx.target_rev)
+                    == VALIDITY_CURRENT
+                    for artifact in ctx.index.get("validation_result", [])
+                )
+                if not has_current_protocol:
+                    ctx.add_mandatory_gap(
+                        "missing_validation_result_artifact"
+                    )
+        if "D04" in requested_codes:
+            corrections_applied = any(
+                event.get("event_type") == "correction_applied"
+                for event in ctx.events
+            )
+            if corrections_applied and not ctx.index.get(
+                "correction_recipe"
+            ):
+                ctx.add_mandatory_gap("missing_correction_recipe_artifact")
+
     def build_snapshot(
         self,
         run_id: str,
@@ -1013,8 +1222,20 @@ class SnapshotService:
 
         data_ref, data_digest = self._resolve_data_ref(ctx)
 
-        # Completeness (§10.1): все ССЫЛАЕМЫЕ refs разрешаются.
-        completeness_status = "complete" if not ctx.missing_refs else "partial"
+        # C05 (DOCLOG-E2E-RECHECK-1-FIX): обязательные элементы полноты
+        # по ВИДАМ запрошенных документов (акт §9.4 п.4: «перечень
+        # обязательных gaps по kind»; §4 C05: полнота, integrity и
+        # reproducibility проверяются раздельно -- «complete» больше не
+        # означает только отсутствие битых ссылок).
+        self._mandatory_kind_gaps(ctx, requested_codes, data_ref)
+
+        # Completeness (§10.1 + C05): все ССЫЛАЕМЫЕ refs разрешаются И
+        # обязательные элементы вида присутствуют.
+        completeness_status = (
+            "complete"
+            if not ctx.missing_refs and not ctx.missing_mandatory
+            else "partial"
+        )
         # Reproducibility (§10.1): готовность к воспроизведению.
         reasons: list[str] = []
         if data_ref is None:
@@ -1046,6 +1267,11 @@ class SnapshotService:
             completeness={
                 "status": completeness_status,
                 "missing_refs": list(dict.fromkeys(ctx.missing_refs)),
+                # C05: обязательные gaps по видам документов (отдельная
+                # ось полноты, не смешивается с целостностью ссылок)
+                "missing_mandatory": list(
+                    dict.fromkeys(ctx.missing_mandatory)
+                ),
             },
             reproducibility={
                 "status": reproducibility_status,

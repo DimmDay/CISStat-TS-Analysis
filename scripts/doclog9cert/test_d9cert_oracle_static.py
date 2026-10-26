@@ -96,7 +96,10 @@ def test_s03_routes_catalog_exact():
 def test_s04_audit_actions_28_and_classes():
     from apps.api import security_audit as sa
 
-    assert len(sa.AUDIT_ACTIONS) == 28
+    # DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина эпохи): +1
+    # artifact_promotion_failed (standard) -- receipt сбоя producer→artifact
+    # промоушена (акт C03); 28 + 1 = 29.
+    assert len(sa.AUDIT_ACTIONS) == 29
     for action in ("org_profile_created", "org_profile_retired",
                    "rendition_validated", "rendition_anchored"):
         assert action in sa.AUDIT_ACTIONS

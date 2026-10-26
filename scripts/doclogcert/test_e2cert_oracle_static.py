@@ -88,7 +88,9 @@ class TestCatalogs:
         }
         missing = required - set(AUDIT_ACTIONS)
         assert not missing, f"аудит-действия вне каталога: {missing}"
-        assert len(AUDIT_ACTIONS) == 28
+        # DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина эпохи): +1
+        # artifact_promotion_failed (standard) -- акт C03; 28 + 1 = 29.
+        assert len(AUDIT_ACTIONS) == 29
 
     def test_grant_catalog_and_ttl(self):
         from apps.api.admin_logs import GRANT_SCOPES, GRANT_TTL_MAX_HOURS
