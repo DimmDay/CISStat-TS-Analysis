@@ -1,0 +1,39 @@
+{
+  "UM01": {
+    "killed": true,
+    "killers": [
+      "C02: кнопка создания активна на пустом реестре после выбора вида",
+      "C02: deep-link initialKind сохраняется пустым списком"
+    ]
+  },
+  "UM02": {
+    "killed": true,
+    "killers": [
+      "C02: deep-link initialKind сохраняется пустым списком"
+    ]
+  },
+  "UM03": {
+    "killed": true,
+    "killers": [
+      "C07: отказ создания показывается alert'ом, вид сохраняется"
+    ]
+  },
+  "UM04": {
+    "killed": true,
+    "killers": [
+      "C09: тяжёлые форматы присутствуют в селекторе с подписью worker'а"
+    ]
+  },
+  "UM05": {
+    "killed": true,
+    "killers": [
+      "C01: без run -- честное no-run-состояние, не «документов нет»"
+    ]
+  },
+  "UM06": {
+    "killed": true,
+    "killers": [
+      "OC1: resolveCurrentRun возвращает run_id из /v1/progress/trace"
+    ]
+  }
+}

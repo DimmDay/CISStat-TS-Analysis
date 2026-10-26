@@ -1,0 +1,51 @@
+============================= test session starts ==============================
+=============================== warnings summary ===============================
+=========================== short test summary info ============================
+FAILED tests/api/test_dataset_eda_stationarity.py::test_eda_stationarity_returns_tests_rolling_views_and_real_pp
+FAILED tests/api/test_dataset_eda_structural_breaks.py::test_eda_structural_breaks_returns_complementary_diagnostics_and_views
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_compact_default_matches_current_contract
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_expanded_raises_density_within_ceiling
+FAILED tests/api/test_egarch_session.py::test_egarch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_egarch_session.py::test_egarch_runs_volatility_session_backtest
+FAILED tests/api/test_egarch_session.py::test_egarch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_egarch_session.py::test_egarch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_feature_regressors_api.py::TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it
+FAILED tests/api/test_forecasting_session.py::test_forecast_naive_full_run_shape_and_storage
+FAILED tests/api/test_forecasting_session.py::test_forecast_horizon_defaults_to_card_training_horizon
+FAILED tests/api/test_forecasting_session.py::test_forecast_custom_horizon_and_alpha_are_honored
+FAILED tests/api/test_forecasting_session.py::test_forecast_ets_runs_parametric_simulation_end_to_end
+FAILED tests/api/test_forecasting_session.py::test_forecast_history_returns_all_runs
+FAILED tests/api/test_forecasting_session.py::test_forecast_get_by_id - KeyEr...
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_csv_contains_history_and_forecast_columns
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_json_is_self_contained_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_png_export_event_is_recorded_via_trace_endpoint
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_returns_referenced_runs_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_requires_two_distinct_existing_forecasts
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_uses_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_covers_exact_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_rejects_empty_param_space
+FAILED tests/api/test_forecasting_session.py::test_forecasts_are_invalidated_together_with_model_cards
+FAILED tests/api/test_forecasting_session.py::test_forecast_run_survives_session_roundtrip
+FAILED tests/api/test_garch_session.py::test_garch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_garch_session.py::test_garch_runs_volatility_session_backtest
+FAILED tests/api/test_garch_session.py::test_garch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_garch_session.py::test_garch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_modeling_workflow.py::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+FAILED tests/api/test_modeling_workflow.py::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+FAILED tests/api/test_modeling_workflow.py::test_feature_plan_enters_session_cohort_and_gates_regressors
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+FAILED tests/api/test_models_backtest_real.py::TestBacktestImplementationsRegistry::test_registry_has_23_implementations
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+FAILED tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_postgres_probe_failure_is_safe
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+FAILED tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+==== 47 failed, 2781 passed, 42 skipped, 1263 warnings in 194.29s (0:03:14) ====

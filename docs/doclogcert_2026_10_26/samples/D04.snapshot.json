@@ -1,10 +1,10 @@
 {
   "schema_version": "doclog.report_snapshot/1",
-  "snapshot_id": "rs-bbb403486e61491fa79bab2e0af66f58",
-  "research_run_id": "RUN-1506F0DA",
-  "context_id": "ctx-eadfd4d0d5525d8e",
+  "snapshot_id": "rs-e943d18170dd4762a5c60becd8d29cc9",
+  "research_run_id": "RUN-9CA44246",
+  "context_id": "ctx-4b247ffad47b5ffd",
   "data_revision": 2,
-  "data_ref": "artifact:art-af6246f06176414686e2fd0e4420d04f",
+  "data_ref": "artifact:art-a82bc386360c4309b3dfba0a57391c7b",
   "data_digest": {
     "algorithm": "cisstat-data-v1",
     "value": "1dc27401596c2e36671d8fde194682c785e5c2463589db00dd15fede06cdb314"
@@ -15,7 +15,7 @@
     "last_sequence": 18,
     "ordering_quality": "canonical"
   },
-  "captured_at": "2026-10-26T13:24:52.590697+00:00",
+  "captured_at": "2026-10-26T15:19:50.990494+00:00",
   "template": {
     "id": "research-report",
     "version": "1.0"
@@ -44,7 +44,7 @@
         {
           "text": "Применена коррекция «missing».",
           "event_refs": [
-            "event:e73d216f-bc08-4f51-b85a-8217930a04ac"
+            "event:ca2b6612-b94f-46eb-b666-b802e26ed713"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -53,7 +53,7 @@
         {
           "text": "Применена коррекция «outliers».",
           "event_refs": [
-            "event:e89acba9-4e5f-4286-ad4a-beca26e355a6"
+            "event:890752e5-375c-4ae8-8b05-863cefed0cc3"
           ],
           "result_refs": [],
           "validity": "current",
@@ -63,7 +63,7 @@
           "text": "Рецепт «missing» (missing_corrections); стратегия median_mode; колонки: value; изменено значений: 3; строк удалено: 0; ревизия данных после: 1.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-1cedf9be2de44fee81936bcc6bc52729"
+            "artifact:art-85a738fece0e47a8a5442c3cd12918f0"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -72,7 +72,7 @@
           "text": "Рецепт «outliers» (outlier_corrections); стратегия cap; метод iqr; колонки: value; изменено значений: 4; строк удалено: 0; ревизия данных после: 2.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-db3656e936574cfb96ac7f1abb0518ae"
+            "artifact:art-ce765eeead6e4989acdb64070d5913c8"
           ],
           "validity": "current",
           "evidence_level": null
@@ -81,12 +81,12 @@
     }
   ],
   "dependencies": [
-    "event:e73d216f-bc08-4f51-b85a-8217930a04ac",
-    "event:e89acba9-4e5f-4286-ad4a-beca26e355a6",
-    "artifact:art-1cedf9be2de44fee81936bcc6bc52729",
-    "artifact:art-db3656e936574cfb96ac7f1abb0518ae",
-    "checkpoint:art-90fbb060fc2e46b682aad8816aba98f9",
-    "checkpoint:art-af6246f06176414686e2fd0e4420d04f"
+    "event:ca2b6612-b94f-46eb-b666-b802e26ed713",
+    "event:890752e5-375c-4ae8-8b05-863cefed0cc3",
+    "artifact:art-85a738fece0e47a8a5442c3cd12918f0",
+    "artifact:art-ce765eeead6e4989acdb64070d5913c8",
+    "checkpoint:art-15a2ecbfdebb4bdabc2a256787e7f20f",
+    "checkpoint:art-a82bc386360c4309b3dfba0a57391c7b"
   ],
   "approval": null
 }

@@ -1,0 +1,46 @@
+{
+  "base_8f66e92_full_tests_api": {
+    "failed": 47,
+    "passed": 2762,
+    "skipped": 42
+  },
+  "head_9401fa5_full_tests_api": {
+    "failed": 47,
+    "passed": 2781,
+    "skipped": 42
+  },
+  "failed_ids_byte_identical": "47/47",
+  "passed_delta": "+19 = corpus 18 + doclog2 legacy-context pin 1",
+  "doclog0_9_corpus_head": "583 passed / 0 failed (10 files)",
+  "acceptance_oracles_head_own_data": "8/8 passed",
+  "acceptance_oracles_base_own_data": "5 failed / 3 passed",
+  "ui_bootstrap_head": "4/4",
+  "ui_bootstrap_base": "3 failed / 1 passed",
+  "fix_corpus_backend": "18/18",
+  "fix_corpus_ui": "5/5",
+  "cert_probes_backend": "5/5",
+  "cert_probes_ui_lib": "4/4",
+  "cert_probes_client": "4/4",
+  "jest_packages_ui": "2306/2307 (1 flak prograudit3_eda_seed_freshness -- предсуществующий средовой класс DOCLOG-7, изоляция 5/5 + батч 36/36)",
+  "jest_apps": "63/63 (11 suites)",
+  "jest_scripts": "8/8 (2 suites)",
+  "typecheck_all": "rc=0",
+  "build_check": {
+    "routes": 221,
+    "AUDIT_ACTIONS": 29,
+    "ARTIFACT_KINDS": 7
+  },
+  "mutation_campaign": {
+    "first_order": "26/26 KILLED",
+    "second_order": "7/7 DUAL-KILLED",
+    "oracle_only_killers": [
+      "M07",
+      "M08",
+      "M12",
+      "M20",
+      "UM06"
+    ],
+    "expectation_correction": "M18 SURVIVED-прогноз фальсифицирован: гейты CAS #1/#2 НЕ дублирующие (разные окна гонки)"
+  },
+  "own_csv_sha256": "89390fe00b86db06c05f834da29a3ced5925259f46ebc99df6c9a7eaa1db0e72"
+}

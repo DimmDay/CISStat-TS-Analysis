@@ -1,0 +1,511 @@
+{
+  "M01": {
+    "id": "M01",
+    "killed": true,
+    "killers": [
+      "test_passport_capture_promotes_durable_passport"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03: capture-промоушен паспорта отключён",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_passport_capture_promotes_durable_passport",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "========================= 1 failed, 1 warning in 5.00s ========================="
+    ]
+  },
+  "M02": {
+    "id": "M02",
+    "killed": true,
+    "killers": [
+      "test_validation_result_promoted_on_check"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03: check-промоушен отключён",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_validation_result_promoted_on_check",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 2 passed, 1 warning in 5.11s ===================="
+    ]
+  },
+  "M03": {
+    "id": "M03",
+    "killed": true,
+    "killers": [
+      "test_d02_complete_when_passport_current"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03: upload-версия данных отключена",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC05MandatoryCompleteness::test_d02_complete_when_passport_current",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 10 passed, 1 warning in 5.86s ===================="
+    ]
+  },
+  "M04": {
+    "id": "M04",
+    "killed": true,
+    "killers": [
+      "test_correction_recipe_depends_on_data_version"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03/§16: рецепт теряет зависимость от версии данных",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_correction_recipe_depends_on_data_version",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 4 passed, 1 warning in 5.18s ===================="
+    ]
+  },
+  "M05": {
+    "id": "M05",
+    "killed": true,
+    "killers": [
+      "test_correction_recipe_depends_on_data_version"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03: apply-версия данных отключена (рецепт без данных)",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_correction_recipe_depends_on_data_version",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 4 passed, 1 warning in 5.30s ===================="
+    ]
+  },
+  "M06": {
+    "id": "M06",
+    "killed": true,
+    "killers": [
+      "test_promotion_failure_records_durable_receipt"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C03: честный receipt сбоя отключён",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PromotionFailureReceipt::test_promotion_failure_records_durable_receipt",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 6 passed, 1 warning in 5.53s ===================="
+    ]
+  },
+  "M07": {
+    "id": "M07",
+    "killed": true,
+    "killers": [
+      "test_o1_modeling_sweep_repeat_reports_zero_new"
+    ],
+    "expectation": "KILL-CERT",
+    "note": "C03: счётчики повторного sweep врут (не нули)",
+    "rc": 1,
+    "tail": [
+      "FAILED scripts/doclogrecheckfixcert/test_cert_oracle_unit.py::test_o1_modeling_sweep_repeat_reports_zero_new",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 19 passed, 1 warning in 6.44s ===================="
+    ]
+  },
+  "M08": {
+    "id": "M08",
+    "killed": true,
+    "killers": [
+      "test_o1_modeling_sweep_promotes_three_kinds"
+    ],
+    "expectation": "KILL-CERT",
+    "note": "C03: backtest/card/forecast не продвигаются",
+    "rc": 1,
+    "tail": [
+      "FAILED scripts/doclogrecheckfixcert/test_cert_oracle_unit.py::test_o1_modeling_sweep_promotes_three_kinds",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 18 passed, 1 warning in 6.06s ===================="
+    ]
+  },
+  "M09": {
+    "id": "M09",
+    "killed": true,
+    "killers": [
+      "test_historical_event_claims_are_stale_not_current"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C04: исторические события снова current",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC04EventClaimValidity::test_historical_event_claims_are_stale_not_current",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 7 passed, 1 warning in 5.59s ===================="
+    ]
+  },
+  "M10": {
+    "id": "M10",
+    "killed": true,
+    "killers": [
+      "test_current_context_event_stays_current"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C04/I4: факт текущего контекста теряет current",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC04EventClaimValidity::test_current_context_event_stays_current",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 8 passed, 1 warning in 5.70s ===================="
+    ]
+  },
+  "M11": {
+    "id": "M11",
+    "killed": true,
+    "killers": [
+      "test_d02_partial_without_current_passport"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C05: D02 без current-паспорта снова complete",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC05MandatoryCompleteness::test_d02_partial_without_current_passport",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 9 passed, 1 warning in 5.77s ===================="
+    ]
+  },
+  "M12": {
+    "id": "M12",
+    "killed": true,
+    "killers": [
+      "test_o2_d02_gap_requires_data_artifact"
+    ],
+    "expectation": "KILL-CERT",
+    "note": "C05: ось data_ref выпадает из каталога gaps",
+    "rc": 1,
+    "tail": [
+      "FAILED scripts/doclogrecheckfixcert/test_cert_oracle_unit.py::test_o2_d02_gap_requires_data_artifact",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 20 passed, 1 warning in 6.01s ===================="
+    ]
+  },
+  "M13": {
+    "id": "M13",
+    "killed": true,
+    "killers": [
+      "test_d02_partial_without_current_passport"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C05: complete снова означает только отсутствие битых ссылок",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC05MandatoryCompleteness::test_d02_partial_without_current_passport",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 9 passed, 1 warning in 5.74s ===================="
+    ]
+  },
+  "M14": {
+    "id": "M14",
+    "killed": true,
+    "killers": [
+      "test_d04_preserves_actual_strategy"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C06: D04 теряет фактически выбранную стратегию/метод",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC06DocumentProtocol::test_d04_preserves_actual_strategy",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 12 passed, 1 warning in 6.18s ===================="
+    ]
+  },
+  "M15": {
+    "id": "M15",
+    "killed": true,
+    "killers": [
+      "test_d03_carries_validation_protocol"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C06: D03 теряет научный протокол валидации",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC06DocumentProtocol::test_d03_carries_validation_protocol",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 13 passed, 1 warning in 6.13s ===================="
+    ]
+  },
+  "M16": {
+    "id": "M16",
+    "killed": true,
+    "killers": [
+      "test_mandatory_profile_audit_failure_does_not_commit_policy"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C08: protected write снова до mandatory-аудита",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC08ProfileAuditOrder::test_mandatory_profile_audit_failure_does_not_commit_policy",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 14 passed, 1 warning in 6.17s ===================="
+    ]
+  },
+  "M17": {
+    "id": "M17",
+    "killed": true,
+    "killers": [
+      "test_retire_profile_audit_failure_keeps_active"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C08: retire снова пишет до аудита",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC08ProfileAuditOrder::test_retire_profile_audit_failure_keeps_active",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 15 passed, 1 warning in 6.04s ===================="
+    ]
+  },
+  "M18": {
+    "id": "M18",
+    "killed": true,
+    "killers": [
+      "test_o3_cancel_during_render_marks_rendition_failed"
+    ],
+    "expectation": "SURVIVED",
+    "note": "F-D5C1: дубль-слой -- гейт #2 маскирует удаление гейта #1",
+    "rc": 1,
+    "tail": [
+      "FAILED scripts/doclogrecheckfixcert/test_cert_oracle_unit.py::test_o3_cancel_during_render_marks_rendition_failed",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 21 passed, 1 warning in 5.84s ===================="
+    ]
+  },
+  "M19": {
+    "id": "M19",
+    "killed": true,
+    "killers": [
+      "test_complete_render_finishes_running_job"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "F-D5C1: отмена перезаписывается готовностью",
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestCancelRaceGate::test_complete_render_finishes_running_job",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 17 passed, 1 warning in 6.67s ===================="
+    ]
+  },
+  "M20": {
+    "id": "M20",
+    "killed": true,
+    "killers": [
+      "test_o3_cancel_during_render_marks_rendition_failed"
+    ],
+    "expectation": "KILL-CERT",
+    "note": "F-D5C1: staged rendition «висит в очереди» при отмене",
+    "rc": 1,
+    "tail": [
+      "FAILED scripts/doclogrecheckfixcert/test_cert_oracle_unit.py::test_o3_cancel_during_render_marks_rendition_failed",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "=================== 1 failed, 21 passed, 1 warning in 5.75s ===================="
+    ]
+  },
+  "UM01": {
+    "id": "UM01",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C02: первый документ снова невозможно создать",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        5.615 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "UM02": {
+    "id": "UM02",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C02: deep-link initialKind сбрасывается пустым списком",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        4.746 s, estimated 6 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "UM03": {
+    "id": "UM03",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C07: ошибка создания невидима",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        4.095 s, estimated 5 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "UM04": {
+    "id": "UM04",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C09: PDF/XLSX/Parquet/ZIP снова недоступны в меню",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        5.021 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "UM05": {
+    "id": "UM05",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CORPUS",
+    "note": "C01: отсутствие run снова «документов нет»",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        5.271 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "UM06": {
+    "id": "UM06",
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "expectation": "KILL-CERT",
+    "note": "C01: резолв текущего run сломан (единый источник слоя 1)",
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        4.535 s, estimated 5 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "S1": {
+    "id": "S1",
+    "parts": [
+      "M01",
+      "M09"
+    ],
+    "killed": true,
+    "killers": [
+      "test_passport_capture_promotes_durable_passport"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_passport_capture_promotes_durable_passport",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "========================= 1 failed, 1 warning in 4.95s ========================="
+    ]
+  },
+  "S2": {
+    "id": "S2",
+    "parts": [
+      "M04",
+      "M14"
+    ],
+    "killed": true,
+    "killers": [
+      "test_correction_recipe_depends_on_data_version"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_correction_recipe_depends_on_data_version",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 4 passed, 1 warning in 5.36s ===================="
+    ]
+  },
+  "S3": {
+    "id": "S3",
+    "parts": [
+      "M13",
+      "M16"
+    ],
+    "killed": true,
+    "killers": [
+      "test_d02_partial_without_current_passport"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC05MandatoryCompleteness::test_d02_partial_without_current_passport",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 9 passed, 1 warning in 5.89s ===================="
+    ]
+  },
+  "S4": {
+    "id": "S4",
+    "parts": [
+      "M19",
+      "M02"
+    ],
+    "killed": true,
+    "killers": [
+      "test_validation_result_promoted_on_check"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PassportPromotion::test_validation_result_promoted_on_check",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 2 passed, 1 warning in 4.84s ===================="
+    ]
+  },
+  "S5": {
+    "id": "S5",
+    "parts": [
+      "UM01",
+      "UM04"
+    ],
+    "killed": true,
+    "killers": [
+      "UI-SUITE"
+    ],
+    "rc": 1,
+    "tail": [
+      "Snapshots:   0 total",
+      "Time:        6.281 s",
+      "Ran all test suites matching scripts/doclogrecheckfixcert/documentation-cert-oracle.test.tsx|packages/ui/components/documentation-recheck-fix.test.tsx."
+    ]
+  },
+  "S6": {
+    "id": "S6",
+    "parts": [
+      "M17",
+      "M06"
+    ],
+    "killed": true,
+    "killers": [
+      "test_promotion_failure_records_durable_receipt"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC03PromotionFailureReceipt::test_promotion_failure_records_durable_receipt",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 6 passed, 1 warning in 5.37s ===================="
+    ]
+  },
+  "S7": {
+    "id": "S7",
+    "parts": [
+      "M10",
+      "M11"
+    ],
+    "killed": true,
+    "killers": [
+      "test_current_context_event_stays_current"
+    ],
+    "rc": 1,
+    "tail": [
+      "FAILED tests/api/test_doclog_recheck_fix.py::TestC04EventClaimValidity::test_current_context_event_stays_current",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "==================== 1 failed, 8 passed, 1 warning in 5.41s ===================="
+    ]
+  }
+}

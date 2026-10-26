@@ -1,10 +1,10 @@
 {
   "schema_version": "doclog.report_snapshot/1",
-  "snapshot_id": "rs-a061de5aefc64e9f9260296a8d4dab33",
-  "research_run_id": "RUN-1506F0DA",
-  "context_id": "ctx-eadfd4d0d5525d8e",
+  "snapshot_id": "rs-9afdb72f49f2469caf115b80022654ea",
+  "research_run_id": "RUN-9CA44246",
+  "context_id": "ctx-4b247ffad47b5ffd",
   "data_revision": 2,
-  "data_ref": "artifact:art-af6246f06176414686e2fd0e4420d04f",
+  "data_ref": "artifact:art-a82bc386360c4309b3dfba0a57391c7b",
   "data_digest": {
     "algorithm": "cisstat-data-v1",
     "value": "1dc27401596c2e36671d8fde194682c785e5c2463589db00dd15fede06cdb314"
@@ -15,7 +15,7 @@
     "last_sequence": 18,
     "ordering_quality": "canonical"
   },
-  "captured_at": "2026-10-26T13:24:52.518886+00:00",
+  "captured_at": "2026-10-26T15:19:50.920938+00:00",
   "template": {
     "id": "research-report",
     "version": "1.0"
@@ -46,7 +46,7 @@
         {
           "text": "Статус проверки «data_types» (валидация): выполнена.",
           "event_refs": [
-            "event:5c7ec761-1f33-4ed6-958c-72e5d01fd94b"
+            "event:f9e4d07f-1a0f-4385-99fc-c43a06f92c32"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -55,7 +55,7 @@
         {
           "text": "Статус проверки «formats» (валидация): выполнена.",
           "event_refs": [
-            "event:f5b8c810-fb0a-45a6-b425-f38acc7e83ac"
+            "event:855839ed-7b60-42bf-8fe3-c5943d33d8a5"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -64,7 +64,7 @@
         {
           "text": "Статус проверки «ranges» (валидация): пропущена.",
           "event_refs": [
-            "event:394d3b5f-0255-4a40-a0e8-edbc9b6c8572"
+            "event:a0491848-93f4-4ef8-bdd1-7f93cb0bc543"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -73,7 +73,7 @@
         {
           "text": "Статус проверки «consistency» (валидация): выполнена.",
           "event_refs": [
-            "event:360bebea-4805-4804-859d-d43ddd22a5ca"
+            "event:0bb9901b-a954-4492-a8d5-23d362fb7871"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -82,7 +82,7 @@
         {
           "text": "Статус проверки «uniqueness» (валидация): выполнена.",
           "event_refs": [
-            "event:9206aa5e-a517-4779-9d81-9f52e6829115"
+            "event:70b76fbb-8fab-400a-9a36-6262ebe40532"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -91,7 +91,7 @@
         {
           "text": "Статус проверки «inclusion» (валидация): пропущена.",
           "event_refs": [
-            "event:f0a06e9f-775b-4800-a89f-c452e70ad0d1"
+            "event:e50c968c-3742-4d5e-96e9-97d486eec417"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -100,7 +100,7 @@
         {
           "text": "Статус проверки «referential» (валидация): пропущена.",
           "event_refs": [
-            "event:849f7f36-d64e-4793-9cd9-0289685b210c"
+            "event:e5bb5cab-6093-400c-bf45-2ab640630e52"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -109,7 +109,7 @@
         {
           "text": "Статус проверки «text_quality» (валидация): выполнена.",
           "event_refs": [
-            "event:eb415398-838b-4273-924c-7be4cf0dd7b6"
+            "event:d2064303-cba2-48e2-9c74-db5c89458ee5"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -118,7 +118,7 @@
         {
           "text": "Статус проверки «regularity» (валидация): выполнена.",
           "event_refs": [
-            "event:55426614-8e6f-42bd-9acb-45d7ab8bae35"
+            "event:6e59adb0-6cfc-4681-808f-38593eb644a7"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -127,7 +127,7 @@
         {
           "text": "Статус проверки «sufficiency» (валидация): выполнена.",
           "event_refs": [
-            "event:c1f4226e-4869-453e-b8c9-faed0b017729"
+            "event:2a0cba1f-9b17-4b3b-b009-be9d349cfe73"
           ],
           "result_refs": [],
           "validity": "stale",
@@ -137,7 +137,7 @@
           "text": "Протокол валидации зафиксирован: источник правил system, шаблон system, строк: 150, колонок: 2.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -146,7 +146,7 @@
           "text": "Проверка «consistency»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -155,7 +155,7 @@
           "text": "Проверка «data_types»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -164,7 +164,7 @@
           "text": "Проверка «formats»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -173,7 +173,7 @@
           "text": "Проверка «inclusion»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -182,7 +182,7 @@
           "text": "Проверка «ranges»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -191,7 +191,7 @@
           "text": "Проверка «referential»: статус пропущена; нарушений: —; область column; режим auto; правило not_applicable; причина: not_required.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -200,7 +200,7 @@
           "text": "Проверка «regularity»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -209,7 +209,7 @@
           "text": "Проверка «sufficiency»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -218,7 +218,7 @@
           "text": "Проверка «text_quality»: статус выполнена; нарушений: 0; область column; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -227,7 +227,7 @@
           "text": "Проверка «uniqueness»: статус выполнена; нарушений: 0; область dataset; режим auto; правило system.",
           "event_refs": [],
           "result_refs": [
-            "artifact:art-611888f267b746f5be281534fb929f2c"
+            "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
           ],
           "validity": "stale",
           "evidence_level": null
@@ -236,17 +236,17 @@
     }
   ],
   "dependencies": [
-    "event:5c7ec761-1f33-4ed6-958c-72e5d01fd94b",
-    "event:f5b8c810-fb0a-45a6-b425-f38acc7e83ac",
-    "event:394d3b5f-0255-4a40-a0e8-edbc9b6c8572",
-    "event:360bebea-4805-4804-859d-d43ddd22a5ca",
-    "event:9206aa5e-a517-4779-9d81-9f52e6829115",
-    "event:f0a06e9f-775b-4800-a89f-c452e70ad0d1",
-    "event:849f7f36-d64e-4793-9cd9-0289685b210c",
-    "event:eb415398-838b-4273-924c-7be4cf0dd7b6",
-    "event:55426614-8e6f-42bd-9acb-45d7ab8bae35",
-    "event:c1f4226e-4869-453e-b8c9-faed0b017729",
-    "artifact:art-611888f267b746f5be281534fb929f2c"
+    "event:f9e4d07f-1a0f-4385-99fc-c43a06f92c32",
+    "event:855839ed-7b60-42bf-8fe3-c5943d33d8a5",
+    "event:a0491848-93f4-4ef8-bdd1-7f93cb0bc543",
+    "event:0bb9901b-a954-4492-a8d5-23d362fb7871",
+    "event:70b76fbb-8fab-400a-9a36-6262ebe40532",
+    "event:e50c968c-3742-4d5e-96e9-97d486eec417",
+    "event:e5bb5cab-6093-400c-bf45-2ab640630e52",
+    "event:d2064303-cba2-48e2-9c74-db5c89458ee5",
+    "event:6e59adb0-6cfc-4681-808f-38593eb644a7",
+    "event:2a0cba1f-9b17-4b3b-b009-be9d349cfe73",
+    "artifact:art-f6d606cd1f794b9d82b41a75caba3804"
   ],
   "approval": null
 }

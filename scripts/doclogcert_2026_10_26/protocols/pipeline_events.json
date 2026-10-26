@@ -1,8 +1,8 @@
 [
   {
-    "event_id": "2750923c-fb4a-47f8-94c3-ee53b0afbd11",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.700257+00:00",
+    "event_id": "2cda1dd2-8f6b-493c-a255-55535572d3d9",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.105748+00:00",
     "stage": "validation",
     "node_id": null,
     "event_type": "target_column_changed",
@@ -11,16 +11,16 @@
       "source": "auto"
     },
     "actor": "system",
-    "timestamp": "2026-10-26T13:24:51.700257+00:00",
+    "timestamp": "2026-10-26T15:19:50.105748+00:00",
     "schema_version": 2,
     "evidence_level": "server_result",
     "sequence": 1,
-    "context_id": "ctx-9cf18ac55ac25a56"
+    "context_id": "ctx-14e7e0bee6285178"
   },
   {
-    "event_id": "3de590d1-fc1e-45f0-86c4-a3c912e8cd6e",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.709994+00:00",
+    "event_id": "f75affc0-9640-4875-b44d-839110408255",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.116385+00:00",
     "stage": "upload",
     "node_id": "overview",
     "event_type": "upload_completed",
@@ -31,16 +31,16 @@
       "size_label": "2.6 KB"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.709994+00:00",
+    "timestamp": "2026-10-26T15:19:50.116385+00:00",
     "schema_version": 2,
     "evidence_level": "server_result",
     "sequence": 2,
-    "context_id": "ctx-9cf18ac55ac25a56"
+    "context_id": "ctx-14e7e0bee6285178"
   },
   {
-    "event_id": "566a2e2a-9aef-4a7c-abd1-e8194f478915",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.717576+00:00",
+    "event_id": "3c3a7c12-557f-472e-bc4d-20e856fd3f9a",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.122979+00:00",
     "stage": "validation",
     "node_id": null,
     "event_type": "target_column_changed",
@@ -48,16 +48,16 @@
       "target_column": "value"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.717576+00:00",
+    "timestamp": "2026-10-26T15:19:50.122979+00:00",
     "schema_version": 2,
     "evidence_level": "user_decision",
     "sequence": 3,
-    "context_id": "ctx-9cf18ac55ac25a56"
+    "context_id": "ctx-14e7e0bee6285178"
   },
   {
-    "event_id": "594c8cae-5328-410e-8a99-0e0a723a490e",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.734646+00:00",
+    "event_id": "acb1f805-af6d-465e-828a-6b4fb98dfe03",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.136405+00:00",
     "stage": "upload",
     "node_id": "structure",
     "event_type": "structure_confirmed",
@@ -65,35 +65,35 @@
       "date_column": "date"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.734646+00:00",
+    "timestamp": "2026-10-26T15:19:50.136405+00:00",
     "schema_version": 2,
     "evidence_level": "user_decision",
     "sequence": 4,
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "9a45761b-0738-4269-9242-08a2fdf0caa8",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.757583+00:00",
+    "event_id": "31b73350-aa7b-40ba-b9b4-dc45b2be147d",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.159130+00:00",
     "stage": "upload",
     "node_id": null,
     "event_type": "passport_captured",
     "payload": {
       "stage": "start",
-      "snapshot_id": "5d82be0a-0780-43b4-967b-e87444510657",
+      "snapshot_id": "3adc562f-6961-44c6-b425-069ec06fd3d5",
       "fingerprint": "a65d1a652a1a43fe58239c9d3c528db52402a8a9b3340f71ddc83564b38ddbcf"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.757583+00:00",
+    "timestamp": "2026-10-26T15:19:50.159130+00:00",
     "schema_version": 2,
     "evidence_level": "operational",
     "sequence": 5,
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "5c7ec761-1f33-4ed6-958c-72e5d01fd94b",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987702+00:00",
+    "event_id": "f9e4d07f-1a0f-4385-99fc-c43a06f92c32",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.399946+00:00",
     "stage": "validation",
     "node_id": "data_types",
     "event_type": "validation_check_status",
@@ -101,17 +101,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987702+00:00",
+    "timestamp": "2026-10-26T15:19:50.399946+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 6,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "f5b8c810-fb0a-45a6-b425-f38acc7e83ac",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987751+00:00",
+    "event_id": "855839ed-7b60-42bf-8fe3-c5943d33d8a5",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400001+00:00",
     "stage": "validation",
     "node_id": "formats",
     "event_type": "validation_check_status",
@@ -119,17 +119,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987751+00:00",
+    "timestamp": "2026-10-26T15:19:50.400001+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 7,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "394d3b5f-0255-4a40-a0e8-edbc9b6c8572",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987771+00:00",
+    "event_id": "a0491848-93f4-4ef8-bdd1-7f93cb0bc543",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400021+00:00",
     "stage": "validation",
     "node_id": "ranges",
     "event_type": "validation_check_status",
@@ -137,17 +137,17 @@
       "status": "skipped"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987771+00:00",
+    "timestamp": "2026-10-26T15:19:50.400021+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 8,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "360bebea-4805-4804-859d-d43ddd22a5ca",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987788+00:00",
+    "event_id": "0bb9901b-a954-4492-a8d5-23d362fb7871",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400039+00:00",
     "stage": "validation",
     "node_id": "consistency",
     "event_type": "validation_check_status",
@@ -155,17 +155,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987788+00:00",
+    "timestamp": "2026-10-26T15:19:50.400039+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 9,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "9206aa5e-a517-4779-9d81-9f52e6829115",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987804+00:00",
+    "event_id": "70b76fbb-8fab-400a-9a36-6262ebe40532",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400054+00:00",
     "stage": "validation",
     "node_id": "uniqueness",
     "event_type": "validation_check_status",
@@ -173,17 +173,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987804+00:00",
+    "timestamp": "2026-10-26T15:19:50.400054+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 10,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "f0a06e9f-775b-4800-a89f-c452e70ad0d1",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987818+00:00",
+    "event_id": "e50c968c-3742-4d5e-96e9-97d486eec417",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400068+00:00",
     "stage": "validation",
     "node_id": "inclusion",
     "event_type": "validation_check_status",
@@ -191,17 +191,17 @@
       "status": "skipped"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987818+00:00",
+    "timestamp": "2026-10-26T15:19:50.400068+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 11,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "849f7f36-d64e-4793-9cd9-0289685b210c",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987833+00:00",
+    "event_id": "e5bb5cab-6093-400c-bf45-2ab640630e52",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400082+00:00",
     "stage": "validation",
     "node_id": "referential",
     "event_type": "validation_check_status",
@@ -209,17 +209,17 @@
       "status": "skipped"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987833+00:00",
+    "timestamp": "2026-10-26T15:19:50.400082+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 12,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "eb415398-838b-4273-924c-7be4cf0dd7b6",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987847+00:00",
+    "event_id": "d2064303-cba2-48e2-9c74-db5c89458ee5",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400097+00:00",
     "stage": "validation",
     "node_id": "text_quality",
     "event_type": "validation_check_status",
@@ -227,17 +227,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987847+00:00",
+    "timestamp": "2026-10-26T15:19:50.400097+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 13,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "55426614-8e6f-42bd-9acb-45d7ab8bae35",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987861+00:00",
+    "event_id": "6e59adb0-6cfc-4681-808f-38593eb644a7",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400111+00:00",
     "stage": "validation",
     "node_id": "regularity",
     "event_type": "validation_check_status",
@@ -245,17 +245,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987861+00:00",
+    "timestamp": "2026-10-26T15:19:50.400111+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 14,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "c1f4226e-4869-453e-b8c9-faed0b017729",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:51.987875+00:00",
+    "event_id": "2a0cba1f-9b17-4b3b-b009-be9d349cfe73",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.400126+00:00",
     "stage": "validation",
     "node_id": "sufficiency",
     "event_type": "validation_check_status",
@@ -263,17 +263,17 @@
       "status": "done"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:51.987875+00:00",
+    "timestamp": "2026-10-26T15:19:50.400126+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 15,
     "operation_id": "doclogcert-2026-10-26-validation",
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "b36bb8e1-5e3f-4ac0-a019-543322c7d2cb",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:52.007326+00:00",
+    "event_id": "8866c0a6-b50b-4ec9-8530-3a50e4e0b2f9",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.417471+00:00",
     "stage": "preprocessing",
     "node_id": "outliers",
     "event_type": "outliers_profile_status",
@@ -284,16 +284,16 @@
       "mode": "auto"
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:52.007326+00:00",
+    "timestamp": "2026-10-26T15:19:50.417471+00:00",
     "schema_version": 2,
     "evidence_level": "client_observation",
     "sequence": 16,
-    "context_id": "ctx-a2270c41b10b5644"
+    "context_id": "ctx-1aa3ebb2f28d579f"
   },
   {
-    "event_id": "e73d216f-bc08-4f51-b85a-8217930a04ac",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:52.016145+00:00",
+    "event_id": "ca2b6612-b94f-46eb-b666-b802e26ed713",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.425495+00:00",
     "stage": "preprocessing",
     "node_id": "missing",
     "event_type": "correction_applied",
@@ -306,16 +306,16 @@
       "total_still_missing": 0
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:52.016145+00:00",
+    "timestamp": "2026-10-26T15:19:50.425495+00:00",
     "schema_version": 2,
     "evidence_level": "server_result",
     "sequence": 17,
-    "context_id": "ctx-8a86ac29aa345359"
+    "context_id": "ctx-6d4130de1c435657"
   },
   {
-    "event_id": "e89acba9-4e5f-4286-ad4a-beca26e355a6",
-    "run_id": "RUN-1506F0DA",
-    "ts": "2026-10-26T13:24:52.031192+00:00",
+    "event_id": "890752e5-375c-4ae8-8b05-863cefed0cc3",
+    "run_id": "RUN-9CA44246",
+    "ts": "2026-10-26T15:19:50.439377+00:00",
     "stage": "preprocessing",
     "node_id": "outliers",
     "event_type": "correction_applied",
@@ -331,10 +331,10 @@
       "total_still_outliers": 0
     },
     "actor": "user",
-    "timestamp": "2026-10-26T13:24:52.031192+00:00",
+    "timestamp": "2026-10-26T15:19:50.439377+00:00",
     "schema_version": 2,
     "evidence_level": "server_result",
     "sequence": 18,
-    "context_id": "ctx-eadfd4d0d5525d8e"
+    "context_id": "ctx-4b247ffad47b5ffd"
   }
 ]
