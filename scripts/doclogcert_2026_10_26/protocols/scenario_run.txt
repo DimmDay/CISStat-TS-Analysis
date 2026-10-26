@@ -1,0 +1,178 @@
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/date-column "HTTP/1.1 200 OK"
+/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-doclog-cert/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/passport/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 200 OK"
+/workspace/scratch/1e71cf0e34de/audit-runtime/pandera/_pandas_deprecated.py:144: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  warnings.warn(_future_warning, FutureWarning)
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/validate "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/validation-checks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/passport/validation "HTTP/1.1 409 Conflict"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/missing-profile "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/outlier-profile "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/missing-corrections "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/outlier-corrections "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/missing-profile "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/dataset/outlier-profile "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 201 Created"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-8952832a057041d8ac58f0991ff123e0/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-af26175837f54630b86e971ba849504c/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-27fad1f09a6f403d9e7b183be131d263/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.document_render_worker:Document render worker: job djob-a14b8807c1cc4535bc73e3bdd51fae94 ready (format=pdf, bytes=27238)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/jobs/djob-a14b8807c1cc4535bc73e3bdd51fae94 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-719ce197d7044c3c9ce537976f8a2686/content "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+WARNING:apps.api.identity:Run access: DENY run=RUN-C306F95F action=read subject=anonymous via=anonymous reason=anonymous
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430 "HTTP/1.1 404 Not Found"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 201 Created"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-23d6220b808d42ed9963f5d3d35a61e7/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-2f483031dd854ae491456b6a2cfc12cc/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-0273e385746e4d4a8a79d655a8482980/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.document_render_worker:Document render worker: job djob-b515a0eca5e24de5b9aea9eed581eb70 ready (format=pdf, bytes=27473)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/jobs/djob-b515a0eca5e24de5b9aea9eed581eb70 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-34a3e8076cda4fffba08e2b3eb8b6ca5/content "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+WARNING:apps.api.identity:Run access: DENY run=RUN-C306F95F action=read subject=anonymous via=anonymous reason=anonymous
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8 "HTTP/1.1 404 Not Found"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 201 Created"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-c6646c37525d49cfbd814abb10cecb96/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-8d23802d03264d2ba43c203fb9006701/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-621243b0dee64152acb57a50440afb67/content "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=write subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: POST http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions "HTTP/1.1 202 Accepted"
+INFO:apps.api.document_render_worker:Document render worker: job djob-b1625f2e85934ec7909de5b97f690410 ready (format=pdf, bytes=26880)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/jobs/djob-b1625f2e85934ec7909de5b97f690410 "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/renditions/drend-6a92e0e0cf8e442ebc7925aaf640aecd/content "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+WARNING:apps.api.identity:Run access: DENY run=RUN-C306F95F action=read subject=anonymous via=anonymous reason=anonymous
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6 "HTTP/1.1 404 Not Found"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/documentation/runs/RUN-C306F95F/documents "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C306F95F action=read subject=subj-d113dcc5935349c4 via=session_surrogate reason=owner
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-C306F95F/report?format=md "HTTP/1.1 200 OK"
+{"documents_before_explicit_create": 0, "artifacts_before_explicit_create": 0, "documents_after_explicit_create": 3, "read_render_preserved_science": true, "samples": "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-doclog-cert/docs/doclogcert_2026_10_26/samples"}

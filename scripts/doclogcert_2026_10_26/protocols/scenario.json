@@ -1,0 +1,892 @@
+{
+  "base": "f1d61513184ee0796f285609183e9de8199ca007",
+  "scope": "isolated TestClient; own disposable stores; actual TS demo bytes",
+  "csv_sha256": "89390fe00b86db06c05f834da29a3ced5925259f46ebc99df6c9a7eaa1db0e72",
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/v1/internal/upload",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/target-column",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/date-column",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/dataset/passport/start",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/session/dataset/validate",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/progress/validation-checks",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/dataset/passport/validation",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/session/dataset/missing-profile",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/session/dataset/outlier-profile",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/dataset/missing-corrections",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/dataset/outlier-corrections",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/session/dataset/missing-profile",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/session/dataset/outlier-profile",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6129fdce39344dd69bd4210c0db85430/renditions",
+      "status": 202
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/jobs/djob-a14b8807c1cc4535bc73e3bdd51fae94",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-dbffd2ebea9e43ef8cddeea654e4c5d8/renditions",
+      "status": 202
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/jobs/djob-b515a0eca5e24de5b9aea9eed581eb70",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions",
+      "status": 202
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-6d8c483ec1cf464ba4a6b29569b3bcc6/renditions",
+      "status": 202
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/jobs/djob-b1625f2e85934ec7909de5b97f690410",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-C306F95F/documents",
+      "status": 200
+    }
+  ],
+  "after_upload": {
+    "rows": 150,
+    "run_id": "RUN-C306F95F",
+    "passport_start": true,
+    "documents": []
+  },
+  "validation_passport_attempt": {
+    "detail": "Свойства ряда не изменились с последнего расчёта"
+  },
+  "after_validation_documents": [],
+  "corrections": {
+    "missing_before": {
+      "rule_source": "system",
+      "mode": "auto",
+      "status": "warning",
+      "status_reason": null,
+      "total_rows": 150,
+      "total_columns": 2,
+      "total_missing": 3,
+      "missing_rate_pct": 1.0,
+      "rows_with_missing": 3,
+      "rows_with_missing_pct": 2.0,
+      "empty_rows": 0,
+      "columns": [
+        {
+          "column": "date",
+          "dtype": "object",
+          "semantic": "text",
+          "total_count": 150,
+          "missing_count": 0,
+          "non_missing_count": 150,
+          "missing_pct": 0.0,
+          "recommended_strategy": "none",
+          "missing_examples": []
+        },
+        {
+          "column": "value",
+          "dtype": "float64",
+          "semantic": "numeric",
+          "total_count": 150,
+          "missing_count": 3,
+          "non_missing_count": 147,
+          "missing_pct": 2.0,
+          "recommended_strategy": "drop_rows",
+          "missing_examples": [
+            45,
+            87,
+            122
+          ]
+        }
+      ],
+      "row_histogram": [
+        {
+          "missing_in_row": 1,
+          "row_count": 3
+        }
+      ],
+      "derived_summary": null
+    },
+    "outliers_before": {
+      "rule_source": "system",
+      "mode": "auto",
+      "status": "warning",
+      "status_reason": null,
+      "method": "iqr",
+      "total_rows": 150,
+      "total_numeric_columns": 1,
+      "total_outliers": 4,
+      "outlier_rate_pct": 2.67,
+      "affected_columns": [
+        "value"
+      ],
+      "columns": [
+        {
+          "column": "value",
+          "sample_size": 147,
+          "outlier_count": 4,
+          "outlier_pct": 2.67,
+          "recommended_method": "zscore",
+          "bounds": {
+            "lower": 76.56,
+            "upper": 245.84
+          },
+          "outlier_examples": [
+            25,
+            70,
+            105,
+            130
+          ],
+          "insufficient_sample": false
+        }
+      ],
+      "derived_summary": null
+    },
+    "missing_apply": {
+      "applied": true,
+      "strategy": "median_mode",
+      "total_missing": 3,
+      "total_changed": 3,
+      "total_still_missing": 0,
+      "rows_removed": 0,
+      "added_columns": [],
+      "columns": [
+        {
+          "column": "value",
+          "missing_count": 3,
+          "changed_count": 3,
+          "still_missing": 0,
+          "missing_examples": [
+            45,
+            87,
+            122
+          ],
+          "flag_column": null,
+          "stats_before": {
+            "mean": 162.57530612244898,
+            "std": 32.03041831883592,
+            "median": 162.49
+          },
+          "stats_after": {
+            "mean": 162.5736,
+            "std": 31.70632706913188,
+            "median": 162.49
+          }
+        }
+      ],
+      "profile": [
+        {
+          "column": "date",
+          "dtype": "object",
+          "semantic": "text",
+          "total_count": 150,
+          "missing_count": 0,
+          "non_missing_count": 150,
+          "missing_pct": 0.0,
+          "recommended_strategy": "none",
+          "missing_examples": []
+        },
+        {
+          "column": "value",
+          "dtype": "float64",
+          "semantic": "numeric",
+          "total_count": 150,
+          "missing_count": 0,
+          "non_missing_count": 150,
+          "missing_pct": 0.0,
+          "recommended_strategy": "none",
+          "missing_examples": []
+        }
+      ],
+      "derived_summary": null
+    },
+    "outlier_apply": {
+      "applied": true,
+      "strategy": "cap",
+      "method": "iqr",
+      "used_residual": false,
+      "total_outliers": 4,
+      "total_changed": 4,
+      "total_still_outliers": 0,
+      "rows_removed": 0,
+      "added_columns": [],
+      "columns": [
+        {
+          "column": "value",
+          "outlier_count": 4,
+          "changed_count": 4,
+          "still_outliers": 0,
+          "outlier_examples": [
+            25,
+            70,
+            105,
+            130
+          ],
+          "flag_column": null,
+          "stats_before": {
+            "mean": 162.5736,
+            "std": 31.70632706913188,
+            "median": 162.49
+          },
+          "stats_after": {
+            "mean": 162.33536666666666,
+            "std": 30.235672263992953,
+            "median": 162.49
+          }
+        }
+      ],
+      "profile": [
+        {
+          "column": "value",
+          "sample_size": 150,
+          "outlier_count": 0,
+          "outlier_pct": 0.0,
+          "recommended_method": "zscore",
+          "bounds": {
+            "lower": 77.2362,
+            "upper": 244.9663
+          },
+          "outlier_examples": [],
+          "insufficient_sample": false
+        }
+      ],
+      "status": "done",
+      "total_outliers_after": 0,
+      "derived_summary": null
+    },
+    "missing_after": {
+      "rule_source": "system",
+      "mode": "auto",
+      "status": "done",
+      "status_reason": null,
+      "total_rows": 150,
+      "total_columns": 2,
+      "total_missing": 0,
+      "missing_rate_pct": 0.0,
+      "rows_with_missing": 0,
+      "rows_with_missing_pct": 0.0,
+      "empty_rows": 0,
+      "columns": [
+        {
+          "column": "date",
+          "dtype": "object",
+          "semantic": "text",
+          "total_count": 150,
+          "missing_count": 0,
+          "non_missing_count": 150,
+          "missing_pct": 0.0,
+          "recommended_strategy": "none",
+          "missing_examples": []
+        },
+        {
+          "column": "value",
+          "dtype": "float64",
+          "semantic": "numeric",
+          "total_count": 150,
+          "missing_count": 0,
+          "non_missing_count": 150,
+          "missing_pct": 0.0,
+          "recommended_strategy": "none",
+          "missing_examples": []
+        }
+      ],
+      "row_histogram": [],
+      "derived_summary": null
+    },
+    "outliers_after": {
+      "rule_source": "system",
+      "mode": "auto",
+      "status": "done",
+      "status_reason": null,
+      "method": "iqr",
+      "total_rows": 150,
+      "total_numeric_columns": 1,
+      "total_outliers": 0,
+      "outlier_rate_pct": 0.0,
+      "affected_columns": [],
+      "columns": [
+        {
+          "column": "value",
+          "sample_size": 150,
+          "outlier_count": 0,
+          "outlier_pct": 0.0,
+          "recommended_method": "zscore",
+          "bounds": {
+            "lower": 77.2362,
+            "upper": 244.9663
+          },
+          "outlier_examples": [],
+          "insufficient_sample": false
+        }
+      ],
+      "derived_summary": null
+    }
+  },
+  "after_corrections_documents": [],
+  "artifacts_after_real_pipeline": [],
+  "session_after_pipeline": {
+    "run_id": "RUN-C306F95F",
+    "context_id": "ctx-8b5232ee1f515fc3",
+    "data_revision": 2,
+    "passports": [
+      {
+        "stage": "start",
+        "snapshot_id": "7c87b296-7554-4413-87a4-e353e48d954a"
+      }
+    ]
+  },
+  "manual_documents": [
+    {
+      "kind": "D02",
+      "revision_id": "drev-6129fdce39344dd69bd4210c0db85430",
+      "completeness": {
+        "status": "complete",
+        "missing_refs": []
+      },
+      "reproducibility": {
+        "status": "limited",
+        "reasons": [
+          "missing_data_artifact"
+        ]
+      },
+      "data_ref": null,
+      "sections": [
+        {
+          "code": "D02",
+          "kind": "source_passport",
+          "title": "Паспорт источника",
+          "methodology_stage": "upload",
+          "claims": [
+            {
+              "text": "Паспорт источника не продвинут в устойчивый слой (promote не выполнялся) -- честное отсутствие результата.",
+              "event_refs": [],
+              "result_refs": [],
+              "validity": "unknown",
+              "evidence_level": null
+            },
+            {
+              "text": "Загружен датасет «forecast_monitor_synthetic_n150.csv»: строк: 150, колонок: 2.",
+              "event_refs": [
+                "event:3cbd98f2-eae8-4711-876a-fd21461e9aab"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "server_result"
+            }
+          ]
+        }
+      ],
+      "formats": {
+        "md": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "f6856844f8e5f635724125c57123825b7590a03ee7c62abe76ec3d42d1592fd7"
+        },
+        "html": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "0042b7255146fbf6237558f0d7af41c6f20bede9ef6627692218fd2bda8db183"
+        },
+        "json": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "de674eff3712a6bfce2745547e1b82d90aeed8a8c20d6199bbf82131573c64cb"
+        },
+        "pdf": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "2b6632eabc17798bf8f3aeb810f53d569dd270bef4d192dd0523c32e1a436e74"
+        }
+      },
+      "worker_summary": {
+        "at": "2026-10-26T08:48:50.022841+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      "foreign_http": 404
+    },
+    {
+      "kind": "D03",
+      "revision_id": "drev-dbffd2ebea9e43ef8cddeea654e4c5d8",
+      "completeness": {
+        "status": "complete",
+        "missing_refs": []
+      },
+      "reproducibility": {
+        "status": "limited",
+        "reasons": [
+          "missing_data_artifact"
+        ]
+      },
+      "data_ref": null,
+      "sections": [
+        {
+          "code": "D03",
+          "kind": "quality_protocol",
+          "title": "Протокол качества",
+          "methodology_stage": "validation",
+          "claims": [
+            {
+              "text": "Статус проверки «data_types» (валидация): выполнена.",
+              "event_refs": [
+                "event:7135b77d-7bd6-498e-8c45-9e728ab2db07"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «formats» (валидация): выполнена.",
+              "event_refs": [
+                "event:9f6b9901-e6ef-451e-8ada-2be86516ec57"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «ranges» (валидация): пропущена.",
+              "event_refs": [
+                "event:d62835ce-45af-4b46-93a6-aedabd9651f9"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «consistency» (валидация): выполнена.",
+              "event_refs": [
+                "event:cc3e8480-e7f8-44cb-ae91-448706083b45"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «uniqueness» (валидация): выполнена.",
+              "event_refs": [
+                "event:352c8e70-3a6c-4fdb-911e-0268c96cf5ff"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «inclusion» (валидация): пропущена.",
+              "event_refs": [
+                "event:d84a8963-0ed6-44fe-8111-f66b23c121a4"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «referential» (валидация): пропущена.",
+              "event_refs": [
+                "event:54407a54-a4b7-4f98-aae3-5eb657a91bd4"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «text_quality» (валидация): выполнена.",
+              "event_refs": [
+                "event:fb0df4ea-eea4-4aa6-b100-a98395c61533"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «regularity» (валидация): выполнена.",
+              "event_refs": [
+                "event:729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            },
+            {
+              "text": "Статус проверки «sufficiency» (валидация): выполнена.",
+              "event_refs": [
+                "event:82374197-824e-4fcd-8f55-ddd6cd1e6de1"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "client_observation"
+            }
+          ]
+        }
+      ],
+      "formats": {
+        "md": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "e5023afb389fbd7c9fb11069e9751378663223de8324100f47c6228777a55bcb"
+        },
+        "html": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "3d497838816eea4b6e855d3b6a1b6c8021844d8808eba90c57f67bdc96952966"
+        },
+        "json": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "2b48a8feb8f52321300a1f20ec5834168f7cf35dd63d6abbd8decf5006dafa79"
+        },
+        "pdf": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "58129310840b38b9ce16057eaee725992fe3bea0e402321812487086811dd611"
+        }
+      },
+      "worker_summary": {
+        "at": "2026-10-26T08:48:50.366513+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      "foreign_http": 404
+    },
+    {
+      "kind": "D04",
+      "revision_id": "drev-6d8c483ec1cf464ba4a6b29569b3bcc6",
+      "completeness": {
+        "status": "complete",
+        "missing_refs": []
+      },
+      "reproducibility": {
+        "status": "limited",
+        "reasons": [
+          "missing_data_artifact"
+        ]
+      },
+      "data_ref": null,
+      "sections": [
+        {
+          "code": "D04",
+          "kind": "transformation_recipe",
+          "title": "Рецепт преобразований",
+          "methodology_stage": "preprocessing",
+          "claims": [
+            {
+              "text": "Применена коррекция «missing».",
+              "event_refs": [
+                "event:969c475a-79db-4814-b43b-3fb7e40d4d94"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "server_result"
+            },
+            {
+              "text": "Применена коррекция «outliers».",
+              "event_refs": [
+                "event:fd05a09e-7586-4c97-b77b-7431d0de49c9"
+              ],
+              "result_refs": [],
+              "validity": "current",
+              "evidence_level": "server_result"
+            }
+          ]
+        }
+      ],
+      "formats": {
+        "md": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "59cbb04296aa11c85fdc871de9fb73e3f0a0ae72e06caed9ae7862705318ab16"
+        },
+        "html": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "a31824284ce64b7ef214804b53f76b07d4a45ff6e8b7acd1a652c77bfed94592"
+        },
+        "json": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "572d1b9505c08d9165f05c832fc70c809aac2e1e6b97862790cc64fa4e3f3fd4"
+        },
+        "pdf": {
+          "state": "ready",
+          "error_code": null,
+          "sha256": "e0ecec6e3729b6f1921ab4ff54b6f740dec940d3b34fd6ba99e8f9504fd60ac3"
+        }
+      },
+      "worker_summary": {
+        "at": "2026-10-26T08:48:50.438588+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      "foreign_http": 404
+    }
+  ],
+  "read_render_preserved_science": true,
+  "after_manual_document_count": 3,
+  "event_claim_validity": [
+    {
+      "kind": "D02",
+      "event_type": "upload_completed",
+      "event_context": "ctx-d2fa00087ca258ab",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D03",
+      "event_type": "validation_check_status",
+      "event_context": "ctx-d6ce371048fd5aaf",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D04",
+      "event_type": "correction_applied",
+      "event_context": "ctx-96528c7566eb5643",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    },
+    {
+      "kind": "D04",
+      "event_type": "correction_applied",
+      "event_context": "ctx-8b5232ee1f515fc3",
+      "snapshot_context": "ctx-8b5232ee1f515fc3",
+      "claim_validity": "current"
+    }
+  ],
+  "versions": {
+    "fastapi": "0.143.0",
+    "starlette": "0.52.1",
+    "pandas": "2.3.3",
+    "numpy": "2.5.3",
+    "SQLAlchemy": "2.1.6",
+    "pyarrow": "26.0.0",
+    "reportlab": "4.4.9"
+  }
+}

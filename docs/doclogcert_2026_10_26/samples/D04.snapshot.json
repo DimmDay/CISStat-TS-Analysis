@@ -1,0 +1,68 @@
+{
+  "schema_version": "doclog.report_snapshot/1",
+  "snapshot_id": "rs-f26bdbcfcd234b2eba0b58a09baddd53",
+  "research_run_id": "RUN-C306F95F",
+  "context_id": "ctx-8b5232ee1f515fc3",
+  "data_revision": 2,
+  "data_ref": null,
+  "data_digest": null,
+  "source_cutoff": {
+    "event_count": 18,
+    "event_id_manifest": null,
+    "last_sequence": 18,
+    "ordering_quality": "canonical"
+  },
+  "captured_at": "2026-10-26T08:48:50.410378+00:00",
+  "template": {
+    "id": "research-report",
+    "version": "1.0"
+  },
+  "knowledge_version": "sha256:02bbffd19eeae60882eb33ca9d0065b85c5fd027cb24e9ba5a7a3342c71b9cc9",
+  "locale": "ru-RU",
+  "display_timezone": "Europe/Moscow",
+  "classification": "private",
+  "redaction_profile": "owner-v1",
+  "completeness": {
+    "status": "complete",
+    "missing_refs": []
+  },
+  "reproducibility": {
+    "status": "limited",
+    "reasons": [
+      "missing_data_artifact"
+    ]
+  },
+  "sections": [
+    {
+      "code": "D04",
+      "kind": "transformation_recipe",
+      "title": "Рецепт преобразований",
+      "methodology_stage": "preprocessing",
+      "claims": [
+        {
+          "text": "Применена коррекция «missing».",
+          "event_refs": [
+            "event:969c475a-79db-4814-b43b-3fb7e40d4d94"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "server_result"
+        },
+        {
+          "text": "Применена коррекция «outliers».",
+          "event_refs": [
+            "event:fd05a09e-7586-4c97-b77b-7431d0de49c9"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "server_result"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    "event:969c475a-79db-4814-b43b-3fb7e40d4d94",
+    "event:fd05a09e-7586-4c97-b77b-7431d0de49c9"
+  ],
+  "approval": null
+}

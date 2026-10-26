@@ -1,0 +1,340 @@
+[
+  {
+    "event_id": "143053e9-40d8-4a7b-b44d-85dfe3c0eaf8",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.736902+00:00",
+    "stage": "validation",
+    "node_id": null,
+    "event_type": "target_column_changed",
+    "payload": {
+      "target_column": "value",
+      "source": "auto"
+    },
+    "actor": "system",
+    "timestamp": "2026-10-26T08:48:49.736902+00:00",
+    "schema_version": 2,
+    "evidence_level": "server_result",
+    "sequence": 1,
+    "context_id": "ctx-d2fa00087ca258ab"
+  },
+  {
+    "event_id": "3cbd98f2-eae8-4711-876a-fd21461e9aab",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.740275+00:00",
+    "stage": "upload",
+    "node_id": "overview",
+    "event_type": "upload_completed",
+    "payload": {
+      "name": "forecast_monitor_synthetic_n150.csv",
+      "rows": 150,
+      "columns": 2,
+      "size_label": "2.6 KB"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.740275+00:00",
+    "schema_version": 2,
+    "evidence_level": "server_result",
+    "sequence": 2,
+    "context_id": "ctx-d2fa00087ca258ab"
+  },
+  {
+    "event_id": "01f0ab13-b6ba-4e13-9407-3cf8dec9c93c",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.812859+00:00",
+    "stage": "validation",
+    "node_id": null,
+    "event_type": "target_column_changed",
+    "payload": {
+      "target_column": "value"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.812859+00:00",
+    "schema_version": 2,
+    "evidence_level": "user_decision",
+    "sequence": 3,
+    "context_id": "ctx-d2fa00087ca258ab"
+  },
+  {
+    "event_id": "ac9d661e-c7cf-477f-978c-269e30396895",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.824847+00:00",
+    "stage": "upload",
+    "node_id": "structure",
+    "event_type": "structure_confirmed",
+    "payload": {
+      "date_column": "date"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.824847+00:00",
+    "schema_version": 2,
+    "evidence_level": "user_decision",
+    "sequence": 4,
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "dd657573-f104-4f3f-a1b9-dcebdf64b070",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.841191+00:00",
+    "stage": "upload",
+    "node_id": null,
+    "event_type": "passport_captured",
+    "payload": {
+      "stage": "start",
+      "snapshot_id": "7c87b296-7554-4413-87a4-e353e48d954a",
+      "fingerprint": "a65d1a652a1a43fe58239c9d3c528db52402a8a9b3340f71ddc83564b38ddbcf"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.841191+00:00",
+    "schema_version": 2,
+    "evidence_level": "operational",
+    "sequence": 5,
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "7135b77d-7bd6-498e-8c45-9e728ab2db07",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947749+00:00",
+    "stage": "validation",
+    "node_id": "data_types",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947749+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 6,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "9f6b9901-e6ef-451e-8ada-2be86516ec57",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947871+00:00",
+    "stage": "validation",
+    "node_id": "formats",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947871+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 7,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "d62835ce-45af-4b46-93a6-aedabd9651f9",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947891+00:00",
+    "stage": "validation",
+    "node_id": "ranges",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "skipped"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947891+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 8,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "cc3e8480-e7f8-44cb-ae91-448706083b45",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947905+00:00",
+    "stage": "validation",
+    "node_id": "consistency",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947905+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 9,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "352c8e70-3a6c-4fdb-911e-0268c96cf5ff",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947917+00:00",
+    "stage": "validation",
+    "node_id": "uniqueness",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947917+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 10,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "d84a8963-0ed6-44fe-8111-f66b23c121a4",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947927+00:00",
+    "stage": "validation",
+    "node_id": "inclusion",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "skipped"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947927+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 11,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "54407a54-a4b7-4f98-aae3-5eb657a91bd4",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947937+00:00",
+    "stage": "validation",
+    "node_id": "referential",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "skipped"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947937+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 12,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "fb0df4ea-eea4-4aa6-b100-a98395c61533",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947948+00:00",
+    "stage": "validation",
+    "node_id": "text_quality",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947948+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 13,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947959+00:00",
+    "stage": "validation",
+    "node_id": "regularity",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947959+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 14,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "82374197-824e-4fcd-8f55-ddd6cd1e6de1",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.947968+00:00",
+    "stage": "validation",
+    "node_id": "sufficiency",
+    "event_type": "validation_check_status",
+    "payload": {
+      "status": "done"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.947968+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 15,
+    "operation_id": "doclogcert-2026-10-26-validation",
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "60ac0c53-634b-431b-b60f-f595f992bce3",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.968013+00:00",
+    "stage": "preprocessing",
+    "node_id": "outliers",
+    "event_type": "outliers_profile_status",
+    "payload": {
+      "status": "warning",
+      "total_outliers": 4,
+      "method": "iqr",
+      "mode": "auto"
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.968013+00:00",
+    "schema_version": 2,
+    "evidence_level": "client_observation",
+    "sequence": 16,
+    "context_id": "ctx-d6ce371048fd5aaf"
+  },
+  {
+    "event_id": "969c475a-79db-4814-b43b-3fb7e40d4d94",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.973947+00:00",
+    "stage": "preprocessing",
+    "node_id": "missing",
+    "event_type": "correction_applied",
+    "payload": {
+      "applied": true,
+      "strategy": "median_mode",
+      "total_changed": 3,
+      "rows_removed": 0,
+      "total_missing": 3,
+      "total_still_missing": 0
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.973947+00:00",
+    "schema_version": 2,
+    "evidence_level": "server_result",
+    "sequence": 17,
+    "context_id": "ctx-96528c7566eb5643"
+  },
+  {
+    "event_id": "fd05a09e-7586-4c97-b77b-7431d0de49c9",
+    "run_id": "RUN-C306F95F",
+    "ts": "2026-10-26T08:48:49.985911+00:00",
+    "stage": "preprocessing",
+    "node_id": "outliers",
+    "event_type": "correction_applied",
+    "payload": {
+      "applied": true,
+      "strategy": "cap",
+      "method": "iqr",
+      "total_changed": 4,
+      "rows_removed": 0,
+      "total_outliers": 4,
+      "total_outliers_after": 0,
+      "status": "done",
+      "total_still_outliers": 0
+    },
+    "actor": "user",
+    "timestamp": "2026-10-26T08:48:49.985911+00:00",
+    "schema_version": 2,
+    "evidence_level": "server_result",
+    "sequence": 18,
+    "context_id": "ctx-8b5232ee1f515fc3"
+  }
+]

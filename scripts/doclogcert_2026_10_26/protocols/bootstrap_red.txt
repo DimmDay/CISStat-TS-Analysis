@@ -1,0 +1,744 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/doclogcert_2026_10_26/bootstrap.test.tsx
+  ● AC17: a first source document can be created after choosing D02 in an empty run
+
+    expect(element).toBeEnabled()
+
+    Received element is not enabled:
+      <button class="mt-3 w-full rounded-lg border border-brand px-2 py-1.5 text-sm text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50" disabled="" type="button" />
+
+      22 |   await waitFor(() => expect(screen.getByTestId("doclog4-status")).toHaveTextContent(/нет|пока/i));
+      23 |   fireEvent.click(screen.getByTestId("doclog4-kind-D02"));
+    > 24 |   expect(screen.getByRole("button", { name: "Создать черновик" })).toBeEnabled();
+         |                                                                    ^
+      25 | });
+      26 |
+      27 | it("AC17: a deep link kind must not disable first-document creation after the empty list arrives", async () => {
+
+      at Object.<anonymous> (scripts/doclogcert_2026_10_26/bootstrap.test.tsx:24:68)
+
+  ● AC17: a deep link kind must not disable first-document creation after the empty list arrives
+
+    TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Создать черновик"
+
+    Here are the accessible roles:
+
+      navigation:
+
+      Name "Виды документов":
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Виды документов"[39m
+        [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-list"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      heading:
+
+      Name "Виды документов":
+      [36m<h2[39m
+        [33mclass[39m=[32m"mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      Name "Версии":
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      Name "Предпросмотр":
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      button:
+
+      Name "План исследования (D01) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D01"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Паспорт источника (D02) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D02"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Протокол качества (D03) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D03"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Рецепт преобразований (D04) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D04"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Аналитическая записка (D05) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D05"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Протокол экспериментов (D06) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D06"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Карточка модели (D07) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D07"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Выпуск прогноза (D08) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D08"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Приложение панели (D09) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D09"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Рекомендации и ограничения (D10) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D10"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Итоговый отчёт (D11) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D11"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Сверка прогноза с фактом (D12) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D12"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Кратко":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"true"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Методическое приложение":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Основания":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Во весь экран":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      region:
+
+      Name "Версии документа":
+      [36m<section[39m
+        [33maria-label[39m=[32m"Версии документа"[39m
+        [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-2 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[320px]"[39m
+        [33mdata-testid[39m=[32m"doclog4-version-list"[39m
+      [36m/>[39m
+
+      Name "Предпросмотр документа":
+      [36m<section[39m
+        [33maria-label[39m=[32m"Предпросмотр документа"[39m
+        [33mclass[39m=[32m"doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-3 pb-6 lg:flex-1"[39m
+        [33mdata-testid[39m=[32m"doclog4-preview-pane"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      status:
+
+      Name "":
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-neutral-500"[39m
+        [33mdata-testid[39m=[32m"doclog4-status"[39m
+        [33mrole[39m=[32m"status"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      paragraph:
+
+      Name "":
+      [36m<p[39m
+        [33mclass[39m=[32m"text-sm text-neutral-500"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Документы исследования"[39m
+          [33mclass[39m=[32m"flex flex-col gap-4 lg:flex-row lg:items-stretch"[39m
+          [33mdata-testid[39m=[32m"doclog4-workspace"[39m
+        [36m>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Виды документов"[39m
+            [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]"[39m
+            [33mdata-testid[39m=[32m"doclog4-kind-list"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+            [36m>[39m
+              [0mВиды документов[0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D01"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПлан исследования[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD01[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D02"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПаспорт источника[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD02[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D03"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПротокол качества[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD03[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D04"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mРецепт преобразований[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD04[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D05"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mАналитическая записка[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD05[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D06"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПротокол экспериментов[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD06[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D07"[39m
+              [33mtype[39m=[32m"button...
+
+      29 |   render(<DocumentationWorkspace runId="RUN-AUDIT-DEEP" initialKind="D03" />);
+      30 |   await waitFor(() => expect(screen.getByTestId("doclog4-status")).toHaveTextContent(/нет|пока/i));
+    > 31 |   expect(screen.getByRole("button", { name: "Создать черновик" })).toBeEnabled();
+         |                 ^
+      32 | });
+      33 |
+      34 | it("control: existing document metadata makes creation reachable", async () => {
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (scripts/doclogcert_2026_10_26/bootstrap.test.tsx:31:17)
+
+  ● AC17: a failed create request is visible to the analyst
+
+    TestingLibraryElementError: Unable to find an accessible element with the role "alert"
+
+    Here are the accessible roles:
+
+      navigation:
+
+      Name "Виды документов":
+      [36m<nav[39m
+        [33maria-label[39m=[32m"Виды документов"[39m
+        [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-list"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      heading:
+
+      Name "Виды документов":
+      [36m<h2[39m
+        [33mclass[39m=[32m"mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      Name "Паспорт источника":
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      Name "Предпросмотр":
+      [36m<h2[39m
+        [33mclass[39m=[32m"text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      button:
+
+      Name "План исследования (D01) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D01"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Паспорт источника (D02) 1":
+      [36m<button[39m
+        [33maria-current[39m=[32m"true"[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand bg-brand font-medium text-white"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D02"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Протокол качества (D03) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D03"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Рецепт преобразований (D04) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D04"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Аналитическая записка (D05) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D05"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Протокол экспериментов (D06) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D06"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Карточка модели (D07) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D07"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Выпуск прогноза (D08) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D08"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Приложение панели (D09) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D09"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Рекомендации и ограничения (D10) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D10"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Итоговый отчёт (D11) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D11"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Сверка прогноза с фактом (D12) —":
+      [36m<button[39m
+        [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+        [33mdata-testid[39m=[32m"doclog4-kind-D12"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Создать черновик":
+      [36m<button[39m
+        [33mclass[39m=[32m"mt-3 w-full rounded-lg border border-brand px-2 py-1.5 text-sm text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Кратко":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"true"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Методическое приложение":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Основания":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      Name "Во весь экран":
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      region:
+
+      Name "Версии документа":
+      [36m<section[39m
+        [33maria-label[39m=[32m"Версии документа"[39m
+        [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-2 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[320px]"[39m
+        [33mdata-testid[39m=[32m"doclog4-version-list"[39m
+      [36m/>[39m
+
+      Name "Предпросмотр документа":
+      [36m<section[39m
+        [33maria-label[39m=[32m"Предпросмотр документа"[39m
+        [33mclass[39m=[32m"doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-3 pb-6 lg:flex-1"[39m
+        [33mdata-testid[39m=[32m"doclog4-preview-pane"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      status:
+
+      Name "":
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-neutral-500"[39m
+        [33mdata-testid[39m=[32m"doclog4-status"[39m
+        [33mrole[39m=[32m"status"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+      paragraph:
+
+      Name "":
+      [36m<p[39m
+        [33mclass[39m=[32m"text-sm text-neutral-500"[39m
+      [36m/>[39m
+
+      Name "":
+      [36m<p[39m
+        [33mclass[39m=[32m"text-sm text-neutral-500"[39m
+      [36m/>[39m
+
+      --------------------------------------------------
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Документы исследования"[39m
+          [33mclass[39m=[32m"flex flex-col gap-4 lg:flex-row lg:items-stretch"[39m
+          [33mdata-testid[39m=[32m"doclog4-workspace"[39m
+        [36m>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Виды документов"[39m
+            [33mclass[39m=[32m"doclog4-badge hidden shrink-0 flex-col gap-1 rounded-xl border border-brand/60 bg-brand-light/60 px-3 pt-3 pb-6 lg:block lg:w-[240px]"[39m
+            [33mdata-testid[39m=[32m"doclog4-kind-list"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100"[39m
+            [36m>[39m
+              [0mВиды документов[0m
+            [36m</h2>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D01"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПлан исследования[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD01[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-current[39m=[32m"true"[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand bg-brand font-medium text-white"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D02"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПаспорт источника[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD02[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m1[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D03"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПротокол качества[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD03[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D04"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mРецепт преобразований[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD04[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D05"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mАналитическая записка[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD05[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D06"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span>[39m
+                [0mПротокол экспериментов[0m
+                [0m [0m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-xs opacity-70"[39m
+                [36m>[39m
+                  [0m([0m
+                  [0mD06[0m
+                  [0m)[0m
+                [36m</span>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"text-xs tabular-nums opacity-80"[39m
+              [36m>[39m
+                [0m—[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-black/30"[39m
+              [33mdata-testid[39m=[32m"doclog4-kind-D07"[39m
+              [33mtype[39m=[32m"button"...
+
+      51 |   fireEvent.click(screen.getByRole("button", { name: "Создать черновик" }));
+      52 |   await waitFor(() => expect(api.createDraft).toHaveBeenCalled());
+    > 53 |   expect(screen.getByRole("alert")).toHaveTextContent(/недоступ|ошиб|не выполн/i);
+         |                 ^
+      54 | });
+      55 |
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (scripts/doclogcert_2026_10_26/bootstrap.test.tsx:53:17)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 1 passed, 4 total
+Snapshots:   0 total
+Time:        3.321 s
+Ran all test suites matching scripts/doclogcert_2026_10_26/bootstrap.test.tsx.

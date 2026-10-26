@@ -1,0 +1,65 @@
+{
+  "schema_version": "doclog.report_snapshot/1",
+  "snapshot_id": "rs-d41f1805877f45b1a54daca75fb1b6c4",
+  "research_run_id": "RUN-C306F95F",
+  "context_id": "ctx-8b5232ee1f515fc3",
+  "data_revision": 2,
+  "data_ref": null,
+  "data_digest": null,
+  "source_cutoff": {
+    "event_count": 18,
+    "event_id_manifest": null,
+    "last_sequence": 18,
+    "ordering_quality": "canonical"
+  },
+  "captured_at": "2026-10-26T08:48:50.002621+00:00",
+  "template": {
+    "id": "research-report",
+    "version": "1.0"
+  },
+  "knowledge_version": "sha256:02bbffd19eeae60882eb33ca9d0065b85c5fd027cb24e9ba5a7a3342c71b9cc9",
+  "locale": "ru-RU",
+  "display_timezone": "Europe/Moscow",
+  "classification": "private",
+  "redaction_profile": "owner-v1",
+  "completeness": {
+    "status": "complete",
+    "missing_refs": []
+  },
+  "reproducibility": {
+    "status": "limited",
+    "reasons": [
+      "missing_data_artifact"
+    ]
+  },
+  "sections": [
+    {
+      "code": "D02",
+      "kind": "source_passport",
+      "title": "Паспорт источника",
+      "methodology_stage": "upload",
+      "claims": [
+        {
+          "text": "Паспорт источника не продвинут в устойчивый слой (promote не выполнялся) -- честное отсутствие результата.",
+          "event_refs": [],
+          "result_refs": [],
+          "validity": "unknown",
+          "evidence_level": null
+        },
+        {
+          "text": "Загружен датасет «forecast_monitor_synthetic_n150.csv»: строк: 150, колонок: 2.",
+          "event_refs": [
+            "event:3cbd98f2-eae8-4711-876a-fd21461e9aab"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "server_result"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    "event:3cbd98f2-eae8-4711-876a-fd21461e9aab"
+  ],
+  "approval": null
+}

@@ -1,0 +1,86 @@
+{
+  "C01": [
+    {
+      "path": "packages/ui/components/ModuleNav.tsx",
+      "line": 231,
+      "anchor": "href=\"/documentation\""
+    },
+    {
+      "path": "apps/standalone/app/documentation/page.tsx",
+      "line": 54,
+      "anchor": "initialRunId={params.run ?? null}"
+    }
+  ],
+  "C02": [
+    {
+      "path": "packages/ui/components/DocumentationWorkspace.tsx",
+      "line": 530,
+      "anchor": "disabled={creating || listPhase !== \"ready\"}"
+    },
+    {
+      "path": "packages/ui/components/DocumentationWorkspace.tsx",
+      "line": 229,
+      "anchor": "setListPhase(next.length === 0 ? \"empty\" : \"ready\")"
+    }
+  ],
+  "C03": [
+    {
+      "path": "apps/api/artifact_promotion.py",
+      "line": 87,
+      "anchor": "class PromotionService:"
+    },
+    {
+      "path": "apps/api/snapshot_builder.py",
+      "line": 380,
+      "anchor": "promote не выполнялся"
+    }
+  ],
+  "C04": [
+    {
+      "path": "apps/api/snapshot_builder.py",
+      "line": 251,
+      "anchor": "validity = VALIDITY_CURRENT"
+    }
+  ],
+  "C05": [
+    {
+      "path": "apps/api/snapshot_builder.py",
+      "line": 1017,
+      "anchor": "completeness_status = \"complete\" if not ctx.missing_refs else \"partial\""
+    }
+  ],
+  "C06": [
+    {
+      "path": "apps/api/snapshot_builder.py",
+      "line": 399,
+      "anchor": "def _section_d03("
+    },
+    {
+      "path": "apps/api/snapshot_builder.py",
+      "line": 434,
+      "anchor": "def _section_d04("
+    }
+  ],
+  "C07": [
+    {
+      "path": "packages/ui/components/DocumentationWorkspace.tsx",
+      "line": 378,
+      "anchor": "const handleCreateDraft ="
+    }
+  ],
+  "C08": [
+    {
+      "path": "apps/api/doc_profiles.py",
+      "line": 911,
+      "anchor": "created = self.registry.create_profile(profile)"
+    }
+  ],
+  "C09": [
+    {
+      "path": "packages/ui/components/DocumentationWorkspace.tsx",
+      "line": 78,
+      "anchor": "const BUILD_FORMATS:"
+    }
+  ],
+  "promotion_calls_in_product_api_outside_service": []
+}

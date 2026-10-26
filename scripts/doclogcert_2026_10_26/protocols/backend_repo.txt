@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-doclog-cert
+configfile: pytest.ini
+plugins: anyio-4.15.1, typeguard-4.6.0, platformdirs-4.13.0
+collected 582 items
+
+tests/api/test_doclog0_identity.py ..................................... [  6%]
+.....                                                                    [  7%]
+tests/api/test_doclog1_artifacts.py .................................... [ 13%]
+.......................                                                  [ 17%]
+tests/api/test_doclog2_snapshots.py .................................... [ 23%]
+.....................................                                    [ 29%]
+tests/api/test_doclog3_telemetry_audit.py .............................. [ 35%]
+............................................................F.....       [ 46%]
+tests/api/test_doclog4_document_delivery.py ............................ [ 51%]
+....................                                                     [ 54%]
+tests/api/test_doclog5_formats_worker.py ............................... [ 59%]
+..............................                                           [ 65%]
+tests/api/test_doclog6_approvals_archive.py ............................ [ 69%]
+.....................                                                    [ 73%]
+tests/api/test_doclog7_logs_support.py ................................. [ 79%]
+F....                                                                    [ 80%]
+tests/api/test_doclog8_monitoring.py ................................... [ 86%]
+...........................F                                             [ 90%]
+tests/api/test_doclog9_profiles.py ..................................... [ 97%]
+..............F.                                                         [100%]

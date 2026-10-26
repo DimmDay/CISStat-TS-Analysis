@@ -1,0 +1,140 @@
+{
+  "is_valid": true,
+  "rules_source": "system",
+  "validation_template_id": "system",
+  "column": null,
+  "total_rows": 150,
+  "total_columns": 2,
+  "type_validation_mode": "schema",
+  "type_profile": [
+    {
+      "name": "date",
+      "dtype": "object",
+      "type_icon": "text",
+      "non_null": 150,
+      "nulls": 0,
+      "unique": 150,
+      "expected_type": "datetime",
+      "validation_status": "matched",
+      "violations": 0
+    },
+    {
+      "name": "value",
+      "dtype": "float64",
+      "type_icon": "numeric",
+      "non_null": 147,
+      "nulls": 3,
+      "unique": 147,
+      "expected_type": "float",
+      "validation_status": "matched",
+      "violations": 0
+    }
+  ],
+  "checks": {
+    "data_types": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "dataset",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "formats": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "ranges": {
+      "status": "skipped",
+      "count": null,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "not_applicable",
+      "mode": "auto",
+      "status_reason": "not_required"
+    },
+    "consistency": {
+      "status": "done",
+      "count": 0,
+      "items": [
+        {
+          "label": "Хронологический порядок",
+          "count": 0
+        }
+      ],
+      "scope": "dataset",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "uniqueness": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "dataset",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "inclusion": {
+      "status": "skipped",
+      "count": null,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "not_applicable",
+      "mode": "auto",
+      "status_reason": "not_required"
+    },
+    "referential": {
+      "status": "skipped",
+      "count": null,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "not_applicable",
+      "mode": "auto",
+      "status_reason": "not_required"
+    },
+    "text_quality": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "regularity": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "dataset",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    },
+    "sufficiency": {
+      "status": "done",
+      "count": 0,
+      "items": [],
+      "scope": "column",
+      "error": null,
+      "rule_source": "system",
+      "mode": "auto",
+      "status_reason": null
+    }
+  }
+}

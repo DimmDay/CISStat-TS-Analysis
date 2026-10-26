@@ -1,0 +1,148 @@
+{
+  "schema_version": "doclog.report_snapshot/1",
+  "snapshot_id": "rs-a62a11e339f44de3b694ebad80aa448d",
+  "research_run_id": "RUN-C306F95F",
+  "context_id": "ctx-8b5232ee1f515fc3",
+  "data_revision": 2,
+  "data_ref": null,
+  "data_digest": null,
+  "source_cutoff": {
+    "event_count": 18,
+    "event_id_manifest": null,
+    "last_sequence": 18,
+    "ordering_quality": "canonical"
+  },
+  "captured_at": "2026-10-26T08:48:50.336221+00:00",
+  "template": {
+    "id": "research-report",
+    "version": "1.0"
+  },
+  "knowledge_version": "sha256:02bbffd19eeae60882eb33ca9d0065b85c5fd027cb24e9ba5a7a3342c71b9cc9",
+  "locale": "ru-RU",
+  "display_timezone": "Europe/Moscow",
+  "classification": "private",
+  "redaction_profile": "owner-v1",
+  "completeness": {
+    "status": "complete",
+    "missing_refs": []
+  },
+  "reproducibility": {
+    "status": "limited",
+    "reasons": [
+      "missing_data_artifact"
+    ]
+  },
+  "sections": [
+    {
+      "code": "D03",
+      "kind": "quality_protocol",
+      "title": "Протокол качества",
+      "methodology_stage": "validation",
+      "claims": [
+        {
+          "text": "Статус проверки «data_types» (валидация): выполнена.",
+          "event_refs": [
+            "event:7135b77d-7bd6-498e-8c45-9e728ab2db07"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «formats» (валидация): выполнена.",
+          "event_refs": [
+            "event:9f6b9901-e6ef-451e-8ada-2be86516ec57"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «ranges» (валидация): пропущена.",
+          "event_refs": [
+            "event:d62835ce-45af-4b46-93a6-aedabd9651f9"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «consistency» (валидация): выполнена.",
+          "event_refs": [
+            "event:cc3e8480-e7f8-44cb-ae91-448706083b45"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «uniqueness» (валидация): выполнена.",
+          "event_refs": [
+            "event:352c8e70-3a6c-4fdb-911e-0268c96cf5ff"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «inclusion» (валидация): пропущена.",
+          "event_refs": [
+            "event:d84a8963-0ed6-44fe-8111-f66b23c121a4"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «referential» (валидация): пропущена.",
+          "event_refs": [
+            "event:54407a54-a4b7-4f98-aae3-5eb657a91bd4"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «text_quality» (валидация): выполнена.",
+          "event_refs": [
+            "event:fb0df4ea-eea4-4aa6-b100-a98395c61533"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «regularity» (валидация): выполнена.",
+          "event_refs": [
+            "event:729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        },
+        {
+          "text": "Статус проверки «sufficiency» (валидация): выполнена.",
+          "event_refs": [
+            "event:82374197-824e-4fcd-8f55-ddd6cd1e6de1"
+          ],
+          "result_refs": [],
+          "validity": "current",
+          "evidence_level": "client_observation"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    "event:7135b77d-7bd6-498e-8c45-9e728ab2db07",
+    "event:9f6b9901-e6ef-451e-8ada-2be86516ec57",
+    "event:d62835ce-45af-4b46-93a6-aedabd9651f9",
+    "event:cc3e8480-e7f8-44cb-ae91-448706083b45",
+    "event:352c8e70-3a6c-4fdb-911e-0268c96cf5ff",
+    "event:d84a8963-0ed6-44fe-8111-f66b23c121a4",
+    "event:54407a54-a4b7-4f98-aae3-5eb657a91bd4",
+    "event:fb0df4ea-eea4-4aa6-b100-a98395c61533",
+    "event:729c40fe-7fd1-4ad5-a3b6-9bcdd1d4f715",
+    "event:82374197-824e-4fcd-8f55-ddd6cd1e6de1"
+  ],
+  "approval": null
+}

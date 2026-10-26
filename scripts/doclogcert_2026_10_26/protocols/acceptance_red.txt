@@ -1,0 +1,48 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-doclog-cert
+configfile: pytest.ini
+plugins: anyio-4.15.1, typeguard-4.6.0, platformdirs-4.13.0
+collected 8 items
+
+scripts/doclogcert_2026_10_26/test_acceptance_red.py FFFFF...            [100%]
+
+=================================== FAILURES ===================================
+___________ test_source_passport_is_promoted_by_the_actual_pipeline ____________
+scripts/doclogcert_2026_10_26/test_acceptance_red.py:22: in test_source_passport_is_promoted_by_the_actual_pipeline
+    assert passports, "Session passport exists, but no durable passport artifact is produced"
+E   AssertionError: Session passport exists, but no durable passport artifact is produced
+E   assert []
+__________ test_unknown_source_passport_is_not_presented_as_complete ___________
+scripts/doclogcert_2026_10_26/test_acceptance_red.py:27: in test_unknown_source_passport_is_not_presented_as_complete
+    assert doc["completeness"]["status"] == "partial", (
+E   AssertionError: Source passport and data_ref are missing, yet completeness is complete
+E   assert 'complete' == 'partial'
+E     
+E     - partial
+E     + complete
+_____________ test_historical_event_claims_are_not_marked_current ______________
+scripts/doclogcert_2026_10_26/test_acceptance_red.py:35: in test_historical_event_claims_are_not_marked_current
+    assert not wrong, wrong
+E   AssertionError: [{'kind': 'D02', 'event_type': 'upload_completed', 'event_context': 'ctx-d2fa00087ca258ab', 'snapshot_context': 'ctx-8...lidation_check_status', 'event_context': 'ctx-d6ce371048fd5aaf', 'snapshot_context': 'ctx-8b5232ee1f515fc3', ...}, ...]
+E   assert not [{'kind': 'D02', 'event_type': 'upload_completed', 'event_context': 'ctx-d2fa00087ca258ab', 'snapshot_context': 'ctx-8...lidation_check_status', 'event_context': 'ctx-d6ce371048fd5aaf', 'snapshot_context': 'ctx-8b5232ee1f515fc3', ...}, ...]
+____________ test_preprocessing_document_preserves_actual_strategy _____________
+scripts/doclogcert_2026_10_26/test_acceptance_red.py:41: in test_preprocessing_document_preserves_actual_strategy
+    assert "median_mode" in texts and "iqr" in texts, texts
+E   AssertionError: Применена коррекция «missing».
+E     Применена коррекция «outliers».
+E   assert ('median_mode' in 'Применена коррекция «missing».\nПрименена коррекция «outliers».')
+_________ test_mandatory_profile_audit_failure_does_not_commit_policy __________
+scripts/doclogcert_2026_10_26/test_acceptance_red.py:63: in test_mandatory_profile_audit_failure_does_not_commit_policy
+    assert registry.find_duplicate("audit-cert-policy", 1) is None, "Protected write survives mandatory audit failure"
+E   AssertionError: Protected write survives mandatory audit failure
+E   assert OrganizationalDocumentProfile(profile_id='prof-7566780d80b14625a41ffb5eb50c784e', name='audit-cert-policy', version_no...alse, created_by='audit-cert-subject', created_at='2026-10-26T08:50:43.746214+00:00', retired_by=None, retired_at=None) is None
+E    +  where OrganizationalDocumentProfile(profile_id='prof-7566780d80b14625a41ffb5eb50c784e', name='audit-cert-policy', version_no...alse, created_by='audit-cert-subject', created_at='2026-10-26T08:50:43.746214+00:00', retired_by=None, retired_at=None) = find_duplicate('audit-cert-policy', 1)
+E    +    where find_duplicate = <apps.api.doc_profiles.MemoryOrgProfileRegistry object at 0x7fe1a7c89640>.find_duplicate
+=========================== short test summary info ============================
+FAILED scripts/doclogcert_2026_10_26/test_acceptance_red.py::test_source_passport_is_promoted_by_the_actual_pipeline
+FAILED scripts/doclogcert_2026_10_26/test_acceptance_red.py::test_unknown_source_passport_is_not_presented_as_complete
+FAILED scripts/doclogcert_2026_10_26/test_acceptance_red.py::test_historical_event_claims_are_not_marked_current
+FAILED scripts/doclogcert_2026_10_26/test_acceptance_red.py::test_preprocessing_document_preserves_actual_strategy
+FAILED scripts/doclogcert_2026_10_26/test_acceptance_red.py::test_mandatory_profile_audit_failure_does_not_commit_policy
+========================= 5 failed, 3 passed in 0.06s ==========================
