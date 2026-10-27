@@ -307,4 +307,19 @@ def health_ops():
             "running": False,
             "missing": ["<state unavailable>"],
         }
+    # DOCLOG-PDF-RENDER-DEPLOY-2 (§18 дух / урок F14): факты доступности
+    # зависимостей тяжёлых рендеров документов (peek-семантика: только
+    # ФС allowlist-шрифта и ленивые импорты; диагностика не роняет
+    # health и не инициализирует фабрики). Отсутствующий шрифт/пакет на
+    # живом контейнере виден здесь ДО первого «Ошибка (failed)
+    # render_dependency_unavailable» у аналитика -- stale-образ без
+    # DOCLOG-PDF-FONT-DEPLOY-1 диагностируется без shell-доступа.
+    try:
+        from apps.api.document_renditions import render_dependencies_status
+
+        snapshot["render_dependencies"] = render_dependencies_status()
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["render_dependencies"] = {
+            "pdf_font": {"ok": False, "missing": ["<state unavailable>"]},
+        }
     return JSONResponse(status_code=200, content=snapshot)

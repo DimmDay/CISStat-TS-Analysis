@@ -83,6 +83,7 @@ RUN pip install --no-cache-dir -r apps/api/requirements.txt \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
     && python -c "import sqlalchemy, duckdb_engine, clickhouse_connect, duckdb; print('db-track deps OK (UPLOAD-DB-4):', sqlalchemy.__version__)" \
     && python -c "import pyodbc, pymysql, cryptography; print('db-track C OK (UPLOAD-DB-7): pyodbc', pyodbc.version, '| pymysql', pymysql.__version__)" \
+    && python -c "import PIL, pypdf; print('render deps OK (DOCLOG-PDF-RENDER-DEPLOY-2): PIL', PIL.__version__, '| pypdf', pypdf.__version__)" \
     && python -c "import neuralforecast, torch; print('neural OK:', neuralforecast.__version__, torch.__version__)"
 
 # Копируем ТОЛЬКО то, что реально импортируется бэкендом (проверено
@@ -219,6 +220,21 @@ RUN python -c "from apps.api.document_renditions import _resolve_font; \
                path, name = _resolve_font(); \
                assert path.endswith('.ttf'); \
                print('font allowlist OK (DOCLOG-PDF-FONT-DEPLOY-1):', name, '->', path)"
+
+# DOCLOG-PDF-RENDER-DEPLOY-2: executable-guard PDF-конвейера
+# (расширение font-guard'а выше). Font-guard проверял только НАЛИЧИЕ
+# файла шрифта; здесь образ обязан ДОКАЗАТЬ способность собрать
+# настоящий PDF: ленивый импорт reportlab, регистрация allowlist TTF и
+# сам рендер исполняются временем сборки на минимальном снимке.
+# Без рабочего PDF-рендера образ НЕ собирается (fail-closed,
+# философия DEPLOY-1): «собрался, но не умеет PDF» больше невозможно,
+# как и stale-сценарий «образ старый, а контейнер живой» -- пересборка
+# с этим слоем гарантирует зелёный PDF или явную ошибку сборки.
+RUN python -c "from apps.api.report_snapshot import ReportSnapshot; \
+               from apps.api.document_renditions import render_snapshot_pdf; \
+               data = render_snapshot_pdf(ReportSnapshot(snapshot_id='build-guard', research_run_id='build-guard')); \
+               assert data[:5] == b'%PDF-' and len(data) > 500, 'PDF render produced invalid output'; \
+               print('pdf render executable OK (DOCLOG-PDF-RENDER-DEPLOY-2):', len(data), 'bytes')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

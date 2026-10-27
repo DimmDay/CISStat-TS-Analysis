@@ -1,0 +1,245 @@
+{
+  "task": "DOCLOG-PDF-RENDER-DEPLOY-2",
+  "generated_at": "2026-10-27T14:19:47.132865+00:00",
+  "base_commit": "fe790c5",
+  "scenario": "Этап «Загрузка» -> D01 «План исследования» -> «Собрать формат: PDF»; диагноз render_dependency_unavailable",
+  "S0_health_full": {
+    "verdict": "environment_complete",
+    "render_dependencies": {
+      "pdf_font": {
+        "ok": true,
+        "name": "DejaVuSans",
+        "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+      },
+      "reportlab": {
+        "ok": true,
+        "version": "4.4.9"
+      },
+      "pillow": {
+        "ok": true,
+        "version": "11.3.0"
+      },
+      "pypdf": {
+        "ok": true,
+        "version": "6.6.0"
+      },
+      "pyarrow": {
+        "ok": true,
+        "version": "26.0.0"
+      }
+    }
+  },
+  "S1_full_scenario": {
+    "verdict": "pipeline_green",
+    "run_id": "RUN-16D3B681",
+    "document_kind": "D01",
+    "section": {
+      "code": "D01",
+      "title": "План исследования",
+      "claims": 3
+    },
+    "post": {
+      "status": 202,
+      "state": "queued"
+    },
+    "worker_cycles": [
+      {
+        "at": "2026-10-27T14:19:48.546591+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T14:19:48.906487+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T14:19:48.906510+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T14:19:48.906516+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T14:19:48.906522+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T14:19:48.906528+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      }
+    ],
+    "final_job": {
+      "state": "ready",
+      "attempt": 1
+    },
+    "content": {
+      "status": 200,
+      "head": "%PDF-",
+      "size": 27329,
+      "content_disposition": "attachment; filename=\"document-drend-43ba5c03c1ae4d06892023b4836f6f45.pdf\"",
+      "content_type": "application/pdf"
+    }
+  },
+  "S2_stale_environment_model": {
+    "verdict": "stale_environment_reproduced",
+    "attempts": [
+      {
+        "click": 1,
+        "job_id": "djob-8406e0ce2412404d81fdd0a17317da4c",
+        "post_state": "queued",
+        "post_attempt": 1,
+        "final_state": "failed",
+        "final_attempt": 1,
+        "error_code": "render_dependency_unavailable",
+        "worker_cycles": [
+          {
+            "at": "2026-10-27T14:19:48.999569+00:00",
+            "reclaimed": 0,
+            "claimed": 1,
+            "ready": 0,
+            "failed": 1,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.000104+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.000115+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.000120+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.000125+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.000130+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          }
+        ]
+      },
+      {
+        "click": 2,
+        "job_id": "djob-487d5faa35934d9780a49bb74017c9ca",
+        "post_state": "queued",
+        "post_attempt": 2,
+        "final_state": "failed",
+        "final_attempt": 2,
+        "error_code": "render_dependency_unavailable",
+        "worker_cycles": [
+          {
+            "at": "2026-10-27T14:19:49.005602+00:00",
+            "reclaimed": 0,
+            "claimed": 1,
+            "ready": 0,
+            "failed": 1,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.006088+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.006099+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.006104+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.006109+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          },
+          {
+            "at": "2026-10-27T14:19:49.006114+00:00",
+            "reclaimed": 0,
+            "claimed": 0,
+            "ready": 0,
+            "failed": 0,
+            "requeued": 0
+          }
+        ]
+      }
+    ],
+    "equivalent_ui_message": "Задание djob-…: Ошибка (failed) (попытка 2) / Ошибка сборки формата pdf: render_dependency_unavailable"
+  },
+  "S3_health_stale_model": {
+    "verdict": "stale_environment_visible_in_ops",
+    "pdf_font": {
+      "ok": false,
+      "name": null,
+      "path": null,
+      "candidates": []
+    }
+  },
+  "conclusion": {
+    "pipeline_code": "S1: полный сценарий ЗЕЛЁНЫЙ на fe790c5 -- код и конвейер корректны; отказ format=pdf render_dependency_unavailable возможен ТОЛЬКО в среде без allowlist-шрифта",
+    "lead_environment": "наблюдаемый отказ == S2: работающий контейнер собран ДО DOCLOG-PDF-FONT-DEPLOY-1 (stale-образ) -- требуется пересборка/редеплой; после неё S0-видимость /health/ops подтверждает среду без shell-доступа",
+    "class_elimination": "Pillow/pypdf объявлены в requirements, исполняемый guard PDF в Dockerfile, honest-классификация png/pdfa, операционная видимость /health/ops render_dependencies"
+  }
+}

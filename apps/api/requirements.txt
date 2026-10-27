@@ -64,6 +64,18 @@ psycopg[binary]>=3.1.0        # apps/api/research_runs.py PostgresResearchRunSto
 reportlab>=4.0.0              # apps/api/document_renditions.py -- render_snapshot_pdf
 pyarrow>=14.0.0               # apps/api/document_renditions.py -- render_snapshot_parquet
 
+# DOCLOG-PDF-RENDER-DEPLOY-2 (2026-10-27): аудит класса отказа
+# render_dependency_unavailable (DOCLOG-PDF-FONT-DEPLOY-1: шрифт) нашёл
+# те же латентные разрывы «в песочнице есть -- в образе нет» у
+# ОСТАЛЬНЫХ тяжёлых рендеров: Pillow объявлен НЕ БЫЛ, хотя нужен
+# render_snapshot_png (PIL) и OutputIntent PDF/A (_srgb_icc_bytes --
+# PIL.ImageCms/littlecms); pypdf нужен _pdfa_postprocess (PDF/A-1b
+# маркеры: XMP pdfaid + OutputIntent). Урок F14: зависимость, не
+# объявленная здесь, в образе НЕ существует независимо от песочницы
+# разработчика.
+Pillow>=10.0.0                # apps/api/document_renditions.py -- render_snapshot_png, _srgb_icc_bytes (ImageCms)
+pypdf>=4.0.0                  # apps/api/document_renditions.py -- _pdfa_postprocess
+
 # UPLOAD-DB-4 (фаза B): драйверы БД-дорожки «Загрузки» в контуре API.
 # psycopg v3 уже объявлен выше (одна зависимость на два назначения --
 # скоуп-решение S1). SQLAlchemy -- универсальный слой ядра Фазы A

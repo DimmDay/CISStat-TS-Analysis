@@ -528,6 +528,61 @@ def _resolve_font() -> tuple[str, str]:
     )
 
 
+def render_dependencies_status() -> dict[str, Any]:
+    """DOCLOG-PDF-RENDER-DEPLOY-2: facts-only статус зависимостей
+    тяжёлых рендеров (для /health/ops; peek-семантика -- только чтение
+    ФС allowlist и ленивые импорты; фабрики не инициализирует,
+    состояние не меняет).
+
+    Матрица (аудит класса отказа DOCLOG-PDF-FONT-DEPLOY-1):
+      pdf     -- allowlist TTF + reportlab;
+      png     -- Pillow (PIL) + allowlist TTF;
+      pdfa    -- Pillow/ImageCms (littlecms, OutputIntent) + pypdf;
+      parquet -- pyarrow.
+    Отсутствующая зависимость в деплой-образе -- тот же класс отказа,
+    что font_unavailable; диагностика делает это видимым на живом
+    контейнере ДО первого клика аналитика (stale-образ без фикса
+    DEPLOY-1 диагностируется операционно, без shell-доступа)."""
+    font_name: Optional[str] = None
+    font_path: Optional[str] = None
+    for path, name, _bold in _PDF_FONT_CANDIDATES:
+        if os.path.isfile(path):
+            font_name, font_path = name, path
+            break
+    if font_name is not None:
+        font_state: dict[str, Any] = {
+            "ok": True,
+            "name": font_name,
+            "path": font_path,
+        }
+    else:
+        font_state = {
+            "ok": False,
+            "name": None,
+            "path": None,
+            "candidates": [path for path, _n, _b in _PDF_FONT_CANDIDATES],
+        }
+    status: dict[str, Any] = {"pdf_font": font_state}
+    for key, module_name in (
+        ("reportlab", "reportlab"),
+        ("pillow", "PIL"),
+        ("pypdf", "pypdf"),
+        ("pyarrow", "pyarrow"),
+    ):
+        try:
+            module = __import__(module_name)
+            version = getattr(module, "__version__", None) or getattr(
+                module, "Version", None
+            )
+            status[key] = {
+                "ok": True,
+                "version": str(version) if version is not None else None,
+            }
+        except Exception as exc:  # noqa: BLE001 -- facts-only диагностика
+            status[key] = {"ok": False, "reason": type(exc).__name__}
+    return status
+
+
 def _iter_claims(snapshot: ReportSnapshot):
     """Плоский обход (section, claim) в порядке frozen корпуса."""
     for section in snapshot.sections:
@@ -1131,7 +1186,17 @@ def render_snapshot_png(snapshot: ReportSnapshot) -> bytes:
     """§7 PNG: растровый fallback того же ChartSpec (PIL, фиксированная
     светлая print-тема, allowlist-шрифт; детерминированные байты --
     PIL не пишет timestamp по умолчанию)."""
-    from PIL import Image, ImageDraw, ImageFont
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except Exception as exc:  # noqa: BLE001 -- честная граница зависимости
+        # DOCLOG-PDF-RENDER-DEPLOY-2: тот же контракт честной границы,
+        # что у parquet-движка: отсутствие пакета -- RenderDependencyError
+        # (worker: render_dependency_unavailable -- детерминированная,
+        # терминальная), а не render_failed из TRANSIENT_ERROR_CODES
+        # (отсутствующий пакет нельзя «поправить» ретраем).
+        raise RenderDependencyError(
+            f"pil_unavailable: Pillow недоступен ({type(exc).__name__})"
+        ) from None
 
     font_path, _name = _resolve_font()
     spec = build_chart_spec(snapshot)
@@ -1548,15 +1613,23 @@ def _pdfa_postprocess(base_pdf: bytes, snapshot: ReportSnapshot, profile: Any) -
     """Добавляет PDF/A-1b маркеры к базовому PDF (pypdf): XMP metadata
     (pdfaid:part=1, conformance=B), OutputIntent GTS_PDFA1 с sRGB ICC,
     DocumentInfo. Детерминизм: фиксированные даты (пин AC03)."""
-    import pypdf
-    from pypdf.generic import (
-        ArrayObject,
-        ByteStringObject,
-        DecodedStreamObject,
-        DictionaryObject,
-        NameObject,
-        TextStringObject,
-    )
+    try:
+        # DOCLOG-PDF-RENDER-DEPLOY-2: честная граница зависимости (как
+        # parquet-движок): отсутствие pypdf -- RenderDependencyError,
+        # не raw ImportError (render_failed с пустыми ретраями).
+        import pypdf
+        from pypdf.generic import (
+            ArrayObject,
+            ByteStringObject,
+            DecodedStreamObject,
+            DictionaryObject,
+            NameObject,
+            TextStringObject,
+        )
+    except ImportError as exc:  # честная граница зависимости
+        raise RenderDependencyError(
+            f"pypdf_unavailable: pypdf недоступен ({type(exc).__name__})"
+        ) from None
 
     title_prefix = str(getattr(profile, "title_prefix", "") or "")
     footer_text = str(getattr(profile, "footer_text", "") or "")
