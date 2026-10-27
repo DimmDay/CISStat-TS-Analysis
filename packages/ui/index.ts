@@ -261,7 +261,7 @@ export { ProgressDrawer } from "./components/ProgressDrawer";
 // DOCLOG-4 (спека §12, §19.1): раздел «Документы исследования» -- общее
 // представление поверх снимков DOCLOG-2 (состояния §12.3, негативные
 // состояния AC17; preview -- sandboxed iframe, §12.3/AC16).
-export { DocumentationWorkspace } from "./components/DocumentationWorkspace";
+export { DocumentationWorkspace, type RunIdSource } from "./components/DocumentationWorkspace";
 // DOCLOG-E2E-RECHECK-1-FIX (C01): разрешение текущего исследования для
 // перехода в «Документы» без ?run= (единый источник run_id -- /trace).
 export { resolveCurrentRun } from "./lib/documentation";

@@ -192,10 +192,13 @@ export function AdminLogsDashboard() {
   liveTailRef.current = liveTail;
 
   const loadStream = useCallback(
-    async (which: TabKey, key: string, cursor?: string, append = false) => {
+    async (which: TabKey, key: string, cursor?: string, append = false, filterOverride?: FilterState) => {
       setLoading(true);
       setStreamError(null);
-      const base = filtersForTab(which, filters);
+      // H29-UIH (2026-10-27): filterOverride -- пресет «Причины отказов
+      // доступа»: применяет фиксированные whitelist-значения синхронно с
+      // перечитыванием (setFilters асинхронен -- замыкание не увидело бы).
+      const base = filtersForTab(which, filterOverride ?? filters);
       const query = { ...base, limit: 50, cursor };
       let result;
       if (which === "telemetry") {
@@ -532,6 +535,27 @@ export function AdminLogsDashboard() {
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
+          {/* H29-UIH (2026-10-27): пресет «Причины отказов доступа» --
+              разбор инцидента по фактической причине (reason_code по run)
+              в один клик: фиксированные whitelist-значения (§14.2: без
+              произвольного SQL/regex от браузера), затем перечитывание. */}
+          {tab === "audit" && (
+            <button
+              type="button"
+              onClick={() => {
+                const preset: FilterState = {
+                  ...EMPTY_FILTERS,
+                  action: "run_access_denied",
+                  decision: "denied",
+                };
+                setFilters(preset);
+                if (apiKey) void loadStream("audit", apiKey, undefined, false, preset);
+              }}
+              className="rounded border border-brand px-3 py-1.5 text-sm text-brand hover:bg-brand-light/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-bright"
+            >
+              Причины отказов доступа
+            </button>
+          )}
           <button
             type="button"
             onClick={() => apiKey && void loadStream(tab, apiKey)}
@@ -601,17 +625,28 @@ export function AdminLogsDashboard() {
                     />
                   ))}
                 {tab === "audit" &&
-                  auditPage?.records.map((record) => (
-                    <LogRow
-                      key={record.audit_id}
-                      time={formatUtc(record.occurred_at)}
-                      main={record.action}
-                      message={`${record.decision}${record.policy_basis ? ` · ${record.policy_basis}` : ""}`}
-                      outcome={record.decision}
-                      correlation={record.request_id ?? undefined}
-                      detail={record}
-                    />
-                  ))}
+                  auditPage?.records.map((record) => {
+                    // H29-UIH (2026-10-27): причина отказа (reason_code из
+                    // details, записывает record_run_access_decision) видна
+                    // в строке СРАЗУ -- инцидент «у меня запрещён»
+                    // разбирается по фактической причине, а не по догадкам
+                    // (вскрытие detail -- опционально).
+                    const reasonCode =
+                      typeof (record.details ?? {})?.reason_code === "string"
+                        ? (record.details as { reason_code: string }).reason_code
+                        : null;
+                    return (
+                      <LogRow
+                        key={record.audit_id}
+                        time={formatUtc(record.occurred_at)}
+                        main={record.action}
+                        message={`${record.decision}${reasonCode ? ` · причина: ${reasonCode}` : ""}${record.policy_basis ? ` · ${record.policy_basis}` : ""}`}
+                        outcome={record.decision}
+                        correlation={record.request_id ?? undefined}
+                        detail={record}
+                      />
+                    );
+                  })}
                 {tab === "delivery" &&
                   deliveryPage?.records.map((record) => (
                     <LogRow

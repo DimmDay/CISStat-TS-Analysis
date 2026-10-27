@@ -57,6 +57,70 @@ from apps.api import delivery_worker
 from apps.api import document_render_worker
 
 
+# H29 (Task DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): состав
+# durable-контура, проверяемого на старте в required-режиме. Паритет
+# фабрик AUDIT-6C: runs/session закрывали AUDIT-6C, artifacts/snapshots
+# имели контракт, но не проверялись на старте, documents доведён до
+# контракта этой задачей (ранее -- тихий выбор backend + сломанный
+# from_env: ImportError research_runs.database_dsn на durable-пути).
+# Документный слой = snapshots/artifacts/documents (байты rendition --
+# в общем object store) -- проверяется согласованно, класс S4/S5
+# «исследование недоступно после рестарта free-тира» устраняется
+# fail-closed стартом, а не обнаружением на первом запросе «Документов».
+_startup_required_factories = (
+    "runs", "session", "artifacts", "snapshots", "documents",
+)
+
+
+def _startup_factory_runs() -> None:
+    from apps.api.research_runs import get_research_run_store
+
+    get_research_run_store()
+
+
+def _startup_factory_session() -> None:
+    from apps.api.session_store import get_session_store
+
+    get_session_store()
+
+
+def _startup_factory_artifacts() -> None:
+    from apps.api.artifact_store import get_artifact_registry
+
+    get_artifact_registry()
+
+
+def _startup_factory_snapshots() -> None:
+    from apps.api.report_snapshot import get_snapshot_registry
+
+    get_snapshot_registry()
+
+
+def _startup_factory_documents() -> None:
+    from apps.api.document_jobs import get_document_registry
+
+    get_document_registry()
+
+
+def verify_required_storage_backends() -> None:
+    """Startup-проверка required-режима хранения (AUDIT-6C + H29):
+    все фабрики durable-контура (_startup_required_factories) вызываются
+    ДО начала обслуживания -- каждая сама fail-closed в required
+    (readiness-проба на выборе): неверная конфигурация/драйвер/миграция/
+    недоступная БД роняют старт, uvicorn завершается, оркестратор видит
+    неработающий контейнер вместо тихой Memory-подмены. В advisory --
+    честный no-op: ленивое создание без side-эффектов (прежний контракт
+    dev/тестов), состояние фабрик видно в /health/ops."""
+    if get_storage_mode() != "required":
+        return None
+    import sys as _sys
+
+    module = _sys.modules[__name__]
+    for name in _startup_required_factories:
+        getattr(module, f"_startup_factory_{name}")()
+    return None
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """Startup/shutdown API (AUDIT-6C):
@@ -69,14 +133,11 @@ async def _lifespan(app: FastAPI):
       (CISSTAT_DELIVERY_WORKER_ENABLED/INTERVAL); shutdown останавливает.
     """
     if get_storage_mode() == "required":
-        # Фабрика сама fail-closed в required-режиме (startup readiness-
+        # Фабрики сами fail-closed в required-режиме (startup readiness-
         # probe). Memory-режим (auto) не трогаем: ленивое создание без
-        # side-эффектов -- прежний контракт dev/тестов.
-        from apps.api.research_runs import get_research_run_store
-        from apps.api.session_store import get_session_store as _get_ss
-
-        get_research_run_store()
-        _get_ss()
+        # side-эффектов -- прежний контракт dev/тестов. H29: проверяется
+        # ПОЛНЫЙ durable-контур (runs/session/artifacts/snapshots/documents).
+        verify_required_storage_backends()
         logger.info("Startup: required-режим хранения -- фабрики проверены")
     # DOCLOG-3 (§13.1): lifecycle-события в техпоток (essential -- не
     # сэмплируются); сбой телеметрии не влияет на старт (AC11).

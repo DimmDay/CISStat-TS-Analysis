@@ -35,6 +35,7 @@ import {
   renditionContentUrl,
   requestApproval,
   requestRendition,
+  resolveCurrentRun,
   retractRevision,
   type DiffPayload,
   type DocumentSummary,
@@ -95,7 +96,22 @@ const BUILD_FORMATS: Array<{ format: string; label: string; heavy?: boolean }> =
   { format: "zip", label: "ZIP", heavy: true },
 ];
 
-type ListPhase = "loading" | "ready" | "empty" | "forbidden" | "offline" | "no-run";
+// H29/UIH (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): «environment-lost»
+// -- честное состояние «run_id разрешён ЭТОЙ ЖЕ сессией (свежий trace),
+// но список документов ответил 404 «запуск не найден»» -- класс S4/S5
+// (run потерян средой при живой сессии после рестарта free-тира).
+// Uniform-404 НЕ ослабляется (T1/R09): для deep-link/чужого run_id и
+// 403 остаётся безальтернативное «Доступ запрещён»; отличие фразы --
+// только по КОНТЕКСТУ получения run_id на клиенте (свой-resolved vs
+// deep-link), существование чужих ресурсов не дисклоужается.
+type ListPhase =
+  | "loading"
+  | "ready"
+  | "empty"
+  | "forbidden"
+  | "offline"
+  | "no-run"
+  | "environment-lost";
 
 type PreviewPhase = "idle" | "loading" | "ready" | "forbidden" | "conflict" | "error";
 
@@ -206,13 +222,24 @@ function formatDate(value: string | null | undefined): string {
 //      записан явными непересекающимися утилитами (px-*/pt-*/pb-*),
 //      чтобы нижний инсет не зависел от порядка p-/pb- в CSS-выдаче.
 
+// Контекст получения run_id (H29/UIH):
+//   "session" -- run_id разрешён той же cookie-сессией через свежий
+//               GET /v1/progress/trace (кнопка «Документы» из активного
+//               исследования/пункт меню);
+//   "link"    -- run_id пришёл из deep-link ?run= (может указывать на
+//               чужой ресурс -- только безальтернативный запрет);
+//   null/проп -- контекст неизвестен: прежний контракт (forbidden).
+export type RunIdSource = "link" | "session" | null;
+
 interface DocumentationWorkspaceProps {
   runId?: string | null;
+  runIdSource?: RunIdSource;
   initialKind?: string | null;
 }
 
 export function DocumentationWorkspace({
   runId,
+  runIdSource = null,
   initialKind = null,
 }: DocumentationWorkspaceProps) {
   const [listPhase, setListPhase] = useState<ListPhase>("loading");
@@ -242,17 +269,38 @@ export function DocumentationWorkspace({
   const [diff, setDiff] = useState<DiffPayload | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
   const pollTimer = useRef<number | null>(null);
+  // H29/UIH: результат кнопки «Открыть текущее исследование» -- явное
+  // переопределение run_id (null тоже честное значение -> no-run).
+  // reopen !== null означает "источник -- session" (run разрешён свежим
+  // trace той же сессии).
+  const [reopenedRun, setReopenedRun] = useState<{ runId: string | null } | null>(
+    null,
+  );
+
+  const effectiveRunId = reopenedRun !== null ? reopenedRun.runId : runId;
+  const effectiveRunIdSource: RunIdSource =
+    reopenedRun !== null ? "session" : runIdSource;
 
   // ── Список документов (чтение; НЕ создаёт документы, §12.1) ────────
   const loadDocuments = useCallback(async () => {
-    if (!runId) {
+    if (!effectiveRunId) {
       // C01 (DOCLOG-E2E-RECHECK-1-FIX): отсутствие run -- отдельное
       setListPhase("no-run");
       return;
     }
     setListPhase("loading");
-    const result = await listDocuments(runId);
+    const result = await listDocuments(effectiveRunId);
     if (!result.ok) {
+      // H29/UIH (2026-10-27): run_id разрешён ЭТОЙ ЖЕ сессией (свежий
+      // trace) и список ответил 404 «запуск не найден» -- это потеря
+      // среды (класс S4/S5), а не запрет: честная фраза + кнопка
+      // повторного открытия. uniform-404 не ослабляется: deep-link
+      // ("link"), неизвестный контекст (null) и остальные статусы
+      // (вкл. 403) -- прежняя безальтернативная фраза; сеть -- offline.
+      if (result.status === 404 && effectiveRunIdSource === "session") {
+        setListPhase("environment-lost");
+        return;
+      }
       // 403/404 -- безопасная причина без защищённого содержимого (§12.3);
       // null -- сеть/оффлайн: отдельное состояние, НЕ «нет документов».
       setListPhase(result.status === null ? "offline" : "forbidden");
@@ -276,11 +324,34 @@ export function DocumentationWorkspace({
       }
       return next[0].kind_code;
     });
-  }, [runId]);
+  }, [effectiveRunId, effectiveRunIdSource]);
 
   useEffect(() => {
     void loadDocuments();
   }, [loadDocuments]);
+
+  // ── H29/UIH: «Открыть текущее исследование» ────────────────────────
+  // Кнопка состояния environment-lost: заново разрешает ТЕКУЩИЙ run той
+  // же сессии (единый источник run_id слоя 1 -- GET /v1/progress/trace):
+  //   run_id есть   -> список перечитывается для него (environment-lost
+  //                    снимается успешным/честным ответом);
+  //   run_id null   -> честное no-run (исследования в среде нет вовсе);
+  //   сеть недоступна -> offline (не маскируется под запрет/потерю).
+  const reopenCurrentRun = useCallback(async () => {
+    setListPhase("loading");
+    const result = await resolveCurrentRun();
+    if (!result.ok) {
+      setListPhase("offline");
+      return;
+    }
+    const nextRun = result.data?.run_id ?? null;
+    setReopenedRun({ runId: nextRun });
+    // Если эффективный run/источник не изменились, identity loadDocuments
+    // не изменится и effect не перезапустится -- перечитываем явно.
+    if (nextRun !== null && nextRun === effectiveRunId && effectiveRunIdSource === "session") {
+      void loadDocuments();
+    }
+  }, [effectiveRunId, effectiveRunIdSource, loadDocuments]);
 
   // ── Выбор версии -> metadata/preview (одно чтение, §12.2) ──────────
   const loadRevision = useCallback(async (revisionId: string) => {
@@ -514,6 +585,8 @@ export function DocumentationWorkspace({
       return "Сервис документирования недоступен — повторите попытку позже";
     if (listPhase === "forbidden")
       return "Доступ запрещён — документы этого исследования недоступны вашему субъекту";
+    if (listPhase === "environment-lost")
+      return "Исследование недоступно в этой среде — возможно, потеряно после рестарта сервиса";
     if (listPhase === "empty")
       return "Документов пока нет — соберите черновик нужного вида";
     if (listPhase === "no-run")
@@ -723,6 +796,38 @@ export function DocumentationWorkspace({
           </p>
         )}
 
+        {/* H29/UIH (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): честное
+            состояние «исследование недоступно в этой среде» -- run_id
+            разрешён ЭТОЙ ЖЕ сессией (свежий trace), но список ответил
+            404 (класс S4/S5: run потерян после рестарта сервиса).
+            Размещено в preview-панели -- единственной области, видимой
+            на ВСЕХ экранах (список версий -- hidden lg:block).
+            uniform-404 не ослабляется: для deep-link/чужого run
+            состояние не возникает (см. маппинг loadDocuments). */}
+        {listPhase === "environment-lost" && (
+          <div
+            role="alert"
+            aria-label="Исследование недоступно в этой среде"
+            data-testid="doclog4-environment-lost"
+            className="rounded-lg border border-amber-300 px-3 py-2 text-sm text-amber-600 dark:border-amber-700/60"
+          >
+            <p>
+              Исследование недоступно в этой среде — возможно, потеряно
+              после рестарта сервиса. Это не запрет доступа: run_id был
+              разрешён этой же сессией, но список документов ответил
+              «запуск не найден».
+            </p>
+            <button
+              type="button"
+              data-testid="doclog4-reopen-current-run"
+              onClick={() => void reopenCurrentRun()}
+              className="mt-2 rounded-lg border border-brand px-3 py-1.5 text-sm text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+            >
+              Открыть текущее исследование
+            </button>
+          </div>
+        )}
+
         {job && job.state === "failed" && (
           <p role="alert" data-testid="doclog4-job-error" className="text-sm text-red-600">
             Ошибка сборки формата {job.format}: {job.error_code ?? "render_failed"}
@@ -733,7 +838,7 @@ export function DocumentationWorkspace({
             D12 читает frozen сверки run (без пересчёта); состояния
             §12.3 -- внутри панели. */}
         {activeKind === "D12" && previewPhase === "ready" && (
-          <MonitoringComparisonPanel runId={runId} />
+          <MonitoringComparisonPanel runId={effectiveRunId} />
         )}
 
         {previewPhase === "ready" && snapshot && revision && (

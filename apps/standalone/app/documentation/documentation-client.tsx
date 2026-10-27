@@ -12,11 +12,18 @@
 // ProgressDrawer) и передаёт его в Workspace. Пустой query больше не
 // маскируется под пустой реестр документов: если текущего run нет,
 // Workspace показывает честное no-run-состояние с подсказкой (акт §9.1).
+//
+// H29/UIH (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): контекст
+// получения run_id передаётся в Workspace (runIdSource) -- «link»
+// (deep-link ?run=) vs «session» (разрешён этой же сессии по свежему
+// trace). По контексту Workspace различает честное «исследование
+// недоступно в этой среде» (S4/S5) и безальтернативный запрет
+// (uniform-404 не ослабляется).
 
 "use client";
 
 import { useEffect, useState } from "react";
-import { DocumentationWorkspace, resolveCurrentRun } from "@cisstat/ui";
+import { DocumentationWorkspace, resolveCurrentRun, type RunIdSource } from "@cisstat/ui";
 
 export function DocumentationClient({
   initialRunId,
@@ -31,16 +38,22 @@ export function DocumentationClient({
   const [runId, setRunId] = useState<string | null | undefined>(
     initialRunId === null ? undefined : initialRunId,
   );
+  // H29/UIH: источник run_id (см. выше); null -- резолв не выполнен/
+  // сеть недоступна (Workspace применяет прежний контракт).
+  const [runIdSource, setRunIdSource] = useState<RunIdSource>(null);
 
   useEffect(() => {
     if (initialRunId) {
       setRunId(initialRunId);
+      setRunIdSource("link");
       return;
     }
     let cancelled = false;
     resolveCurrentRun().then((result) => {
       if (cancelled) return;
-      setRunId(result.ok ? result.data?.run_id ?? null : null);
+      const nextRun = result.ok ? result.data?.run_id ?? null : null;
+      setRunId(nextRun);
+      setRunIdSource(result.ok && nextRun ? "session" : null);
     });
     return () => {
       cancelled = true;
@@ -54,5 +67,11 @@ export function DocumentationClient({
       </p>
     );
   }
-  return <DocumentationWorkspace runId={runId} initialKind={initialKind} />;
+  return (
+    <DocumentationWorkspace
+      runId={runId}
+      runIdSource={runIdSource}
+      initialKind={initialKind}
+    />
+  );
 }

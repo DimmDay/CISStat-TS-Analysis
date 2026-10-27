@@ -50,6 +50,7 @@ download_requested/response_stream_started/response_stream_finished
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import threading
@@ -58,6 +59,10 @@ from abc import ABC
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+# H29 (AUDIT-6C паритет): операционные логи выбора backend (без DSN --
+# причины проходят safe_error до логов).
+logger = logging.getLogger(__name__)
 
 from apps.api.report_snapshot import (
     DEFAULT_REDACTION_PROFILE,
@@ -667,9 +672,18 @@ class PostgresDocumentRegistry(DocumentRegistry):
 
     @classmethod
     def from_env(cls) -> "PostgresDocumentRegistry":
-        from apps.api.research_runs import database_dsn
-
-        return cls(database_dsn())
+        # H29 (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): паттерн
+        # PostgresArtifactRegistry/PostgresSnapshotRegistry -- DSN читается
+        # здесь, отсутствие DATABASE_URL -- явный RuntimeError. Прежний
+        # вариант импортировал несуществующий research_runs.database_dsn
+        # (ImportError на каждом durable-обращении -- durable-путь
+        # документов фактически не работал).
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            raise RuntimeError(
+                "DATABASE_URL env var is required for PostgresDocumentRegistry."
+            )
+        return cls(dsn)
 
     def _connect(self):
         import psycopg
@@ -1124,24 +1138,111 @@ _registry_lock = threading.Lock()
 
 
 def get_document_registry() -> DocumentRegistry:
-    """Фабрика реестра документов. CISSTAT_DOCUMENTS_BACKEND:
-    memory | postgres | (auto -- DATABASE_URL ? postgres : memory)."""
+    """Фабрика реестра документов -- КОНТРАКТ AUDIT-6C (план §18 п.1;
+    P21/F14 -- CISSTAT_STORAGE_MODE). H29 (Task DOCLOG-H29-UIHONEST-
+    AUDITVIEW, 2026-10-27): единственный компонент durable-контура, не
+    доведённый до паритета runs/session/artifacts/snapshots -- тихий
+    выбор backend без диагностики; устранён (класс S4/S5 «исследование
+    недоступно после рестарта free-тира» больше не прячется).
+
+    ВЫБОР БЭКЕНДА (паритет get_research_run_store):
+      - CISSTAT_DOCUMENTS_BACKEND=memory -> Memory (ВЫБРАННЫЙ backend,
+        приоритет над DATABASE_URL; observable как configured=memory);
+      - =postgres или DATABASE_URL задан -> Postgres;
+      - иначе -> Memory (configured=auto).
+
+    РЕЖИМЫ ХРАНЕНИЯ:
+
+      - ``required``: неверная конфигурация/отсутствующий драйвер/
+        недоступная БД (readiness-проба на выборе) -- fail-closed
+        RuntimeError, ТИХИЙ Memory fallback ЗАПРЕЩЁН;
+      - ``advisory`` (default, dev): fallback в Memory допустим, но НЕ
+        тихий: configured/effective/degraded + безопасная причина
+        (record_backend_fallback), состояние видно в /health/ops.
+
+    Readiness-проба -- ТОЛЬКО в required (advisory сохраняет
+    сертифицированный ленивый контракт: конструирование Postgres
+    не открывает соединение; недоступность БД видна через readiness
+    /health/ops, а не на выборе фабрики).
+    """
     global _registry
     with _registry_lock:
-        if _registry is None:
-            backend = (os.environ.get(DOCUMENTS_BACKEND_ENV) or "").strip().lower()
-            dsn = (os.environ.get("DATABASE_URL") or "").strip()
-            if backend == "memory" or (not backend and not dsn):
-                _registry = MemoryDocumentRegistry()
-            elif backend in ("", "auto", "postgres") and dsn:
-                _registry = PostgresDocumentRegistry(dsn)
-            elif backend in ("", "auto"):
-                _registry = MemoryDocumentRegistry()
-            else:
-                raise RuntimeError(
-                    f"{DOCUMENTS_BACKEND_ENV}={backend!r} не поддерживается; "
-                    "доступно: memory | postgres"
+        if _registry is not None:
+            return _registry
+
+        from apps.api.storage_diagnostics import (
+            COMPONENT_DOCUMENTS,
+            get_storage_mode,
+            record_backend_fallback,
+            record_backend_selected,
+            safe_error,
+        )
+
+        mode = get_storage_mode()
+        backend_explicit = (
+            os.environ.get(DOCUMENTS_BACKEND_ENV) or ""
+        ).strip().lower()
+        dsn = (os.environ.get("DATABASE_URL") or "").strip()
+
+        # Опечатка в конфигурации -- fail fast (паритет get_storage_mode:
+        # в required-окружении тихое «неизвестное = auto» скрыло бы
+        # fail-closed контракт).
+        if backend_explicit not in ("", "auto", "memory", "postgres"):
+            raise RuntimeError(
+                f"{DOCUMENTS_BACKEND_ENV}={backend_explicit!r} не "
+                "поддерживается; доступно: memory | postgres"
+            )
+
+        if backend_explicit == "memory":
+            _registry = MemoryDocumentRegistry()
+            record_backend_selected(COMPONENT_DOCUMENTS, "memory", "memory")
+        elif backend_explicit == "postgres" or dsn:
+            # Выбор фиксируется ДО попытки (паритет runs/session): отказ
+            # инициализации виден в snapshot как configured=postgres.
+            record_backend_selected(COMPONENT_DOCUMENTS, "postgres", "initializing")
+            try:
+                candidate = PostgresDocumentRegistry.from_env()
+                if mode == "required":
+                    # P21/F14 fail-closed: соединение поднимается заранее
+                    # -- неверная конфигурация/драйвер/миграция/БД видны
+                    # немедленно, а не на первом запросе «Документов».
+                    probe = candidate.readiness_probe()
+                    if not probe.get("ok"):
+                        reason = probe.get("error") or "readiness probe failed"
+                        raise RuntimeError(
+                            "DocumentRegistry: Postgres backend required, "
+                            f"но недоступен (fail-closed, P21/F14): {reason}"
+                        )
+                _registry = candidate
+                record_backend_selected(COMPONENT_DOCUMENTS, "postgres", "postgres")
+                logger.info("DocumentRegistry: Postgres backend selected")
+            except Exception as e:
+                reason = safe_error(e)
+                if mode == "required":
+                    # Тихий Memory fallback в required запрещён (план
+                    # §18 п.1): ошибка останавливает запуск/запрос, а не
+                    # подменяет долговечность памятью процесса.
+                    record_backend_selected(
+                        COMPONENT_DOCUMENTS, "postgres", "unavailable",
+                        reason=reason, degraded=True,
+                    )
+                    raise RuntimeError(
+                        "DocumentRegistry: Postgres backend required, "
+                        f"но инициализация не удалась (fail-closed, P21/F14): "
+                        f"{reason}"
+                    ) from e
+                logger.error(
+                    "DocumentRegistry: Postgres init failed (%s), ЯВНАЯ "
+                    "деградация в Memory (advisory mode; состояние в "
+                    "/health/ops)", reason,
                 )
+                record_backend_fallback(
+                    COMPONENT_DOCUMENTS, "postgres", reason, effective="memory"
+                )
+                _registry = MemoryDocumentRegistry()
+        else:
+            _registry = MemoryDocumentRegistry()
+            record_backend_selected(COMPONENT_DOCUMENTS, "auto", "memory")
         return _registry
 
 

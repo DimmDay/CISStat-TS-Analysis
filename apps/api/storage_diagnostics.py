@@ -213,7 +213,13 @@ def describe_backend(component: str) -> dict[str, Any]:
 
 def storage_backend_snapshot() -> dict[str, Any]:
     """Снимок фабрик: configured/effective/degraded + события fallback.
-    Basis /health/ops и тестов деградации; НЕ состояние фактов."""
+    Basis /health/ops и тестов деградации; НЕ состояние фактов.
+
+    H29 (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): в снимок добавлены
+    artifacts/snapshots/documents -- durable-контур целиком наблюдаем
+    (паритет runs/session; документный слой класса S4/S5 «исследование
+    недоступно после рестарта» больше не невидим для диагностики).
+    """
     with _BACKEND_STATE_LOCK:
         events = list(_fallback_events)
         states = {key: dict(value) for key, value in _backend_state.items()}
@@ -221,14 +227,32 @@ def storage_backend_snapshot() -> dict[str, Any]:
     session_backend = states.get(
         COMPONENT_SESSION, _honest_backend(COMPONENT_SESSION)
     )
+    artifacts_backend = states.get(
+        COMPONENT_ARTIFACTS, _honest_backend(COMPONENT_ARTIFACTS)
+    )
+    snapshots_backend = states.get(
+        COMPONENT_SNAPSHOTS, _honest_backend(COMPONENT_SNAPSHOTS)
+    )
+    documents_backend = states.get(
+        COMPONENT_DOCUMENTS, _honest_backend(COMPONENT_DOCUMENTS)
+    )
     degraded = bool(
-        runs_backend.get("degraded") or session_backend.get("degraded")
+        runs_backend.get("degraded")
+        or session_backend.get("degraded")
+        or artifacts_backend.get("degraded")
+        or snapshots_backend.get("degraded")
+        or documents_backend.get("degraded")
     )
     return {
         "storage_mode": get_storage_mode(),
         "degraded": degraded,
         "runs_backend": runs_backend,
         "session_backend": session_backend,
+        # H29: паритет durable-контура (фабрики artifacts/snapshots уже
+        # имели AUDIT-6C контракт; documents -- с этой задачи).
+        "artifacts_backend": artifacts_backend,
+        "snapshots_backend": snapshots_backend,
+        "documents_backend": documents_backend,
         "telemetry": states.get(COMPONENT_TELEMETRY, _honest_backend(COMPONENT_TELEMETRY)),
         "audit": states.get(COMPONENT_AUDIT, _honest_backend(COMPONENT_AUDIT)),
         "fallback_events": events,

@@ -877,6 +877,12 @@ _AUDIT_COLUMNS = (
     "audit_id", "occurred_at", "actor_subject", "actor_via", "tenant_id",
     "action", "decision", "resource_kind", "resource_id",
     "resource_version", "policy_basis", "request_id", "run_id",
+    # H29-UIH (DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): details в
+    # чтении -- admin-вью audit-причин (reason_code по run). reason_code
+    # живёт в details (record_run_access_decision), колонка есть в
+    # миграции 0009; содержимое уже redacted на записи (_redact_details,
+    # §14.1) и отдаётся только в границе audit.read/ADMIN + grants.
+    "details",
 )
 
 
@@ -911,6 +917,15 @@ def _memory_query_audit(
             continue
         if not _match_filters(record, filters, ("request_id",)):
             continue
+        # H29-UIH (2026-10-27): whitelist-фильтры run_id/tenant_id
+        # применяются и в memory (паритет _pg_query_audit, который их
+        # уже применял) -- «причины отказов по run» работают в обоих
+        # бекендах; прежнее молчаливое игнорирование -- разрыв контракта
+        # whitelist (фильтр объявлен, но не применён).
+        if not _match_filters(record, filters, ("run_id",)):
+            continue
+        if not _match_filters(record, filters, ("tenant_id",)):
+            continue
         if not _narrow(record, access, run_key="run_id"):
             continue
         rows.append(record)
@@ -941,7 +956,21 @@ def _pg_query_audit(
     )
     params.append(query.limit + 1)
     rows = _pg_fetch_all(sql, tuple(params))
+    # H29-UIH (2026-10-27): psycopg возвращает JSONB строкой -- приводим
+    # к dict (паритет memory-пути, где details уже dict); битое значение
+    # не отдаётся (честный None, не мусор).
+    rows = [_pg_audit_details(row) for row in rows]
     return _pg_page(rows, query, key_fields=("occurred_at", "audit_id"))
+
+
+def _pg_audit_details(row: dict[str, Any]) -> dict[str, Any]:
+    details = row.get("details")
+    if isinstance(details, str):
+        try:
+            row["details"] = json.loads(details)
+        except ValueError:
+            row["details"] = None
+    return row
 
 
 # ── Чтение delivery/documents (реестр документов) ────────────────────
