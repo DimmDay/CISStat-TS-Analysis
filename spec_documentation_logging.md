@@ -179,6 +179,8 @@ CSV сохраняет числовые значения в каноническ
 
 ZIP без исходных данных допустим, но маркируется `data_included=false` и `reproducibility=limited`, если у получателя нет разрешённого способа получить закреплённые данные. Шифрование и передача ключа регулируются профилем организации; пароль источника БД в пакет никогда не включается.
 
+> **Дополнение PGV-00 (2026-10-27, `spec_passport_graphics_visual.md`).** Для новых научных экспортов изображений действует **PNG-only**: внутренний SVG Recharts допустим, SVG как новый скачиваемый формат не проектируется; ChartSpec SVG действующих рендер-путей сохраняет прежнюю политику чтения (строка SVG/PNG выше — про DOCLOG-пути, не о новых scientific export). PDF/CSV/JSON/MD действующих документов не удаляются; ZIP — контейнер PNG и метаданных. Полный инвентарь научных render-sites — реестр `packages/ui/lib/visualExportRegistry.ts` (JSON-твин `config/visual_registry.json`, гвард паритета — `packages/ui/lib/visualExportRegistry.coverage.test.ts`); unknown/unmapped научный render-site блокирует сквозную приёмку и остаётся в denominator coverage.
+
 ## 8. Логическая архитектура
 
 ```mermaid
@@ -244,6 +246,8 @@ flowchart TD
 - checkpoint/snapshot/parameter/OOF signatures существующего контура и refs на конкретные выходы;
 - итог `succeeded`, `failed`, `cancelled`, `timed_out`, `not_applicable` или `not_computed`; error_code без raw exception;
 - evidence level/provenance для legacy или UI-reported фактов. Новая версия схемы не повышает доказательность старого события задним числом.
+
+> **Дополнение PGV-00 (2026-10-27, `spec_passport_graphics_visual.md`).** Для научных визуализаций проектируется замена ChartArtifact/claims-count основы: **VisualResult** (immutable artifact нормализованных данных уже вычисленного результата — series/tables/matrix, units/null reasons, selections, sampling, warnings, execution/result ref) и **VisualPrintSnapshot/1** (frozen печатная основа: view_id, refs/version/hash, оси/легенда/метод, print profile, renderer/font versions — §6 проектной спеки). Вводится задачами PGV-01/02, существующие kinds и D01–D12 не переименовываются; producer-фиксация — через действующую интеграцию `promotion_integration.py` без повторной науки (PGV-03/04).
 
 ### 9.3. Данные из БД и восстановление
 
@@ -359,6 +363,8 @@ Idempotency scope: tenant + actor/permission domain + endpoint + request body fi
 «Скачать» открывает компактный выбор: документ/данные/пакет, формат, включение данных при наличии права, профиль раскрытия. Для готового файла — немедленное скачивание; для нового тяжёлого формата — job с прогрессом/отменой. Повторный клик не запускает научный расчёт и не создаёт дубли. Пакет без данных прямо так и называется.
 
 На preview доступны переключатели «Кратко» / «Методическое приложение» / «Основания»; это представления одной версии, не три независимо рассчитанных документа. Редактируется только отделённый текст аналитика. Generated narrative содержит пометку, refs и требует проверки человеком; LLM не является обязательной частью сборки. Неподкреплённая внешним источником гипотеза не включается в автоматические факты.
+
+> **Дополнение PGV-00 (2026-10-27, `spec_passport_graphics_visual.md`).** В левом списке проектируются фильтры «Визуализации»/«Паспорта свойств» и аддитивные типы: **V01** — scientific visual (PNG render-site), **P01** — сохранённый паспорт/комплект, **P02** — сравнение паспортов, с source picker траекторий/checkpoint'ов (§10.2 проектной спеки). D01–D12 сохраняют смысл; **D02 (паспорт-документ) не переименовывается и не равен P01** (saved passport); общий PNG для D01–D12 допустим лишь при реальном page renderer, действующий claims chart остаётся «Структура документа: число утверждений». Реализация — PGV-13/15; lifecycle/API — существующие document jobs/renditions (один job store).
 
 ### 12.3. Состояния, безопасность и доступность
 
@@ -553,6 +559,7 @@ Document-level pin защищает dependencies независимо от те�
 | DOCLOG-8 — мониторинг | D12: frozen forecast и actual vintages, выравнивание, оценки, revisions/threshold decisions | 1–6; поздний факт и revise не переписывают старый выпуск/OOF |
 | DOCLOG-9 — профили организации | DOCX, проверяемый PDF/A, подпись/anchor/WORM при необходимости, оформление | 5+6; выбранный профиль подтверждён валидатором и organisational policy, не названием файла |
 | DOCLOG-CERT — сквозная приёмка | Независимый негативный/сбойный/права/методический корпус и миграция | После каждого релизного среза; выполнены относящиеся критерии §20, ограничения явно перечислены |
+| PGV-00 — реестр render-sites и уточнение спеки | Machine-readable инвентарь научных визуализаций (89 sites / 8 модулей / 9 групп исключений) + правки §7/§9.2/§12/§19.1 | `spec_passport_graphics_visual.md` §5/§13; unknown/unmapped научный render-site блокирует CERT (coverage-оракул); JSON-твин `config/visual_registry.json`; runtime не менялся |
 
 Миграции аддитивные; reader появляется раньше writer новой версии. Исторические events и receipts не переписываются в «более достоверные». Backfill создаёт новые metadata с `source=legacy_import`, датой импорта/исходным временем и степенью доказательности; отсутствующие bytes не восстанавливаются из названия файла. Документы из frozen snapshot можно выпускать поэтапно; public share/publish до DOCLOG-0/3 не включать.
 
@@ -569,6 +576,7 @@ Document-level pin защищает dependencies независимо от те�
 | Новые модули `app/documentation/`, `apps/api/routers/documentation.py`, `apps/api/document_jobs.py`, `apps/api/artifact_store.py` | Схемы/сборка/render adapters, API, queue/worker и store abstraction; названия проектные |
 | Новые UI `DocumentationWorkspace`, `DocumentPreview`, `DocumentHistory`, `AdminLogsDashboard` | Общее представление и states; API client, переиспользование shell/theme/knowledge refs |
 | Новые аддитивные API migrations | documents/revisions/renditions/artifacts/dependencies/jobs/approvals/grants/audit refs; точные номера после сверки последней migration |
+| `packages/ui/lib/visualExportRegistry.ts`, `config/visual_registry.json`, `packages/ui/print/` (будущий), `apps/print-renderer/` (будущий) | PGV-00: реестр render-sites как основа print-схем (PGV-01), durable inputs (PGV-02), producer-адаптеров (PGV-03/04), общих pure print layout'ов (PGV-07); названия проектные, runtime этой задачей не меняется |
 
 В рамках нынешней задачи эти продуктовые файлы **не изменяются**.
 
