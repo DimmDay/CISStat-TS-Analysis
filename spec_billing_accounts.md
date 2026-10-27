@@ -1,5 +1,7 @@
 # Спецификация: Account / Seats (моно/мульти доступ) + Compute Unit метеринг
 
+**Дополнение CU-WALLET-1 (27.10.2026):** §13 формализует валюту CU и покупаемый баланс; имеет приоритет над упрощёнными прежними примерами баланса/reset/provider. Runtime не изменён.
+
 **Задача:** Task 103 (продолжение worklog2.md)
 **Синхронизация:** `main` @ `a42df0a75a022336daa85862cae041633dd4ac38`
 **Статус:** Архитектурный дизайн, готов к ревью тимлидом перед стадией TDD-реализации
@@ -78,8 +80,8 @@ class Account(BaseModel):
     seats: int = Field(ge=1)            # для MONO жёстко зафиксировано в 1
     plan_expires_at: datetime | None
     billing_cycle_anchor: datetime
-    compute_unit_pool_balance: float    # текущий остаток пула CU на цикл
-    compute_unit_pool_reset_at: datetime
+    compute_unit_pool_balance: int      # legacy projection в micro-CU; вместо неё Wallet, §13
+    compute_unit_pool_reset_at: datetime # только included cycle; purchased не сбрасывается, §13
 
 class AccountMembership(BaseModel):
     account_id: UUID
@@ -213,7 +215,7 @@ def compute_cu(
     rows: int,
     columns: int,
     repetitions: int = 1,   # folds × trials для tuning/backtest, иначе 1
-) -> float:
+) -> float:  # эскиз estimator; authoritative charge — integer micro-CU, §13
     coef = ALGORITHM_COEFFICIENTS[operation]  # калибруется эмпирически
     data_volume = rows * columns
     return coef.base * data_volume ** coef.exponent * repetitions
@@ -646,3 +648,115 @@ Frontend:
 AGENTS.md, начиная с Этапа 1 после утверждения тимлидом открытых
 вопросов §10. Коммит/push в `main` не выполняется этим агентом —
 только подготовка артефакта на скачивание.*
+
+## 13. Валюта платформы и самостоятельно покупаемый баланс — CU-WALLET-1
+
+**Дополнение от 27 октября 2026 года; статус — проект, не реализовано.** Прочитано совместно с [архитектурой авторизации](spec_auth_architecture.md) и [контрактом ролей](docs/ROLES_AND_PLANS_SPEC.md). Этот раздел нормативно уточняет §2–4, §8, §10–12 для кошелька CU. Старые примеры с float, единым resettable balance и прямым вызовом provider — упрощённые эскизы, не реализационный контракт.
+
+### 13.1 Формальное определение
+
+**Валюта платформы CU (Compute Unit)** — внутренняя неденежная расчётная единица учёта права Account на потребление вычислительных услуг CISStat. Операции получают стоимость в CU по версионированной калиброванной модели; Account получает CU по подписке, покупкой пакета либо явным промо-начислением. После резервирования и выполнения услуги CU погашаются.
+
+CU не является денежным кошельком, платёжным средством между пользователями, депозитом или доходным активом в проектируемом продукте. В v1 нет перевода CU между Account, P2P-обмена, процентов, продажи обратно платформе по курсу и использования для оплаты seats. Возврат исходного платежа — отдельный процесс, а не конвертация CU в деньги. Это описание технической модели, не юридическая квалификация; условия продажи/возврата и документы provider определяются перед коммерческим запуском.
+
+**1 CU = 1 000 000 micro-CU.** Ledger хранит целые micro-CU (BIGINT с проверкой переполнения), суммы денег — отдельно целыми minor units с currency и валютной точностью provider. Float запрещён в authoritative balances/charges; estimator может использовать численную модель, но результат единожды детерминированно округляется вверх до micro-CU по сохранённой версии правила. `NULL` не означает бесконечный денежный баланс.
+
+Нельзя смешивать три величины:
+
+| Величина | Смысл | Версионирование |
+|---|---|---|
+| compute_cost_cu | Сколько стоит конкретное вычисление | coefficient_version, operation dimensions, rounding_version |
+| topup_price_money | Сколько денег стоит пакет CU | price_version, quote_id, currency, срок действия предложения |
+| seat_subscription_price | Сколько стоят права доступа/места и включённый пул | plan_version, seats, период, proration |
+
+Калибровка CU и денежный прайс независимы. Изменение коэффициентов не пересчитывает прошлые расходы, уже зарезервированные операции и номинальный приобретённый остаток. Новый прайс не меняет оплаченный пакет; новая стоимость вычислений применяется к новым admissions, с доступной пользователю оценкой. Существенные изменения публичных условий вводятся с уведомлением и новой версией условий.
+
+### 13.2 Account wallet и источники
+
+Один кошелёк на Account в MONO/MULTI; баланс не принадлежит ключу, браузеру или отдельному участнику. Внутри кошелька независимые credit lots:
+
+| Источник | Начисление | Срок/переход периода | Возврат |
+|---|---|---|---|
+| included | Подтверждённый subscription cycle/prorated seat event | Только текущий период, без переноса; новый цикл — новый lot | Не обменивается на деньги как пакет CU |
+| purchased | Подтверждённая отдельная покупка пакета | В v1 без срока сгорания; сохраняется при смене цикла, seats и плана | Возможен только по правилам исходного заказа |
+| promotional | Явная акция/корректировка с основанием | Срок и условия зафиксированы в lot | Денежного возврата нет |
+
+Demo/forum используют sponsor budget и временные grant allowances; участник общего demo не покупает CU и не распоряжается кошельком sponsor. Переход в платный личный Account не переносит sponsor CU.
+
+Для каждого lot хранятся issued, spent, reserved, expired, refund_pending, refunded и adjustment postings. Доступный остаток равен выпущенному остатку за вычетом spent + reserved, погашений/возвратов/expiry; pending payment не даёт доступных CU. Переводы available↔reserved не создают/уничтожают CU. Каждая проводка сбалансирована между соответствующими ledger subaccounts; materialized balance — проекция, не источник истины. Для любой уменьшенной величины запрещён отрицательный available. Купленный баланс показывается отдельно от included/promotional, reserved и приостановленных CU.
+
+### 13.3 Допуск к покупке и к расходованию
+
+Кошелёк не повышает тариф и не заменяет membership/capability. У Account с 1 000 купленных CU всё равно нет доступа к tuning, если его entitlement это запрещает.
+
+- `can_purchase_cu`: effective permission только OWNER оплачиваемого активного Account; в v1 demo/internal исключены. Выбор provider/валюты и возможность top-up включаются серверной product configuration, не ролью клиента.
+- `can_spend_cu`: разрешённый участник активного Account в рамках operation capability и object policy. MEMBER может расходовать общий пул, но не покупать, возвращать или выводить деньги. Существующие concurrency и resource ceilings действуют независимо от CU.
+- Suspended/expired subscription не сжигает purchased, но блокирует новые платные вычисления до восстановления допустимого entitlement; UI показывает сохранённый баланс и причину. Это сознательный v1: top-up не заменяет подписку. Защищённые read/export регулируются отдельной retention/access policy, не запускают вычисления автоматически.
+- Смена OWNER не перемещает кошелёк: меняется управляющий membership. Выход/удаление участника и ключа не возвращают расход и не уносят его долю.
+
+### 13.4 Самостоятельная покупка: quote → payment → credit
+
+OWNER открывает «Аккаунт → Баланс CU → Пополнить». Сервер выдаёт подписанное/сохранённое предложение: quote_id, account_id, package CU, price/currency, налоги/итоговая сумма если применимо, price_version, terms_version, expires_at. Цены задаются конфигурацией; конкретный курс данным документом не придумывается.
+
+1. POST создания заказа с idempotency key проверяет OWNER, Account status и актуальность quote. Сервер фиксирует снимок предложения; client-supplied amount/quantity не доверяются. Checkout привязан к order/account и provider payment id.
+2. UI перенаправляет на hosted checkout выбранного provider. Повторный клик не создаёт повторный заказ при том же payload/key; другой payload с тем же key → 409.
+3. Возврат браузера с `success=true` **не начисляет CU**. Экран показывает pending до authoritative подтверждения.
+4. Подписанный server webhook или server-side reconcile подтверждает `payment_succeeded`: сверяются provider payment id, merchant/environment, settled amount, currency и order snapshot. Только после этого транзакция inbox+order transition+credit lot+ledger+audit outbox начисляет CU.
+5. Unique provider_event_id и unique credit-per-order защищают от duplicate webhook; разные event IDs одной оплаты также не удваивают начисление. Out-of-order failed/pending не отменяет уже paid без отдельного refund/dispute transition.
+6. После expiry quote новый checkout не создаётся; уже созданный provider order исполняется по своему фиксированному снимку и сроку checkout. Позднее подтверждение валидного платежа не теряется: reconcile credit либо контролируемый возврат, без необоснованного удержания денег и без двойного результата.
+
+Статусы Order: created → pending_payment → paid/credited либо failed/cancelled/expired; refund/dispute — отдельные записи и суммы, не простое стирание paid. `paid` и `credited` могут быть одним атомарным доменным переходом; при crash между внешним capture и локальным commit reconcile завершает его ровно один раз. В v1 нет автопополнения/автосписания: каждая покупка подтверждается OWNER.
+
+### 13.5 Очерёдность расхода и резервирование
+
+Порядок — FEFO среди доступных источников: сначала lots с ближайшим expires_at, затем без срока; при равной дате included → promotional → purchased, далее stable lot_id. Поэтому обычный included текущего периода тратится раньше бессрочного purchased. Заблокированные/refund_pending lots исключены. Reservation сохраняет allocations по каждому lot и версии оценки; при settle actual распределяется в том же порядке FEFO, неиспользованный хвост allocations освобождается в обратном порядке; campaign/grant/sponsor ceilings по-прежнему проверяются атомарно.
+
+До admission сервер показывает оценку/max charge; перед исполнением резервирует верхнюю границу допустимого CU. Settle списывает только фактически выполненную допустимую работу, освобождая остаток в исходные lots. При release после expiry lot не становится доступным снова: остаток переводится в expired. Допустимый reservation может пережить конец периода только до своего жёсткого execution deadline; settle использует закреплённые allocations. На следующем цикле такой резерв не списывается второй раз из нового included.
+
+Если нужен больший резерв, сервер сначала атомарно получает дополнительный в пределах принятого пользователем max charge; иначе ограничивает/останавливает расчёт. Функциональный downgrade/revoke/grant expiry может запретить старт независимо от существующего резерва. Технический crash/refund не создаёт бесплатный retry: retry того же operation_id возвращает состояние прежней операции. Политика chargeable failure фиксируется по типу операции; platform failure не оплачивается пользователем, partial user cancel оплачивает только учтённую работу в пределах объявленного максимума.
+
+Не возвращать CU лишь по таймауту lease: сначала fencing/подтверждение остановки worker и reconciliation. Услуга не может быть выполнена дважды при одном списании из-за повторного delivery.
+
+### 13.6 Подписка, места и недостаток средств
+
+Сохраняются формулы §3.2, но `cu_per_seat × seats` — начисление included на период, **не весь кошелёк**. Купленные пакеты добавляются независимо от seats. Новый период закрывает остаток старого included и создаёт новый; purchased не обнуляется и не умножается на число участников.
+
+Seat/plan change использует versioned prorated allocation: только положенная разница included, с учётом уже spent/reserved. Отрицательная корректировка не списывает purchased и не создаёт отрицательный available; неприменимая часть учитывается как non-spendable included adjustment carry внутри периода, чтобы seat churn не создавал новую квоту. Смена периода не восстанавливает потраченные CU. Выпущенные сверх оснований included исправляются отдельной audited adjustment, не переписыванием истории.
+
+При нехватке available — 402 `cu_insufficient`, с безопасной оценкой required/available; защищённая операция не стартует. OWNER получает «Пополнить CU»/«Сменить тариф», MEMBER — «Обратитесь к владельцу аккаунта». При отсутствии capability пополнение не предлагается как решение: нужен подходящий тариф. При технической недоступности wallet — 503, а не ложный нулевой баланс. При finance hold — 403 `wallet_locked`; 429 остаётся частотой/конкурентностью.
+
+### 13.7 Возврат платежа и спор (chargeback)
+
+Добровольный self-service возврат в v1 — **целого неиспользованного purchased lot по исходному заказу**, если это разрешают сохранённые условия заказа/provider. Нет частичного self-service возврата по текущему курсу; обязательные и исключительные возвраты обрабатываются отдельной уполномоченной процедурой. Included/promotional не возвращаются как купленный пакет. Закрытие Account не означает мгновенное удаление финансовых записей.
+
+1. При запросе проверяются OWNER, исходный order/payment, сроки/условия и отсутствие spent/reserved/refund. Lot транзакционно блокируется: available → refund_pending, создаётся RefundOrder/outbox. Гонка spend/refund допускает только одну операцию.
+2. Provider подтверждает возврат в исходной валюте/способом по исходному платёжному документу. Подтверждённый переход refund_pending → refunded погашает CU и фиксирует money refund. Повтор webhook не дублирует возврат.
+3. При достоверном отказе provider блокировка снимается проводкой. Неизвестный исход/timeout остаётся pending до reconcile — освобождать lot при возможном денежном возврате нельзя.
+4. Chargeback/dispute может возникнуть после расхода. Сразу ставится wallet_locked для новых CU-операций, оставшиеся соответствующие purchased units блокируются; running jobs останавливаются/fence согласно безопасной worker policy. Исход спора reconciled по исходному платежу, остатки погашаются или разблокируются ровно один раз.
+5. Уже потреблённые CU не «возвращаются в отрицательный доступный баланс»: задолженность/экспозиция хранится отдельной debt/dispute записью с исходными деньгами и использованными CU. Новые покупки не автоматически погашают долг; восстановление — явная проверенная процедура с аудитом. Разрешённые чтения не становятся вычислительным обходом hold.
+
+### 13.8 Данные, authority и API
+
+Новые сущности: Wallet, CreditLot(source, expires_at, origin_order/cycle, original quantity), LedgerTransaction/Postings, ReservationAllocation, PriceQuote, TopupOrder, RefundOrder, PaymentEventInbox, Dispute/DebtRecord. Order/lot/refund связаны foreign keys, идемпотентность ограничена account+action+key и payload digest. Reservation/ledger дополняют §4.4, не создают второй баланс в AuthN. PostgreSQL — authority, Redis — cache/throttle; audit outbox и финансовое состояние в одной транзакции. Персональные карточные данные платформа не хранит.
+
+Предлагаемые API под `/v1/billing`: GET wallet (breakdown/reserved/status), GET ledger (OWNER: полный финансовый журнал; MEMBER: только разрешённые usage сведения), POST topup-quotes, POST topups, GET topups/{id}, POST topups/{id}/refunds, GET refunds/{id}; provider webhook — подпись/inbox, не browser cookie. Все object ids проверяются по Account, quote/order id не право доступа. Для cookie mutations действует CSRF. Operations/overrides администратора имеют отдельное permission и mandatory audit; ADMIN не может молча «нарисовать оплаченные CU».
+
+### 13.9 Согласование и запуск
+
+Реализация по AUTH-21…AUTH-25 в spec_auth_architecture.md после базового ledger/provider. До продаж: price/terms/catalog, provider amount/currency semantics, refund procedure, retention/reconciliation и пользовательское раскрытие условий готовы. Пока это не выполнено, кнопка покупки выключена; тестовые credits не маркируются реальными оплатами. Необратимый запуск реальных платежей — отдельная поставка, этим документом не выполнен.
+
+Старое поле Account.compute_unit_pool_balance заменяется wallet summary projection; compute_unit_pool_reset_at относится только к included cycle. AuthN получает wallet status/admission result, не raw денежные реквизиты. PlanName.INTERNAL unlimited analytical entitlement не выпускает бесконечные wallet units и сохраняет технические ceilings.
+
+### 13.10 Приёмочные примеры и негативные сценарии
+
+**E1 (условные CU, не прайс):** 5 мест × 100 CU = included=500 CU, purchased=200 CU после отдельной оплаты. Успешный расход 550 CU оставляет included=0 CU, purchased=150 CU. Новый цикл начисляет 500 included; приобретённые 150 остаются, итого 650 available, если нет иных reserves/holds.
+
+**E2:** reserve 60 CU, actual 45 CU → settle 45 CU, release 15 CU в исходные lots. Если исходный included lot уже истёк, освобождённые 15 CU недоступны; purchased часть возвращается в свой lot без изменения источника.
+
+**E3:** повтор webhook одного платежа (даже с новым event id) оставляет один credit; callback browser ничего не начисляет. Два конкурентных запроса на последние 10 CU не могут оба зарезервировать 10.
+
+**E4:** refund и reserve одного неиспользованного lot конкурируют: refund_pending исключает расход; уже reserved исключает self-service возврат. Неизвестный исход provider не освобождает hold. Chargeback после расхода создаёт exposure и lock, не отрицательный available.
+
+**E5:** покупка CU не открывает tuning на starter, не создаёт новый grant demo, не меняет membership и не возобновляет просроченную подписку. MONO→MULTI/смена OWNER сохраняют Account wallet; удалённый MEMBER теряет доступ.
+
+**E6:** рестарт/backup/reconcile не дублируют cycle credit, topup credit, settlement/refund. Проверяются rounding/overflow, lot expiry посреди reservation, seat churn, quote currency/amount tampering, out-of-order webhook, refund timeout, mandatory audit fault и отсутствие секретов в журнале.

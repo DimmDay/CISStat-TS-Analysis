@@ -1,0 +1,11 @@
+test_architecture_integration (__main__.Contract.test_architecture_integration) ... ok
+test_currency_definition (__main__.Contract.test_currency_definition) ... ok
+test_examples (__main__.Contract.test_examples) ... ok
+test_markdown (__main__.Contract.test_markdown) ... ok
+test_payment_and_refund_invariants (__main__.Contract.test_payment_and_refund_invariants) ... ok
+test_role_separation (__main__.Contract.test_role_separation) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.003s
+
+OK

@@ -1,0 +1,12 @@
+test_cross_document_link_and_current_plan_truth (__main__.DocumentationContract.test_cross_document_link_and_current_plan_truth) ... ok
+test_markdown_structure (__main__.DocumentationContract.test_markdown_structure) ... ok
+test_required_boundaries (__main__.DocumentationContract.test_required_boundaries) ... ok
+test_source_paths_exist (__main__.DocumentationContract.test_source_paths_exist) ... ok
+test_task_dependency_graph_and_acceptance (__main__.DocumentationContract.test_task_dependency_graph_and_acceptance) ... ok
+test_three_specifications_reconciled (__main__.DocumentationContract.test_three_specifications_reconciled) ... ok
+test_verified_source_and_status (__main__.DocumentationContract.test_verified_source_and_status) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.003s
+
+OK

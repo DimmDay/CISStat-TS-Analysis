@@ -96,6 +96,7 @@ flowchart TD
 | RP-12 | Один SubjectRef/authorize_run_access, расширенный account-aware context; legacy claim только с доказательством владения |
 | RP-13 | Compute pricing отдельно от subscription price; calibrated fixed-point CU ledger, seats/proration без бесплатного reset |
 | RP-14 | Mandatory audit intent/outbox в транзакции изменения; отказ authority закрывает доступ; поэтапный enforce rollout |
+| RP-15 | CU-WALLET-1: самостоятельная покупка, source lots, wallet permissions и refund/dispute authority; см. §12 |
 
 Решение конфликта demo: все шесть этапов доступны в ограниченном режиме. Demo/starter получают baseline из серверного allowlist (например naive/seasonal-naive/drift с ограниченными folds/horizon); tuning, произвольный fit и GPU для demo запрещены. Professional/enterprise получают advanced возможности по entitlement. Точные каталоги/потолки фиксируются в AUTH-01 и калибруются до включения. Базовый прогноз честно вычисляется на загруженных данных; подготовленный пример маркируется примером. Это изменение нормативного контракта, а не утверждение, что текущий False уже разрешает бэктест.
 
@@ -206,7 +207,12 @@ Cleanup demo удаляет временные научные данные/ре�
 | AUTH-18 | AUTH-12, AUTH-17 | Provider adapter, quote/webhook saga | billing/provider, inbox/outbox | Signature/order/dedup и provider outage не активируют неоплаченные места; proration проверен |
 | AUTH-19 | AUTH-04, AUTH-06, AUTH-08 | OIDC/personal trial/email self-service | authentication/providers/challenges | issuer+sub/PKCE/state/nonce; mail scanner не consume; email не auto-merge |
 | AUTH-20 | AUTH-09, AUTH-13, AUTH-16, AUTH-18 | Audit/operations и миграционный rollout | security_audit, health/ops, migrations, runbooks | Mandatory fault не оставляет неучтённое изменение; backup/revoke reconciliation и safe rollback проверены |
-| AUTH-CERT | AUTH-07, AUTH-10, AUTH-11, AUTH-14, AUTH-16, AUTH-17, AUTH-18, AUTH-19, AUTH-20 | Сквозная приёмка сервиса | отдельные API/browser/concurrency/failure suites | AUTH-AC01…30 spec_auth + billing account/seats/stage тесты; реальный PG/Redis и обе оболочки; ограничения акта явные |
+| AUTH-21 | AUTH-12, AUTH-18 | Source-aware Wallet/CreditLot и миграция | billing/wallet, ledger, migrations | Included отделён от purchased; integer rounding, expiry/reserve и cycle rollover не теряют средства |
+| AUTH-22 | AUTH-21, AUTH-18 | Quote/top-up checkout и credit | billing/topups, provider/inbox, UI | Только confirmed server payment начисляет CU; duplicate events/callback spoof/currency tamper закрыты |
+| AUTH-23 | AUTH-22, AUTH-13 | Refund/dispute/chargeback workflow | billing/refunds, workers, audit outbox | Spend/refund race безопасна; unknown result держит hold; spent chargeback не даёт отрицательный available |
+| AUTH-24 | AUTH-22, AUTH-23, AUTH-08 | Wallet permissions/UI и lifecycle | accounts, billing DTO, обе оболочки | OWNER покупает, MEMBER только разрешённо расходует; expiry/seat/owner change сохраняют purchased |
+| AUTH-25 | AUTH-23, AUTH-24, AUTH-20 | Payment reconciliation/restore и launch runbook | billing/reconciliation, ops, integration tests | Crash/backup/provider replay не создают дубликаты; terms/catalog подтверждены до real checkout |
+| AUTH-CERT | AUTH-07, AUTH-10, AUTH-11, AUTH-14, AUTH-16, AUTH-17, AUTH-18, AUTH-19, AUTH-20, AUTH-25 | Сквозная приёмка сервиса | отдельные API/browser/concurrency/failure suites | AUTH-AC01…30 spec_auth + billing account/seats/stage тесты; реальный PG/Redis и обе оболочки; ограничения акта явные |
 
 Релизы: R1 — identity/session/MFA/admin в обеих оболочках (00–09, с guards до публичного включения); R2 — enforced scientific paths + budgets/workers + forum (10–16); R3 — team/commercial/self-service (17–20). Нельзя открыть форум до атомарных лимитов и worker guards. OIDC не блокирует локальный MFA-вход; платный MULTI не запускается до согласованного provider/credit workflow.
 
@@ -230,3 +236,44 @@ Cleanup demo удаляет временные научные данные/ре�
 Изменены только документы и проверяющий скрипт. Doc-contract RED→GREEN проверяет полноту решений, DAG задач, существование ссылок на исходники, согласованность Markdown; он не проверяет безопасность будущего кода. Software build не запускался: runtime/TS/dependencies не менялись. Проверки и границы записаны в scripts/auth_architecture и worklog11.
 
 Общие принципы deny-by-default и проверки каждого запроса сверены с [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html); разделение мест решения и enforcement — с [OWASP Authorization Patterns](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Patterns_Cheat_Sheet.html). Auth/session подход сопоставлен с [NIST SP 800-63-4](https://csrc.nist.gov/pubs/sp/800/63/4/final). Конкретные модули, бюджеты, этапы и лимиты — проектные решения этой платформы; соответствие NIST/AAL не заявляется.
+
+## 12. Покупаемый баланс CU — CU-WALLET-1
+
+**Дополнение от 27 октября 2026 года; проект, не реализовано.** Нормативные правила валюты, лотов, платежей и возвратов — [spec_billing_accounts.md §13](spec_billing_accounts.md#13-валюта-платформы-и-самостоятельно-покупаемый-баланс--cu-wallet-1). Этот раздел расширяет §4, §6–10 и RP-13; решения первой редакции о subscription/included сохраняются, но не описывают весь wallet.
+
+### 12.1 Смысл и границы
+
+CU — внутренняя неденежная единица права Account на вычислительные услуги; не transferable money и не способ оплаты мест. Отдельно существуют subscription price, top-up money price и calibrated operation cost. Account Wallet объединяет included, purchased и promotional lots, не смешивая их происхождение и условия. Авторитет — integer micro-CU ledger в billing; в AuthSession нет самостоятельного баланса.
+
+Покупка CU не выдаёт ADMIN/membership/capability и не снимает grant/tenant/resource guards. В v1 OWNER активного платного Account может покупать; MEMBER расходует только разрешённые операции из общего пула. Demo participant и INTERNAL не получают покупаемый wallet через общий credential. Средства sponsor не мигрируют в личный Account.
+
+`can_purchase_cu` и `can_spend_cu` — effective permissions, вычисляемые сервером из membership/account status/product configuration. Это не два безусловных boolean в cookie и не признак платёжеспособности: can_spend_cu ещё требует успешного admission по балансу. При недостатке CU — 402 `cu_insufficient`, finance hold — 403 `wallet_locked`, недоступность authority — 503. Для MEMBER сообщение ведёт к OWNER, не к checkout. При отсутствии capability предлагается смена тарифа, а не бесполезное пополнение.
+
+### 12.2 Владельцы модулей и данных
+
+- authentication проверяет identity/session/MFA; accounts — OWNER/membership и entitlement; billing — quote/order/payment/refund/wallet/ledger. Scientific coordinator запрашивает reservation, но не начисляет CU и не доверяет browser payment callback.
+- `billing/wallet`, `billing/topups`, `billing/refunds`, `billing/reconciliation` — новые логические модули, использующие существующие provider adapter/inbox/outbox. ReservationAllocation хранит ссылки на source lots.
+- Credit, order state и mandatory audit outbox коммитятся одной PostgreSQL-транзакцией. Unique credit-per-order плюс provider_event_id предотвращают два начисления. Сетевой provider call выполняется через workflow/outbox вне SQL lock.
+- Summary в me/Account UI — ограниченная проекция; цены/денежные платёжные документы доступны OWNER или уполномоченной support policy, не всем MEMBER.
+
+### 12.3 API и UI
+
+Добавляются `/v1/billing/topup-quotes`, `/v1/billing/topups`, `/v1/billing/topups/{id}`, `/v1/billing/topups/{id}/refunds`, `/v1/billing/refunds/{id}`, `/v1/billing/wallet`, `/v1/billing/ledger`. Отдельный provider webhook проверяет подпись и environment/merchant/payment amount/currency/order, не browser session. Для cookie-auth mutations обязательны CSRF и account authorization; idempotency ключ ограничен account+action+payload.
+
+«Аккаунт → Баланс CU»: available по источникам, reserved, дата сгорания included/promotional, purchased без срока сгорания в v1, история операций и pending/locked. OWNER видит «Пополнить», выбирает пакет, подтверждает quote с суммой/валютой/условиями и открывает hosted checkout. Возврат на страницу показывает pending до confirmed credit. Автопополнение не включается. Повторный вход/смена оболочки не создают новый wallet.
+
+Страница заказа показывает paid/credited/failed/refund_pending/refunded/disputed из серверного состояния; старый polling response не откатывает более новое состояние. Self-service возврат — только целый неиспользованный purchased lot по разрешённым условиям заказа; исключения отдельным audited workflow. Удаление Account сначала решает незавершённые платежи/holds, а не удаляет финансовую историю.
+
+### 12.4 Reservation, refund и lifecycle
+
+Расход FEFO: ближайший expiry, при равенстве included→promotional→purchased; бессрочные purchased после срочных lots. Reservation фиксирует allocations, coefficient/rounding version и max charge. Settle/release работают по исходным lots; expired included при release не оживает. Новый цикл начисляет только новый included, не обнуляет purchased и не переносит spent в новый свободный бюджет. Seat churn не создаёт free credit.
+
+Refund транзакционно переводит available lot в refund_pending до вызова provider. Spend/refund конкурируют на одной authority и не могут использовать одни CU. При таймауте результат остаётся неизвестным/pending до reconcile; достоверный отказ освобождает hold, успех окончательно погашает lot. Chargeback на использованный пакет блокирует новые admissions (`wallet_locked`) и создаёт отдельную exposure/debt запись; available не становится отрицательным. Новая покупка автоматически не погашает спор и не снимает lock.
+
+Отмена подписки/переход тарифа сохраняет purchased, но просроченный/suspended Account в v1 не запускает платные вычисления без допустимого entitlement. MONO/MULTI и смена OWNER сохраняют wallet ID. Рестарт, backup и reconcile не воскрешают consumed credits, refunded lots или старые reservations. При uncertain financial state — hold, а не подстановка Memory wallet.
+
+### 12.5 Задачи и дополнительные критерии
+
+Задачи AUTH-21…25 включены в общий DAG перед AUTH-CERT. Новый объём сертификации: payment callback spoof, повтор/out-of-order webhook, два event IDs одного payment, не тот merchant/environment/currency/amount, refund-versus-spend race, неизвестный исход refund, chargeback после settle, purchased на смене цикла, истечение included во время job, seat churn, Account switch, финансовая приватность MEMBER и integer overflow/rounding. Numerical examples E1…E6 в billing §13.10 — независимые приёмочные данные, а не действующий прайс.
+
+Релиз R4 — самостоятельная покупка и refunds после R3: provider/условия/каталог и reconciliation готовы до включения реального checkout. Авторизация и базовый forum не зависят от top-ups. Изменение касается спецификаций; реальных платежей, wallet credits или runtime endpoints эта поставка не создаёт.

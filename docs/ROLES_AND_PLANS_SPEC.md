@@ -83,7 +83,24 @@ Account/Membership, persisted AuthSession, личный MFA-вход, seats, CU 
 | RP-12: объекты/legacy | Расширить существующий SubjectRef/authorize_run_access; перенос только доказанного владения, unresolved не присваивать по run_id | Старые чужие run/document/job остаются закрыты |
 | RP-13: CU/цена | Seat pricing линейный; CU pooled на Account; calibrated coefficients и fixed-point ledger; provider adapter/outbox | Retry/webhook/seat churn не создают повторный charge или reset пула |
 | RP-14: эксплуатация | Security audit/outbox, fail-closed auth stores, rollout с rollback без возврата к anonymous production | Отказ БД/аудита и восстановление backup не воскрешают доступ |
+| RP-15: покупаемые CU | Account wallet с included/purchased/promotional lots, OWNER checkout, integer ledger и атомарные refund holds по CU-WALLET-1 | Webhook/retry не удваивает credit; период не сжигает purchased; купленный CU не повышает тариф |
 
 Для RP-08 старое `can_train_models` не переименовывается механически: оно сейчас закрывает также backtest/candidates/diagnostics. Каждый endpoint классифицируется по операции. Legacy-флаг временно сохраняется для совместимости advanced API; конкретные baseline endpoints переводятся на новый permission с лимитами. В `spec_auth.md` запрет тяжёлого fit сохраняется. Противоречие `spec_billing_accounts.md §5.7/§10.6` разрешается этим разделением, а не трактовкой «False на самом деле True».
 
 Для RP-09 запрет относится к прикладным операциям: включая уже существующий XAI-срез `tasks_session.py`. Он не запрещает научные диагностические вычисления EDA автоматически по совпадению слов. `monitoring` исследования и служебный DOCLOG monitoring — разные пространства операций. Для starter дополнительных stage-ограничений в v1 не вводится.
+
+## 8. Валюта CU и право на самостоятельно покупаемый баланс
+
+**CU-WALLET-1, проект от 27 октября 2026 года.** Полный контракт — [spec_billing_accounts.md §13](../spec_billing_accounts.md#13-валюта-платформы-и-самостоятельно-покупаемый-баланс--cu-wallet-1); интеграция — [spec_auth_architecture.md §12](../spec_auth_architecture.md#12-покупаемый-баланс-cu--cu-wallet-1).
+
+CU — внутренняя неденежная единица потребления услуг. Подписка оплачивает seats/entitlements и начисляет included CU на период. Отдельная покупка начисляет purchased CU в кошелёк того же Account. Included сгорает на границе периода; purchased в v1 бессрочен, не обнуляется и не умножается при смене периода/seats. Promotional имеет собственные условия. Источники раздельны в integer micro-CU ledger.
+
+| Право | Кому и при каких условиях | Чего не даёт |
+|---|---|---|
+| can_purchase_cu | OWNER активного платного Account, top-ups включены сервером | Права ADMIN, доступ к чужому Account и функции вне тарифа |
+| can_spend_cu | Уполномоченный MEMBER/OWNER с действующим entitlement, object access и успешным reservation | Неограниченные вычисления, обход CU/concurrency/grant ceilings |
+| refund/manage payments | OWNER в рамках условий исходного заказа; исключения — отдельное support permission | Конвертацию любых CU в деньги или возврат потраченного lot одной кнопкой |
+
+Эти permissions — effective server policy, не новые Role и не баланс внутри API key. У demo и INTERNAL top-up flow в v1 отсутствует. Пополнение не открывает tuning на starter и не возобновляет истёкшую подписку. Заблокированный wallet (`wallet_locked`) запрещает новые CU admissions, но не уничтожает оставшийся баланс. OWNER получает финансовые детали, MEMBER — только разрешённые usage/aggregate данные.
+
+Возврат — whole unused purchased lot по исходному заказу, с атомарным hold до результата provider. CU нельзя передавать между Account, использовать для оплаты seats, выводить по курсу или начислять с browser success redirect. Ротация ключа, повторный вход, смена OWNER/оболочки и MONO→MULTI сохраняют Account wallet. Финансовая история не стирается с membership.
