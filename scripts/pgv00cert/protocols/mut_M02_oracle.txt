@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ..............FF......... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+__________________ test_json_ts_registry_view_id_count_parity __________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:184: in test_json_ts_registry_view_id_count_parity
+    assert ts_count == len(reg["sites"]) == S.EXPECTED_TOTAL
+E   AssertionError: assert 90 == 89
+E    +  where 89 = len([{'applicability': 'static_demo', 'caption_schema': 'pgv.caption/navigator.chart/1', 'export_status': 'planned', 'modu...'caption_schema': 'pgv.caption/navigator.tech_info/1', 'export_status': 'planned', 'module_id': 'navigator', ...}, ...])
+_______________________ test_json_ts_view_id_set_parity ________________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:191: in test_json_ts_view_id_set_parity
+    assert ts_ids == json_ids, f"ддрейф TS⇄JSON: {sorted(ts_ids ^ json_ids)}"
+E   AssertionError: ддрейф TS⇄JSON: ['navigator.upload.chart.series_ghost']
+E   assert {'eda.correla...n.tests', ...} == {'eda.correla...n.tests', ...}
+E     
+E     Extra items in the left set:
+E     'navigator.upload.chart.series_ghost'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_ts_registry_view_id_count_parity
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_ts_view_id_set_parity
+========================= 2 failed, 39 passed in 0.49s =========================

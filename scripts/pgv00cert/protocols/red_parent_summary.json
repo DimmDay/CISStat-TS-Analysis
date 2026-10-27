@@ -1,0 +1,44 @@
+{
+  "parent": "754219a",
+  "worktree": "/home/z/my-project/wt-pgv00cert-red",
+  "channels": {
+    "oracle_class_a": {
+      "rc": 1,
+      "red": true,
+      "tail": [
+        "FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_html_kinds_present_real_navigator_included",
+        "FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_denominator_pins_own",
+        "========================= 33 failed, 5 passed in 0.99s ========================="
+      ]
+    },
+    "repo_jest_coverage": {
+      "rc": 1,
+      "red": true,
+      "tail": [
+        "In /home/z/my-project/wt-pgv00cert-red",
+        "  794 files checked.",
+        "  testMatch: **/*.test.{ts,tsx} - 221 matches",
+        "  testPathIgnorePatterns: /node_modules/ - 794 matches",
+        "  testRegex:  - 0 matches",
+        "Pattern: packages/ui/lib/visualExportRegistry.coverage.test.ts - 0 matches"
+      ]
+    },
+    "repo_check_documents": {
+      "rc": 2,
+      "red": true,
+      "tail": [
+        "/home/z/.venv/bin/python3: can't open file '/home/z/my-project/wt-pgv00cert-red/scripts/pgv00/check_documents.py': [Errno 2] No such file or directory"
+      ]
+    },
+    "findings_class_b": {
+      "rc": 1,
+      "red": true,
+      "tail": [
+        "FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c3_forecast_sensitivity_view_registered",
+        "FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c4_navigator_preview_stop_registered_consistently",
+        "============================== 6 failed in 0.23s ==============================="
+      ]
+    }
+  },
+  "verdict": "RED"
+}

@@ -1,0 +1,11 @@
+Дополнительное доказательство Import-RED (TS2307) на родителе 754219a:
+закоммиченный repo-оракул packages/ui/lib/visualExportRegistry.coverage.test.ts
+скопирован в worktree родителя (node_modules симлинк) и прогнан jest:
+
+  packages/ui/lib/visualExportRegistry.coverage.test.ts:38:8 - error TS2307:
+  Cannot find module './visualExportRegistry' or its corresponding type declarations.
+  Test Suites: 1 failed, 1 total
+  Tests:       0 total
+
+На дереве 2ef6947 тот же файл: 16/16 GREEN (protocols/red_parent_repo_jest.txt —
+на родителе файл отсутствует как часть поставки; channels.repo_jest_coverage RED).

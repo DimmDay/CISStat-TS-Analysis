@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py .................F.F..... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+_________________ test_json_ts_exclusion_class_multiset_parity _________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:204: in test_json_ts_exclusion_class_multiset_parity
+    assert sorted(ts_classes) == sorted(json_classes), (
+E   AssertionError: мультимножество классов исключений TS⇄JSON: TS=['decorative', 'decorative', 'decorative', 'ops_admin', 'controls', 'interactive_editor', 'placeholder_soon', 'controls'] JSON=['decorative', 'decorative', 'decorative', 'ops_admin', 'controls', 'interactive_editor', 'operational_list', 'placeholder_soon', 'controls']
+E   assert ['controls', ..._editor', ...] == ['controls', ..._editor', ...]
+E     
+E     At index 6 diff: 'ops_admin' != 'operational_list'
+E     Right contains one more item: 'placeholder_soon'
+E     Use -v to get more diff
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:239: in test_export_registry_regen_byte_identical
+    assert regenerated == committed, (
+E   AssertionError: экспортёр из TS порождает JSON, отличный от закоммиченного твина
+E   assert b'{\n  "schem...  }\n  ]\n}\n' == b'{\n  "schem...  }\n  ]\n}\n'
+E     
+E     At index 88645 diff: b'M' != b'F'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_ts_exclusion_class_multiset_parity
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+========================= 2 failed, 39 passed in 0.47s =========================

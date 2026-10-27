@@ -1,0 +1,6 @@
+{
+  "0|0": "SURVIVED",
+  "1|0": "REPO-ONLY",
+  "0|1": "ORACLE-ONLY",
+  "1|1": "DUAL-KILLED"
+}

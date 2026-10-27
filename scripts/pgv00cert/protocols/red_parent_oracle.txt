@@ -1,0 +1,438 @@
+============================= test session starts ==============================
+collected 38 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ..F.FFFFF.FFFFFFFFFFFF    [ 57%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py .FFFFFFFFFFFFFFF        [100%]
+
+=================================== FAILURES ===================================
+______ test_spec_pgv_section5_registry_field_list_matches_implementation _______
+scripts/pgv00cert/test_p0cert_oracle_static.py:65: in test_spec_pgv_section5_registry_field_list_matches_implementation
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_doclog_spec_png_only_amendment_in_section7 ________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:94: in test_doclog_spec_png_only_amendment_in_section7
+    assert "PNG-only" in s7 and "PGV-00" in s7
+E   AssertionError: assert ('PNG-only' in '## 7. Форматы и каноническая модель документа\n\n**R06.** Канон — версионированный `ReportSnapshot` JSON и закреплённ... Шифрование и передача ключа регулируются профилем организации; пароль источника БД в пакет никогда не включается.\n\n')
+_____________ test_doclog_spec_visualresult_amendment_in_section92 _____________
+scripts/pgv00cert/test_p0cert_oracle_static.py:100: in test_doclog_spec_visualresult_amendment_in_section92
+    assert "VisualResult" in s9 and "VisualPrintSnapshot" in s9 and "PGV-00" in s9
+E   AssertionError: assert ('VisualResult' in '### 9.2. Обязательный provenance результата\n\nРезультат связывает: кто/какой сервис → какая операция/реальная библио...олжна описывать порядок строк/колонок, типы, timezone, null/NaN и Unicode; запись `algorithm/version` обязательна.\n\n')
+_____ test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed ______
+scripts/pgv00cert/test_p0cert_oracle_static.py:106: in test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed
+    assert tok in s12, f"нет {tok} в §12"
+E   AssertionError: нет V01 в §12
+E   assert 'V01' in '## 12. UI для аналитика и читателя\n\n### 12.1. Размещение\n\nНовый раздел **«Документы исследования»** доступен из о...access, памяти, CPU/времени и размера. Print preview и выгрузка не читают DOM со случайно скрытым текущим экраном.\n\n'
+______________ test_doclog_spec_section19_row_pgv00_unknown_gate _______________
+scripts/pgv00cert/test_p0cert_oracle_static.py:112: in test_doclog_spec_section19_row_pgv00_unknown_gate
+    assert "PGV-00" in s19
+E   AssertionError: assert 'PGV-00' in '## 19. Порядок реализации и зависимости\n\nКаждая задача — самостоятельная реализация по AGENTS.md с RED/GREEN, адрес...ные номера после сверки последней migration |\n\nВ рамках нынешней задачи эти продуктовые файлы **не изменяются**.\n\n'
+________________ test_doclog_spec_section191_files_row_registry ________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:119: in test_doclog_spec_section191_files_row_registry
+    assert "visualExportRegistry" in s191 and "visual_registry.json" in s191
+E   AssertionError: assert ('visualExportRegistry' in '### 19.1. Предлагаемые точки изменения\n\n| Текущая точка | Что переиспользуется / что добавить в будущих задачах |\n...ные номера после сверки последней migration |\n\nВ рамках нынешней задачи эти продуктовые файлы **не изменяются**.\n\n')
+_______________________ test_json_schema_and_composition _______________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:134: in test_json_schema_and_composition
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+___________________ test_json_view_ids_unique_and_canonical ____________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:144: in test_json_view_ids_unique_and_canonical
+    ids = [s["view_id"] for s in S.load_registry()["sites"]]
+                                 ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_____________ test_json_sites_mandatory_fields_and_honest_statuses _____________
+scripts/pgv00cert/test_p0cert_oracle_static.py:151: in test_json_sites_mandatory_fields_and_honest_statuses
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_____________ test_json_exclusions_have_reasons_and_known_classes ______________
+scripts/pgv00cert/test_p0cert_oracle_static.py:168: in test_json_exclusions_have_reasons_and_known_classes
+    for exc in S.load_registry()["exclusions"]:
+               ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+__________________ test_json_ts_registry_view_id_count_parity __________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:177: in test_json_ts_registry_view_id_count_parity
+    ts = S.load_ts_registry_text()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:136: in load_ts_registry_text
+    return (REPO / "packages" / "ui" / "lib" / "visualExportRegistry.ts").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/packages/ui/lib/visualExportRegistry.ts'
+_____________ test_json_stop_catalog_in_ts_matches_expected_shape ______________
+scripts/pgv00cert/test_p0cert_oracle_static.py:184: in test_json_stop_catalog_in_ts_matches_expected_shape
+    ts = S.load_ts_registry_text()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:136: in load_ts_registry_text
+    return (REPO / "packages" / "ui" / "lib" / "visualExportRegistry.ts").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/packages/ui/lib/visualExportRegistry.ts'
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:201: in test_export_registry_regen_byte_identical
+    before = json_path.read_bytes()
+             ^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_____________________ test_inventory_doc_counts_match_json _____________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:220: in test_inventory_doc_counts_match_json
+    inv = (REPO / "docs" / "pgv00_render_site_inventory.md").read_text(encoding="utf-8")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/docs/pgv00_render_site_inventory.md'
+________________ test_inventory_doc_delivery_scope_files_exist _________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:234: in test_inventory_doc_delivery_scope_files_exist
+    inv = (REPO / "docs" / "pgv00_render_site_inventory.md").read_text(encoding="utf-8")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/docs/pgv00_render_site_inventory.md'
+____________________ test_guard_contains_all_check_sections ____________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:243: in test_guard_contains_all_check_sections
+    g = (REPO / "scripts" / "pgv00" / "check_documents.py").read_text(encoding="utf-8")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/scripts/pgv00/check_documents.py'
+____________________________ test_guard_runs_green _____________________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:256: in test_guard_runs_green
+    assert r.returncode == 0, r.stdout + r.stderr
+E   AssertionError: /home/z/.venv/bin/python3: can't open file '/home/z/my-project/wt-pgv00cert-red/scripts/pgv00/check_documents.py': [Errno 2] No such file or directory
+E     
+E   assert 2 == 0
+E    +  where 2 = CompletedProcess(args=['/home/z/.venv/bin/python3', 'scripts/pgv00/check_documents.py'], returncode=2, stdout='', stde...en file '/home/z/my-project/wt-pgv00cert-red/scripts/pgv00/check_documents.py': [Errno 2] No such file or directory\n").returncode
+_____________________ test_worklog11_contains_pgv00_entry ______________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:265: in test_worklog11_contains_pgv00_entry
+    assert "Task ID: PGV-00" in wl
+E   AssertionError: assert 'Task ID: PGV-00' in '# CISStat TS Analysis — Worklog\n\n---\n\n## Task ID: DOCLOG-7 (2026-10-24) — Журналы и поддержка: Admin logs/audit/d...крытый контейнер сессии (download/) + веб-страница поставки :3000 с кнопкой скачивания. Без commit/push (AGENTS.md).\n'
+____________ test_own_scan_closure_every_hit_registered_or_excluded ____________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:30: in test_own_scan_closure_every_hit_registered_or_excluded
+    covered = S.registry_covered_files()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:110: in registry_covered_files
+    for site in load_registry()["sites"]:
+                ^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_____________________ test_own_family_rules_fully_covered ______________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:37: in test_own_family_rules_fully_covered
+    covered = S.registry_covered_files()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:110: in registry_covered_files
+    for site in load_registry()["sites"]:
+                ^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_own_scan_all_hits_classified_count_matches ________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:49: in test_own_scan_all_hits_classified_count_matches
+    covered = S.registry_covered_files()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:110: in registry_covered_files
+    for site in load_registry()["sites"]:
+                ^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+________________ test_validation_check_meta_each_check_has_site ________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:61: in test_validation_check_meta_each_check_has_site
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+________________ test_preprocessing_checks_each_check_has_site _________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:70: in test_preprocessing_checks_each_check_has_site
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________________ test_eda_subviews_each_has_site ________________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:79: in test_eda_subviews_each_has_site
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_________________ test_upload_active_stop_branches_have_sites __________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:89: in test_upload_active_stop_branches_have_sites
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+__________ test_navigator_site_stops_belong_to_navigator_stops_source __________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:97: in test_navigator_site_stops_belong_to_navigator_stops_source
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_________ test_navigator_items_with_real_render_have_site_or_exclusion _________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:110: in test_navigator_items_with_real_render_have_site_or_exclusion
+    covered = S.registry_covered_files()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:110: in registry_covered_files
+    for site in load_registry()["sites"]:
+                ^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_________________ test_module_stop_catalog_uses_truth_sources __________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:123: in test_module_stop_catalog_uses_truth_sources
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+______________ test_renderer_kind_consistent_with_file_signatures ______________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:142: in test_renderer_kind_consistent_with_file_signatures
+    for s in S.load_registry()["sites"]:
+             ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_weak_evidence_pin_is_exactly_known_records ________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:152: in test_weak_evidence_pin_is_exactly_known_records
+    for s in S.load_registry()["sites"]:
+             ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_________________ test_panel_records_declared_with_entity_refs _________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:172: in test_panel_records_declared_with_entity_refs
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_html_kinds_present_real_navigator_included ________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:190: in test_html_kinds_present_real_navigator_included
+    sites = S.load_registry()["sites"]
+            ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+__________________________ test_denominator_pins_own ___________________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:202: in test_denominator_pins_own
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_spec_pgv_section5_registry_field_list_matches_implementation
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_png_only_amendment_in_section7
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_visualresult_amendment_in_section92
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_section19_row_pgv00_unknown_gate
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_section191_files_row_registry
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_schema_and_composition
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_view_ids_unique_and_canonical
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_sites_mandatory_fields_and_honest_statuses
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_exclusions_have_reasons_and_known_classes
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_ts_registry_view_id_count_parity
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_stop_catalog_in_ts_matches_expected_shape
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_inventory_doc_counts_match_json
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_inventory_doc_delivery_scope_files_exist
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_guard_contains_all_check_sections
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_guard_runs_green
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_worklog11_contains_pgv00_entry
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_own_scan_closure_every_hit_registered_or_excluded
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_own_family_rules_fully_covered
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_own_scan_all_hits_classified_count_matches
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_validation_check_meta_each_check_has_site
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_preprocessing_checks_each_check_has_site
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_eda_subviews_each_has_site
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_upload_active_stop_branches_have_sites
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_navigator_site_stops_belong_to_navigator_stops_source
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_navigator_items_with_real_render_have_site_or_exclusion
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_module_stop_catalog_uses_truth_sources
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_renderer_kind_consistent_with_file_signatures
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_weak_evidence_pin_is_exactly_known_records
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_panel_records_declared_with_entity_refs
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_html_kinds_present_real_navigator_included
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_denominator_pins_own
+========================= 33 failed, 5 passed in 0.99s =========================

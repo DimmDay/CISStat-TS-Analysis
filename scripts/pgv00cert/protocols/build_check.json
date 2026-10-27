@@ -1,0 +1,10 @@
+{
+  "import_api_rc": 0,
+  "import_api": {
+    "routes": 221,
+    "migrations": 93,
+    "audit_actions": 29
+  },
+  "typecheck_rc": 0,
+  "note": "typecheck:all rc=0 (build_typecheck.txt); python-deps среды доустановлены (pywt и пр.) — средовой класс, не поставка"
+}

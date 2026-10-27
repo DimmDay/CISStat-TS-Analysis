@@ -1,0 +1,37 @@
+$ npx jest packages/ui/lib/visualExportRegistry.coverage.test.ts -> rc=1
+erage-оракул — unknown scientific site blocks CERT
+    ✓ каждый файл с научным рендер-паттерном зарегистрирован или исключён с причиной
+    ✓ семейные правила: все файлы научных семейств покрыты (даже без pattern-совпадения) (1 ms)
+    ✓ все 58 эталонных pattern-совпадений разведены по реестру/исключениям (baseline PGV-00)
+    ✓ исключения явны: у каждого файла-исключения есть причина и класс (2 ms)
+    ✓ glob-шаблоны исключений не протухли: каждый шаблон находит хотя бы один файл
+    ✓ текстовые файлы исключений существуют на диске (строчные цели, не glob) (1 ms)
+
+  ● PGV-00: интегрити реестра render-sites › паритет TS⇄JSON: config/visual_registry.json — байт-честный твин реестра
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 89
+    Received: 90
+
+      262 |     expect(json.exclusions).toEqual(VISUAL_RENDER_SITE_EXCLUSIONS);
+      263 |     expect(json.modules).toEqual(visualRegistrySummary().modules);
+    > 264 |     expect(json.total_sites).toBe(VISUAL_SITE_REGISTRY.length);
+          |                              ^
+      265 |   });
+      266 |
+      267 |   it("denominator pins: состав по модулям закреплён (удаление записи падает)", () => {
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:264:30)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 15 passed, 16 total
+Snapshots:   0 total
+Time:        1.895 s, estimated 3 s
+Ran all test suites matching packages/ui/lib/visualExportRegistry.coverage.test.ts.
+
+$ /home/z/.venv/bin/python3 scripts/pgv00/check_documents.py -> rc=1
+PGV-00 doc-contract: 352/353 проверок пройдено
+
+FAILED:
+  - JSON: total_sites == 89 — факт 90

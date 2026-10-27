@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ...................F..... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:239: in test_export_registry_regen_byte_identical
+    assert regenerated == committed, (
+E   AssertionError: экспортёр из TS порождает JSON, отличный от закоммиченного твина
+E   assert b'{\n  "schem...  }\n  ]\n}\n' == b'{\n  "schem...  }\n  ]\n}\n'
+E     
+E     At index 658 diff: b']' != b'\n'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+========================= 1 failed, 40 passed in 0.48s =========================

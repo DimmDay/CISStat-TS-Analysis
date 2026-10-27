@@ -1,0 +1,25 @@
+{
+  "diff_files": [
+    "config/visual_registry.json",
+    "docs/pgv00_render_site_inventory.md",
+    "packages/ui/lib/visualExportRegistry.coverage.test.ts",
+    "packages/ui/lib/visualExportRegistry.ts",
+    "scripts/pgv00/check_documents.py",
+    "scripts/pgv00/export_registry.ts",
+    "spec_documentation_logging.md",
+    "worklog/worklog11.md"
+  ],
+  "diff_is_exactly_delivery": true,
+  "python_runtime_touched": [],
+  "build_configs_touched": [],
+  "jest_rc": 0,
+  "jest_tail": [
+    "Test Suites: 222 passed, 222 total",
+    "Tests:       2421 passed, 2421 total",
+    "Snapshots:   0 total"
+  ],
+  "guard_rc": 0,
+  "guard_first_line": "PGV-00 doc-contract: 353/353 проверок пройдено",
+  "cert_class_a_tail": "============================== 41 passed in 0.46s ==============================",
+  "cert_class_b_tail": "============================== 6 failed in 0.17s ==============================="
+}

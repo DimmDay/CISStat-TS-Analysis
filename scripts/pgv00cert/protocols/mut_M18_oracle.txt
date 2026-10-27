@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ......F.................. [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+_____ test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed ______
+scripts/pgv00cert/test_p0cert_oracle_static.py:109: in test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed
+    assert "не переименовывается" in s12 and "не равен P01" in s12, (
+E   AssertionError: инвариант D02 ослаблен: требуется «не переименовывается И не равен P01»
+E   assert ('не переименовывается' in '## 12. UI для аналитика и читателя\n\n### 12.1. Размещение\n\nНовый раздел **«Документы исследования»** доступен из о...access, памяти, CPU/времени и размера. Print preview и выгрузка не читают DOM со случайно скрытым текущим экраном.\n\n' and 'не равен P01' in '## 12. UI для аналитика и читателя\n\n### 12.1. Размещение\n\nНовый раздел **«Документы исследования»** доступен из о...access, памяти, CPU/времени и размера. Print preview и выгрузка не читают DOM со случайно скрытым текущим экраном.\n\n')
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_v01_p01_p02_amendment_in_section12_d02_not_renamed
+========================= 1 failed, 40 passed in 0.50s =========================

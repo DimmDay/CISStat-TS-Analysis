@@ -1,0 +1,41 @@
+$ npx jest packages/ui/lib/visualExportRegistry.coverage.test.ts -> rc=1
+00: интегрити реестра render-sites › паритет TS⇄JSON: config/visual_registry.json — байт-честный твин реестра
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -45,11 +45,11 @@
+            "packages/ui/components/DatasetViewEditor.tsx",
+          ],
+        },
+        Object {
+          "reason": "Операционная история forecast-заданий (очередь/статусы); научное содержимое прогноза зарегистрировано отдельно (ForecastChart/AccuracyPanel/panel_table).",
+    -     "reason_class": "scientific_special",
+    +     "reason_class": "operational_list",
+          "targets": Array [
+            "packages/ui/components/ForecastHistoryList.tsx",
+          ],
+        },
+        Object {
+
+      260 |     expect(json.generated_from).toBe("packages/ui/lib/visualExportRegistry.ts");
+      261 |     expect(json.sites).toEqual(VISUAL_SITE_REGISTRY);
+    > 262 |     expect(json.exclusions).toEqual(VISUAL_RENDER_SITE_EXCLUSIONS);
+          |                             ^
+      263 |     expect(json.modules).toEqual(visualRegistrySummary().modules);
+      264 |     expect(json.total_sites).toBe(VISUAL_SITE_REGISTRY.length);
+      265 |   });
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:262:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 15 passed, 16 total
+Snapshots:   0 total
+Time:        2.873 s, estimated 3 s
+Ran all test suites matching packages/ui/lib/visualExportRegistry.coverage.test.ts.
+
+$ /home/z/.venv/bin/python3 scripts/pgv00/check_documents.py -> rc=0
+PGV-00 doc-contract: 353/353 проверок пройдено
+GREEN: документация согласована с реестром render-sites

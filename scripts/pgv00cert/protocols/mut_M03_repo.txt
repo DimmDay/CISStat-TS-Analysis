@@ -1,0 +1,39 @@
+$ npx jest packages/ui/lib/visualExportRegistry.coverage.test.ts -> rc=1
+ deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -2202,11 +2202,11 @@
+          ],
+        },
+        Object {
+          "applicability": "univariate",
+          "caption_schema": "pgv.caption/forecast.chart/1",
+    -     "export_status": "planned",
+    +     "export_status": "legacy_client",
+          "module_id": "forecasting",
+          "notes": "Legacy: клиентский PNG из первого SVG контейнера (spec §2/§10.1); CSV/JSON сохраняются; до переезда на общий pipeline не является архивным воспроизводимым экспортом (PGV-12).",
+          "render_site": "packages/ui/components/ForecastExportMenu.tsx",
+          "renderer_kind": "recharts_svg",
+          "required_refs": Array [
+
+      259 |     expect(json.schema_version).toBe(PGV_REGISTRY_SCHEMA_VERSION);
+      260 |     expect(json.generated_from).toBe("packages/ui/lib/visualExportRegistry.ts");
+    > 261 |     expect(json.sites).toEqual(VISUAL_SITE_REGISTRY);
+          |                        ^
+      262 |     expect(json.exclusions).toEqual(VISUAL_RENDER_SITE_EXCLUSIONS);
+      263 |     expect(json.modules).toEqual(visualRegistrySummary().modules);
+      264 |     expect(json.total_sites).toBe(VISUAL_SITE_REGISTRY.length);
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:261:24)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 14 passed, 16 total
+Snapshots:   0 total
+Time:        2.741 s
+Ran all test suites matching packages/ui/lib/visualExportRegistry.coverage.test.ts.
+
+$ /home/z/.venv/bin/python3 scripts/pgv00/check_documents.py -> rc=0
+PGV-00 doc-contract: 353/353 проверок пройдено
+GREEN: документация согласована с реестром render-sites

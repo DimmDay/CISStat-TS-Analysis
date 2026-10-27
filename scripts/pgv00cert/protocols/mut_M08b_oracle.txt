@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ......................... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ...........FF...        [100%]
+
+=================================== FAILURES ===================================
+______________ test_renderer_kind_consistent_with_file_signatures ______________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:145: in test_renderer_kind_consistent_with_file_signatures
+    assert not bad, f"renderer_kind без сигнатур (вне пина слабых записей): {bad}"
+E   AssertionError: renderer_kind без сигнатур (вне пина слабых записей): [('navigator.upload.chart.series', 'html_table', ['recharts-import'])]
+E   assert not [('navigator.upload.chart.series', 'html_table', ['recharts-import'])]
+_______________ test_weak_evidence_pin_is_exactly_known_records ________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:163: in test_weak_evidence_pin_is_exactly_known_records
+    assert weak_actual == S.KIND_WEAK_EVIDENCE_PIN, (
+E   AssertionError: пин слабых записей рассинхронизирован: факт ['navigator.upload.chart.series', 'navigator.upload.distribution.histogram', 'navigator.upload.distribution.scatter', 'navigator.upload.passport.groups', 'preprocessing.regularity.gap_map']
+E   assert {'navigator.u...rity.gap_map'} == {'navigator.u...rity.gap_map'}
+E     
+E     Extra items in the left set:
+E     'navigator.upload.chart.series'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_renderer_kind_consistent_with_file_signatures
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_weak_evidence_pin_is_exactly_known_records
+========================= 2 failed, 39 passed in 0.47s =========================

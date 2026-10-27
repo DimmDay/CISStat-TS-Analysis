@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ................F..F..... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+______________________ test_json_ts_schema_version_parity ______________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:197: in test_json_ts_schema_version_parity
+    assert m and m.group(1) == S.SCHEMA_VERSION
+E   assert (<re.Match object; span=(6491, 6544), match='PGV_REGISTRY_SCHEMA_VERSION = "pgv.visual_registr> and 'pgv.visual_registry/2' == 'pgv.visual_registry/1'
+E     
+E     - pgv.visual_registry/1
+E     ?                     ^
+E     + pgv.visual_registry/2
+E     ?                     ^)
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:239: in test_export_registry_regen_byte_identical
+    assert regenerated == committed, (
+E   AssertionError: экспортёр из TS порождает JSON, отличный от закоммиченного твина
+E   assert b'{\n  "schem...  }\n  ]\n}\n' == b'{\n  "schem...  }\n  ]\n}\n'
+E     
+E     At index 43 diff: b'2' != b'1'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_ts_schema_version_parity
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+========================= 2 failed, 39 passed in 0.56s =========================

@@ -1,0 +1,37 @@
+$ npx jest packages/ui/lib/visualExportRegistry.coverage.test.ts -> rc=1
+escribe("PGV-00: интегрити реестра render-sites", () => {
+      150 |   it("схема и минимальный состав: реестр непуст, schema_version закреплён", () => {
+    > 151 |     expect(PGV_REGISTRY_SCHEMA_VERSION).toBe("pgv.visual_registry/1");
+          |                                         ^
+      152 |     expect(VISUAL_SITE_REGISTRY.length).toBeGreaterThan(0);
+      153 |   });
+      154 |
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:151:41)
+
+  ● PGV-00: интегрити реестра render-sites › паритет TS⇄JSON: config/visual_registry.json — байт-честный твин реестра
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "pgv.visual_registry/2"
+    Received: "pgv.visual_registry/1"
+
+      257 |       exclusions: typeof VISUAL_RENDER_SITE_EXCLUSIONS;
+      258 |     };
+    > 259 |     expect(json.schema_version).toBe(PGV_REGISTRY_SCHEMA_VERSION);
+          |                                 ^
+      260 |     expect(json.generated_from).toBe("packages/ui/lib/visualExportRegistry.ts");
+      261 |     expect(json.sites).toEqual(VISUAL_SITE_REGISTRY);
+      262 |     expect(json.exclusions).toEqual(VISUAL_RENDER_SITE_EXCLUSIONS);
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:259:33)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 14 passed, 16 total
+Snapshots:   0 total
+Time:        2.807 s, estimated 3 s
+Ran all test suites matching packages/ui/lib/visualExportRegistry.coverage.test.ts.
+
+$ /home/z/.venv/bin/python3 scripts/pgv00/check_documents.py -> rc=0
+PGV-00 doc-contract: 353/353 проверок пройдено
+GREEN: документация согласована с реестром render-sites

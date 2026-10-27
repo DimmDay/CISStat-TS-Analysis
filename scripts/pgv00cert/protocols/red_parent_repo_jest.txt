@@ -1,0 +1,8 @@
+No tests found, exiting with code 1
+Run with `--passWithNoTests` to exit with code 0
+In /home/z/my-project/wt-pgv00cert-red
+  794 files checked.
+  testMatch: **/*.test.{ts,tsx} - 221 matches
+  testPathIgnorePatterns: /node_modules/ - 794 matches
+  testRegex:  - 0 matches
+Pattern: packages/ui/lib/visualExportRegistry.coverage.test.ts - 0 matches

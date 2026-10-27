@@ -1,0 +1,82 @@
+============================= test session starts ==============================
+collected 6 items
+
+scripts/pgv00cert/test_p0cert_findings_evidence.py FFFFFF                [100%]
+
+=================================== FAILURES ===================================
+_____________ test_f_p0c1_inventory_doc_states_actual_check_count ______________
+scripts/pgv00cert/test_p0cert_findings_evidence.py:34: in test_f_p0c1_inventory_doc_states_actual_check_count
+    assert m, r.stdout
+E   AssertionError: 
+E   assert None
+_____________________ test_f_p0c2_navigator_kde_registered _____________________
+scripts/pgv00cert/test_p0cert_findings_evidence.py:52: in test_f_p0c2_navigator_kde_registered
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+______ test_f_p0c2_navigator_distribution_records_have_renderer_component ______
+scripts/pgv00cert/test_p0cert_findings_evidence.py:61: in test_f_p0c2_navigator_distribution_records_have_renderer_component
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_f_p0c3_forecast_comparison_view_registered ________________
+scripts/pgv00cert/test_p0cert_findings_evidence.py:77: in test_f_p0c3_forecast_comparison_view_registered
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+_______________ test_f_p0c3_forecast_sensitivity_view_registered _______________
+scripts/pgv00cert/test_p0cert_findings_evidence.py:89: in test_f_p0c3_forecast_sensitivity_view_registered
+    reg = S.load_registry()
+          ^^^^^^^^^^^^^^^^^
+scripts/pgv00cert/p0scan.py:132: in load_registry
+    return json.loads((REPO / "config" / "visual_registry.json").read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/z/my-project/wt-pgv00cert-red/config/visual_registry.json'
+__________ test_f_p0c4_navigator_preview_stop_registered_consistently __________
+scripts/pgv00cert/test_p0cert_findings_evidence.py:108: in test_f_p0c4_navigator_preview_stop_registered_consistently
+    assert mapping.get("upload.preview") == "UploadAutoPreviewPipeline", mapping.get("upload.preview")
+E   AssertionError: None
+E   assert None == 'UploadAutoPreviewPipeline'
+E    +  where None = <built-in method get of dict object at 0x7f5b5d341d00>('upload.preview')
+E    +    where <built-in method get of dict object at 0x7f5b5d341d00> = {}.get
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c1_inventory_doc_states_actual_check_count
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c2_navigator_kde_registered
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c2_navigator_distribution_records_have_renderer_component
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c3_forecast_comparison_view_registered
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c3_forecast_sensitivity_view_registered
+FAILED scripts/pgv00cert/test_p0cert_findings_evidence.py::test_f_p0c4_navigator_preview_stop_registered_consistently
+============================== 6 failed in 0.23s ===============================

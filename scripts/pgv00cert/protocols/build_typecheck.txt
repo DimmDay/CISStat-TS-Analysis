@@ -1,0 +1,16 @@
+
+> typecheck:all
+> npm run typecheck:clean && npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone
+
+
+> typecheck:clean
+> node -e "const f=require('fs');['apps/embedded/.next','apps/standalone/.next'].forEach(p=>f.rmSync(p,{recursive:true,force:true}))"
+
+
+> @cisstat/ts-analysis-embedded@0.1.0 typecheck
+> tsc --noEmit
+
+
+> @cisstat/ts-analysis-standalone@0.1.0 typecheck
+> tsc --noEmit
+

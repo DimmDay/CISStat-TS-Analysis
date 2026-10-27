@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ...................F..... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:237: in test_export_registry_regen_byte_identical
+    assert r.returncode == 0, r.stderr
+E   AssertionError: (node:10558) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/z/my-project/CISStat-TS-Analysis/scripts/pgv00/export_registry.ts is not specified and it doesn't parse as CommonJS.
+E     Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+E     To eliminate this warning, add "type": "module" to /home/z/my-project/CISStat-TS-Analysis/package.json.
+E     (Use `node --trace-warnings ...` to show where the warning was created)
+E     (node:10558) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/z/my-project/CISStat-TS-Analysis/packages/ui/lib/visualExportRegistry.ts is not specified and it doesn't parse as CommonJS.
+E     Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+E     To eliminate this warning, add "type": "module" to /home/z/my-project/CISStat-TS-Analysis/packages/ui/package.json.
+E     file:///home/z/my-project/CISStat-TS-Analysis/packages/ui/lib/visualExportRegistry.ts:1674
+E       throw new Error("P0CERT-M14: summary poisoned");
+E             ^
+E     
+E     Error: P0CERT-M14: summary poisoned
+E         at visualRegistrySummary (file:///home/z/my-project/CISStat-TS-Analysis/packages/ui/lib/visualExportRegistry.ts:1674:9)
+E         at serializeVisualRegistry (file:///home/z/my-project/CISStat-TS-Analysis/packages/ui/lib/visualExportRegistry.ts:1706:14)
+E         at file:///home/z/my-project/CISStat-TS-Analysis/scripts/pgv00/export_registry.ts:16:14
+E         at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+E         at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+E         at async node:internal/modules/esm/loader:647:26
+E         at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+E     
+E     Node.js v24.22.1
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['node', '--experimental-strip-types', 'scripts/pgv00/export_registry.ts'], returncode=1, stdout...der:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.22.1\n').returncode
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+========================= 1 failed, 40 passed in 0.46s =========================

@@ -1,0 +1,27 @@
+$ npx jest packages/ui/lib/visualExportRegistry.coverage.test.ts -> rc=0
+w> (5 ms)
+    ✓ каждая запись имеет полный обязательный состав полей (spec §5) (58 ms)
+    ✓ stop_id Навигатора привязан к источнику истины navigator-stops.ts (<stage>.<item>) (1 ms)
+    ✓ stop_id модулей-остановок согласован: upload — ветки модуля, остальные — пункты Навигатора (5 ms)
+    ✓ файлы render_site/renderer_component существуют на диске (5 ms)
+    ✓ честность export_status: legacy_client и not_mounted — ровно известные записи (2 ms)
+    ✓ родительская спека D01–D12 не переименовывается: в реестре нет document-kind путаницы (4 ms)
+    ✓ паритет TS⇄JSON: config/visual_registry.json — байт-честный твин реестра (5 ms)
+    ✓ denominator pins: состав по модулям закреплён (удаление записи падает)
+  PGV-00: coverage-оракул — unknown scientific site blocks CERT
+    ✓ каждый файл с научным рендер-паттерном зарегистрирован или исключён с причиной
+    ✓ семейные правила: все файлы научных семейств покрыты (даже без pattern-совпадения) (1 ms)
+    ✓ все 58 эталонных pattern-совпадений разведены по реестру/исключениям (baseline PGV-00)
+    ✓ исключения явны: у каждого файла-исключения есть причина и класс (2 ms)
+    ✓ glob-шаблоны исключений не протухли: каждый шаблон находит хотя бы один файл
+    ✓ текстовые файлы исключений существуют на диске (строчные цели, не glob) (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        2.687 s, estimated 3 s
+Ran all test suites matching packages/ui/lib/visualExportRegistry.coverage.test.ts.
+
+$ /home/z/.venv/bin/python3 scripts/pgv00/check_documents.py -> rc=0
+PGV-00 doc-contract: 353/353 проверок пройдено
+GREEN: документация согласована с реестром render-sites

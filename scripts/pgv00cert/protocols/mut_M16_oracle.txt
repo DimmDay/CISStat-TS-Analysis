@@ -1,0 +1,41 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ..........F........F...F. [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ...............F        [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_json_schema_and_composition _______________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:142: in test_json_schema_and_composition
+    assert reg["total_sites"] == S.EXPECTED_TOTAL
+E   assert 90 == 89
+E    +  where 89 = S.EXPECTED_TOTAL
+__________________ test_export_registry_regen_byte_identical ___________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:239: in test_export_registry_regen_byte_identical
+    assert regenerated == committed, (
+E   AssertionError: экспортёр из TS порождает JSON, отличный от закоммиченного твина
+E   assert b'{\n  "schem...  }\n  ]\n}\n' == b'{\n  "schem...  }\n  ]\n}\n'
+E     
+E     At index 328 diff: b'8' != b'9'
+E     Use -v to get more diff
+____________________________ test_guard_runs_green _____________________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:303: in test_guard_runs_green
+    assert r.returncode == 0, r.stdout + r.stderr
+E   AssertionError: PGV-00 doc-contract: 352/353 проверок пройдено
+E     
+E     FAILED:
+E       - JSON: total_sites == 89 — факт 90
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/z/.venv/bin/python3', 'scripts/pgv00/check_documents.py'], returncode=1, stdout='PGV-00 doc-contract: 352/353 проверок пройдено\n\nFAILED:\n  - JSON: total_sites == 89 — факт 90\n', stderr='').returncode
+__________________________ test_denominator_pins_own ___________________________
+scripts/pgv00cert/test_p0cert_oracle_coverage.py:203: in test_denominator_pins_own
+    assert reg["total_sites"] == 89
+E   assert 90 == 89
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_json_schema_and_composition
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_export_registry_regen_byte_identical
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_guard_runs_green
+FAILED scripts/pgv00cert/test_p0cert_oracle_coverage.py::test_denominator_pins_own
+========================= 4 failed, 37 passed in 0.48s =========================

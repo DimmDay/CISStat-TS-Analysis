@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ....................F.... [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_inventory_doc_counts_match_json _____________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:268: in test_inventory_doc_counts_match_json
+    assert re.search(rf"\|\s*{m}\s*\|\s*{n}\s*\|", inv), f"инвентарь: строка {m}={n}"
+E   AssertionError: инвентарь: строка navigator=14
+E   assert None
+E    +  where None = <function search at 0x7f4c81d6db20>('\\|\\s*navigator\\s*\\|\\s*14\\s*\\|', '# PGV-00 — Инвентарь научных render-sites (документ поставки)\n\n**Дата:** 27 октября 2026. **База:** `main@754219a` ...е PGV-00; `applicability` отражает текущую логику UI (панельные ветки), а не будущую матрицу применимости PGV-10…12.\n')
+E    +    where <function search at 0x7f4c81d6db20> = re.search
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_inventory_doc_counts_match_json
+========================= 1 failed, 40 passed in 0.51s =========================

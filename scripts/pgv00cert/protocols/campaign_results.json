@@ -1,0 +1,249 @@
+{
+  "mutants": {
+    "M01": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "переименование view_id в TS: дрейф TS⇄JSON (repo-паритет + set-паритет сертификатора)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M02": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "двойной view_id-ключ в записи: счётчик TS-записей 90 и паритет",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M03": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "legacy_client → planned: честность статуса (легаси PNG спрятан от плана PGV-12); якорь по render_site — caption forecast.chart у двух записей",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M04": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "not_mounted → planned: несмонтированный компонент объявлен планируемым",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M05": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "класс исключения вне каталога: мультимножество классов TS⇄JSON расходится",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M06": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "версия схемы TS дрейфует от JSON-твина",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M07": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "stop_id Навигатора вне navigator-stops: разрыв с источником истины",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M08": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "kind-подмена только в TS: repo-паритет TS⇄JSON ловит (предрегистрированное ожидание ORACLE-ONLY было неверным — паритет покрывает все поля записей)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M08b": {
+      "expect": "ORACLE-ONLY",
+      "verdict": "ORACLE-ONLY",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "СОГЛАСОВАНная kind-подмена TS+JSON: паритет проходит, канон допустим — семантику kind-vs-file ловит только сигнатурный оракул сертификатора",
+      "repo_rc": 0,
+      "oracle_rc": 1
+    },
+    "M09": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "канон адаптера pgv-XX/ нарушен (repo-паритет + реген-паритет сертификатора; предрегистрированное REPO-ONLY устарело)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M10": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "канон caption_schema в TS нарушен (repo-паритет + реген-паритет сертификатора)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M11": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "обязательные refs navigator-серии обнулены в TS (repo-паритет + реген-паритет)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M12": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "запись исключения удалена (инертный маркер сохраняет позицию для обратной замены): пин 9, закрытие скана, мультимножество классов",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M13": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "общий набор демо-refs обнулён (navigator-записи слепые; repo-паритет + реген-паритет)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M14": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "сводка реестра отравлена безусловным throw: repo-jest падает (denominator/паритет) и cert-реген-оракул падает (экспортёр вызывает сводку; предрегистрированное REPO-ONLY устарело)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M15": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "config/visual_registry.json",
+      "note": "JSON-дрейф от TS: repo-паритет toEqual + set-паритет сертификатора",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M16": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "config/visual_registry.json",
+      "note": "denominator JSON завышен",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M17": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "spec_documentation_logging.md",
+      "note": "PNG-only-инвариант §7 подменён (guard и cert-оракул теряют маркер)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M18": {
+      "expect": "ORACLE-ONLY",
+      "verdict": "ORACLE-ONLY",
+      "match": true,
+      "file": "spec_documentation_logging.md",
+      "note": "инвариант D02≠P01 ослаблен: guard проверяет лишь наличие D02/P01 в §12",
+      "repo_rc": 0,
+      "oracle_rc": 1
+    },
+    "M19": {
+      "expect": "ORACLE-ONLY",
+      "verdict": "ORACLE-ONLY",
+      "match": true,
+      "file": "docs/pgv00_render_site_inventory.md",
+      "note": "состав модуля в документе искажён: guard удовлетворяется подстрокой «14» из строки §5",
+      "repo_rc": 0,
+      "oracle_rc": 1
+    },
+    "M20": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "scripts/pgv00/check_documents.py",
+      "note": "guard отравлен: собственная проверка падает на честном JSON (repo-канал требует GREEN)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M21": {
+      "expect": "ORACLE-ONLY",
+      "verdict": "ORACLE-ONLY",
+      "match": true,
+      "file": "scripts/pgv00/check_documents.py",
+      "note": "секция E guard'а удалена: guard остаётся GREEN, состав ловит cert-токен worklog11.md",
+      "repo_rc": 0,
+      "oracle_rc": 1
+    },
+    "M22": {
+      "expect": "DUAL",
+      "verdict": "DUAL-KILLED",
+      "match": true,
+      "file": "scripts/pgv00/check_documents.py",
+      "note": "guard-проверка legacy ослеплена: guard сам падает (legacy != прогнозному меню)",
+      "repo_rc": 1,
+      "oracle_rc": 1
+    },
+    "M23": {
+      "expect": "ORACLE-ONLY",
+      "verdict": "ORACLE-ONLY",
+      "match": true,
+      "file": "scripts/pgv00/export_registry.ts",
+      "note": "экспортёр пишет мимо твина: repo-канал экспортёр не запускает, cert-оракул ловит мусор дерева",
+      "repo_rc": 0,
+      "oracle_rc": 1
+    }
+  },
+  "controls": {
+    "C01": {
+      "expect": "ALIVE",
+      "verdict": "SURVIVED",
+      "match": true,
+      "file": "packages/ui/lib/visualExportRegistry.ts",
+      "note": "no-op контроль: комментарий в заголовке реестра",
+      "repo_rc": 0,
+      "oracle_rc": 0
+    },
+    "C02": {
+      "expect": "ALIVE",
+      "verdict": "SURVIVED",
+      "match": true,
+      "file": "docs/pgv00_render_site_inventory.md",
+      "note": "no-op контроль: комментарий в заголовке документа",
+      "repo_rc": 0,
+      "oracle_rc": 0
+    },
+    "C03": {
+      "expect": "ALIVE",
+      "verdict": "SURVIVED",
+      "match": true,
+      "file": "scripts/pgv00/check_documents.py",
+      "note": "no-op контроль: комментарий в guard'е",
+      "repo_rc": 0,
+      "oracle_rc": 0
+    }
+  }
+}

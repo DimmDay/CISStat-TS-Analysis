@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+collected 41 items
+
+scripts/pgv00cert/test_p0cert_oracle_static.py ....F..................F. [ 60%]
+                                                                         [ 60%]
+scripts/pgv00cert/test_p0cert_oracle_coverage.py ................        [100%]
+
+=================================== FAILURES ===================================
+_______________ test_doclog_spec_png_only_amendment_in_section7 ________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:94: in test_doclog_spec_png_only_amendment_in_section7
+    assert "PNG-only" in s7 and "PGV-00" in s7
+E   AssertionError: assert ('PNG-only' in '## 7. Форматы и каноническая модель документа\n\n**R06.** Канон — версионированный `ReportSnapshot` JSON и закреплённ...rage.test.ts`); unknown/unmapped научный render-site блокирует сквозную приёмку и остаётся в denominator coverage.\n\n')
+____________________________ test_guard_runs_green _____________________________
+scripts/pgv00cert/test_p0cert_oracle_static.py:303: in test_guard_runs_green
+    assert r.returncode == 0, r.stdout + r.stderr
+E   AssertionError: PGV-00 doc-contract: 352/353 проверок пройдено
+E     
+E     FAILED:
+E       - spec_documentation_logging.md §7: PNG-only для новых научных экспортов
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/home/z/.venv/bin/python3', 'scripts/pgv00/check_documents.py'], returncode=1, stdout='PGV-00 ...проверок пройдено\n\nFAILED:\n  - spec_documentation_logging.md §7: PNG-only для новых научных экспортов\n', stderr='').returncode
+=========================== short test summary info ============================
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_doclog_spec_png_only_amendment_in_section7
+FAILED scripts/pgv00cert/test_p0cert_oracle_static.py::test_guard_runs_green
+========================= 2 failed, 39 passed in 0.48s =========================
