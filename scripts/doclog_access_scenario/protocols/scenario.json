@@ -1,0 +1,323 @@
+{
+  "base": "79044e8c91195dcb54969da5b34b77dcd15941da",
+  "scope": "isolated TestClient; disposable memory stores; actual TS demo bytes; CISSTAT_IDENTITY_MODE=session_scoped (prod default)",
+  "csv_sha256": "89390fe00b86db06c05f834da29a3ced5925259f46ebc99df6c9a7eaa1db0e72",
+  "csv_bytes": 2691,
+  "ui_forbidden_text": "Доступ запрещён — документы этого исследования недоступны вашему субъекту",
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/v1/internal/upload",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/target-column",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/date-column",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/session/dataset/passport/start",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documentation/revisions/drev-31df316c832640c2b1ec35238c959277/renditions",
+      "status": 202
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/jobs/djob-ee8b7c7318704659ad1c4eb58a02923a",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/revisions/drev-31df316c832640c2b1ec35238c959277",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v1/progress/trace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v1/documentation/runs/RUN-756E491D/documents",
+      "status": 404
+    }
+  ],
+  "variants": {
+    "S1_owner_list_ok": {
+      "status": 200,
+      "documents_count": 0,
+      "ui_phase": "empty",
+      "ui_message_if_empty": "Документов пока нет — соберите черновик нужного вида",
+      "note": "§12.1: открытие раздела не создаёт документ фактом открытия"
+    },
+    "S2_owner_download_ok": {
+      "worker_summary": {
+        "at": "2026-10-27T08:16:57.148979+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      "kind": "D02",
+      "revision_id": "drev-31df316c832640c2b1ec35238c959277",
+      "pdf_status": 200,
+      "pdf_sha256": "7cc82277306cb2489b3dcf6811456ac89dead6e500191dd2f79945bb72c86264",
+      "pdf_bytes": 27194,
+      "note": "владелец скачивает документы своего исследования"
+    },
+    "S3a_foreign_session": {
+      "list_status": 404,
+      "list_detail": {
+        "detail": "Запуск не найден"
+      },
+      "revision_status": 404,
+      "revision_detail": {
+        "detail": "Документ не найден"
+      },
+      "foreign_session_cookie": "d2c3a7ffcc8a4c6fad75af7bf77cb52c",
+      "ui_phase": "forbidden",
+      "ui_message": "Доступ запрещён — документы этого исследования недоступны вашему субъекту",
+      "audit_reason_expected": "foreign_session"
+    },
+    "S3b_anonymous": {
+      "list_status": 404,
+      "list_detail": {
+        "detail": "Запуск не найден"
+      },
+      "ui_phase": "forbidden",
+      "ui_message": "Доступ запрещён — документы этого исследования недоступны вашему субъекту",
+      "audit_reason_expected": "anonymous"
+    },
+    "S6_dev_single_user_contrast": {
+      "mode": "dev_single_user",
+      "foreign_list_status": 200,
+      "documents_count": 1,
+      "note": "в dev-режиме cross-session доступ разрешён и помечен reason=dev_single_user_isolated -- локально отказ не увидеть"
+    },
+    "S4_run_lost_session_alive": {
+      "trace_status": 200,
+      "trace_run_id_still_returned": "RUN-756E491D",
+      "trace_projection_source": "session_tail",
+      "trace_projection_complete": false,
+      "documents_status": 404,
+      "documents_detail": {
+        "detail": "Запуск не найден"
+      },
+      "ui_phase": "forbidden",
+      "ui_message": "Доступ запрещён — документы этого исследования недоступны вашему субъекту",
+      "note": "ЭКВИВАЛЕНТ наблюдаемого симптома: run_id ещё возвращается из записи сессии (advisory-деградация session_tail), список документов -- 404; UI показывает «Доступ запрещён» вместо честного «исследование потеряно средой»"
+    },
+    "S5_full_restart": {
+      "trace_status": 200,
+      "trace_run_id": null,
+      "documents_status": 404,
+      "documents_detail": {
+        "detail": "Запуск не найден"
+      },
+      "ui_phase_if_run_null": "no-run",
+      "ui_message_if_run_null": "Исследование не выбрано — откройте раздел из исследования («Прогресс» → «Документы») или передайте ?run=…; это не пустой реестр активного датасета",
+      "note": "Полная потеря памяти процесса даёт ДРУГОЕ сообщение (no-run), не «Доступ запрещён»: run_id уже не возвращается"
+    }
+  },
+  "stage_upload": {
+    "rows": 150,
+    "run_id": "RUN-756E491D",
+    "passport_snapshot": "3daf7f81-eb29-4a42-89c6-b3f9dc1f866e",
+    "analyst_cookie_session": "d2dd91310c0b441d8c81c627a3ee6a58"
+  },
+  "audit_run_access_decisions": [
+    {
+      "action": "run_access_denied",
+      "outcome": null,
+      "reason_code": "anonymous",
+      "run_id": "RUN-756E491D",
+      "actor_via": "anonymous"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "owner",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_denied",
+      "outcome": null,
+      "reason_code": "foreign_session",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_denied",
+      "outcome": null,
+      "reason_code": "foreign_session",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_denied",
+      "outcome": null,
+      "reason_code": "anonymous",
+      "run_id": "RUN-756E491D",
+      "actor_via": "anonymous"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "dev_single_user_isolated",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    },
+    {
+      "action": "run_access_allowed",
+      "outcome": null,
+      "reason_code": "dev_single_user_isolated",
+      "run_id": "RUN-756E491D",
+      "actor_via": "session_surrogate"
+    }
+  ]
+}
