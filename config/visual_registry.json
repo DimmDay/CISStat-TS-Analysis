@@ -529,6 +529,7 @@
       "source_adapter": "pgv-03/upload_structure",
       "required_refs": [
         "context_id",
+        "data_revision",
         "date_column",
         "grouping_column",
         "frequency_hint"
@@ -2254,6 +2255,7 @@
       "source_adapter": "pgv-03/forecast_accuracy",
       "required_refs": [
         "context_id",
+        "data_revision",
         "forecast_artifact_ref"
       ],
       "view_params": [

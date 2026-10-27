@@ -1,0 +1,198 @@
+{
+  "schema_version": "pgv.print_schema/1",
+  "generated_from": "packages/ui/print/printSchema.ts",
+  "pgv_task": "PGV-01",
+  "schema_versions": {
+    "document": "pgv.print_schema/1",
+    "visual_result": "pgv.visual_result/1",
+    "visual_print_snapshot": "pgv.visual_print_snapshot/1",
+    "print_manifest": "pgv.print_manifest/1",
+    "profiles": "pgv.print_profiles/1"
+  },
+  "profiles": [
+    {
+      "id": "figure-landscape",
+      "label_ru": "Рисунок (альбомная)",
+      "orientation": "landscape",
+      "width_px": 2400,
+      "height_px": 1500,
+      "ppi": 300,
+      "width_in": 8,
+      "height_in": 5,
+      "width_mm": 203.2,
+      "height_mm": 127,
+      "is_default": true,
+      "notes": "Профиль «Рисунок» для статьи/вставки: 8×5 дюймов при 300 ppi = 2400×1500 px. Физический профиль, не увеличение информативности выборки (spec §7)."
+    },
+    {
+      "id": "a4-portrait",
+      "label_ru": "Лист A4 (книжная)",
+      "orientation": "portrait",
+      "width_px": 2480,
+      "height_px": 3508,
+      "ppi": 300,
+      "width_in": 8.2667,
+      "height_in": 11.6933,
+      "width_mm": 210,
+      "height_mm": 297,
+      "is_default": false,
+      "notes": "A4 при 300 ppi — 2480×3508 px (spec §7); физический лист 210×297 мм. Пиксели — закреплённое округление спеки (210 мм / 25.4 × 300 = 2480.3)."
+    },
+    {
+      "id": "a4-landscape",
+      "label_ru": "Лист A4 (альбомная)",
+      "orientation": "landscape",
+      "width_px": 3508,
+      "height_px": 2480,
+      "ppi": 300,
+      "width_in": 11.6933,
+      "height_in": 8.2667,
+      "width_mm": 297,
+      "height_mm": 210,
+      "is_default": false,
+      "notes": "A4 при 300 ppi — 3508×2480 px (spec §7); физический лист 297×210 мм. Для широких матриц и панельных комплектов."
+    }
+  ],
+  "default_profile_id": "figure-landscape",
+  "limits": {
+    "max_megapixels_per_page": 12,
+    "max_pages_per_set": 20,
+    "max_output_bytes": 52428800,
+    "render_timeout_s": 60,
+    "concurrency_per_tenant": 1,
+    "concurrency_global": 2
+  },
+  "rules": {
+    "scope_derivation": {
+      "demo": "refs.demo_dataset_id",
+      "comparison": "refs.comparison_id",
+      "passport": "refs.snapshot_id либо stop_id == passport",
+      "research": "остальные runtime-сайты реестра"
+    },
+    "mandatory_refs_by_scope": {
+      "demo": [
+        "demo_dataset_id"
+      ],
+      "research": [
+        "context_id",
+        "data_revision"
+      ],
+      "passport": [
+        "context_id",
+        "snapshot_id",
+        "data_revision",
+        "schema_version"
+      ],
+      "comparison": [
+        "research_run_id",
+        "comparison_id"
+      ]
+    },
+    "sampling": {
+      "applicable_renderer_kinds": [
+        "recharts_svg",
+        "html_table",
+        "html_heatmap",
+        "mixed"
+      ],
+      "exempt_renderer_kinds": [
+        "html_cards"
+      ],
+      "modes": [
+        "full",
+        "downsampled",
+        "windowed",
+        "aggregated",
+        "truncated"
+      ],
+      "modes_requiring_point_cap": [
+        "downsampled",
+        "windowed",
+        "truncated"
+      ]
+    },
+    "units": {
+      "rule": "value XOR reason (spec §6: не выдумывать единицы)",
+      "dimensionless_reason": "dimensionless",
+      "legacy_unknown_reason": "legacy_unknown"
+    },
+    "trusted_parameters": {
+      "origins": [
+        "producer_freeze",
+        "producer_first_export"
+      ],
+      "selection_allowlist_source": "packages/ui/lib/visualExportRegistry.ts#view_params"
+    },
+    "section_composition": {
+      "mixed_minimum_sections": 2
+    },
+    "sensitive": {
+      "raw_data_included": false
+    }
+  },
+  "section_requirements": {
+    "recharts_svg": {
+      "axes": "обязательны: имя + units каждой оси",
+      "table_headings": "not_applicable",
+      "heatmap_scale": "not_applicable",
+      "units": "обязательны (value XOR reason)"
+    },
+    "html_table": {
+      "axes": "not_applicable (axes_applicability=not_applicable)",
+      "table_headings": "обязательны: заголовки строк и колонок",
+      "heatmap_scale": "not_applicable",
+      "units": "обязательны (value XOR reason)"
+    },
+    "html_heatmap": {
+      "axes": "not_applicable",
+      "table_headings": "not_applicable",
+      "heatmap_scale": "обязательна: domain + units шкалы",
+      "units": "обязательны (value XOR reason)"
+    },
+    "html_cards": {
+      "axes": "not_applicable",
+      "table_headings": "not_applicable",
+      "heatmap_scale": "not_applicable",
+      "units": "обязательны (value XOR reason, dimensionless честен)"
+    }
+  },
+  "violation_codes": [
+    "ambiguous_unit",
+    "ambiguous_source_hash",
+    "ambiguous_date",
+    "data_included_forbidden",
+    "duplicate_filename",
+    "empty_sections",
+    "invalid_profile",
+    "invalid_section_kind",
+    "missing_axes",
+    "missing_checkpoint_confirmation",
+    "missing_data_version",
+    "missing_date",
+    "missing_digest",
+    "missing_expected_context",
+    "missing_field",
+    "missing_heatmap_scale",
+    "missing_page_hash",
+    "missing_point_cap",
+    "missing_renderer_reason",
+    "missing_required_ref",
+    "missing_result_ref",
+    "missing_sampling",
+    "missing_sampling_reason",
+    "missing_sampling_mode",
+    "missing_source_hash",
+    "missing_table_headings",
+    "missing_title",
+    "missing_units",
+    "mixed_needs_multiple_sections",
+    "page_order_gap",
+    "panel_mixing",
+    "raw_data_included_forbidden",
+    "schema_version_mismatch",
+    "section_kind_mismatch",
+    "selection_not_allowlisted",
+    "theme_not_light_print",
+    "untrusted_parameter_origin"
+  ]
+}

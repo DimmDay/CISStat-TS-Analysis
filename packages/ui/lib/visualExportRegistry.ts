@@ -519,7 +519,8 @@ export const VISUAL_SITE_REGISTRY_UPLOAD: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisUpload.tsx#structure",
     renderer_kind: "html_table",
     source_adapter: "pgv-03/upload_structure",
-    required_refs: ["context_id", "date_column", "grouping_column", "frequency_hint"],
+    // PGV-01: data_revision обязателен (research-scope version, print schema).
+    required_refs: ["context_id", "data_revision", "date_column", "grouping_column", "frequency_hint"],
     view_params: ["detection_confidence"],
     applicability: "univariate+panel",
     caption_schema: "pgv.caption/upload.structure/1",
@@ -1529,7 +1530,8 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisForecasting.tsx#accuracy",
     renderer_kind: "html_cards",
     source_adapter: "pgv-03/forecast_accuracy",
-    required_refs: ["context_id", "forecast_artifact_ref"],
+    // PGV-01: data_revision обязателен (research-scope version, print schema).
+    required_refs: ["context_id", "data_revision", "forecast_artifact_ref"],
     view_params: ["metric_set"],
     applicability: "univariate",
     caption_schema: "pgv.caption/forecast.accuracy/1",
