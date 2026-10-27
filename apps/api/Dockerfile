@@ -49,8 +49,19 @@ RUN apt-get update \
 
 # Системные зависимости для сборки некоторых wheel'ов (scipy/statsmodels
 # на редких платформах требуют компилятор, если бинарного wheel нет).
+#
+# DOCLOG-PDF-FONT-DEPLOY-1 (2026-10-27): slim-образ Debian НЕ содержит
+# системных шрифтов, а рендер PDF/PNG документов (§7: кириллица требует
+# встроенного TTF; AC16: чтение ФС рендером ограничено allowlist) берёт
+# шрифт из _PDF_FONT_CANDIDATES -- первичный кандидат
+# /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf[.ttf bold].
+# fonts-dejavu-core предоставляет ровно эти файлы. Без пакета «Собрать
+# формат: PDF/PNG» в деплое честно терминально failed
+# (render_dependency_unavailable, «Ошибка (failed) (попытка N)») при
+# работающих P0-форматах -- отказ выглядит как «сломан только PDF».
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/api/requirements.txt ./apps/api/requirements.txt
@@ -198,6 +209,16 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   routes = {getattr(r, 'path', '') for r in app.routes}; \
                   assert '/health' in routes and '/health/ops' in routes; \
                   print('psycopg + full API startup OK (AUDIT-6C):', psycopg.__version__)"
+
+# DOCLOG-PDF-FONT-DEPLOY-1: allowlist-шрифт PDF/PNG-рендера обязан
+# существовать ВРЕМЕНЕМ СБОРКИ (fail-closed, философия DEPLOY-1: если
+# зависимость среды отсутствует -- образ не собирается, а не молча
+# выдаёт аналитику «Ошибка (failed)» в runtime). _resolve_font() читает
+# только ФС (os.path.isfile) и не требует reportlab -- проверка легка.
+RUN python -c "from apps.api.document_renditions import _resolve_font; \
+               path, name = _resolve_font(); \
+               assert path.endswith('.ttf'); \
+               print('font allowlist OK (DOCLOG-PDF-FONT-DEPLOY-1):', name, '->', path)"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

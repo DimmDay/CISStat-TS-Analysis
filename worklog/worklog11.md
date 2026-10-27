@@ -368,3 +368,23 @@ pytest tests/api/ -k "doclog or documentation" → 604 passed / 1 skipped. По�
 ### Поставка
 
 ZIP cisstat-doclog-dl-fix1.zip → открытый контейнер сессии (download/) + веб-страница поставки :3000 с кнопкой скачивания (верифицирована браузером). Изменённые: apps/api/routers/documentation.py; packages/ui/components/DocumentationWorkspace.tsx; tests/api/test_doclog4_document_delivery.py; spec_documentation_logging.md; docs/doclog_download_behavior_2026-10-27.md; scripts/doclog_dl_repro/{reproduce_download_behavior.py, protocols/repro_result.json}; worklog/worklog11.md (эта запись). Новые: packages/ui/components/documentation-new-tab-action.test.tsx; docs/doclog_dl_fix1_2026-10-27.md. Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: DOCLOG-PDF-FONT-DEPLOY-1 (2026-10-27) — «Собрать формат: PDF» → «Ошибка (failed) (попытка 2)»: воспроизведение, причина, устранение
+
+База: 9390ab5 (DOCLOG-DL-FIX-1); git fetch + pull --ff-only, дерево чистое. Постановка тимлида: синхронизироваться до 9390ab5; скачивание починено, но кроме pdf; сценарий — «Собрать формат:» → PDF → worker задумывается, ставит в очередь → «Задание djob-…: Ошибка (failed) (попытка 2)»; воспроизвести, найти причины, устранить; no commit/push (AGENTS.md).
+
+Разбор: pdf — тяжёлый формат (HEAVY_RENDITION_FORMATS): POST → 202 queued → DocumentRenderWorker (lease, frozen-снимок) → render_snapshot_pdf; рендер требует TTF из allowlist _PDF_FONT_CANDIDATES (AC16: ФС-чтение рендером ограничено списком; §7: кириллица = встроенный шрифт). Отсутствие шрифта — честный RenderDependencyError font_unavailable → worker: render_dependency_unavailable — ДЕТЕРМИНИРОВАННАЯ, терминальный failed сразу (§18, покрыто тестами doclog5). «(попытка 2)» объясняется без ретраев: attempt = len(prior_jobs)+1 на ПОСТАНОВКЕ; повторный клик после первой неудачи = новый job с attempt=2 → снова терминальный failed.
+
+Root cause (воспроизведён): деплой-образ собирается из python:3.12-slim (apps/api/Dockerfile, render.yaml runtime: docker), а slim-образы Debian БЕЗ системных шрифтов — fonts-dejavu*/fonts-liberation не устанавливались ни одним слоем. Работают P0 и бинарные без шрифтов (xlsx/zip/parquet); PDF и PNG (единственные шрифто-зависимые) — терминальный failed при живых остальных = «сломан только pdf». Код PDF-рендера корректен.
+
+Воспроизведение: scripts/doclog_pdf_repro/reproduce_pdf_failure.py (TestClient+Memory, паттерн DOCLOG-4/5, namespace RUN-DPF*, worker run_once вручную; протокол protocols/repro_result.json). S1 baseline (шрифты есть): POST→202 queued→ready, 26930 B, %PDF-1.4, attachment — конвейер исправен. S2 (allowlist-шрифты удалены — модель slim-образа): клик №1 failed attempt=1, клик №2 failed attempt=2, клик №3 failed attempt=3, error_code=render_dependency_unavailable — точный эквивалент наблюдения тимлида.
+
+TDD RED→GREEN: новый tests/api/test_doclog_pdf_font_deploy.py — RED 3 failed/1 passed (apt-пакет fonts-dejavu-core; build-time guard _resolve_font по философии DEPLOY-1 fail-closed; маркер задачи в Dockerfile; пин сопряжения allowlist↔пакет). Код: apps/api/Dockerfile — fonts-dejavu-core в системный apt-слой с комментарием DOCLOG-PDF-FONT-DEPLOY-1 + RUN python -c _resolve_font guard перед ENV (guard читает только ФС, reportlab не требует — ленивый импорт; семантика многострочного python -c верифицирована под sh -c/dash). GREEN: сюит 4/4; test_docker_image_layout.py (DEPLOY-1) 4/4 — структура Dockerfile цела; полный doclog-корпус -k "doclog or documentation" → 608 passed/1 skipped (604+4, ноль регрессий).
+
+Эффект: после пересборки образа на Render PDF/PNG проходят queued→rendering→ready (attachment 9390ab5 на месте); повторное исчезновение шрифта = падение СБОРКИ образа с явным сообщением вместо тихого failed у аналитика; старые failed-задания остаются честными записями, новый клик = новая попытка (лимит 5 на цель). Рекомендации вне скоупа: человекочитаемые подсказки error_code в панели «Ошибка сборки формата»; опциональный бандлинг TTF в репозиторий (лицензия допускает).
+
+Границы: docker build в песочнице недоступен — корректность Dockerfile подтверждена парсинг-тестами (docker-layout + новый сюит) и исполнением guard под sh -c; живой Render не прогонялся; Memory/TestClient; UI не менялся; полный tests/api не гонялся (дифф не трогает runtime Python — doclog-корпус и docker-layout зелёные).
+
+Поставка: docs/doclog_pdf_font_deploy_2026-10-27.md (акт); scripts/doclog_pdf_repro/{reproduce_pdf_failure.py, protocols/repro_result.json}; tests/api/test_doclog_pdf_font_deploy.py; apps/api/Dockerfile; worklog/worklog11.md (эта запись). ZIP cisstat-doclog-pdf-font-deploy-1.zip → открытый контейнер сессии (download/) + веб-страница поставки :3000 с кнопкой скачивания. Без commit/push (AGENTS.md).

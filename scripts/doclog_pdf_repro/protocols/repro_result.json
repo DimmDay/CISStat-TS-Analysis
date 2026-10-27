@@ -1,0 +1,346 @@
+{
+  "generated_at": "2026-10-27T13:05:29.620747+00:00",
+  "run_id": "RUN-DPF00001",
+  "session_id": "dpf-seed-session",
+  "font_probe": {
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf": true,
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf": true
+  },
+  "S1_baseline_fonts_present": {
+    "revision_id": "drev-6b85d0d0d8a549d78352c42cfd2d3e7e",
+    "post_status": 202,
+    "post_job_state": "queued",
+    "post_job_attempt": 1,
+    "worker_cycles": [
+      {
+        "at": "2026-10-27T13:05:32.928283+00:00",
+        "reclaimed": 0,
+        "claimed": 1,
+        "ready": 1,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T13:05:33.374932+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T13:05:33.374955+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T13:05:33.374962+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T13:05:33.374968+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      },
+      {
+        "at": "2026-10-27T13:05:33.374973+00:00",
+        "reclaimed": 0,
+        "claimed": 0,
+        "ready": 0,
+        "failed": 0,
+        "requeued": 0
+      }
+    ],
+    "final_job": {
+      "job_id": "djob-32060fb419f542f2aa39bc30601ac3f8",
+      "run_id": "RUN-DPF00001",
+      "snapshot_id": "rs-69dc6d8500a64808bcee7f1b9a631126",
+      "format": "pdf",
+      "redaction_profile": "owner-v1",
+      "revision_id": "drev-6b85d0d0d8a549d78352c42cfd2d3e7e",
+      "rendition_id": "drend-b254690cbe4848e3ae92b22f83f5ad04",
+      "state": "ready",
+      "error_code": null,
+      "attempt": 1,
+      "created_by": "subj-61e70818ab99edb4",
+      "created_at": "2026-10-27T13:05:32.927496+00:00",
+      "updated_at": "2026-10-27T13:05:33.374818+00:00",
+      "tenant_id": "tenant-default",
+      "claimed_at": "2026-10-27T13:05:32.928323+00:00",
+      "lease_expires_at": "2026-10-27T13:07:32.928323+00:00",
+      "org_profile_id": "",
+      "rendition": {
+        "rendition_id": "drend-b254690cbe4848e3ae92b22f83f5ad04",
+        "revision_id": "drev-6b85d0d0d8a549d78352c42cfd2d3e7e",
+        "snapshot_id": "rs-69dc6d8500a64808bcee7f1b9a631126",
+        "run_id": "RUN-DPF00001",
+        "format": "pdf",
+        "redaction_profile": "owner-v1",
+        "state": "ready",
+        "media_type": "application/pdf",
+        "size_bytes": 26930,
+        "content_sha256": "c3fd24b3dbe5a3f1658b69d1285b5ff2774d9f01e320a385a57463f122f49d44",
+        "storage_key": "c3/c3fd24b3dbe5a3f1658b69d1285b5ff2774d9f01e320a385a57463f122f49d44",
+        "job_id": "djob-32060fb419f542f2aa39bc30601ac3f8",
+        "created_by": "subj-61e70818ab99edb4",
+        "created_at": "2026-10-27T13:05:33.374756+00:00",
+        "snapshot_payload_sha256": "9021aef38c2f3fb12663b120e4eb8441e709d4e0630ae65b74c0f0203209b2cc",
+        "org_profile_id": ""
+      }
+    },
+    "rendition_state": "ready",
+    "content": {
+      "status": 200,
+      "content_type": "application/pdf",
+      "content_disposition": "attachment; filename=\"document-drend-b254690cbe4848e3ae92b22f83f5ad04.pdf\"",
+      "head": "%PDF-1.4",
+      "size": 26930
+    }
+  },
+  "S2_deploy_image_no_fonts": {
+    "first_click": {
+      "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+      "post_status": 202,
+      "post_job_state": "queued",
+      "post_job_attempt": 1,
+      "worker_cycles": [
+        {
+          "at": "2026-10-27T13:05:33.393345+00:00",
+          "reclaimed": 0,
+          "claimed": 1,
+          "ready": 0,
+          "failed": 1,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.393867+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.393878+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.393882+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.393887+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.393892+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        }
+      ],
+      "final_job": {
+        "job_id": "djob-f4eaf6d2f5cb450fbec524015a7bf45d",
+        "run_id": "RUN-DPF00001",
+        "snapshot_id": "rs-2f67125b7d5544d49a3481d80ca90cc4",
+        "format": "pdf",
+        "redaction_profile": "owner-v1",
+        "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+        "rendition_id": null,
+        "state": "failed",
+        "error_code": "render_dependency_unavailable",
+        "attempt": 1,
+        "created_by": "subj-61e70818ab99edb4",
+        "created_at": "2026-10-27T13:05:33.392662+00:00",
+        "updated_at": "2026-10-27T13:05:33.393807+00:00",
+        "tenant_id": "tenant-default",
+        "claimed_at": "2026-10-27T13:05:33.393378+00:00",
+        "lease_expires_at": "2026-10-27T13:07:33.393378+00:00",
+        "org_profile_id": "",
+        "rendition": null
+      },
+      "rendition_state": null,
+      "content": null
+    },
+    "second_click": {
+      "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+      "post_status": 202,
+      "post_job_state": "queued",
+      "post_job_attempt": 2,
+      "worker_cycles": [
+        {
+          "at": "2026-10-27T13:05:33.401159+00:00",
+          "reclaimed": 0,
+          "claimed": 1,
+          "ready": 0,
+          "failed": 1,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.401582+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.401592+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.401598+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.401602+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.401607+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        }
+      ],
+      "final_job": {
+        "job_id": "djob-ca8965f0ba1f4418b8e1647eb5da8690",
+        "run_id": "RUN-DPF00001",
+        "snapshot_id": "rs-2f67125b7d5544d49a3481d80ca90cc4",
+        "format": "pdf",
+        "redaction_profile": "owner-v1",
+        "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+        "rendition_id": null,
+        "state": "failed",
+        "error_code": "render_dependency_unavailable",
+        "attempt": 2,
+        "created_by": "subj-61e70818ab99edb4",
+        "created_at": "2026-10-27T13:05:33.400613+00:00",
+        "updated_at": "2026-10-27T13:05:33.401536+00:00",
+        "tenant_id": "tenant-default",
+        "claimed_at": "2026-10-27T13:05:33.401184+00:00",
+        "lease_expires_at": "2026-10-27T13:07:33.401184+00:00",
+        "org_profile_id": "",
+        "rendition": null
+      },
+      "rendition_state": null,
+      "content": null
+    },
+    "third_click": {
+      "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+      "post_status": 202,
+      "post_job_state": "queued",
+      "post_job_attempt": 3,
+      "worker_cycles": [
+        {
+          "at": "2026-10-27T13:05:33.408926+00:00",
+          "reclaimed": 0,
+          "claimed": 1,
+          "ready": 0,
+          "failed": 1,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.409365+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.409376+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.409381+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.409386+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        },
+        {
+          "at": "2026-10-27T13:05:33.409391+00:00",
+          "reclaimed": 0,
+          "claimed": 0,
+          "ready": 0,
+          "failed": 0,
+          "requeued": 0
+        }
+      ],
+      "final_job": {
+        "job_id": "djob-f95a2da3f19c40b3849614336d420fab",
+        "run_id": "RUN-DPF00001",
+        "snapshot_id": "rs-2f67125b7d5544d49a3481d80ca90cc4",
+        "format": "pdf",
+        "redaction_profile": "owner-v1",
+        "revision_id": "drev-4183c87b25464f579f25fc7ee7f5a5c9",
+        "rendition_id": null,
+        "state": "failed",
+        "error_code": "render_dependency_unavailable",
+        "attempt": 3,
+        "created_by": "subj-61e70818ab99edb4",
+        "created_at": "2026-10-27T13:05:33.408317+00:00",
+        "updated_at": "2026-10-27T13:05:33.409320+00:00",
+        "tenant_id": "tenant-default",
+        "claimed_at": "2026-10-27T13:05:33.408952+00:00",
+        "lease_expires_at": "2026-10-27T13:07:33.408952+00:00",
+        "org_profile_id": "",
+        "rendition": null
+      },
+      "rendition_state": null,
+      "content": null
+    }
+  }
+}
