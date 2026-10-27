@@ -1,0 +1,60 @@
+test_cross_document_link_and_current_plan_truth (__main__.DocumentationContract.test_cross_document_link_and_current_plan_truth) ... FAIL
+test_markdown_structure (__main__.DocumentationContract.test_markdown_structure) ... ok
+test_required_boundaries (__main__.DocumentationContract.test_required_boundaries) ... FAIL
+test_source_paths_exist (__main__.DocumentationContract.test_source_paths_exist) ... FAIL
+test_task_dependency_graph_and_acceptance (__main__.DocumentationContract.test_task_dependency_graph_and_acceptance) ... FAIL
+test_three_specifications_reconciled (__main__.DocumentationContract.test_three_specifications_reconciled) ... FAIL
+test_verified_source_and_status (__main__.DocumentationContract.test_verified_source_and_status) ... FAIL
+
+======================================================================
+FAIL: test_cross_document_link_and_current_plan_truth (__main__.DocumentationContract.test_cross_document_link_and_current_plan_truth)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 58, in test_cross_document_link_and_current_plan_truth
+    self.assertIn("../spec_auth_architecture.md", self.roles)
+AssertionError: '../spec_auth_architecture.md' not found in '# Контракт "Роль / План / Возможности" (Role / Plan / Capability)\n\n**Статус:** предложенная схема, готова к реализации. Заменяет плоскую модель `admin`/`user`/`partner` из текущего Streamlit-приложения.\n\n---\n\n## 1. Зачем разделять три сущности\n\nТекущая модель Streamlit смешивает в одном атрибуте `role` три независимые оси:\n\n1. **Кто вы** (идентичность/контекст) — сотрудник CISStat или внешний клиент\n2. **Что вам разрешено** (возможности) — обучение моделей, доступ к API, лимиты\n3. **За что вы заплатили** (тариф) — конкретный коммерческий план\n\nСмешение этих осей означает: любое изменение прайсинга требует правки кода авторизации, а не только таблицы тарифов. Демо-режим для этой модели попросту не имеет естественного места — понадобится либо тайно урезать `partner`, либо заводить четвёртую роль под каждый новый тариф в будущем.\n\n**Правило:** роль отвечает на вопрос "кто", план — на вопрос "что можно", возможности — конкретные проверяемые в коде флаги, производные от плана. Код (`require_capability(...)`) никогда не проверяет роль или название плана напрямую — только конкретную возможность.\n\n---\n\n## 2. Роли (`Role`)\n\n| Роль | Кто | Контекст | Тариф |\n|---|---|---|---|\n| `admin` | Администратор платформы CISStat | embedded | Не применяется — полный доступ по умолчанию |\n| `internal_analyst` | Сотрудник CISStat (было `user`) | embedded | Не применяется — полный доступ по умолчанию |\n| `external_user` | Любой внешний клиент | standalone | **Определяется через `Plan`**, не через роль |\n\nДля внешних пользователей остаётся **одна** роль — весь спектр возможностей (демо/стартер/профессионал/энтерпрайз) выражается через `Plan`, а не через отдельные роли на каждый тариф.\n\n---\n\n## 3. Тарифные планы (`PlanName`) и возможности (`Capabilities`)\n\n| Возможность                                      | `demo`               | `starter`  | `professional` | `enterprise`   |\n|--------------------------------------------------|----------------------|------------|----------------|----------------|\n| Обучение моделей (`can_train_models`)            | ❌                   | ❌        | ✅            | ✅             |\n| Доступ к API (`can_use_api`)                     | ❌                   | ✅        | ✅            | ✅             |\n| Сохранение истории анализов (`can_save_history`) | ❌                   | ✅        | ✅            | ✅             |\n| Загрузка своих данных (`can_upload_own_data`)    | ✅ (с лимитом строк) | ✅        | ✅            | ✅             |\n| Лимит строк на датасет                           | 5 000                | 50 000     | без лимита     | кастомно       |\n| Лимит вызовов API/мес                            | 0                    | 1 000      | 50 000         | кастомно / SLA |\n| Лимит числа анализов всего                       | 10                   | без лимита | без лимита     | без лимита     |\n| Срок действия плана                              | 14 дней              | бессрочно  | бессрочно      | бессрочно      |\n| Водяной знак на экспорте                         | ✅                   | ❌        | ❌            | ❌             |\n\nИсточник истины — словарь `PLAN_DEFINITIONS` в `apps/api/plans.py`. **Новый тариф добавляется новой записью в этом словаре, без изменений в `auth.py` или роутерах.**\n\n---\n\n## 4. Демо-режим — не урезанная роль, а изолированный план\n\nДемо-пользователь может не иметь полноценного аккаунта — это отдельный сценарий, не "внешний клиент с ограниченными правами":\n\n- Выдаётся по временному API-ключу/сессии без полноценной регистрации (или с лёгкой — email без пароля).\n- Жёсткая изоляция: демо-датасеты из коробки либо загрузка своих данных с жёстким лимитом (см. `max_dataset_rows`), без сохранения состояния между сессиями (`can_save_history=False`).\n- `can_use_api=False` и `max_api_calls_per_month=0` — демо не даёт доступа к API вообще, только к веб-интерфейсу; это осознанное решение, чтобы не открывать вычислительно тяжёлый пайплайн (STL/wavelet/spectral) для злоупотребления бесплатным доступом.\n- `trial_days=14` и `max_analyses_total=10` — двойное ограничение (по времени и по количеству), чтобы демо не превращалось в бесплатный тариф де-факто.\n\n---\n\n## 5. Как это проверяется в коде — по возможности, не по роли/плану\n\n```python\n# ПРАВИЛЬНО -- проверка конкретной возможности:\n@router.post("/train", dependencies=[Depends(require_capability("can_train_models"))])\ndef train_model(...): ...\n\n# НЕПРАВИЛЬНО -- проверка роли/плана напрямую в бизнес-коде:\ndef train_model(principal):\n    if principal.plan != "professional" and principal.plan != "enterprise":\n        raise HTTPException(403)\n```\n\nВторой вариант означает, что при появлении нового тарифа с `can_train_models=True` придётся находить и переписывать все подобные проверки по коду. Первый — работает автоматически для любого текущего и будущего плана с этой возможностью.\n\n**Frontend** (`packages/ui/lib/plans.ts`) — точное зеркало того же контракта, но **только для UX** (скрыть кнопку "Обучить модель" для плана без этой возможности). Это удобство интерфейса, не защита — реальная проверка всегда на бэкенде.\n\n---\n\n## 6. Что уже реализовано (proof-of-concept)\n\n| Файл | Назначение |\n|---|---|\n| `apps/api/plans.py` | Pydantic-модели `Role`, `PlanName`, `Capabilities`, `PLAN_DEFINITIONS`, `AuthenticatedPrincipal` |\n| `apps/api/auth.py` | Резолв API-ключа → `AuthenticatedPrincipal`; `require_capability(...)` — фабрика зависимостей |\n| `apps/api/routers/models.py` | Пример защищённого эндпоинта (`/v1/models/train`) |\n| `packages/ui/lib/plans.ts` | TypeScript-зеркало контракта |\n| `packages/ui/components/TrainModelButton.tsx` | Пример условного рендеринга по возможности |\n\n## 7. Что осталось сделать (не реализовано, требует решения)\n\n1. **Хранилище клиентов/ключей.** Сейчас `auth.py` парсит ключи из переменной окружения (`CISSTAT_API_KEYS="key1:external_user:starter,..."`) — годится для разработки, не для продакшена. Нужна таблица в БД: `principal_id`, `api_key_hash`, `role`, `plan`, `plan_expires_at`, счётчики использования для лимитов.\n2. **Учёт использования лимитов** (`max_api_calls_per_month`, `max_analyses_total`) — сейчас определены в `Capabilities`, но нигде не инкрементируются и не проверяются по факту вызова. Нужен отдельный middleware/dependency, считающий вызовы и сверяющий с лимитом плана.\n3. **Апгрейд/даунгрейд плана** — как изменение `plan` у существующего клиента отражается на уже выданном API-ключе (мгновенно на следующий запрос, ожидаемо, раз `get_current_principal` резолвит план при каждом запросе — но нужно подтвердить это поведение тестом, когда появится реальное хранилище).\n4. **Единая синхронизация `plans.py` (Python) и `plans.ts` (TypeScript)** — сейчас два файла поддерживаются вручную. Рассмотреть генерацию TS-типов из Pydantic-схемы (например, через `pydantic2ts` или экспорт OpenAPI-схемы FastAPI и генерацию клиента), чтобы расхождение между бэкендом и фронтендом было невозможно физически, а не только по дисциплине разработчика.\n5. **`internal_analyst`/`admin` в embedded-режиме** — сейчас `AuthenticatedPrincipal.capabilities` для них захардкожен как "всё разрешено". Нужно решить: действительно ли `admin` и `internal_analyst` должны иметь идентичные возможности, или `admin` — это отдельный набор прав (управление пользователями, доступ к системным настройкам), не связанный с `Capabilities` анализа вообще (что вероятнее).\n'
+
+======================================================================
+FAIL: test_required_boundaries (__main__.DocumentationContract.test_required_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 55, in test_required_boundaries
+    self.assertIn(token, self.arch)
+AssertionError: 'SubjectRef' not found in ''
+
+======================================================================
+FAIL: test_source_paths_exist (__main__.DocumentationContract.test_source_paths_exist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 44, in test_source_paths_exist
+    self.assertEqual(len(section), 3)
+AssertionError: 1 != 3
+
+======================================================================
+FAIL: test_task_dependency_graph_and_acceptance (__main__.DocumentationContract.test_task_dependency_graph_and_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 30, in test_task_dependency_graph_and_acceptance
+    self.assertGreaterEqual(len(rows), 20)
+AssertionError: 0 not greater than or equal to 20
+
+======================================================================
+FAIL: test_three_specifications_reconciled (__main__.DocumentationContract.test_three_specifications_reconciled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 22, in test_three_specifications_reconciled
+    self.assertIn(name, self.arch)
+AssertionError: 'spec_auth.md' not found in ''
+
+======================================================================
+FAIL: test_verified_source_and_status (__main__.DocumentationContract.test_verified_source_and_status)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-auth-architecture/scripts/auth_architecture/check_documents.py", line 17, in test_verified_source_and_status
+    self.assertIn("ad7dd4b3bcafcccb64d9f5b2f0a97afac7fc965f", self.arch)
+AssertionError: 'ad7dd4b3bcafcccb64d9f5b2f0a97afac7fc965f' not found in ''
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+FAILED (failures=6)
