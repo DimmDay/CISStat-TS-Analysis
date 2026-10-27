@@ -609,7 +609,15 @@ class TestDocumentationRoutesAuth:
         resp = client_bound.get(f"/v1/documentation/renditions/{rid}/content")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/markdown")
-        assert "attachment" not in resp.headers.get("content-disposition", "")
+        # DOCLOG-DL-FIX-1 (2026-10-27): versioned-инверсия пина DOCLOG-4
+        # (было: assert "attachment" not in ... -- inline был спроектированным
+        # решением DOCLOG-4, но противоречил §12.2 «немедленное скачивание»,
+        # §17 «Скачать уже готовый файл» и подписи UI «Скачать X»: для
+        # рендеримых форматов браузер совершал top-level переход и рисовал
+        # документ в текущей вкладке вместо сохранения файла; разбор --
+        # docs/doclog_download_behavior_2026-10-27.md). Стало: attachment
+        # обязателен -- «Скачать X» честно сохраняет файл для ВСЕХ форматов.
+        assert "attachment" in resp.headers.get("content-disposition", "")
         assert resp.headers.get("x-content-type-options") == "nosniff"
         assert resp.headers.get("cache-control") == "private, no-store"
 
@@ -730,6 +738,110 @@ class TestDocumentationRoutesAuth:
         client.get(f"/v1/documentation/runs/{RUN_ID}/documents")
         resp = client.get(f"/v1/documentation/runs/{RUN_ID}/documents")
         assert resp.json()["documents"] == []
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 4b. Семантика доставки «Скачать» (DOCLOG-DL-FIX-1, 2026-10-27)
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestRenditionDownloadSemantics:
+    """DOCLOG-DL-FIX-1 (2026-10-27): Content-Disposition как контракт
+    доставки. §12.2 обещает для готового файла «немедленное скачивание»,
+    §17 описывает маршрут как «Скачать уже готовый файл», UI подписывает
+    действие «Скачать X». Прежний inline (решение DOCLOG-4) для рендеримых
+    типов (md/html/json/csv/jsonl) заставлял браузер совершать top-level
+    переход и рисовать документ в ТЕКУЩЕЙ вкладке вместо сохранения файла
+    (файл появлялся только у нерендеримых бинарных) -- расхождение
+    контракт↔код↔UI класса F-D8C1/C09; разбор и матрица форматов --
+    docs/doclog_download_behavior_2026-10-27.md.
+
+    Контракт после фикса (ядро A варианта C):
+      - GET /renditions/{id}/content -- ВСЕГДА `attachment` (файл);
+      - GET /revisions/{id}/preview -- всегда `inline` (легитимный
+        санитизированный просмотр: sandboxed-iframe UI и действие
+        «Открыть в новой вкладке» -- это просмотр, не скачивание);
+      - §15.2 сохраняется: безопасное имя файла, nosniff,
+        `Cache-Control: private, no-store`; маршрут GET read-only,
+        авторизация R09 и audit-тройка не меняются.
+    """
+
+    def test_content_route_attachment_for_all_p0_renderable_formats(
+        self, client
+    ):
+        expected_media = {
+            "md": "text/markdown",
+            "html": "text/html",
+            "json": "application/json",
+            "csv": "text/csv",
+            "jsonl": "application/x-ndjson",
+        }
+        _seed_snapshot()
+        _cookie(client_bound := client)
+        resp = client_bound.post(
+            f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D02"}
+        )
+        assert resp.status_code == 201
+        rev_id = resp.json()["revision"]["revision_id"]
+
+        for fmt, media in expected_media.items():
+            resp = client_bound.post(
+                f"/v1/documentation/revisions/{rev_id}/renditions",
+                json={"format": fmt},
+            )
+            assert resp.status_code == 202, (fmt, resp.text)
+            job = resp.json()["job"]
+            # P0 (§7) рендерятся синхронно; без ready-рендерции тест не
+            # продолжается (падение честнее тишины).
+            assert job["state"] == "ready", (fmt, job)
+            rendition = job.get("rendition")
+            if rendition is None:
+                renditions = client_bound.get(
+                    f"/v1/documentation/revisions/{rev_id}"
+                ).json()["renditions"]
+                rendition = next(r for r in renditions if r["format"] == fmt)
+            rid = rendition["rendition_id"]
+
+            resp = client_bound.get(
+                f"/v1/documentation/renditions/{rid}/content"
+            )
+            assert resp.status_code == 200, fmt
+            assert resp.headers["content-type"].startswith(media), fmt
+            disposition = resp.headers.get("content-disposition", "")
+            # «Скачать X» честно сохраняет файл (§12.2/§17/UI-подпись);
+            # имя файла -- безопасное document-{safe_id}.{ext} (§15.2).
+            assert disposition.startswith("attachment;"), (fmt, disposition)
+            assert 'filename="document-' in disposition, (fmt, disposition)
+            assert resp.headers.get("x-content-type-options") == "nosniff", fmt
+            assert (
+                resp.headers.get("cache-control") == "private, no-store"
+            ), fmt
+
+    def test_preview_route_stays_inline_legit_view(self, client):
+        """Легитимный inline -- только просмотр (§17 preview): sandboxed
+        iframe предпросмотра и действие «Открыть в новой вкладке»
+        (DOCLOG-DL-FIX-1) используют этот маршрут; это просмотр, не
+        скачивание, поэтому inline здесь оправдан и пинуется."""
+        _seed_snapshot()
+        _cookie(client_bound := client)
+        resp = client_bound.post(
+            f"/v1/documentation/runs/{RUN_ID}/documents", json={"kind": "D02"}
+        )
+        assert resp.status_code == 201
+        rev_id = resp.json()["revision"]["revision_id"]
+
+        resp = client_bound.get(
+            f"/v1/documentation/revisions/{rev_id}/preview"
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/html")
+        disposition = resp.headers.get("content-disposition", "")
+        assert disposition.startswith("inline;"), disposition
+        assert 'filename="preview.html"' in disposition
+        assert resp.headers.get("x-content-type-options") == "nosniff"
+        assert resp.headers.get("cache-control") == "private, no-store"
+
+
 # ══════════════════════════════════════════════════════════════════════
 # 5. Негативные состояния и конфликты (§17 коды; AC17)
 # ══════════════════════════════════════════════════════════════════════

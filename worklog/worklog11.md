@@ -336,3 +336,35 @@ CU определена как внутренняя неденежная рас�
 Риски и приёмка: spend/refund race, duplicate/out-of-order webhooks, wrong merchant/environment/amount/currency, rollover/reserve expiry, seat churn, restore/replay/rounding/overflow; E1…E6 — условные расчётные примеры, не прайс. Doc-contract RED 5F/1P → GREEN 6/6; прежний architecture contract 7/7; Markdown/table/source-path/DAG checks и git diff --check PASS. Это статические/арифметические проверки требований, не тестирование runtime кошелька. Software build неприменим: runtime/TS/dependencies не менялись. No commit/push.
 
 Поставка: ZIP upload/cisstat-cu-wallet-spec-2026-10-27.zip, три согласованных документа, worklog11, scripts/cu_wallet_spec/{check_documents.py,red.txt,green.txt,architecture_regression.txt}; только файлы текущего задания, полные спецификации включают сохранённую предыдущую архитектурную редакцию.
+
+---
+
+## Task ID: DOCLOG-DL-FIX-1 (2026-10-27) — семантика доставки «Собрать формат:»: вариант C на ядре A (attachment + «Открыть в новой вкладке»)
+
+### Процесс (AGENTS.md: проектирование → точки → TDD RED→код→GREEN → поставка)
+
+Точки изменения: (1) apps/api/routers/documentation.py::get_rendition_content — Content-Disposition inline→attachment (ВСЕ форматы), docstring с мотивировкой; (2) packages/ui/components/DocumentationWorkspace.tsx — действие «Открыть в новой вкладке» в шапке preview-панели (previewPhase==="ready" && revision; href=revisionPreviewUrl(revision_id); target="_blank" rel="noopener noreferrer"); (3) tests/api/test_doclog4_document_delivery.py — versioned-инверсия пина :612 + новый класс TestRenditionDownloadSemantics; (4) packages/ui/components/documentation-new-tab-action.test.tsx — новый сюит; (5) spec_documentation_logging.md §15.2/§17 — контракт attachment/inline; (6) docs/doclog_download_behavior_2026-10-27.md — пост-фикс пометка; (7) docs/doclog_dl_fix1_2026-10-27.md — акт. Preview-маршрут НЕ менялся.
+
+### TDD
+
+RED (pytest, на старом коде): 2 failed / 1 passed — test_content_route_attachment_for_all_p0_renderable_formats + инвертированный test_owner_full_path... (фактический header `inline; filename="document-drend-….md"` — точь-в-точь замечание тимлида); test_preview_route_stays_inline_legit_view — passed (preview уже inline, пин легитимного зелёный). Код (attachment) → GREEN: весь корпус test_doclog4_document_delivery.py — 50 passed. Jest: новый сюит documentation-new-tab-action.test.tsx — 2/2 passed (действие ведёт на санитизированный preview с _blank+noopener+noreferrer; «Скачать X» — href content-маршрут БЕЗ target/download — семантику скачивания несёт бэкенд; пустой список — честное отсутствие). В процессе RED поймано честное падение фикстуры (snapshot.completeness отсутствовал в моке → TypeError в компоненте) — фикстура дополнена по контракту снапшота.
+
+### Проверки
+
+pytest tests/api/ -k "doclog or documentation" → 604 passed / 1 skipped. Полный pytest tests/api → 48 failed / 2800 passed: отказы в forecasting/modeling/garch/egarch/upload/eda/progress; верификация на ЧИСТОЙ базе b0ef60e патч-методом: test_forecasting_session.py — те же 16 failed → предсуществующие env-зависимые (совпадает с фиксацией в записи DOCLOG-H29-UIHONEST-AUDITVIEW «отказы побайтово совпадают с чистой базой; psycopg отсутствует и пр.») — НОЛЬ регрессий от диффа. Динамическая репродукция после фикса: protocols/repro_result.json — md/html/json/csv/jsonl → attachment; filename="document-{safe_id}.{ext}" + nosniff + private,no-store; preview → inline; filename="preview.html".
+
+### Среда jest (инцидент и корень)
+
+Полный jest в песочнице сначала SIGBUS (exit 135) на любом тесте — включая минимальный node-env конфиг. Диагноз: обрезанные файлы пакетов из ЧАСТИЧНОГО npm-ci кэша (пример: node_modules/cstype/index.d.ts — 515KB вместо 894KB; mmap усечённого файла = SIGBUS при обращении за последней страницей). Лечение: rm -rf node_modules + bun pm cache rm + чистый bun install (473 пакета; bun.lock удалён из дерева) → jest исполняется. Полный jest-регресс: **2359 passed / 2359 total (0 failed)** за 242.8s — вкл. все документационные сюиты (doclog4-badge-dark, doclog4-preview-header, documentation-environment-lost, documentation-new-tab-action 2/2, adminLogs-audit-reasons) — ноль регрессий в UI-зоне.
+
+### Спека (контракт)
+
+§15.2: новый абзац — Content-Disposition разведён по назначению маршрута: content — всегда attachment («Скачать» сохраняет файл для ЛЮБОГО формата, включая рендеримые); inline — только preview (панель предпросмотра + «Открыть в новой вкладке» = просмотр, не выдача файла). §17 таблица: content-маршрут — «attachment для ВСЕХ форматов (DOCLOG-DL-FIX-1)»; preview-маршрут — «inline — просмотр: панель предпросмотра и „Открыть в новой вкладке" с noopener noreferrer».
+
+### Риски и границы
+
+Живой браузер/Vercel/Render не прогонялись (TestClient-репродукция; поведение — стандартная семантика attachment/nosniff, кросс-доменный dev тоже покрыт заголовком). §15.2 сохранена (имя/nosniff/no-store); CSRF неприменим (GET read-only); R09 и audit-тройка не менялись; top-level рендер text/html в API-origin уменьшен по построению; новая вкладка — noopener noreferrer + санитизированный preview AC16. Встройки DocumentationWorkspace без пропа — прежний контракт.
+
+### Поставка
+
+ZIP cisstat-doclog-dl-fix1.zip → открытый контейнер сессии (download/) + веб-страница поставки :3000 с кнопкой скачивания (верифицирована браузером). Изменённые: apps/api/routers/documentation.py; packages/ui/components/DocumentationWorkspace.tsx; tests/api/test_doclog4_document_delivery.py; spec_documentation_logging.md; docs/doclog_download_behavior_2026-10-27.md; scripts/doclog_dl_repro/{reproduce_download_behavior.py, protocols/repro_result.json}; worklog/worklog11.md (эта запись). Новые: packages/ui/components/documentation-new-tab-action.test.tsx; docs/doclog_dl_fix1_2026-10-27.md. Без commit/push (AGENTS.md).

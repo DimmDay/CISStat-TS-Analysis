@@ -709,7 +709,17 @@ def get_rendition_content(request: Request, rendition_id: str) -> Response:
     """§17 GET /renditions/{rendition_id}/content: скачать уже готовый
     файл; только учёт доступа/stream (audit-тройка §14.1 РАЗЛИЧАЕТСЯ),
     без forecast_exported/touch scientific session. Безопасные
-    Content-Disposition/media_type/nosniff/private,no-store (§15.2)."""
+    Content-Disposition/media_type/nosniff/private,no-store (§15.2).
+
+    DOCLOG-DL-FIX-1 (2026-10-27): Content-Disposition = `attachment`
+    для ВСЕХ форматов -- маршрут обещает «немедленное скачивание»
+    (§12.2) и подписан в UI «Скачать X»; прежний inline (решение
+    DOCLOG-4) для рендеримых типов заставлял браузер рисовать документ
+    в текущей вкладке вместо сохранения файла (расхождение
+    контракт↔код↔UI; разбор -- docs/doclog_download_behavior_2026-10-27.md).
+    Легитимный inline остаётся ТОЛЬКО у preview-маршрута
+    (GET /revisions/{id}/preview -- санитизированный просмотр,
+    sandboxed-iframe UI и действие «Открыть в новой вкладке»)."""
     from apps.api.document_jobs import is_valid_rendition_id
 
     if not is_valid_rendition_id(rendition_id):
@@ -776,8 +786,11 @@ def get_rendition_content(request: Request, rendition_id: str) -> Response:
         content=content,
         media_type=media_type,
         headers={
+            # DOCLOG-DL-FIX-1 (2026-10-27): attachment для ВСЕХ форматов
+            # -- «Скачать X» честно сохраняет файл (§12.2/§17); inline
+            # остаётся только у preview-маршрута (просмотр, не выдача).
             "Content-Disposition": (
-                f'inline; filename="{filename_for(rendition_id, rendition.format)}"'
+                f'attachment; filename="{filename_for(rendition_id, rendition.format)}"'
             ),
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",

@@ -37,6 +37,7 @@ import {
   requestRendition,
   resolveCurrentRun,
   retractRevision,
+  revisionPreviewUrl,
   type DiffPayload,
   type DocumentSummary,
   type JobPayload,
@@ -776,6 +777,30 @@ export function DocumentationWorkspace({
             >
               Во весь экран
             </button>
+            {/* DOCLOG-DL-FIX-1 (2026-10-27): вариант C на ядре A --
+                разведение действий доставки (разбор:
+                docs/doclog_download_behavior_2026-10-27.md).
+                Просмотр рендера -- САНИТИЗИРОВАННЫЙ preview-маршрут
+                (GET /revisions/{id}/preview, inline + AC16) в новой
+                вкладке: сценарий аналитика длинный, переход в той же
+                вкладке убивал workspace. Это ПРОСМОТР, не скачивание,
+                поэтому не content-маршрут: при attachment на нём
+                target="_blank" дал бы скачивание в новой вкладке, а не
+                просмотр. Скачивание -- ссылки «Скачать X» ниже: файл
+                сохраняет Content-Disposition: attachment бэкенда
+                (клиентские blob/target-хаки не дублируются). noopener
+                noreferrer -- вкладка без reverse-tabnabbing. */}
+            {previewPhase === "ready" && revision && (
+              <a
+                data-testid="doclog4-open-in-new-tab"
+                href={revisionPreviewUrl(revision.revision_id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-neutral-700 dark:text-neutral-300"
+              >
+                Открыть в новой вкладке
+              </a>
+            )}
           </div>
         </div>
 

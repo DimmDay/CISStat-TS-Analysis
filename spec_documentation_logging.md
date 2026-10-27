@@ -457,6 +457,8 @@ Live tail приостанавливается и показывает числ�
 
 Private storage, TLS, encryption at rest/key management по профилю организации, server-side opaque storage keys, безопасные имена Content-Disposition, корректные media_type и `X-Content-Type-Options: nosniff`. На защищённых ответах `Cache-Control: private, no-store` либо явно разрешённый private cache; публичный CDN cache выключен. ETag/hash не публикуются без прав на ресурс.
 
+DOCLOG-DL-FIX-1 (2026-10-27): семантика Content-Disposition разведена по назначению маршрута: выдача готового файла (`GET /renditions/{id}/content`) — всегда `attachment` (§12.2 «немедленное скачивание», подпись UI «Скачать X»): «Скачать» обязан сохранять файл для ЛЮБОГО формата, включая рендеримые (md/html/json/csv/jsonl) — иначе браузер совершает переход в текущей вкладке и promise скачивания не выполняется. `inline` — только просмотр (`GET /revisions/{id}/preview`, санитизированный HTML): он же используется панелью предпросмотра (sandboxed iframe) и действием «Открыть в новой вкладке» — это просмотр, не выдача файла.
+
 Базовый способ download — аутентифицированный streaming через API с повторной проверкой прав. При необходимости signed object URL: короткий TTL, объект/метод/scope bound, без логирования query string, с учётом того, что немедленный отзыв уже выданной ссылки может быть ограничен. Для строгого отзыва использовать API proxy, а не обещать невозможную гарантию signed URL.
 
 При cookie-аутентификации изменяющие запросы защищаются CSRF token/Origin-проверкой и допустимыми SameSite-настройками; CORS не заменяет авторизацию или CSRF-защиту. Все dependencies/links проходят проверку прав, включая имена недоступных артефактов в missing_refs: публичный redacted профиль показывает безопасную категорию пробела, не раскрывает закрытый ID/название.
@@ -501,11 +503,11 @@ Document-level pin защищает dependencies независимо от те�
 | POST `/documents/{document_id}/revisions` | Новая версия плана/текста/комментариев или сборка нового snapshot | If-Match/expected revision защищает от перезаписи чужого редактирования; старая версия immutable |
 | GET `/documents/{document_id}/revisions` | История разрешённых revisions | Только security access audit |
 | GET `/revisions/{revision_id}` | Metadata/manifest/completeness/refs | Только security access audit |
-| GET `/revisions/{revision_id}/preview` | Существующий безопасный HTML | Не создаёт документ/рендеринг/научный расчёт |
+| GET `/revisions/{revision_id}/preview` | Существующий безопасный HTML (`inline` — просмотр: панель предпросмотра и «Открыть в новой вкладке» с `noopener noreferrer`) | Не создаёт документ/рендеринг/научный расчёт |
 | POST `/revisions/{revision_id}/renditions` | Заказать format/profile для frozen snapshot | Async job или возврат существующей ready rendition |
 | GET `/jobs/{job_id}` | Состояние/процент известной работы/ошибка/receipt | Не повторяет job |
 | POST `/jobs/{job_id}/cancel` | Отмена очереди/рендеринга | Идемпотентно; scientific results остаются |
-| GET `/renditions/{rendition_id}/content` | Скачать уже готовый файл | Только учёт доступа/stream; без `forecast_exported`/touch scientific session |
+| GET `/renditions/{rendition_id}/content` | Скачать уже готовый файл (`Content-Disposition: attachment` для ВСЕХ форматов — «Скачать» сохраняет файл, DOCLOG-DL-FIX-1) | Только учёт доступа/stream; без `forecast_exported`/touch scientific session |
 | POST `/revisions/{revision_id}/approvals` | Approve/reject по policy и точному hash | Audit + новое lifecycle решение |
 | POST `/revisions/{revision_id}/publish` | Публикация согласованной версии | Статус/approval refs, без изменения bytes |
 | POST `/revisions/{revision_id}/retract` | Отзыв с причиной | Append-only решение, не удаление истории |

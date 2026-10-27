@@ -1,0 +1,80 @@
+{
+  "scenario": {
+    "base": "b0ef60e (main) + DOCLOG-DL-FIX-1 (attachment)",
+    "run_id": "RUN-DLR00001",
+    "session_id": "dlr-seed-session",
+    "document_kind": "D02",
+    "revision_id": "drev-5b517b7f3b7f4106a9eb03d76632f3a6"
+  },
+  "md": {
+    "post_status": 202,
+    "job_state": "ready",
+    "content_status": 200,
+    "content_type": "text/markdown; charset=utf-8",
+    "content_disposition": "attachment; filename=\"document-drend-160cefbe8f9a4243929a60069442e569.md\"",
+    "x_content_type_options": "nosniff",
+    "cache_control": "private, no-store",
+    "body_head": "# Документ исследования (снимок rs-61e6b023534f4c358c62d30400d1e",
+    "size_bytes": 1266
+  },
+  "html": {
+    "post_status": 202,
+    "job_state": "ready",
+    "content_status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "content_disposition": "attachment; filename=\"document-drend-0310c8f56d3b48a482fc78e98fb17e5c.html\"",
+    "x_content_type_options": "nosniff",
+    "cache_control": "private, no-store",
+    "body_head": "<!doctype html>\\n<html lang=\"ru\">\\n<head>\\n<meta charset=\"utf-8\">\\n<title>Документ и�",
+    "size_bytes": 2599
+  },
+  "json": {
+    "post_status": 202,
+    "job_state": "ready",
+    "content_status": 200,
+    "content_type": "application/json",
+    "content_disposition": "attachment; filename=\"document-drend-2fed1678a9934d61a3b27757a9d99a34.json\"",
+    "x_content_type_options": "nosniff",
+    "cache_control": "private, no-store",
+    "body_head": "{\"approval\":null,\"captured_at\":\"2026-10-27T11:20:19.420892+00:00\",\"classification\":\"privat",
+    "size_bytes": 1496
+  },
+  "csv": {
+    "post_status": 202,
+    "job_state": "ready",
+    "content_status": 200,
+    "content_type": "text/csv; charset=utf-8",
+    "content_disposition": "attachment; filename=\"document-drend-9997d7fd8d97491bac14ab3035d586d0.csv\"",
+    "x_content_type_options": "nosniff",
+    "cache_control": "private, no-store",
+    "body_head": "schema_version,snapshot_id,research_run_id,captured_at,section_code,section_title,claim,va",
+    "size_bytes": 756
+  },
+  "jsonl": {
+    "post_status": 202,
+    "job_state": "ready",
+    "content_status": 200,
+    "content_type": "application/x-ndjson",
+    "content_disposition": "attachment; filename=\"document-drend-88b21736c687489c93762ee93783171b.jsonl\"",
+    "x_content_type_options": "nosniff",
+    "cache_control": "private, no-store",
+    "body_head": "{\"captured_at\":\"2026-10-27T11:20:19.420892+00:00\",\"event_refs\":[],\"evidence_level\":null,\"r",
+    "size_bytes": 902
+  },
+  "zip": {
+    "post_status": 202,
+    "job_state": "queued",
+    "renditions_seen": [
+      "md",
+      "html",
+      "json",
+      "csv",
+      "jsonl"
+    ]
+  },
+  "preview_endpoint": {
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "content_disposition": "inline; filename=\"preview.html\""
+  }
+}
