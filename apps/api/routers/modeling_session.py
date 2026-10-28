@@ -4009,4 +4009,16 @@ def panel_forecast(
     )
     session.touch()
     store.save(session)
+    # PGV-03: два вида панельного прогноза -- один выпуск, раздельные
+    # срезы (панели не смешиваются с single-series, AC14)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "forecasting.forecast.panel_chart",
+            "forecasting.forecast.panel_table",
+        ),
+        response=response_model.model_dump(mode="json"),
+        params={"entity": None, "origin": response_model.generated_at, "horizon": payload.horizon},
+        http_response=response,
+    )
     return response_model

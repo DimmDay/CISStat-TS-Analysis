@@ -37,6 +37,7 @@ context/revision (§9.3 акта).
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -404,4 +405,189 @@ def notify_modeling_artifacts_updated(
                     subject=subject,
                     session_id=session_id,
                 )
+    counts["visual_result"] = _sweep_modeling_visuals(
+        run_id, subject, session_id, session, artifacts
+    )
     return counts
+
+
+def _sweep_modeling_visuals(
+    run_id: str,
+    subject: Any,
+    session_id: str,
+    session: Any,
+    artifacts: dict[str, Any],
+) -> int:
+    """PGV-03: добирает visual_result бэктестов (comparison/oof) из
+    session-артефактов в той же sweep-точке (§9.3: восстановимая
+    доставка БЕЗ повторного расчёта -- данные берутся из уже
+    зафиксированных backtests, наука не вызывается). Идемпотентность
+    producer_key делает повтор no-op. Возврат -- число НОВЫХ
+    visual_result (для журнала/тестов)."""
+    backtests = artifacts.get("backtests") or {}
+    if not backtests:
+        return 0
+    frozen_new = 0
+    for view_id in ("modeling.backtest.comparison", "modeling.backtest.oof"):
+        try:
+            from apps.api import visual_producers as _visual_producers
+
+            before = _visual_producers.list_run_visual_results_count(
+                run_id, view_id
+            )
+            artifact = freeze_visual_result_best_effort(
+                run_id,
+                subject,
+                session=session,
+                session_id=session_id,
+                view_id=view_id,
+                response={"backtests": backtests},
+                computed_at=_now_iso(),
+            )
+            after = _visual_producers.list_run_visual_results_count(
+                run_id, view_id
+            )
+            if artifact is not None and after > before:
+                frozen_new += 1
+        except Exception as exc:
+            _record_failure(
+                run_id=run_id,
+                operation=f"promote_visual:{view_id}",
+                producer_key=f"pgv.visual_result:{view_id}:sweep",
+                error=exc,
+                subject=subject,
+                session_id=session_id,
+            )
+    return frozen_new
+
+
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+# ── Визуализации (PGV-03: producer adapters) ─────────────────────────
+
+
+def freeze_visual_result_best_effort(
+    run_id: str,
+    subject: Any,
+    *,
+    session: Any,
+    session_id: str,
+    view_id: str,
+    response: Any,
+    params: Optional[dict[str, Any]] = None,
+    computed_at: Optional[str] = None,
+    origin: str = "producer_freeze",
+) -> Optional[Any]:
+    """Freeze ОДНОГО вида из фактического ответа (best-effort: любой
+    сбой -- durable-receipt, None; научная операция не ломается).
+    Вызывается из notify_visual_result и sweep-точек."""
+    from apps.api import visual_producers as _visual_producers
+
+    try:
+        return _visual_producers.freeze_visual_from_response(
+            run_id,
+            subject,
+            view_id=view_id,
+            response=response,
+            session_id=session_id,
+            params=params,
+            computed_at=computed_at,
+            origin=origin,
+        )
+    except Exception as exc:
+        _record_failure(
+            run_id=run_id,
+            operation=f"freeze_visual:{view_id}",
+            producer_key=f"pgv.visual_result:{view_id}",
+            error=exc,
+            subject=subject,
+            session_id=session_id,
+        )
+        return None
+
+
+def notify_visual_result(
+    request: Any,
+    session: Any,
+    *,
+    view_ids: tuple[str, ...] | list[str],
+    response: Any,
+    params: Optional[dict[str, Any]] = None,
+    computed_at: Optional[str] = None,
+    http_response: Any = None,
+) -> Optional[Any]:
+    """PGV-03 (spec_passport_graphics_visual.md §6): фиксация print
+    inputs (VisualResult/1) в момент выдачи фактического ответа.
+
+    Контракт («наука первична», прецедент notify_validation_result):
+      1) ответ сохраняется в кэш сохранённых ответов (result_ref --
+         детерминированный токен результата; субстрат lazy transfer:
+         первый explicit export морозится из СОХРАНЁННОГО ответа без
+         пересчёта науки, §6/AC06);
+      2) каждый view_ids морозится best-effort (сбой -- durable-
+         receipt, ответ эндпоинта не ломается);
+      3) отсутствие run_id -- честный пропуск (трассы ещё нет);
+      4) при http_response проставляются X-Visual-*-заголовки (§6:
+         «Response содержит result_ref/context/version token»).
+
+    Возврат -- outcome (result_ref/context_id/data_revision/artifacts)
+    либо None (честный пропуск)."""
+    run_id = _run_or_none(session)
+    if not run_id:
+        return None
+    subject = _promotion_subject(request)
+    session_id = _session_cookie_id(request)
+    from apps.api import visual_producers as _visual_producers
+
+    ref = _visual_producers.save_visual_response(
+        session,
+        response=response,
+        params=params,
+        view_ids=tuple(view_ids),
+        computed_at=computed_at or _now_iso(),
+    )
+    if ref is None:
+        return None  # честный пропуск: кэш не принял (нет run/dataset)
+    artifacts: dict[str, Any] = {}
+    for view_id in view_ids:
+        artifact = freeze_visual_result_best_effort(
+            run_id,
+            subject,
+            session=session,
+            session_id=session_id,
+            view_id=view_id,
+            response=response,
+            params=params,
+            computed_at=computed_at or _now_iso(),
+        )
+        artifacts[view_id] = artifact
+    outcome = SimpleNamespace(
+        result_ref=ref,
+        context_id=_visual_producers._session_context_id(session),
+        data_revision=_visual_producers._session_data_revision(session),
+        artifacts=artifacts,
+    )
+    apply_visual_headers(http_response, outcome)
+    return outcome
+
+
+def apply_visual_headers(http_response: Any, outcome: Any) -> None:
+    """X-Visual-Result-Ref / X-Visual-Context-Id / X-Visual-Data-
+    Revision (§6: response содержит result_ref/context/version token).
+    Ошибки заголовков не ломают ответ (честная деградация)."""
+    if http_response is None or outcome is None:
+        return
+    try:
+        http_response.headers["X-Visual-Result-Ref"] = str(outcome.result_ref)
+        if outcome.context_id:
+            http_response.headers["X-Visual-Context-Id"] = str(outcome.context_id)
+        if outcome.data_revision is not None:
+            http_response.headers["X-Visual-Data-Revision"] = str(
+                outcome.data_revision
+            )
+    except Exception:  # pragma: no cover -- заголовки не критичны
+        logger.debug("Visual headers could not be applied", exc_info=True)

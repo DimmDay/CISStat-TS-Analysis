@@ -352,6 +352,19 @@ def create_forecast(
     # старый выпуск никогда не заменяется новым -- артефакт несёт свой
     # context/revision, повтор по forecast_id идемпотентен)
     _promotion.notify_modeling_artifacts_updated(request, session)
+    # PGV-03: freeze графика прогноза из фактического выпуска
+    # (best-effort; origin/horizon/alpha -- trusted параметры §6)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("forecasting.forecast.chart",),
+        response=run,
+        params={
+            "origin": run.get("generated_at"),
+            "horizon": run.get("horizon"),
+            "alpha": run.get("alpha"),
+        },
+        http_response=response,
+    )
     return run
 
 

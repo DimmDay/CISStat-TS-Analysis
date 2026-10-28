@@ -20,6 +20,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+from apps.api import promotion_integration as _promotion
 from apps.api.routers.modeling_session import _get_session
 
 
@@ -240,4 +241,16 @@ def get_tasks_causes(
         methods.append(
             _not_computed_method(method, _NOT_COMPUTED_REASONS[method["method_id"]])
         )
-    return {"card": card_block, "methods": methods}
+    payload = {"card": card_block, "methods": methods}
+    # PGV-03: freeze fold-важности ТОЛЬКО при available-методе
+    # (not_computed не фабрикуется -- честный gap, §9.1/§10.1).
+    fold_method = methods[0]
+    if fold_method.get("status") == "available":
+        _promotion.notify_visual_result(
+            request, session,
+            view_ids=("tasks.causes.fold_importance",),
+            response={"method": fold_method, "card": card_block},
+            params={"method": "fold_importance"},
+            http_response=response,
+        )
+    return payload

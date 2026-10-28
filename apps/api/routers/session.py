@@ -676,7 +676,7 @@ def get_session_dataset(request: Request, response: Response):
     tail = [[str(cell) for cell in row] for row in tail_rows]
     head = [[str(col) for col in df.columns.tolist()]] + head
 
-    return UploadResponse(
+    payload = UploadResponse(
         dataset_id=session.dataset.dataset_id,
         name=session.dataset.name,
         rows=session.dataset.rows,
@@ -688,6 +688,18 @@ def get_session_dataset(request: Request, response: Response):
         parse_warnings=_compute_parse_warnings(df),
         error=None,
     )
+    # PGV-03: три вида остановки «Обзор» -- один ответ, раздельные срезы
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "upload.overview.preview",
+            "upload.overview.tech_table",
+            "upload.quality.teaser",
+        ),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 # Капа размера страницы GET /dataset/rows (UI-UPLOAD-FULL-1): защита
@@ -925,7 +937,15 @@ def get_dataset_stats(request: Request, response: Response):
                 ),
             )
         )
-    return DatasetStatsResponse(columns=columns_out, min_non_null_for_stats=min_for_stats)
+    payload = DatasetStatsResponse(columns=columns_out, min_non_null_for_stats=min_for_stats)
+    # PGV-03: freeze описательной статистики EDA (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.descriptive.stats",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-correlation", response_model=DatasetEdaCorrelationResponse)
@@ -947,9 +967,18 @@ def get_dataset_eda_correlation(
             status_code=422,
             detail=f"Колонка '{column}' не числовая — ACF/PACF недоступны",
         )
-    return DatasetEdaCorrelationResponse(
+    payload = DatasetEdaCorrelationResponse(
         **build_eda_correlation(session.dataframe, column=column, max_lags=max_lags)
     )
+    # PGV-03: freeze print-input вида из фактического ответа (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.correlation.acf_pacf",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "lags": max_lags},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-ih", response_model=DatasetEdaIhResponse)
@@ -970,7 +999,7 @@ def get_dataset_eda_ih(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
     if column not in session.dataframe.columns:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
-    return DatasetEdaIhResponse(**build_eda_ih(
+    payload = DatasetEdaIhResponse(**build_eda_ih(
         session.dataframe,
         column=column,
         sharpness=sharpness,
@@ -979,6 +1008,19 @@ def get_dataset_eda_ih(
         max_lag=max_lag,
         permutations=permutations,
     ))
+    # PGV-03: три вида остановки IH -- один ответ, раздельные срезы
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "eda.ih.metrics_table",
+            "eda.ih.conditional_map",
+            "eda.ih.results",
+        ),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "factor_column": column, "bins": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-seasonality", response_model=DatasetEdaSeasonalityResponse)
@@ -1001,12 +1043,21 @@ def get_dataset_eda_seasonality(
             status_code=422,
             detail=f"Колонка '{column}' не числовая — спектральный анализ недоступен",
         )
-    return DatasetEdaSeasonalityResponse(**build_eda_seasonality(
+    payload = DatasetEdaSeasonalityResponse(**build_eda_seasonality(
         session.dataframe,
         column=column,
         min_cycles=min_cycles,
         max_candidates=max_candidates,
     ))
+    # PGV-03: freeze спектра/периодограммы (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.seasonality.spectrum",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "window": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-stationarity", response_model=DatasetEdaStationarityResponse)
@@ -1029,12 +1080,21 @@ def get_dataset_eda_stationarity(
             status_code=422,
             detail=f"Колонка '{column}' не числовая — проверка стационарности недоступна",
         )
-    return DatasetEdaStationarityResponse(**build_eda_stationarity(
+    payload = DatasetEdaStationarityResponse(**build_eda_stationarity(
         session.dataframe,
         column=column,
         alpha=alpha,
         rolling_window=rolling_window,
     ))
+    # PGV-03: freeze результатов тестов стационарности (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.stationarity.tests",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "test": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-distribution", response_model=DatasetEdaDistributionResponse)
@@ -1057,12 +1117,21 @@ def get_dataset_eda_distribution(
             status_code=422,
             detail=f"Колонка '{column}' не числовая — анализ распределения недоступен",
         )
-    return DatasetEdaDistributionResponse(**build_eda_distribution(
+    payload = DatasetEdaDistributionResponse(**build_eda_distribution(
         session.dataframe,
         column=column,
         alpha=alpha,
         bins=bins,
     ))
+    # PGV-03: freeze результатов проверок распределения (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.distribution.tests",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "bins": bins},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-structural-breaks", response_model=DatasetEdaStructuralBreaksResponse)
@@ -1090,7 +1159,7 @@ def get_dataset_eda_structural_breaks(
             status_code=422,
             detail=f"Колонка '{column}' не числовая — анализ структурных сдвигов недоступен",
         )
-    return DatasetEdaStructuralBreaksResponse(**build_eda_structural_breaks(
+    payload = DatasetEdaStructuralBreaksResponse(**build_eda_structural_breaks(
         session.dataframe,
         column=column,
         alpha=alpha,
@@ -1098,6 +1167,15 @@ def get_dataset_eda_structural_breaks(
         penalty_multiplier=penalty_multiplier,
         detail_level=detail_level,
     ))
+    # PGV-03: freeze рядов/точек сдвигов (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.structural.breakpoints",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "method": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-feature-selection", response_model=DatasetEdaFeatureSelectionResponse)
@@ -1118,9 +1196,18 @@ def get_dataset_eda_feature_selection(
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
     if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая — отбор признаков недоступен")
-    return DatasetEdaFeatureSelectionResponse(**build_eda_feature_selection(
+    payload = DatasetEdaFeatureSelectionResponse(**build_eda_feature_selection(
         session.dataframe, column, alpha, max_lag, correlation_threshold, vif_threshold, difference_order,
     ))
+    # PGV-03: два вида отбора признаков -- один ответ, раздельные срезы
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.feature_select.scores", "eda.feature_select.matrix"),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "method": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-validation-strategy", response_model=DatasetEdaValidationStrategyResponse)
@@ -1157,7 +1244,16 @@ def get_dataset_eda_validation_strategy(
     session.eda_validation_strategy = dict(plan)
     session.touch()
     store.save(session)
-    return DatasetEdaValidationStrategyResponse(**plan)
+    payload = DatasetEdaValidationStrategyResponse(**plan)
+    # PGV-03: freeze плана folds (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.validation_strategy.windows",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "strategy": strategy, "horizon": horizon, "gap": gap},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/eda-model-matrix", response_model=DatasetEdaModelMatrixResponse)
@@ -1179,7 +1275,7 @@ def get_dataset_eda_model_matrix(
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
     if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая — матрица моделей недоступна")
-    return DatasetEdaModelMatrixResponse(**build_eda_model_matrix(
+    payload = DatasetEdaModelMatrixResponse(**build_eda_model_matrix(
         session.dataframe,
         column=column,
         task=task,
@@ -1189,6 +1285,15 @@ def get_dataset_eda_model_matrix(
         gap=gap,
         train_window=train_window,
     ))
+    # PGV-03: freeze матрицы применимости (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("eda.model_matrix.applicability",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "family_filter": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/panel-balance", response_model=PanelBalanceResponse)
@@ -1517,7 +1622,7 @@ def get_dataset_distribution(
         stats_series = series
 
     if non_null_count == 0:
-        return DistributionChartResponse(
+        empty_distribution = DistributionChartResponse(
             column=column,
             non_null_count=0,
             scatter=[],
@@ -1527,8 +1632,25 @@ def get_dataset_distribution(
             histogram=[],
             kde=None,
         )
+        # PGV-03: «meaningful empty result может экспортироваться с
+        # подписью» (§10.1) -- пустой срез честно морозится.
+        _promotion.notify_visual_result(
+            request, session,
+            view_ids=(
+                "upload.distribution.scatter",
+                "upload.distribution.histogram",
+                "upload.distribution.kde",
+                "eda.descriptive.distribution.scatter",
+                "eda.descriptive.distribution.histogram",
+                "eda.descriptive.distribution.kde",
+            ),
+            response=empty_distribution.model_dump(mode="json"),
+            params={"selected_column": column, "start": start, "end": end},
+            http_response=response,
+        )
+        return empty_distribution
 
-    return DistributionChartResponse(
+    payload = DistributionChartResponse(
         column=column,
         non_null_count=non_null_count,
         min=float(stats_series.min()),
@@ -1540,6 +1662,23 @@ def get_dataset_distribution(
         histogram=[HistogramBin(**b) for b in build_histogram(stats_series)],
         kde=[KdePoint(**p) for p in kde_points] if (kde_points := build_kde(stats_series)) is not None else None,
     )
+    # PGV-03: шесть видов распределения -- один ответ, раздельные срезы
+    # (3 upload + 3 eda.descriptive; AC01: не другой subplot)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "upload.distribution.scatter",
+            "upload.distribution.histogram",
+            "upload.distribution.kde",
+            "eda.descriptive.distribution.scatter",
+            "eda.descriptive.distribution.histogram",
+            "eda.descriptive.distribution.kde",
+        ),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "start": start, "end": end},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/structure-detection", response_model=StructureDetectionResponse)
@@ -1582,7 +1721,7 @@ def get_structure_detection(request: Request, response: Response):
         freq_result = detect_column_frequency(df[best_date["name"]])
         frequency = FrequencyDetectionOut(**freq_result)
 
-    return StructureDetectionResponse(
+    payload = StructureDetectionResponse(
         date_col=ColumnDetectionOut(
             selected=best_date["name"] if best_date else "(не использовать)",
             confidence=round((best_date["score"] if best_date else 0) * 100),
@@ -1595,6 +1734,14 @@ def get_structure_detection(request: Request, response: Response):
         ),
         frequency=frequency,
     )
+    # PGV-03: freeze схемы структуры (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("upload.structure.schema",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/timeseries", response_model=TimeSeriesResponse)
@@ -1624,7 +1771,7 @@ def get_dataset_timeseries(column: str, date_column: str, request: Request, resp
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- график недоступен")
 
     result = build_timeseries_points(df[date_column], df[column])
-    return TimeSeriesResponse(
+    payload = TimeSeriesResponse(
         column=column,
         date_column=date_column,
         points=[TimeSeriesPoint(**p) for p in result["points"]],
@@ -1633,6 +1780,15 @@ def get_dataset_timeseries(column: str, date_column: str, request: Request, resp
         original_count=result["original_count"],
         was_resorted=result["was_resorted"],
     )
+    # PGV-03: freeze линейного графика ряда (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("upload.chart.series",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/decomposition", response_model=DecompositionResponse)
@@ -1663,7 +1819,16 @@ def get_dataset_decomposition(column: str, date_column: str, request: Request, r
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- декомпозиция недоступна")
 
     result = build_decomposition(df[date_column], df[column], column)
-    return DecompositionResponse(**result)
+    payload = DecompositionResponse(**result)
+    # PGV-03: freeze бейджей декомпозиции (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("upload.chart.decomposition_shares",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/decomposition-series", response_model=DecompositionSeriesResponse)
@@ -1700,7 +1865,16 @@ def get_dataset_decomposition_series(column: str, date_column: str, request: Req
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- декомпозиция недоступна")
 
     result = build_decomposition_series(df[date_column], df[column], column)
-    return DecompositionSeriesResponse(**result)
+    payload = DecompositionSeriesResponse(**result)
+    # PGV-03: freeze рядов компонент декомпозиции (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("upload.chart.decomposition_series",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
+    )
+    return payload
 
 
 def _session_validation_rules(session: AnalysisSession) -> tuple[dict, dict]:
@@ -1925,6 +2099,28 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     # наблюдений. Best-effort: сбой -- receipt, ответ не меняется.
     _promotion.notify_validation_result(
         request, session, result_payload=payload.model_dump(mode="json")
+    )
+
+    # PGV-03: 10 видов остановки «Валидация» -- каждый check честно
+    # морозится своим VisualResult (матрица/обзоры со знаменателями,
+    # AC05); same best-effort контракт.
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "validation.data_types.matrix",
+            "validation.formats.chart",
+            "validation.ranges.overview",
+            "validation.consistency.overview",
+            "validation.uniqueness.overview",
+            "validation.inclusion.overview",
+            "validation.referential.overview",
+            "validation.text_quality.overview",
+            "validation.regularity.overview",
+            "validation.sufficiency.overview",
+        ),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
     )
 
     # R6/вариант C (2026-09-15): артефакт слоя задач «validated» произведён
@@ -2206,7 +2402,7 @@ def get_dataset_missing_profile(request: Request, response: Response):
     status, status_reason = _preprocessing_missing_status(
         mode, summary["total_columns"], summary["total_missing"]
     )
-    return DatasetMissingProfileResponse(
+    payload = DatasetMissingProfileResponse(
         rule_source="system" if columns else "not_applicable",
         mode=mode,
         status=status,
@@ -2222,6 +2418,14 @@ def get_dataset_missing_profile(request: Request, response: Response):
         row_histogram=[MissingRowHistogramItemOut(**item) for item in histogram],
         derived_summary=_derived_missing_summary(session.dataframe, derived_names),
     )
+    # PGV-03: freeze профиля пропусков (знаменатели -- AC05; best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.missing.overview",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get(
@@ -2289,7 +2493,15 @@ def get_dataset_missing_matrix(request: Request, response: Response):
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
     result = missing_matrix(session.dataframe)
-    return DatasetMissingMatrixResponse(**result)
+    payload = DatasetMissingMatrixResponse(**result)
+    # PGV-03: freeze матрицы покрытия пропусков (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.missing.coverage_matrix",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/missing-correlation", response_model=DatasetMissingCorrelationResponse)
@@ -2301,7 +2513,15 @@ def get_dataset_missing_correlation(request: Request, response: Response):
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
     result = missing_correlation(session.dataframe)
-    return DatasetMissingCorrelationResponse(**result)
+    payload = DatasetMissingCorrelationResponse(**result)
+    # PGV-03: freeze MAR-корреляции индикаторов (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.missing.correlation",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/missing-distribution", response_model=DatasetMissingDistributionResponse)
@@ -2920,7 +3140,7 @@ def get_dataset_outlier_profile(
     status, status_reason = _preprocessing_outliers_status(
         mode, summary["total_numeric_columns"], summary["total_outliers"]
     )
-    return DatasetOutlierProfileResponse(
+    payload = DatasetOutlierProfileResponse(
         rule_source="system" if columns else "not_applicable",
         mode=mode,
         status=status,
@@ -2936,6 +3156,15 @@ def get_dataset_outlier_profile(
             session.dataframe, derived_names, method=method, param=param
         ),
     )
+    # PGV-03: freeze обзора выбросов (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.outliers.overview",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": None, "method": method, "strategy": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.post("/dataset/outlier-corrections", response_model=DatasetOutlierCorrectionResponse)
@@ -3106,7 +3335,16 @@ def get_dataset_outlier_line(
     param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
     result = build_scatter_series(series.dropna())
     bounds = method_bounds(series, method, param)
-    return DatasetOutlierLineResponse(**result, bounds=OutlierBoundsOut(**bounds) if bounds else None)
+    payload = DatasetOutlierLineResponse(**result, bounds=OutlierBoundsOut(**bounds) if bounds else None)
+    # PGV-03: freeze профильного ряда выбросов (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.outliers.series_profile",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "method": method, "strategy": None},
+        http_response=response,
+    )
+    return payload
 
 
 @router.get("/dataset/outlier-histogram", response_model=DatasetOutlierHistogramResponse)
@@ -3931,9 +4169,18 @@ def get_dataset_preprocessing_smoothing_profile(
     status, status_reason = _preprocessing_smoothing_status(
         mode, profile["applicable"], profile["needs_smoothing"],
     )
-    return DatasetPreprocessingSmoothingProfileResponse(
+    payload = DatasetPreprocessingSmoothingProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-03: freeze профиля сглаживания (best-effort)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.smoothing.overview",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column, "method": method, "window": window},
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(

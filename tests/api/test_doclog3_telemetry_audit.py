@@ -1231,5 +1231,8 @@ class TestMigrations:
         # DOCLOG-9 (обновлено честно): каталог пополнен
         # 0015_doclog9_profiles (аддитивная: 2 ALTER + 3 таблицы +
         # 3 индекса = 8 statement; 85 + 8 = 93).
-        assert len(MIGRATION_FILES) == 15
-        assert len(MIGRATION_STATEMENTS) == 93
+        # PGV-02 (честное обновление пина, прецедент DOCLOG-9):
+        # каталог пополнен 0016_pgv2_print_documents (аддитивная:
+        # 2 таблицы + 2 индекса = 3 statement; 93 + 3 = 96).
+        assert len(MIGRATION_FILES) == 16
+        assert len(MIGRATION_STATEMENTS) == 96
