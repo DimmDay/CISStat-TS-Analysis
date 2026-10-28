@@ -455,6 +455,16 @@ class ArtifactRegistry:
     ) -> list[ResultArtifact]:  # pragma: no cover
         raise NotImplementedError
 
+    def unregister_artifact(self, artifact_id: str) -> bool:  # pragma: no cover
+        """Компенсация AC08 (PGV-02-FIX, находка F-P2C5): удаление
+        артефакта, созданного ОТКАЗАВШЕЙСЯ операцией, -- отказ операции
+        не оставляет частичное durable-состояние. Возврат True -- удалён,
+        False -- отсутствует. Пин-защищённый артефакт (ref_kind="artifact")
+        НЕ удаляется -- ValueError (§16: защищённое pin не стирается).
+        Байты object store не трогаются (content-addressed, GC вне
+        контракта metadata-реестра)."""
+        raise NotImplementedError
+
     def pin_ref(
         self,
         run_id: str,
@@ -537,6 +547,26 @@ class MemoryArtifactRegistry(ArtifactRegistry):
                 if item.run_id == run_id and (kind is None or item.kind == kind)
             ]
             return [item.copy() for item in items]
+
+    def unregister_artifact(self, artifact_id: str) -> bool:
+        """Компенсация AC08 (F-P2C5): удаление артефакта отказавшейся
+        операции. Пин-защищённый -- ValueError (паритет контракта ABC)."""
+        with self._lock:
+            artifact = self._artifacts.get(artifact_id)
+            if artifact is None:
+                return False
+            protected = any(
+                pin.ref_kind == REF_KIND_ARTIFACT and pin.ref_id == artifact_id
+                for pin in self._pins.values()
+            )
+            if protected:
+                raise ValueError(
+                    f"Артефакт {artifact_id!r} защищён pin (§16) -- "
+                    "компенсация AC08 отказана, частичное состояние "
+                    "требует ручного разбора"
+                )
+            del self._artifacts[artifact_id]
+            return True
 
     def pin_ref(
         self,
@@ -771,6 +801,38 @@ class PostgresArtifactRegistry(ArtifactRegistry):
             cur.execute(query, tuple(params))
             rows = cur.fetchall()
         return [self._artifact_from_row(row) for row in rows]
+
+    def unregister_artifact(self, artifact_id: str) -> bool:
+        """Компенсация AC08 (F-P2C5): паритет Memory (урок F-D2C1).
+        Пин-защищённый артефакт не удаляется (ValueError, §16); байты
+        object store не трогаются (content-addressed)."""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT run_id FROM research_artifacts WHERE artifact_id = %s",
+                (artifact_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return False
+            run_id = str(row[0])
+            cur.execute(
+                "SELECT 1 FROM research_artifact_pins "
+                "WHERE run_id = %s AND ref_kind = %s AND ref_id = %s LIMIT 1",
+                (run_id, REF_KIND_ARTIFACT, artifact_id),
+            )
+            if cur.fetchone() is not None:
+                raise ValueError(
+                    f"Артефакт {artifact_id!r} защищён pin (§16) -- "
+                    "компенсация AC08 отказана, частичное состояние "
+                    "требует ручного разбора"
+                )
+            cur.execute(
+                "DELETE FROM research_artifacts WHERE artifact_id = %s",
+                (artifact_id,),
+            )
+            deleted = cur.rowcount == 1
+            conn.commit()
+        return deleted
 
     def pin_ref(
         self,

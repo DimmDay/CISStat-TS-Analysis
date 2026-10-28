@@ -217,6 +217,22 @@ class RenditionPurgedError(RuntimeError):
     («410 -- известный разрешённому владельцу purged artifact»)."""
 
 
+class PrintBasisInvalid(ValueError):
+    """PGV-02-FIX (находка F-P2C1, docs/cert_pgv02_2026-10-28.md §7):
+    basis-артефакт печатной ревизии отсутствует в реестре либо
+    принадлежит другому run -- ревизия не создаётся (§10.2 «revision с
+    frozen refs/pins»: refs обязаны быть допустимыми; §5/§11 object
+    authorization: артефакт чужого run -- недопустимый basis)."""
+
+
+class PrintRevisionConflictError(RuntimeError):
+    """PGV-02-FIX (находка F-P2C6, класс F-D2C1): нарушены
+    UNIQUE-ограничения DDL 0016 -- UNIQUE(document_id, version_no) либо
+    UNIQUE(document_id, basis_fingerprint). Postgres отклонил бы вставку
+    IntegrityError; Memory-реестр обязан давать эквивалентный конфликт,
+    а не молчаливый дубликат (паритет Memory/Postgres -- урок F-D2C1)."""
+
+
 # ── Записи ───────────────────────────────────────────────────────────
 
 
@@ -605,6 +621,24 @@ class MemoryDocumentRegistry(DocumentRegistry):
         self, revision: DocumentPrintRevisionRecord
     ) -> DocumentPrintRevisionRecord:
         with self._lock:
+            # PGV-02-FIX (F-P2C6): паритет UNIQUE-ограничений DDL 0016 --
+            # Memory не маскирует конфликты молчаливым дубликатом (урок
+            # F-D2C1). Проверка ДО мутации указателя документа.
+            for existing in self._print_revisions.values():
+                if existing.document_id != revision.document_id:
+                    continue
+                if existing.version_no == revision.version_no:
+                    raise PrintRevisionConflictError(
+                        "UNIQUE(document_id, version_no) нарушен: документ "
+                        f"{revision.document_id!r} уже несёт версию "
+                        f"{revision.version_no} ({existing.print_revision_id!r})"
+                    )
+                if existing.basis_fingerprint == revision.basis_fingerprint:
+                    raise PrintRevisionConflictError(
+                        "UNIQUE(document_id, basis_fingerprint) нарушен: "
+                        f"документ {revision.document_id!r} уже несёт этот "
+                        f"basis ({existing.print_revision_id!r})"
+                    )
             self._print_revisions[revision.print_revision_id] = revision.copy()
             document = self._documents.get(revision.document_id)
             if document is not None:
@@ -1615,11 +1649,23 @@ class DocumentDeliveryService:
         с frozen refs/pins без capture и перерасчёта»). Идемпотентность
         -- по basis_fingerprint (UNIQUE(document_id, basis_fingerprint)):
         тот же basis -- та же ревизия (§12.2 «повторный клик не создаёт
-        дубли»); иной basis/profile -- новая версия. D01-D12 -- через
-        снапшот-поток (ensure_document_revision), печатные типы -- только
-        здесь (каталог pgv.document_catalog/2 различает семейства).
-        Basis-артефакты пинятся с причиной (§16)."""
-        from apps.api.artifact_store import canonical_json_bytes
+        дубли»); иной basis/profile/manifest -- новая версия (§11
+        идемпотентность по телу: manifest_artifact_id входит в
+        fingerprint -- PGV-02-FIX F-P2C3, аргумент не отбрасывается).
+        D01-D12 -- через снапшот-поток (ensure_document_revision),
+        печатные типы -- только здесь (каталог pgv.document_catalog/2
+        различает семейства). Basis-артефакты пинятся с причиной (§16).
+
+        PGV-02-FIX: (F-P2C1) basis-артефакты проходят гейт существования
+        и run-принадлежности ДО создания документа/ревизии -- ревизия не
+        создаётся по dangling/чужим объектам; (F-P2C5-класс) пин basis
+        ставится ДО регистрации ревизии -- отказ пина оставляет durable
+        слой без частичного состояния, отказ регистрации -- unpin-
+        компенсация поставленных пинов (AC08-дух)."""
+        from apps.api.artifact_store import (
+            canonical_json_bytes,
+            get_artifact_registry,
+        )
         from apps.api.report_snapshot import is_print_document_kind
 
         if not is_print_document_kind(print_kind):
@@ -1630,7 +1676,9 @@ class DocumentDeliveryService:
         )
         self._authorized_run(run_id, subject, session_id=session_id, action="write")
         basis_ids = list(basis_artifact_ids or [])
-        # Идемпотентный ключ тела (§11): действие + basis digest.
+        self._validate_print_basis(run_id, basis_ids)
+        # Идемпотентный ключ тела (§11): действие + basis digest
+        # (включая manifest -- F-P2C3).
         fingerprint = hashlib.sha256(
             canonical_json_bytes(
                 {
@@ -1639,10 +1687,17 @@ class DocumentDeliveryService:
                     "basis_artifact_ids": basis_ids,
                     "snapshot_id": snapshot_id,
                     "profile_id": profile_id,
+                    "manifest_artifact_id": manifest_artifact_id,
                 }
             )
         ).hexdigest()
         document = self.registry.find_document_by_kind(run_id, print_kind)
+        if document is not None:
+            existing = self.registry.find_print_revision_by_fingerprint(
+                document.document_id, fingerprint
+            )
+            if existing is not None:
+                return document, existing, False
         if document is None:
             document = self.registry.register_document(
                 DocumentRecord(
@@ -1652,39 +1707,83 @@ class DocumentDeliveryService:
                     created_by=getattr(subject, "subject_id", None),
                 )
             )
-        existing = self.registry.find_print_revision_by_fingerprint(
-            document.document_id, fingerprint
-        )
-        if existing is not None:
-            return document, existing, False
         revisions = self.registry.list_print_revisions(document.document_id)
         version_no = (revisions[-1].version_no + 1) if revisions else 1
-        revision = self.registry.register_print_revision(
-            DocumentPrintRevisionRecord(
-                print_revision_id=new_print_revision_id(),
-                document_id=document.document_id,
-                run_id=run_id,
-                print_kind=print_kind,
-                basis_kind=basis_kind,
-                basis_artifact_ids=basis_ids,
-                snapshot_id=snapshot_id,
-                profile_id=profile_id,
-                manifest_artifact_id=manifest_artifact_id,
-                basis_fingerprint=fingerprint,
-                version_no=version_no,
-                created_by=getattr(subject, "subject_id", None),
+        revision_id = new_print_revision_id()
+        created_by = getattr(subject, "subject_id", None)
+        # §16 + F-P2C5-класс: пин basis ДО регистрации ревизии (id
+        # прегенерирован); unpin-компенсация -- только пины, поставленные
+        # ЭТОЙ операцией (pin_ref идемпотентен: чужие пины не снимаем).
+        artifact_registry = get_artifact_registry()
+        pre_pinned = {
+            pin.ref_id
+            for pin in artifact_registry.list_pins(run_id, ref_kind="artifact")
+        }
+        pinned_now: list[str] = []
+        try:
+            for artifact_id in basis_ids:
+                self.registry_pin_artifact(
+                    run_id,
+                    artifact_id,
+                    reason=f"print_revision:{revision_id}",
+                    created_by=created_by,
+                )
+                pinned_now.append(artifact_id)
+            revision = self.registry.register_print_revision(
+                DocumentPrintRevisionRecord(
+                    print_revision_id=revision_id,
+                    document_id=document.document_id,
+                    run_id=run_id,
+                    print_kind=print_kind,
+                    basis_kind=basis_kind,
+                    basis_artifact_ids=basis_ids,
+                    snapshot_id=snapshot_id,
+                    profile_id=profile_id,
+                    manifest_artifact_id=manifest_artifact_id,
+                    basis_fingerprint=fingerprint,
+                    version_no=version_no,
+                    created_by=created_by,
+                )
             )
-        )
-        # §16: metadata graph хранит ПРИЧИНЫ ссылок -- pin basis с
-        # причиной (keeper/GC не сотрёт basis печатной ревизии).
-        for artifact_id in basis_ids:
-            self.registry_pin_artifact(
-                run_id,
-                artifact_id,
-                reason=f"print_revision:{revision.print_revision_id}",
-                created_by=getattr(subject, "subject_id", None),
-            )
+        except Exception:
+            for artifact_id in pinned_now:
+                if artifact_id in pre_pinned:
+                    continue  # пин существовал до операции -- не наш
+                try:
+                    artifact_registry.unpin_ref(run_id, "artifact", artifact_id)
+                except Exception as unpin_exc:  # pragma: no cover
+                    logger.warning(
+                        "ensure_print_document_revision: unpin-компенсация "
+                        "не удалась для %s: %s",
+                        artifact_id,
+                        unpin_exc,
+                    )
+            raise
         return document, revision, True
+
+    def _validate_print_basis(self, run_id: str, basis_ids: list[str]) -> None:
+        """PGV-02-FIX (F-P2C1): гейт существования и run-принадлежности
+        basis-артефактов (§10.2 «revision с frozen refs/pins»: refs
+        обязаны быть допустимыми; §5/§11 object authorization). Отказ ДО
+        создания документа/ревизии/пинов -- ничего не регистрируется."""
+        from apps.api.artifact_store import get_artifact_registry
+
+        registry = get_artifact_registry()
+        for artifact_id in basis_ids:
+            artifact = registry.get_artifact(artifact_id)
+            if artifact is None:
+                raise PrintBasisInvalid(
+                    f"ensure_print_document_revision: basis-артефакт "
+                    f"{artifact_id!r} отсутствует в реестре (§10.2: frozen "
+                    "refs печатной ревизии обязаны быть допустимыми)"
+                )
+            if artifact.run_id != run_id:
+                raise PrintBasisInvalid(
+                    f"ensure_print_document_revision: basis-артефакт "
+                    f"{artifact_id!r} принадлежит другому run (§5/§11: "
+                    "object authorization -- артефакт чужого run не "
+                    "является допустимым basis)"
+                )
 
     def registry_pin_artifact(
         self, run_id: str, artifact_id: str, *, reason: str, created_by: Optional[str]

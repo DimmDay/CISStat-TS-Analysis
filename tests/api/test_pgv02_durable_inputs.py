@@ -1114,3 +1114,440 @@ class TestSpecContract:
         ).read_text(encoding="utf-8")
         assert "PGV-02" in spec
         assert "Durable inputs" in spec or "durable inputs" in spec.lower()
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 9. PGV-02-FIX: исправления находок сертификации PGV-02-CERT
+#    (docs/cert_pgv02_2026-10-28.md §7: F-P2C1..F-P2C6 + N-P2C1;
+#    F-P2C7 закрыта upstream PGV-03 -- пины doclog3/7/9 обновлены).
+#    Class B корпуса scripts/pgv02cert обязан стать GREEN без правки
+#    смысла (прецедент PGV-00-FIX §7.4). Оракулы на СВОИХ данных
+#    (RUN-P02A0001/RUN-P02B0002 -- namespace repo-сюиты).
+# ══════════════════════════════════════════════════════════════════════
+
+RUN_ID_FOREIGN = "RUN-P02B0002"
+SESSION_ID_FOREIGN = "p02-fix-session-b"
+
+
+class TestFP2C1BasisGate:
+    """F-P2C1: ensure_print_document_revision проверяет существование и
+    run-принадлежность basis-артефактов (§10.2 «revision с frozen
+    refs/pins»; §5/§11 object authorization) ДО создания документа,
+    ревизии и пинов."""
+
+    def test_dangling_basis_artifact_refused(self):
+        from apps.api.artifact_store import get_artifact_registry
+        from apps.api.document_jobs import (
+            DocumentDeliveryService,
+            PrintBasisInvalid,
+        )
+
+        _seed_run()
+        missing = "art-" + "0d" * 16
+        assert get_artifact_registry().get_artifact(missing) is None
+        service = DocumentDeliveryService.create_default()
+        with pytest.raises(PrintBasisInvalid) as excinfo:
+            service.ensure_print_document_revision(
+                RUN_ID,
+                _owner_subject(),
+                session_id=SESSION_ID,
+                print_kind="V01",
+                basis_kind="visual_print_snapshot",
+                basis_artifact_ids=[missing],
+            )
+        # Отказ по причине basis-гейта, не kind-проверки.
+        assert "не печатный тип" not in str(excinfo.value)
+        # Ничего не зарегистрировано: документа V01 нет.
+        assert service.registry.find_document_by_kind(RUN_ID, "V01") is None
+
+    def test_foreign_run_basis_artifact_refused(self):
+        from apps.api.document_jobs import (
+            DocumentDeliveryService,
+            PrintBasisInvalid,
+        )
+        from apps.api.visual_artifacts import freeze_visual_result
+
+        _seed_run(RUN_ID_FOREIGN, SESSION_ID_FOREIGN)
+        foreign_artifact = freeze_visual_result(
+            RUN_ID_FOREIGN,
+            _owner_subject(SESSION_ID_FOREIGN),
+            payload=_visual_result(),
+            session_id=SESSION_ID_FOREIGN,
+        )
+        _seed_run()
+        service = DocumentDeliveryService.create_default()
+        with pytest.raises(PrintBasisInvalid):
+            service.ensure_print_document_revision(
+                RUN_ID,
+                _owner_subject(),
+                session_id=SESSION_ID,
+                print_kind="V01",
+                basis_kind="visual_print_snapshot",
+                basis_artifact_ids=[foreign_artifact.artifact_id],
+            )
+        assert service.registry.find_document_by_kind(RUN_ID, "V01") is None
+
+
+class TestFP2C2CasNonNumericRevision:
+    """F-P2C2: CAS freeze fail-closed на нечисловой непустой строке
+    expected_context.data_revision -- честный конфликт (409
+    context_changed), не тихий пропуск сверки (PGV-AC07)."""
+
+    def test_non_numeric_expected_revision_conflicts(self):
+        from apps.api.visual_artifacts import (
+            PrintContextConflict,
+            freeze_visual_print_snapshot,
+        )
+
+        _seed_run(RUN_ID, SESSION_ID, context_id="ctx-p02-1", data_revision=7)
+        snap = _print_snapshot(data_revision=42)
+        snap["expected_context"]["data_revision"] = "abc"
+        with pytest.raises(PrintContextConflict):
+            freeze_visual_print_snapshot(
+                RUN_ID,
+                _owner_subject(),
+                payload=snap,
+                session_id=SESSION_ID,
+            )
+
+    def test_numeric_expected_revision_still_accepted(self):
+        """Регресс-честность: числовая строка сверяется как прежде."""
+        from apps.api.visual_artifacts import freeze_visual_print_snapshot
+
+        _seed_run(RUN_ID, SESSION_ID, context_id="ctx-p02-1", data_revision=7)
+        snap = _print_snapshot(data_revision=7)
+        artifact = freeze_visual_print_snapshot(
+            RUN_ID,
+            _owner_subject(),
+            payload=snap,
+            session_id=SESSION_ID,
+        )
+        assert artifact.kind == "visual_print_snapshot"
+
+
+class TestFP2C3ManifestInFingerprint:
+    """F-P2C3: manifest_artifact_id входит в basis_fingerprint --
+    повтор с тем же basis, но другим manifest -- НОВАЯ ревизия (§11
+    идемпотентность по телу), не тихий возврат прежнего manifest."""
+
+    def test_manifest_change_creates_new_revision(self):
+        from apps.api.document_jobs import DocumentDeliveryService
+
+        _seed_run()
+        service = DocumentDeliveryService.create_default()
+        kwargs = dict(
+            session_id=SESSION_ID,
+            print_kind="P01",
+            basis_kind="passport",
+            basis_artifact_ids=[],
+        )
+        _, rev1, created1 = service.ensure_print_document_revision(
+            RUN_ID,
+            _owner_subject(),
+            manifest_artifact_id="art-" + "11" * 16,
+            **kwargs,
+        )
+        _, rev2, created2 = service.ensure_print_document_revision(
+            RUN_ID,
+            _owner_subject(),
+            manifest_artifact_id="art-" + "22" * 16,
+            **kwargs,
+        )
+        assert created1 is True
+        assert created2 is True
+        assert rev2.manifest_artifact_id == "art-" + "22" * 16
+        assert rev2.version_no == rev1.version_no + 1
+
+    def test_same_manifest_is_idempotent(self):
+        """§12.2: повтор с тем же телом (включая manifest) -- та же
+        ревизия, дубли не плодятся."""
+        from apps.api.document_jobs import DocumentDeliveryService
+
+        _seed_run()
+        service = DocumentDeliveryService.create_default()
+        kwargs = dict(
+            session_id=SESSION_ID,
+            print_kind="P01",
+            basis_kind="passport",
+            basis_artifact_ids=[],
+            manifest_artifact_id="art-" + "33" * 16,
+        )
+        first = service.ensure_print_document_revision(
+            RUN_ID, _owner_subject(), **kwargs
+        )
+        second = service.ensure_print_document_revision(
+            RUN_ID, _owner_subject(), **kwargs
+        )
+        assert second[2] is False
+        assert second[1].print_revision_id == first[1].print_revision_id
+        assert second[1].version_no == first[1].version_no
+
+
+class TestFP2C4SelfReference:
+    """F-P2C4: previous_snapshot_ref == snapshot_ref отвергается
+    валидатором чекпоинта (§8: previous -- ссылка на ПРЕДЫДУЩИЙ снимок
+    цепочки подтверждений, самоссылка не имеет смысла истории)."""
+
+    def test_self_reference_refused(self):
+        from apps.api.visual_artifacts import validate_passport_checkpoint
+
+        payload = _checkpoint(previous_snapshot_ref="rs-" + "0" * 32)
+        violations = validate_passport_checkpoint(payload)
+        assert "invalid_value" in _codes(violations)
+        assert any(v.path == "previous_snapshot_ref" for v in violations)
+
+    def test_distinct_previous_ref_still_valid(self):
+        from apps.api.visual_artifacts import validate_passport_checkpoint
+
+        ok = _checkpoint(previous_snapshot_ref="rs-" + "9" * 32)
+        assert validate_passport_checkpoint(ok) == []
+
+
+class TestFP2C5AtomicPinFailure:
+    """F-P2C5: отказ пина зависимости после persist НЕ оставляет
+    зарегистрированный артефакт (AC08-дух: либо валидный результат, либо
+    явный отказ без частичного состояния)."""
+
+    def test_pin_failure_leaves_no_artifact(self):
+        from apps.api.artifact_store import get_artifact_registry
+        from apps.api.visual_artifacts import (
+            freeze_visual_print_snapshot,
+            freeze_visual_result,
+        )
+
+        _seed_run(RUN_ID, SESSION_ID, context_id="ctx-p02-1", data_revision=7)
+        subject = _owner_subject()
+        result = freeze_visual_result(
+            RUN_ID, subject, payload=_visual_result(), session_id=SESSION_ID
+        )
+        registry = get_artifact_registry()
+        count_before = len(registry.list_artifacts(RUN_ID))
+
+        class _PinDown(Exception):
+            pass
+
+        original = type(registry).pin_ref
+
+        def boom(*args, **kwargs):
+            raise _PinDown("pin storage down")
+
+        type(registry).pin_ref = boom
+        try:
+            with pytest.raises(_PinDown):
+                freeze_visual_print_snapshot(
+                    RUN_ID,
+                    subject,
+                    payload=_print_snapshot(result_digest="b" * 64),
+                    session_id=SESSION_ID,
+                    result_artifact_id=result.artifact_id,
+                )
+            # AC08-компенсация: артефакт не остаётся в реестре.
+            assert len(registry.list_artifacts(RUN_ID)) == count_before
+        finally:
+            type(registry).pin_ref = original
+
+
+class TestFP2C5EnsurePathAtomicity:
+    """Симметричный класс частичного состояния в ensure_print_document_revision:
+    отказ пина basis не оставляет ревизии (пин ДО регистрации); отказ
+    регистрации после поставленных пинов -- unpin-компенсация."""
+
+    def test_pin_failure_during_ensure_leaves_no_revision(self):
+        from apps.api.artifact_store import get_artifact_registry
+        from apps.api.document_jobs import DocumentDeliveryService
+        from apps.api.visual_artifacts import freeze_visual_result
+
+        _seed_run()
+        subject = _owner_subject()
+        result = freeze_visual_result(
+            RUN_ID, subject, payload=_visual_result(), session_id=SESSION_ID
+        )
+        service = DocumentDeliveryService.create_default()
+        registry = get_artifact_registry()
+
+        class _PinDown(Exception):
+            pass
+
+        original = type(registry).pin_ref
+
+        def boom(*args, **kwargs):
+            raise _PinDown("pin storage down")
+
+        type(registry).pin_ref = boom
+        try:
+            with pytest.raises(_PinDown):
+                service.ensure_print_document_revision(
+                    RUN_ID,
+                    subject,
+                    session_id=SESSION_ID,
+                    print_kind="V01",
+                    basis_kind="visual_print_snapshot",
+                    basis_artifact_ids=[result.artifact_id],
+                )
+        finally:
+            type(registry).pin_ref = original
+        # Ревизия не зарегистрирована; документ-контейнер (find-or-create)
+        # без ревизий допустим и переиспользуется повтором.
+        document = service.registry.find_document_by_kind(RUN_ID, "V01")
+        if document is not None:
+            assert service.registry.list_print_revisions(document.document_id) == []
+
+
+class TestFP2C6MemoryUniqueParity:
+    """F-P2C6 (класс F-D2C1): Memory-реестр печатных ревизий даёт
+    конфликт на дубликатах UNIQUE(document_id, version_no) и
+    UNIQUE(document_id, basis_fingerprint) из DDL 0016, а не молчаливый
+    дубликат (Postgres отклонил бы вставку)."""
+
+    def _record(self, doc_id: str, version_no: int, fingerprint: str):
+        from apps.api.document_jobs import (
+            DocumentPrintRevisionRecord,
+            new_print_revision_id,
+        )
+
+        return DocumentPrintRevisionRecord(
+            print_revision_id=new_print_revision_id(),
+            document_id=doc_id,
+            run_id=RUN_ID,
+            print_kind="P01",
+            basis_kind="passport",
+            basis_artifact_ids=[],
+            profile_id="figure-landscape",
+            manifest_artifact_id=None,
+            basis_fingerprint=fingerprint,
+            version_no=version_no,
+            created_by="subj",
+        )
+
+    def test_duplicate_version_no_refused(self):
+        from apps.api.document_jobs import (
+            PrintRevisionConflictError,
+            get_document_registry,
+        )
+
+        _seed_run()
+        registry = get_document_registry()
+        first = self._record("doc-" + "f1" * 16, 1, "fp-p02-fix-a")
+        duplicate = self._record(first.document_id, 1, "fp-p02-fix-b")
+        registry.register_print_revision(first)
+        with pytest.raises(PrintRevisionConflictError):
+            registry.register_print_revision(duplicate)
+        assert len(registry.list_print_revisions(first.document_id)) == 1
+
+    def test_duplicate_fingerprint_refused(self):
+        from apps.api.document_jobs import (
+            PrintRevisionConflictError,
+            get_document_registry,
+        )
+
+        _seed_run()
+        registry = get_document_registry()
+        doc_id = "doc-" + "f2" * 16
+        registry.register_print_revision(self._record(doc_id, 1, "fp-p02-fix-x"))
+        with pytest.raises(PrintRevisionConflictError):
+            registry.register_print_revision(
+                self._record(doc_id, 2, "fp-p02-fix-x")
+            )
+        assert len(registry.list_print_revisions(doc_id)) == 1
+
+    def test_distinct_version_and_fingerprint_accepted(self):
+        from apps.api.document_jobs import get_document_registry
+
+        _seed_run()
+        registry = get_document_registry()
+        doc_id = "doc-" + "f3" * 16
+        registry.register_print_revision(self._record(doc_id, 1, "fp-p02-fix-1"))
+        registry.register_print_revision(self._record(doc_id, 2, "fp-p02-fix-2"))
+        assert len(registry.list_print_revisions(doc_id)) == 2
+
+
+class TestNP2C1EmptyRevisionString:
+    """N-P2C1 (класс F-D7C2): пустая строка context.data_revision --
+    «обязательная ревизия» без значения -- missing_required_ref; 0
+    остаётся значением (контекст 0-как-значение)."""
+
+    def test_empty_string_refused(self):
+        from apps.api.visual_artifacts import validate_passport_checkpoint
+
+        ctx = {
+            "run_id": RUN_ID,
+            "context_id": "ctx-p02-1",
+            "data_revision": "",
+            "target_column": "value",
+            "entity_id": None,
+        }
+        violations = validate_passport_checkpoint(_checkpoint(context=ctx))
+        assert any(
+            v.code == "missing_required_ref" and v.path == "context.data_revision"
+            for v in violations
+        )
+
+    def test_zero_revision_is_a_value(self):
+        from apps.api.visual_artifacts import validate_passport_checkpoint
+
+        ctx = {
+            "run_id": RUN_ID,
+            "context_id": "ctx-p02-1",
+            "data_revision": 0,
+            "target_column": "value",
+            "entity_id": None,
+        }
+        violations = validate_passport_checkpoint(_checkpoint(context=ctx))
+        assert not any(v.path == "context.data_revision" for v in violations)
+
+
+class TestUnregisterArtifactCompensation:
+    """Субстрат F-P2C5: unregister_artifact в контракте реестра
+    (ABC/Memory/Postgres -- паритет F-D2C1); компенсация AC08 отказана
+    для пин-защищённого артефакта (§16: защищённое не удаляется)."""
+
+    def test_contract_implemented_by_both_backends(self):
+        from apps.api.artifact_store import (
+            ArtifactRegistry,
+            MemoryArtifactRegistry,
+            PostgresArtifactRegistry,
+        )
+
+        for cls in (ArtifactRegistry, MemoryArtifactRegistry, PostgresArtifactRegistry):
+            assert callable(getattr(cls, "unregister_artifact", None)), cls
+
+    def test_unregister_roundtrip(self):
+        from apps.api.artifact_store import (
+            MemoryArtifactRegistry,
+            ResultArtifact,
+            new_artifact_id,
+        )
+
+        registry = MemoryArtifactRegistry()
+        artifact = ResultArtifact(
+            artifact_id=new_artifact_id(),
+            run_id=RUN_ID,
+            kind="visual_result",
+            producer_key="pgv.visual_result:fix:1",
+            payload_sha256="d" * 64,
+        )
+        registry.register_artifact(artifact)
+        assert registry.unregister_artifact(artifact.artifact_id) is True
+        assert registry.get_artifact(artifact.artifact_id) is None
+        assert registry.unregister_artifact(artifact.artifact_id) is False
+
+    def test_unregister_refuses_pinned_artifact(self):
+        from apps.api.artifact_store import (
+            MemoryArtifactRegistry,
+            ResultArtifact,
+            new_artifact_id,
+        )
+
+        registry = MemoryArtifactRegistry()
+        artifact = ResultArtifact(
+            artifact_id=new_artifact_id(),
+            run_id=RUN_ID,
+            kind="visual_result",
+            producer_key="pgv.visual_result:fix:2",
+            payload_sha256="e" * 64,
+        )
+        registry.register_artifact(artifact)
+        registry.pin_ref(RUN_ID, "artifact", artifact.artifact_id, reason="print_snapshot:guard")
+        with pytest.raises(ValueError):
+            registry.unregister_artifact(artifact.artifact_id)
+        assert registry.get_artifact(artifact.artifact_id) is not None

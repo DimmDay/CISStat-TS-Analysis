@@ -57,8 +57,12 @@ response в durable слой идемпотентно»).
 """
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Optional
+
+# Компенсация AC08 (F-P2C5) логируется без дисклоужения контента.
+logger = logging.getLogger(__name__)
 
 from apps.api.print_schema import (
     PRINT_RESULT_SCHEMA_VERSION,
@@ -218,6 +222,22 @@ def validate_passport_checkpoint(
         out.append(
             _violation("invalid_value", "previous_snapshot_ref", "формат rs-*")
         )
+    # PGV-02-FIX (F-P2C4): самоссылка -- история «предыдущий снимок =
+    # сам снимок» не имеет смысла (§8: previous_snapshot_ref -- ссылка
+    # на ПРЕДЫДУЩИЙ снимок цепочки подтверждений).
+    if (
+        snapshot_ref is not None
+        and previous_ref is not None
+        and previous_ref == snapshot_ref
+    ):
+        out.append(
+            _violation(
+                "invalid_value",
+                "previous_snapshot_ref",
+                "самоссылка: previous_snapshot_ref обязан отличаться от "
+                "snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)",
+            )
+        )
 
     # Flags (§8): created/reused/unchanged. Ровно одно из created|reused;
     # unchanged -- частный случай reused (исходный снимок переиспользуется).
@@ -296,7 +316,12 @@ def validate_passport_checkpoint(
                 "missing_required_ref", "context.context_id", "context подтверждения обязателен"
             )
         )
-    if context.get("data_revision") is None:
+    # PGV-02-FIX (N-P2C1, класс F-D7C2): пустая строка -- «обязательная
+    # ревизия» без значения (missing_required_ref); 0 остаётся значением.
+    raw_context_revision = context.get("data_revision")
+    if raw_context_revision is None or (
+        isinstance(raw_context_revision, str) and not raw_context_revision.strip()
+    ):
         out.append(
             _violation(
                 "missing_required_ref",
@@ -494,7 +519,20 @@ def freeze_visual_print_snapshot(
         expected_data_revision: Optional[int] = raw_revision
     elif isinstance(raw_revision, str) and raw_revision.strip().isdigit():
         expected_data_revision = int(raw_revision)
+    elif isinstance(raw_revision, str) and raw_revision.strip():
+        # PGV-02-FIX (F-P2C2): клиент декларировал ожидаемую ревизию,
+        # которую невозможно сверить с числовой ревизией запуска --
+        # fail-closed CAS (409 context_changed), НЕ тихий пропуск сверки
+        # (PGV-AC07-дух: смешанный print под чужую ревизию недопустим).
+        raise PrintContextConflict(
+            "freeze_visual_print_snapshot: expected_context.data_revision "
+            f"{raw_revision!r} нечислова -- сверка с durable-состоянием "
+            "запуска невозможна -- 409 context_changed: обновите "
+            "представление или выберите сохранённую версию"
+        )
     else:
+        # Пустая/whitespace-строка -- отсутствие значения (конвенция _str);
+        # research-снапшот отвергается валидационным гейтом persist.
         expected_data_revision = None
     if expected_context_id is not None or expected_data_revision is not None:
         _check_context_cas(
@@ -503,13 +541,17 @@ def freeze_visual_print_snapshot(
             expected_data_revision=expected_data_revision,
             source="freeze_visual_print_snapshot",
         )
+    producer_key = print_snapshot_producer_key(payload)
+    # F-P2C5: артефакт, существовавший ДО операции (идемпотентный
+    # повтор), компенсации не подлежит -- удаляется только созданный.
+    pre_existing = service.find_by_producer(run_id, producer_key)
     dependencies = [result_artifact_id] if result_artifact_id else []
     artifact = service.persist_visual_artifact(
         run_id,
         subject,
         kind="visual_print_snapshot",
         payload=payload,
-        producer_key=print_snapshot_producer_key(payload),
+        producer_key=producer_key,
         session_id=session_id,
         dependencies=dependencies,
         context_id=getattr(run, "context_id", None),
@@ -522,14 +564,48 @@ def freeze_visual_print_snapshot(
         created_by=created_by,
     )
     # §16: metadata graph хранит ПРИЧИНЫ ссылок -- pin зависимости.
-    for dependency_id in dependencies:
-        service.registry.pin_ref(
-            run_id,
-            "artifact",
-            dependency_id,
-            reason=f"print_snapshot:{artifact.artifact_id}",
-            created_by=created_by or getattr(subject, "subject_id", None),
-        )
+    # F-P2C5 (AC08-дух): отказ пина не оставляет зарегистрированный
+    # артефакт -- компенсация (unpin поставленных ЭТОЙ операцией пинов +
+    # unregister созданного артефакта) и честный повторный raise.
+    pre_pinned = {
+        pin.ref_id
+        for pin in service.registry.list_pins(run_id, ref_kind="artifact")
+    }
+    pinned_now: list[str] = []
+    try:
+        for dependency_id in dependencies:
+            service.registry.pin_ref(
+                run_id,
+                "artifact",
+                dependency_id,
+                reason=f"print_snapshot:{artifact.artifact_id}",
+                created_by=created_by or getattr(subject, "subject_id", None),
+            )
+            pinned_now.append(dependency_id)
+    except Exception:
+        for dependency_id in pinned_now:
+            if dependency_id in pre_pinned:
+                continue  # пин существовал до операции -- не наш
+            try:
+                service.registry.unpin_ref(run_id, "artifact", dependency_id)
+            except Exception as unpin_exc:  # pragma: no cover
+                logger.warning(
+                    "freeze_visual_print_snapshot: unpin-компенсация не "
+                    "удалась для %s: %s",
+                    dependency_id,
+                    unpin_exc,
+                )
+        if pre_existing is None:
+            try:
+                service.registry.unregister_artifact(artifact.artifact_id)
+            except Exception as unregister_exc:  # pragma: no cover
+                logger.warning(
+                    "freeze_visual_print_snapshot: AC08-компенсация не "
+                    "удалась для %s: %s",
+                    artifact.artifact_id,
+                    unregister_exc,
+                )
+        raise
     return artifact
 
 
