@@ -6075,8 +6075,19 @@ def capture_dataset_passport(
         )
         store.save(session)
         # C03: промоушен паспорта в durable-слой в момент capture
-        # (best-effort: сбой -- receipt, ответ не меняется)
-        _promotion.notify_passport_captured(request, session, stage=stage)
+        # (best-effort: сбой -- receipt, ответ не меняется). PGV-04:
+        # stage = ФАКТИЧЕСКИЙ stage снимка -- при reused handoff
+        # (snapshot_id указывает на исходный снимок start/validation/
+        # exit) промоушен идемпотентно находит существующий артефакт по
+        # passport:{snapshot_id} вместо честного отказа «снимок
+        # modeling_entry отсутствует» (receipt-шум легитимного состояния).
+        _promotion.notify_passport_captured(request, session, stage=snapshot.stage)
+        # PGV-04: durable-чекпоинт EDA handoff в момент подтверждения
+        # (включая reused snapshot; честный недобор точек траектории --
+        # info-skip, retry sweep-точкой доберёт без capture)
+        _promotion.notify_passport_checkpoint_confirmed(
+            request, session, checkpoint=checkpoint, created_snapshot=created_snapshot,
+        )
         return DatasetPassportCaptureResponse(
             snapshot_id=snapshot.snapshot_id,
             stage=stage,

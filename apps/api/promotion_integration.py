@@ -349,6 +349,70 @@ def notify_corrections_applied(
 # ── Моделирование/прогнозирование (backtest/card/forecast sweep) ─────
 
 
+def notify_passport_checkpoint_confirmed(
+    request: Any,
+    session: Any,
+    *,
+    checkpoint: Any,
+    created_snapshot: bool,
+) -> Optional[Any]:
+    """PGV-04 (spec_passport_graphics_visual.md §8): синхронная заморозка
+    passport_checkpoint в момент подтверждения EDA handoff
+    (modeling_entry/panel_entry), включая reused snapshot.
+
+    Контракт («наука первична», прецедент notify_passport_captured):
+      1) отсутствие run_id -- честный пропуск (трассы ещё нет);
+      2) отсутствие обязательных точек траектории (validation/exit для
+         modeling_entry) -- честный НЕдобор штатного состояния конвейера:
+         info-журнал, БЕЗ durable-receipt (легитимное состояние -- не сбой
+         промоушена); retry sweep-точкой доберёт без capture;
+      3) прочие сбои -- durable-receipt, ответ эндпоинта не ломается.
+
+    Возврат -- артефакт либо None (честный пропуск/недобор/сбой)."""
+    run_id = _run_or_none(session)
+    if not run_id:
+        return None
+    subject = _promotion_subject(request)
+    session_id = _session_cookie_id(request)
+    try:
+        from apps.api.artifact_promotion import PromotionUnavailable
+        from apps.api.passport_checkpoints import freeze_passport_checkpoint
+
+        return freeze_passport_checkpoint(
+            run_id,
+            subject,
+            session=session,
+            session_id=session_id,
+            checkpoint=checkpoint,
+            created_snapshot=created_snapshot,
+            provenance="producer_capture",
+        )
+    except PromotionUnavailable as exc:
+        # Легитимное состояние конвейера (нет точек траектории/снимка):
+        # гэп честен, security-audit receipt'ом не замусоривается.
+        logger.info(
+            "Passport checkpoint freeze skipped (honest gap): run=%s "
+            "checkpoint=%s -- %s",
+            run_id,
+            getattr(checkpoint, "checkpoint_id", ""),
+            exc,
+        )
+        return None
+    except Exception as exc:
+        _record_failure(
+            run_id=run_id,
+            operation="freeze_passport_checkpoint",
+            producer_key=(
+                "pgv.checkpoint:pck-"
+                f"{getattr(checkpoint, 'checkpoint_id', '')}"
+            ),
+            error=exc,
+            subject=subject,
+            session_id=session_id,
+        )
+        return None
+
+
 def notify_modeling_artifacts_updated(
     request: Any, session: Any
 ) -> dict[str, int]:
@@ -408,6 +472,24 @@ def notify_modeling_artifacts_updated(
     counts["visual_result"] = _sweep_modeling_visuals(
         run_id, subject, session_id, session, artifacts
     )
+    # PGV-04: backfill чекпоинтов EDA handoff (retry без capture) --
+    # добирает синхронно пропущенные/legacy-чекпоинты из session-записей.
+    try:
+        from apps.api.passport_checkpoints import backfill_passport_checkpoints
+
+        counts["passport_checkpoint"] = backfill_passport_checkpoints(
+            run_id, subject, session=session, session_id=session_id
+        )["frozen"]
+    except Exception as exc:
+        _record_failure(
+            run_id=run_id,
+            operation="backfill_passport_checkpoints",
+            producer_key="pgv.checkpoint:backfill",
+            error=exc,
+            subject=subject,
+            session_id=session_id,
+        )
+        counts["passport_checkpoint"] = 0
     return counts
 
 

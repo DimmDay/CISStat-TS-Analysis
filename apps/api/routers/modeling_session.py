@@ -3511,6 +3511,10 @@ def build_panel_passport_for_session(
     session.modeling_artifacts["panel_columns"] = columns
     session.touch()
     store.save(session)
+    # PGV-04: C03-прецедент для панели -- промоушен паспортного артефакта
+    # в момент build (basis-артефакт чекпоинта; best-effort: сбой --
+    # receipt, ответ не меняется)
+    _promotion.notify_passport_captured(request, session, stage="panel_entry")
     return PanelPassportBuildResponse(
         snapshot_id=snapshot.snapshot_id,
         stage=snapshot.stage,
@@ -3570,6 +3574,11 @@ def confirm_panel_entry_checkpoint(
     )
     session.touch()
     store.save(session)
+    # PGV-04: durable-чекпоинт панельного handoff в момент подтверждения
+    # (AC14: entity-контекст панели; best-effort как у однорядного)
+    _promotion.notify_passport_checkpoint_confirmed(
+        request, session, checkpoint=created_checkpoint, created_snapshot=False,
+    )
     return PanelEntryConfirmResponse(
         checkpoint_id=created_checkpoint.checkpoint_id,
         snapshot_id=snapshot.snapshot_id,
