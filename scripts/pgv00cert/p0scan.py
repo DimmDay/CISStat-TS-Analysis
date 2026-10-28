@@ -45,17 +45,20 @@ FAMILY_RULES: list[tuple[str, re.Pattern[str]]] = [
     ("PreprocessingVisualizations", re.compile(r"^packages/ui/components/Preprocessing\w*Visualizations\.tsx$")),
 ]
 
+# PGV-00-FIX (2026-10-28): пины denominator обновлены синхронно с repo-каналом
+# (находки F-P0C2/C3/C4 акта PGV-00-CERT: navigator 14→16 — +KDE distribution,
+# +схема пайплайна автопревью; forecasting 6→8 — +comparison-view, +sensitivity-view).
 EXPECTED_MODULES = {
-    "navigator": 14,
+    "navigator": 16,
     "upload": 12,
     "validation": 12,
     "preprocessing": 20,
     "eda": 18,
     "modeling": 6,
-    "forecasting": 6,
+    "forecasting": 8,
     "tasks": 1,
 }
-EXPECTED_TOTAL = 89
+EXPECTED_TOTAL = 93
 EXPECTED_EXCLUSIONS = 9
 SCHEMA_VERSION = "pgv.visual_registry/1"
 
@@ -68,12 +71,13 @@ MANDATORY_SITE_FIELDS = [
     "caption_schema", "export_status", "tests",
 ]
 
-# Записи с ослабленной паттерн-доказательностью renderer_kind (пин сертификатора,
-# версия 1.0 по акту PGV-00-CERT: renderer живёт в дочернем компоненте / CSS-var
-# цвета не матчатся / чистая разметка cards). Новые слабые записи = падение оракула.
+# Записи с ослабленной паттерн-доказательностью renderer_kind (пин сертификатора).
+# Версия 1.0 по акту PGV-00-CERT: navigator scatter/histogram, passport.groups
+# (чистая разметка), gap_map (recharts + CSS-var цвета).
+# Версия 1.1 (PGV-00-FIX): navigator scatter/histogram получили renderer_component
+# (DistributionCharts.tsx#…) — сильная сигнатура, из пина сняты. Новые слабые
+# записи = падение оракула.
 KIND_WEAK_EVIDENCE_PIN = {
-    "navigator.upload.distribution.scatter",
-    "navigator.upload.distribution.histogram",
     "navigator.upload.passport.groups",
     "preprocessing.regularity.gap_map",
 }
@@ -168,11 +172,20 @@ def parse_preprocessing_checks() -> list[str]:
 
 
 def parse_navigator_item_mapping() -> list[tuple[str, str, str]]:
-    """[(stage, item, component)] из веток TsAnalysisNavigator.tsx."""
+    """[(stage, item, component)] из веток TsAnalysisNavigator.tsx.
+
+    Дефект v1.0 (найден при верификации PGV-00-FIX 2026-10-28 претестом
+    F-P0C4): regex требовал `<Comp` сразу после `?`, но в кодовой базе ветка
+    записана как `? (
+                <Comp …` — парсер молча возвращал 0 записей, и оракул
+    branch-маппинга проходил ВАКУУСНО. Regex исправлен (опциональная скобка
+    после `?`); замыкание «пункт → компонент → реестр/исключение» перепроверено
+    на непустом маппинге (см. worklog PGV-00-FIX).
+    """
     src = (REPO / "packages" / "ui" / "components" / "TsAnalysisNavigator.tsx").read_text(encoding="utf-8")
     out: list[tuple[str, str, str]] = []
     for m in re.finditer(
-        r"activeStopId\s*===\s*\"([a-z_]+)\"\s*&&\s*activeItemId\s*===\s*\"([a-z0-9_]+)\"\s*\?\s*\n?\s*<(\w+)",
+        r"activeStopId\s*===\s*\"([a-z_]+)\"\s*&&\s*activeItemId\s*===\s*\"([a-z0-9_]+)\"\s*\?\s*\(?\s*\n?\s*<(\w+)",
         src,
     ):
         out.append((m.group(1), m.group(2), m.group(3)))

@@ -33,13 +33,13 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 EXPECTED_MODULES = {
-    "navigator": 14,
+    "navigator": 16,
     "upload": 12,
     "validation": 12,
     "preprocessing": 20,
     "eda": 18,
     "modeling": 6,
-    "forecasting": 6,
+    "forecasting": 8,
     "tasks": 1,
 }
 EXPECTED_TOTAL = sum(EXPECTED_MODULES.values())

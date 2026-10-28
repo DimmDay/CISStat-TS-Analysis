@@ -13,7 +13,7 @@ Python-зеркало правил для preflight PGV-02/09 (jobs/worker): т�
 trusted-параметры producer, манифест комплекта без raw данных.
 
 Оракулы этого сюита:
-  1) JSON-твин целостен и согласован с реестром PGV-00 (89 sites).
+  1) JSON-твин целостен и согласован с реестром PGV-00 (93 sites).
   2) Профили/лимиты §7: figure-landscape / A4 300 ppi 2480x3508 /
      3508x2480; согласованность px<->мм (PGV-AC16).
   3) Валидация снапшота: обязательные metadata по applicability
@@ -246,7 +246,7 @@ class TestPrintSchemaTwin:
     def test_twin_consistent_with_pgv00_registry(self):
         registry = load_visual_registry()
         assert registry["schema_version"] == "pgv.visual_registry/1"
-        assert registry["total_sites"] == 89
+        assert registry["total_sites"] == 93
 
 
 # ── 2. Профили и лимиты (spec §7, PGV-AC16) ──────────────────────

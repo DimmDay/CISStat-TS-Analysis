@@ -15,7 +15,7 @@ PGV-01 фиксирует **общие версионированные конт
 | Файл | Роль |
 |---|---|
 | `packages/ui/print/printSchema.ts` | Источник истины: версии схем (`pgv.visual_result/1`, `pgv.visual_print_snapshot/1`, `pgv.print_manifest/1`, `pgv.print_profiles/1`), каталог профилей, лимиты §7, правила обязательности по scope/renderer_kind, валидаторы, builder минимального валидного снапшота, сериализация твина |
-| `packages/ui/print/printSchema.test.ts` | Jest-оракул: 43 теста — профили/пиксели (PGV-AC16), обязательность metadata (PGV-AC05/AC07/AC08/AC12), trusted-параметры, панель/checkpoint (PGV-AC11/AC14), renderer env (PGV-AC17), sensitive-политика (PGV-AC21), манифест, cross-check реестр⇄схема (89 sites), паритет TS⇄JSON |
+| `packages/ui/print/printSchema.test.ts` | Jest-оракул: 43 теста — профили/пиксели (PGV-AC16), обязательность metadata (PGV-AC05/AC07/AC08/AC12), trusted-параметры, панель/checkpoint (PGV-AC11/AC14), renderer env (PGV-AC17), sensitive-политика (PGV-AC21), манифест, cross-check реестр⇄схема (93 sites после PGV-00-FIX), паритет TS⇄JSON |
 | `config/print_schema.json` | JSON-твин для бэкенда и doc-проверок; генерируется `scripts/pgv01/export_print_schema.ts` (паттерн EDU-API-1/PGV-00) |
 | `apps/api/print_schema.py` | Python-зеркало правил: preflight frozen payload для PGV-02/09 (те же коды нарушений, чтение твина; без FastAPI-зависимостей) |
 | `tests/api/test_pgv01_print_schema.py` | Pytest-сюита зеркала: 35 тестов (твин, профили/лимиты, scope/refs, валидация снапшота/результата/манифеста, согласованность с реестром PGV-00) |
@@ -63,7 +63,7 @@ PGV-01 фиксирует **общие версионированные конт
 
 ## 5. Верификация
 
-- **Jest (полный корпус):** см. worklog — новый сюит 43/43 + coverage-оракул PGV-00 16/16 (уточнение реестра не повредило пины: denominator 89, паритет TS⇄JSON, честность статусов) + полный регресс без регрессий.
+- **Jest (полный корпус):** см. worklog — новый сюит 43/43 + coverage-оракул PGV-00 16/16 (уточнение реестра не повредило пины: denominator 89 — актуализирован до 93 ревизией PGV-00-FIX, паритет TS⇄JSON, честность статусов) + полный регресс без регрессий.
 - **Pytest:** `tests/api/test_pgv01_print_schema.py` — 35/35; doc-contract гвард PGV-00 — 353/353 (регенерация JSON-твина реестра согласована с документацией).
 - **check_documents.py (PGV-01):** doc-contract гвард — см. раздел 7.
 - Границы: docker/браузерная приёмка не применимы (runtime не менялся); живой рендер — PGV-08/09; полный tests/api не гонялся — дифф добавляет standalone-модуль без затрагивания существующего Python-runtime (граница зафиксирована, паттерн PGV-00).
@@ -81,11 +81,11 @@ PGV-01 фиксирует **общие версионированные конт
 | PGV-AC16 (A4 px/ppi согласованы) | Каталог профилей + оракул px⇄мм ≤1px, пропорции сохранены |
 | PGV-AC17 (missing dependency честен) | renderer_env `unavailable` требует причину |
 | PGV-AC21 (ZIP без raw данных/чужих артефактов) | Манифест: hash отдельным полем, `data_included=false`, уникальные имена, непрерывный порядок |
-| PGV-AC03 (frozen-data oracle) | Builder минимального валидного снапшота — эталон обязательного состава для всех 89 sites |
+| PGV-AC03 (frozen-data oracle) | Builder минимального валидного снапшота — эталон обязательного состава для всех 93 sites (актуализировано PGV-00-FIX) |
 
 ## 7. Doc-contract гвард
 
-`scripts/pgv01/check_documents.py` проверяет: постановку (строка PGV-01, критерий, зависимость PGV-00, AC-ссылки), родительскую спеку (строка §19 + точка §19.1 с `printSchema`/`print_schema.json`), целостность `config/print_schema.json` (версии, 3 профиля, точные пиксели A4, лимиты §7, правила), целостность `config/visual_registry.json` после уточнения (89 sites, `data_revision` в уточнённых записях), существование всех файлов поставки, согласованность документа и worklog-записи.
+`scripts/pgv01/check_documents.py` проверяет: постановку (строка PGV-01, критерий, зависимость PGV-00, AC-ссылки), родительскую спеку (строка §19 + точка §19.1 с `printSchema`/`print_schema.json`), целостность `config/print_schema.json` (версии, 3 профиля, точные пиксели A4, лимиты §7, правила), целостность `config/visual_registry.json` после уточнения (93 sites после PGV-00-FIX, `data_revision` в уточнённых записях), существование всех файлов поставки, согласованность документа и worklog-записи.
 
 ## 8. Ограничения и переходы
 

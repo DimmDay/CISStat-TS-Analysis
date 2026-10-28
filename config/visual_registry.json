@@ -3,16 +3,16 @@
   "generated_from": "packages/ui/lib/visualExportRegistry.ts",
   "pgv_task": "PGV-00",
   "modules": {
-    "navigator": 14,
+    "navigator": 16,
     "upload": 12,
     "validation": 12,
     "preprocessing": 20,
     "eda": 18,
     "modeling": 6,
-    "forecasting": 6,
+    "forecasting": 8,
     "tasks": 1
   },
-  "total_sites": 89,
+  "total_sites": 93,
   "sites": [
     {
       "view_id": "navigator.upload.chart.series",
@@ -41,6 +41,7 @@
       "module_id": "navigator",
       "stop_id": "upload.distribution",
       "render_site": "packages/ui/components/NavigatorDistributionPreview.tsx#scatter",
+      "renderer_component": "packages/ui/components/DistributionCharts.tsx#ScatterDistributionChart",
       "renderer_kind": "recharts_svg",
       "source_adapter": "pgv-03/navigator_demo",
       "required_refs": [
@@ -62,6 +63,29 @@
       "module_id": "navigator",
       "stop_id": "upload.distribution",
       "render_site": "packages/ui/components/NavigatorDistributionPreview.tsx#histogram",
+      "renderer_component": "packages/ui/components/DistributionCharts.tsx#HistogramDistributionChart",
+      "renderer_kind": "recharts_svg",
+      "source_adapter": "pgv-03/navigator_demo",
+      "required_refs": [
+        "demo_dataset_id"
+      ],
+      "view_params": [
+        "static_layout"
+      ],
+      "applicability": "static_demo",
+      "caption_schema": "pgv.caption/navigator.distribution/1",
+      "export_status": "planned",
+      "tests": [
+        "packages/ui/components/NavigatorDistributionPreview.test.tsx",
+        "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
+      ]
+    },
+    {
+      "view_id": "navigator.upload.distribution.kde",
+      "module_id": "navigator",
+      "stop_id": "upload.distribution",
+      "render_site": "packages/ui/components/NavigatorDistributionPreview.tsx#kde",
+      "renderer_component": "packages/ui/components/DistributionCharts.tsx#KdeDistributionChart",
       "renderer_kind": "recharts_svg",
       "source_adapter": "pgv-03/navigator_demo",
       "required_refs": [
@@ -96,6 +120,27 @@
       "export_status": "planned",
       "tests": [
         "packages/ui/components/NavigatorPassportPreview.test.tsx",
+        "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
+      ]
+    },
+    {
+      "view_id": "navigator.upload.preview.schema",
+      "module_id": "navigator",
+      "stop_id": "upload.preview",
+      "render_site": "packages/ui/components/UploadAutoPreviewPipeline.tsx",
+      "renderer_kind": "html_cards",
+      "source_adapter": "pgv-03/navigator_demo",
+      "required_refs": [
+        "demo_dataset_id"
+      ],
+      "view_params": [
+        "static_layout"
+      ],
+      "applicability": "static_demo",
+      "caption_schema": "pgv.caption/navigator.preview/1",
+      "export_status": "planned",
+      "tests": [
+        "packages/ui/components/UploadAutoPreviewPipeline.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ]
     },
@@ -2218,6 +2263,56 @@
       "notes": "Таблица панельного прогноза (data-testid=panel-forecast-table)."
     },
     {
+      "view_id": "forecasting.forecast.comparison",
+      "module_id": "forecasting",
+      "stop_id": "forecast",
+      "render_site": "packages/ui/components/TsAnalysisForecasting.tsx#comparison-view",
+      "renderer_kind": "html_cards",
+      "source_adapter": "pgv-03/forecast_chart",
+      "required_refs": [
+        "context_id",
+        "data_revision",
+        "forecast_artifact_ref"
+      ],
+      "view_params": [
+        "model_name",
+        "horizon"
+      ],
+      "applicability": "univariate",
+      "caption_schema": "pgv.caption/forecast.comparison/1",
+      "export_status": "planned",
+      "tests": [
+        "packages/ui/components/TsAnalysisForecasting.test.tsx",
+        "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
+      ],
+      "notes": "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3."
+    },
+    {
+      "view_id": "forecasting.forecast.sensitivity",
+      "module_id": "forecasting",
+      "stop_id": "forecast",
+      "render_site": "packages/ui/components/TsAnalysisForecasting.tsx#sensitivity-view",
+      "renderer_kind": "html_cards",
+      "source_adapter": "pgv-03/forecast_chart",
+      "required_refs": [
+        "context_id",
+        "data_revision",
+        "forecast_artifact_ref"
+      ],
+      "view_params": [
+        "varied_axes",
+        "param_space"
+      ],
+      "applicability": "univariate",
+      "caption_schema": "pgv.caption/forecast.sensitivity/1",
+      "export_status": "planned",
+      "tests": [
+        "packages/ui/components/TsAnalysisForecasting.test.tsx",
+        "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
+      ],
+      "notes": "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3."
+    },
+    {
       "view_id": "forecasting.forecast.legacy_png",
       "module_id": "forecasting",
       "stop_id": "forecast",
@@ -2387,10 +2482,11 @@
     },
     {
       "targets": [
-        "packages/ui/components/*Pipeline.tsx"
+        "packages/ui/components/Validation*Pipeline.tsx",
+        "packages/ui/components/Preprocessing*Pipeline.tsx"
       ],
       "reason_class": "controls",
-      "reason": "Мастера коррекций и описания методик Валидации/Предобработки (Validation*/Preprocessing* Pipeline) — контролы и параметры исправлений; научные результаты рендерят зарегистрированные Overview/Visualizations. Появление графика в мастере будет поймано pattern-сканом как unknown site."
+      "reason": "Мастера коррекций и описания методик Валидации/Предобработки (Validation*/Preprocessing* Pipeline) — контролы и параметры исправлений; научные результаты рендерят зарегистрированные Overview/Visualizations. Появление графика в мастере будет поймано pattern-сканом как unknown site. Сужено по F-P0C4 (акт PGV-00-CERT): UploadAutoPreviewPipeline — научная блок-схема пайплайна автопревью, зарегистрирована как navigator.upload.preview.schema, а не исключается."
     }
   ]
 }

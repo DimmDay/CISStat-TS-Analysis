@@ -209,7 +209,7 @@ def test_json_ts_exclusion_class_multiset_parity():
 def test_json_stop_catalog_in_ts_matches_expected_shape():
     ts = S.load_ts_registry_text()
     for module, stops in {
-        "navigator": 13, "upload": 6, "validation": 11,
+        "navigator": 14, "upload": 6, "validation": 11,
         "preprocessing": 11, "eda": 11, "modeling": 5,
         "forecasting": 3, "tasks": 1,
     }.items():
@@ -246,13 +246,19 @@ def test_export_registry_regen_byte_identical():
     # (untracked) файлов. Изменения tracked-файлов — законная территория
     # мутационной кампании (восстановление контролирует MV3), их ловим
     # только вне кампании — в чистом дереве untracked-мусор невозможен.
+    # Известные untracked-файлы ДОСТАВОК (corpus v1.0: scripts/pgv00cert/;
+    # v1.1 PGV-00-FIX: jest-сюит пинов фикса) — не мусор.
     status = subprocess.run(
         ["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True
     ).stdout.splitlines()
+    known_delivery = (
+        "?? scripts/",
+        "?? packages/ui/lib/visualExportRegistry.pgv00fix.test.ts",
+    )
     unexpected = [
         ln for ln in status
         if ln.startswith("??")
-        and not ln.startswith("?? scripts/")
+        and not any(ln.startswith(p) or ln.strip() == p for p in known_delivery)
         and not ln.strip().endswith("worklog/worklog11.md")
     ]
     assert not unexpected, f"экспортёр/оракул оставил мусор: {unexpected}"

@@ -266,17 +266,20 @@ describe("PGV-00: интегрити реестра render-sites", () => {
 
   it("denominator pins: состав по модулям закреплён (удаление записи падает)", () => {
     const summary = visualRegistrySummary();
+    // PGV-00-FIX (2026-10-28, находки F-P0C2/C3/C4 акта PGV-00-CERT):
+    // navigator 14→16 (+KDE distribution, +схема пайплайна автопревью),
+    // forecasting 6→8 (+comparison-view, +sensitivity-view).
     expect(summary.modules).toEqual({
-      navigator: 14,
+      navigator: 16,
       upload: 12,
       validation: 12,
       preprocessing: 20,
       eda: 18,
       modeling: 6,
-      forecasting: 6,
+      forecasting: 8,
       tasks: 1,
     });
-    expect(summary.total).toBe(89);
+    expect(summary.total).toBe(93);
   });
 });
 

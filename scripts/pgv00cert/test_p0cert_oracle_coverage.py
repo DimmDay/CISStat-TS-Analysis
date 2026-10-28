@@ -117,6 +117,18 @@ def test_navigator_items_with_real_render_have_site_or_exclusion():
     assert not unregistered, f"пункты Навигатора без регистрации/исключения: {unregistered}"
 
 
+def test_navigator_item_mapping_is_non_vacuous():
+    """Анти-вакуумный гвард (урок PGV-00-FIX): regex-парсер веток Навигатора
+    v1.0 молча возвращал 0 записей (`? (` не матчился), и branch-оракул выше
+    проходил вакуусно. Маппинг обязан быть непустым и содержать известные
+    ветки, иначе канал недееспособен."""
+    mapping = S.parse_navigator_item_mapping()
+    assert len(mapping) >= 10, f"branch-маппинг вырожден: {len(mapping)} записей"
+    as_dict = {(st, it): comp for st, it, comp in mapping}
+    assert as_dict.get(("upload", "preview")) == "UploadAutoPreviewPipeline", as_dict.get(("upload", "preview"))
+    assert as_dict.get(("upload", "chart")) == "NavigatorChartPreview", as_dict.get(("upload", "chart"))
+
+
 def test_module_stop_catalog_uses_truth_sources():
     """Каталоги остановок validation/preprocessing/eda в реестре совпадают
     с CHECK_META/CHECKS/navigator-stops (+passport)."""
@@ -200,7 +212,7 @@ def test_html_kinds_present_real_navigator_included():
 
 def test_denominator_pins_own():
     reg = S.load_registry()
-    assert reg["total_sites"] == 89
+    assert reg["total_sites"] == 93
     assert reg["modules"] == S.EXPECTED_MODULES
     assert len(reg["exclusions"]) == 9
     per = {}

@@ -99,6 +99,7 @@ export const VISUAL_STOP_CATALOG: Record<VisualModuleId, string[]> = {
     "upload.chart",
     "upload.distribution",
     "upload.passport",
+    "upload.preview",
     "upload.preview_5_5",
     "upload.tech_info",
     "upload.structure_confirm",
@@ -206,6 +207,9 @@ export const VISUAL_SITE_REGISTRY_NAVIGATOR: VisualSiteRecord[] = [
     module_id: "navigator",
     stop_id: "upload.distribution",
     render_site: "packages/ui/components/NavigatorDistributionPreview.tsx#scatter",
+    // PGV-00-FIX (F-P0C2): recharts живёт в переиспользуемом DistributionCharts.tsx —
+    // renderer_component даёт сильную паттерн-доказательность (слабый пин снят).
+    renderer_component: "packages/ui/components/DistributionCharts.tsx#ScatterDistributionChart",
     renderer_kind: "recharts_svg",
     source_adapter: "pgv-03/navigator_demo",
     required_refs: [...REFS_DEMO],
@@ -220,6 +224,27 @@ export const VISUAL_SITE_REGISTRY_NAVIGATOR: VisualSiteRecord[] = [
     module_id: "navigator",
     stop_id: "upload.distribution",
     render_site: "packages/ui/components/NavigatorDistributionPreview.tsx#histogram",
+    // PGV-00-FIX (F-P0C2): см. scatter — сильная паттерн-доказательность.
+    renderer_component: "packages/ui/components/DistributionCharts.tsx#HistogramDistributionChart",
+    renderer_kind: "recharts_svg",
+    source_adapter: "pgv-03/navigator_demo",
+    required_refs: [...REFS_DEMO],
+    view_params: ["static_layout"],
+    applicability: "static_demo",
+    caption_schema: "pgv.caption/navigator.distribution/1",
+    export_status: "planned",
+    tests: ["packages/ui/components/NavigatorDistributionPreview.test.tsx", REG_TEST],
+  },
+  {
+    // PGV-00-FIX (F-P0C2, акт PGV-00-CERT): NavigatorDistributionPreview
+    // монтирует ТРИ recharts-графика (scatter/histogram/KDE); KDE пропущен
+    // поставкой PGV-00 — coverage-оракул работает на уровне файлов, а не
+    // веток рендера. Spec §5: «scatter, histogram, KDE» — обязательный охват.
+    view_id: "navigator.upload.distribution.kde",
+    module_id: "navigator",
+    stop_id: "upload.distribution",
+    render_site: "packages/ui/components/NavigatorDistributionPreview.tsx#kde",
+    renderer_component: "packages/ui/components/DistributionCharts.tsx#KdeDistributionChart",
     renderer_kind: "recharts_svg",
     source_adapter: "pgv-03/navigator_demo",
     required_refs: [...REFS_DEMO],
@@ -242,6 +267,29 @@ export const VISUAL_SITE_REGISTRY_NAVIGATOR: VisualSiteRecord[] = [
     caption_schema: "pgv.caption/navigator.passport/1",
     export_status: "planned",
     tests: ["packages/ui/components/NavigatorPassportPreview.test.tsx", REG_TEST],
+  },
+  {
+    // PGV-00-FIX (F-P0C4, акт PGV-00-CERT): остановка «Автопревью и типы
+    // колонок» (navigator-stops id=preview) рендерит статичную научную
+    // блок-схему пайплайна автопревью (Upload→SessionStore по реальному
+    // бэкенду) — родственник зарегистрированного StructuralClassSchema.
+    // Раньше файл ошибочно попадал под glob-исключение мастеров коррекций
+    // (класс controls); glob сужён до Validation*/Preprocessing*-мастеров.
+    // renderer_kind html_cards — карточная блок-схема (без табличной
+    // разметки в файле; кандидат html_table из плана §7.2 акта скорректирован
+    // по фактической разметке и сигнатурному оракулу kind-vs-file).
+    view_id: "navigator.upload.preview.schema",
+    module_id: "navigator",
+    stop_id: "upload.preview",
+    render_site: "packages/ui/components/UploadAutoPreviewPipeline.tsx",
+    renderer_kind: "html_cards",
+    source_adapter: "pgv-03/navigator_demo",
+    required_refs: [...REFS_DEMO],
+    view_params: ["static_layout"],
+    applicability: "static_demo",
+    caption_schema: "pgv.caption/navigator.preview/1",
+    export_status: "planned",
+    tests: ["packages/ui/components/UploadAutoPreviewPipeline.test.tsx", REG_TEST],
   },
   {
     view_id: "navigator.upload.preview_5_5.rows",
@@ -1508,6 +1556,40 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     notes: "Таблица панельного прогноза (data-testid=panel-forecast-table).",
   },
   {
+    // PGV-00-FIX (F-P0C3, акт PGV-00-CERT): научные ветки «Наложение
+    // прогнозов» и «Веер чувствительности» — представления артефактов
+    // FORECAST-1 (не контролы); spec §5 включает comparisons в обязательный
+    // охват Прогнозирования.
+    view_id: "forecasting.forecast.comparison",
+    module_id: "forecasting",
+    stop_id: "forecast",
+    render_site: "packages/ui/components/TsAnalysisForecasting.tsx#comparison-view",
+    renderer_kind: "html_cards",
+    source_adapter: "pgv-03/forecast_chart",
+    required_refs: ["context_id", "data_revision", "forecast_artifact_ref"],
+    view_params: ["model_name", "horizon"],
+    applicability: "univariate",
+    caption_schema: "pgv.caption/forecast.comparison/1",
+    export_status: "planned",
+    tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
+    notes: "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3.",
+  },
+  {
+    view_id: "forecasting.forecast.sensitivity",
+    module_id: "forecasting",
+    stop_id: "forecast",
+    render_site: "packages/ui/components/TsAnalysisForecasting.tsx#sensitivity-view",
+    renderer_kind: "html_cards",
+    source_adapter: "pgv-03/forecast_chart",
+    required_refs: ["context_id", "data_revision", "forecast_artifact_ref"],
+    view_params: ["varied_axes", "param_space"],
+    applicability: "univariate",
+    caption_schema: "pgv.caption/forecast.sensitivity/1",
+    export_status: "planned",
+    tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
+    notes: "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3.",
+  },
+  {
     view_id: "forecasting.forecast.legacy_png",
     module_id: "forecasting",
     stop_id: "forecast",
@@ -1643,9 +1725,15 @@ export const VISUAL_RENDER_SITE_EXCLUSIONS: VisualExclusionRecord[] = [
     reason: "Placeholder-маршруты «Скоро» (spec §1: placeholder/soon исключаются); появление научного содержимого = новая регистрация в реестре.",
   },
   {
-    targets: ["packages/ui/components/*Pipeline.tsx"],
+    // PGV-00-FIX (F-P0C4): glob сужен с *Pipeline.tsx до двух семейств
+    // мастеров — UploadAutoPreviewPipeline выведен из исключения и
+    // зарегистрирован (navigator.upload.preview.schema).
+    targets: [
+      "packages/ui/components/Validation*Pipeline.tsx",
+      "packages/ui/components/Preprocessing*Pipeline.tsx",
+    ],
     reason_class: "controls",
-    reason: "Мастера коррекций и описания методик Валидации/Предобработки (Validation*/Preprocessing* Pipeline) — контролы и параметры исправлений; научные результаты рендерят зарегистрированные Overview/Visualizations. Появление графика в мастере будет поймано pattern-сканом как unknown site.",
+    reason: "Мастера коррекций и описания методик Валидации/Предобработки (Validation*/Preprocessing* Pipeline) — контролы и параметры исправлений; научные результаты рендерят зарегистрированные Overview/Visualizations. Появление графика в мастере будет поймано pattern-сканом как unknown site. Сужено по F-P0C4 (акт PGV-00-CERT): UploadAutoPreviewPipeline — научная блок-схема пайплайна автопревью, зарегистрирована как navigator.upload.preview.schema, а не исключается.",
   },
 ];
 

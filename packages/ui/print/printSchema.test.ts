@@ -17,7 +17,7 @@
 //      (PGV-AC14); reused checkpoint — confirmed_at/ref (PGV-AC11).
 //   5) Манифест комплекта: порядок/имена/роли/hash отдельными полями,
 //      без raw данных (PGV-AC21) — hash не внутрь PNG bytes.
-//   6) Согласованность реестр⇄схема: каждый из 89 render-sites PGV-00
+//   6) Согласованность реестр⇄схема: каждый из 93 render-sites PGV-00
 //      удовлетворяет обязательному набору refs своей scope (cross-check
 //      «уточнение required_refs — PGV-01», docs/pgv00_render_site_inventory.md §7).
 //   7) Паритет TS⇄JSON: config/print_schema.json — структурно честный твин
@@ -420,7 +420,7 @@ describe("PGV-01: честный renderer env и sensitive-политика meta
   });
 });
 
-// ── 9. Согласованность реестр⇄схема (89 sites, уточнение PGV-01) ──
+// ── 9. Согласованность реестр⇄схема (93 sites, уточнение PGV-01) ──
 
 describe("PGV-01: registry cross-check — каждый render-site PGV-00 валиден по схеме", () => {
   it("research-scope сайты несут context_id+data_revision (version обязателен; уточнение required_refs PGV-01)", () => {
@@ -435,7 +435,7 @@ describe("PGV-01: registry cross-check — каждый render-site PGV-00 ва�
     expect(gaps).toEqual([]);
   });
 
-  it("минимальный валидный снапшот строится и валиден для всех 89 сайтов реестра", () => {
+  it("минимальный валидный снапшот строится и валиден для всех 93 сайтов реестра", () => {
     const problems: string[] = [];
     for (const site of VISUAL_SITE_REGISTRY) {
       const snapshot = buildMinimalValidSnapshot(site);
@@ -574,7 +574,7 @@ describe("PGV-01: VisualResult/1 — нормализованный frozen input
 describe("PGV-01: уточнение required_refs сохраняет инварианты PGV-00", () => {
   it("schema_version реестра и denominator не менялись", () => {
     expect(PGV_REGISTRY_SCHEMA_VERSION).toBe("pgv.visual_registry/1");
-    expect(VISUAL_SITE_REGISTRY.length).toBe(89);
+    expect(VISUAL_SITE_REGISTRY.length).toBe(93);
   });
 
   it("уточнённые записи PGV-01 несут data_revision (version обязателен)", () => {
