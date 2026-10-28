@@ -33,9 +33,11 @@ freeze сохранённого реального response, CAS версии, e
    результат переносится из фактического response в durable слой
    идемпотентно» (§6): фиксированный ответ сохраняется (LRU,
    process-local) с контекстом момента (run/session/context/revision/
-   computed_at); первый explicit export (PGV-13) морозит СОХРАНЁННЫЙ
-   ответ по ref -- renderer не вызывает GET для повторной науки (§6),
-   экспорт не запускает научный расчёт (§3.1, AC06).
+   computed_at); снимок изолируется ГЛУБОКОЙ копией (PGV-03-FIX,
+   F-P3C3) -- пост-мутация источника не меняет сохранённое; первый
+   explicit export (PGV-13) морозит СОХРАНЁННЫЙ ответ по ref --
+   renderer не вызывает GET для повторной науки (§6), экспорт не
+   запускает научный расчёт (§3.1, AC06).
 
 4. PAYLOAD ПО ЗЕРКАЛУ PGV-01. VisualResult/1 собирается из фактического
    ответа: payload.data -- срез ответа (серия/таблица/матрица/карточки),
@@ -54,7 +56,13 @@ freeze сохранённого реального response, CAS версии, e
    НИЧЕГО не зарегистрировано). freeze_saved_visual -- producer_first_
    export: CAS ВСЕГДА сверяет контекст сохранённого ответа с текущим
    состоянием запуска (смена данных между показом и export -> 409;
-   клиент выбирает обновление или уже сохранённую версию).
+   клиент выбирает обновление или уже сохранённую версию). «ВСЕГДА»
+   ENFORCED (PGV-03-FIX, F-P3C1): сверка возможна только при ПОЛНОМ
+   снимке контекста момента; деградировавший снимок не даёт
+   доказательства неизменности durable-состояния -- fail-closed, НЕ
+   тихий пропуск сверки (класс F-P2C2, прецедент PGV-02-FIX): пустой
+   снимок (оба измерения неизвестны) -- VisualSourceUnavailable,
+   частичный -- PrintContextConflict (409); НИЧЕГО не регистрируется.
 
 6. ЧЕСТНЫЕ ГРАНИЦЫ. unknown view -- UnknownVisualView; вне скоупа
    (demo/passport/comparison/legacy/unwired) -- VisualViewOutOfScope с
@@ -72,6 +80,7 @@ C03/notify_validation_result).
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import logging
 from collections import OrderedDict
@@ -1161,7 +1170,11 @@ def visual_result_ref(
 @dataclass(frozen=True)
 class SavedVisualResponse:
     """Фактический ответ научной остановки, сохранённый в момент выдачи
-    (контекст момента: run/session/context/revision/computed_at)."""
+    (контекст момента: run/session/context/revision/computed_at),
+    изолированный глубокой копией от источника (PGV-03-FIX, F-P3C3).
+    computed_at -- время фиксации: от производителя; None -- честно «не
+    сообщено», подстановка wall-clock запрещена (PGV-03-FIX, F-P3C2);
+    для прямых вызовов кэша без времени -- момент сохранения."""
 
     run_id: str
     session_id: str
@@ -1177,6 +1190,12 @@ class SavedVisualResponse:
 VISUAL_RESPONSE_CACHE_MAX_ENTRIES = 256
 _VISUAL_RESPONSE_CACHE: "OrderedDict[str, SavedVisualResponse]" = OrderedDict()
 
+# Сентинел дефолта computed_at: «время не передано -- кэш-запись хранит
+# момент сохранения». ЯВНЫЙ None означает противоположное -- «производитель
+# время НЕ сообщил» -- и хранится как None без подстановки wall-clock
+# (PGV-03-FIX, F-P3C2: wiring-канал обязан передавать время как есть).
+_SAVE_MOMENT: Any = object()
+
 
 def reset_visual_response_cache_for_testing() -> None:
     _VISUAL_RESPONSE_CACHE.clear()
@@ -1188,34 +1207,56 @@ def save_visual_response(
     response: Mapping[str, Any],
     params: Optional[Mapping[str, Any]] = None,
     view_ids: tuple[str, ...] = (),
-    computed_at: Optional[str] = None,
+    computed_at: Any = _SAVE_MOMENT,
 ) -> Optional[str]:
     """Сохранить фактический ответ (LRU, process-local) и вернуть его
     result_ref. Честные пропуски: нет датасета/run -- трассы ещё нет,
-    документировать нечего (§6 lazy transfer требует run для freeze).
-    Не бросает на состоянии сессии -- return None."""
+    документировать нечего (§6 lazy transfer требует run для freeze);
+    неканоничное содержимое/неизолируемый снимок -- тоже честный пропуск.
+    Не бросает на состоянии сессии -- return None.
+
+    Время фиксации (PGV-03-FIX, F-P3C2): аргумент не передан (default
+    _SAVE_MOMENT -- прямые вызовы кэша) -- запись хранит момент
+    сохранения; computed_at=None -- производитель время НЕ сообщил --
+    запись хранит None БЕЗ подстановки wall-clock (контракт
+    build_visual_result_payload: None -> честная причина
+    producer_not_reported, время вызова не подставляется); строка --
+    время производителя. Wiring-канал notify_visual_result передаёт
+    аргумент как есть -- кэш-запись и payload несут одно время."""
     run_id = str(getattr(session, "run_id", "") or "")
     if not run_id:
         return None
     if getattr(session, "dataset", None) is None:
         return None
     try:
-        ref = visual_result_ref(params, response)
+        # F-P3C3 (PGV-03-FIX): глубокая копия снимка -- «фактический
+        # ответ, сохранённый в момент выдачи» защищён от пост-мутаций
+        # источника: вложенные структуры не разделяются с вызывателем.
+        response_snapshot = copy.deepcopy(dict(response))
+        params_snapshot = copy.deepcopy(dict(params or {}))
+        # ref считается по снимку: сохранённое и его токен согласованы.
+        ref = visual_result_ref(params_snapshot, response_snapshot)
     except Exception:
-        # Неканоничный ответ -- честный пропуск кэша (freeze ответит
-        # отказом гейта; повторная попытка не нужна).
+        # Неканоничный ответ/неизолируемый снимок -- честный пропуск кэша
+        # (freeze ответит отказом гейта; повторная попытка не нужна).
         return None
+    if computed_at is _SAVE_MOMENT:
+        # Прямой вызов кэша без времени: момент сохранения -- лучшее
+        # известное время фиксации (докстринг SavedVisualResponse).
+        entry_computed_at: Any = _now_iso()
+    else:
+        # None -- производитель время не сообщил (честно, без
+        # подстановки); строка -- время производителя (as-is).
+        entry_computed_at = computed_at
     entry = SavedVisualResponse(
         run_id=run_id,
         session_id=str(getattr(session, "session_id", "") or ""),
         result_ref=ref,
-        response=dict(response),
-        params=dict(params or {}),
+        response=response_snapshot,
+        params=params_snapshot,
         context_id=_session_context_id(session),
         data_revision=_session_data_revision(session),
-        # время фиксации ответа -- момент сохранения (не фабрикация);
-        # обработчик может передать точный computed_at явно.
-        computed_at=computed_at or _now_iso(),
+        computed_at=entry_computed_at,
         view_ids=tuple(view_ids),
     )
     _VISUAL_RESPONSE_CACHE.pop(ref, None)
@@ -1389,7 +1430,15 @@ def freeze_saved_visual(
     renderer не вызывает GET для повторной науки). CAS ВСЕГДА сверяет
     контекст сохранённого ответа с текущим durable-состоянием запуска
     (AC07: смена данных между показом и export -> 409 context_changed;
-    клиент выбирает обновление или уже сохранённую версию)."""
+    клиент выбирает обновление или уже сохранённую версию).
+
+    PGV-03-FIX (F-P3C1) -- «ВСЕГДА» enforced: сверка возможна только
+    при ПОЛНОМ снимке контекста момента ответа. Деградировавший снимок
+    не даёт доказательства неизменности durable-состояния -- fail-closed,
+    НЕ тихий пропуск сверки (класс F-P2C2, прецедент PGV-02-FIX):
+    пустой снимок (context_id и data_revision неизвестны) -- честный
+    VisualSourceUnavailable; частичный снимок -- PrintContextConflict
+    (409 context_changed); НИЧЕГО не регистрируется."""
     # Сначала честный резолв вида (unknown/out-of-scope -- до кэша,
     # чтобы семантика ошибок не зависела от состояния кэша).
     resolve_producer_view(view_id)
@@ -1400,6 +1449,26 @@ def freeze_saved_visual(
             "кэша либо ответ другого запуска) -- source_unavailable; "
             "повторный экспорт после обновления представления "
             "(пересчёт науки не выполняется)"
+        )
+    # CAS ВСЕГДА (PGV-03-FIX, F-P3C1): полный снимок -- сверку обоих
+    # измерений выполняет PGV-02 (expected_* ниже); деградировавший --
+    # fail-closed отказ: экспорт «мимо сверки» невозможен.
+    if saved.context_id is None and saved.data_revision is None:
+        raise VisualSourceUnavailable(
+            "Сохранённый ответ не несёт контекста момента (context_id и "
+            "data_revision неизвестны) -- безопасный экспорт невозможен, "
+            "сверять нечем (source_unavailable); обновите представление "
+            "(новый ответ -> новый полный снимок)"
+        )
+    if saved.context_id is None or saved.data_revision is None:
+        from apps.api.visual_artifacts import PrintContextConflict
+
+        raise PrintContextConflict(
+            "freeze_saved_visual: снимок контекста сохранённого ответа "
+            f"неполон (context_id={saved.context_id!r}, "
+            f"data_revision={saved.data_revision!r}) -- сверка «CAS "
+            "ВСЕГДА» невозможна честно -- 409 context_changed: обновите "
+            "представление или выберите сохранённую версию"
         )
     return freeze_visual_from_response(
         run_id,

@@ -534,6 +534,12 @@ def notify_visual_result(
       4) при http_response проставляются X-Visual-*-заголовки (§6:
          «Response содержит result_ref/context/version token»).
 
+    Время (PGV-03-FIX, F-P3C2): computed_at передаётся в кэш и freeze
+    КАК ЕСТЬ -- None -> честная причина producer_not_reported
+    (execution.computed_at=None, время вызова НЕ подставляется --
+    контракт build_visual_result_payload); сообщённое время едино для
+    кэш-записи и payload (один ответ -- одно время фиксации).
+
     Возврат -- outcome (result_ref/context_id/data_revision/artifacts)
     либо None (честный пропуск)."""
     run_id = _run_or_none(session)
@@ -548,7 +554,9 @@ def notify_visual_result(
         response=response,
         params=params,
         view_ids=tuple(view_ids),
-        computed_at=computed_at or _now_iso(),
+        # PGV-03-FIX (F-P3C2): время производителя -- как есть; None --
+        # честная запись «не сообщено» без подстановки wall-clock.
+        computed_at=computed_at,
     )
     if ref is None:
         return None  # честный пропуск: кэш не принял (нет run/dataset)
@@ -562,7 +570,9 @@ def notify_visual_result(
             view_id=view_id,
             response=response,
             params=params,
-            computed_at=computed_at or _now_iso(),
+            # PGV-03-FIX (F-P3C2): как есть -- None -> честная причина
+            # producer_not_reported (время вызова не подставляется).
+            computed_at=computed_at,
         )
         artifacts[view_id] = artifact
     outcome = SimpleNamespace(

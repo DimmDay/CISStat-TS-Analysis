@@ -1379,3 +1379,268 @@ class TestModelingAndTasksFixation:
         assert response.status_code == 200, response.text
         run_id = client.get("/v1/progress/trace").json()["run_id"]
         assert _visual_results(run_id, "tasks.causes.fold_importance") == []
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 8. PGV-03-FIX: регресс находок сертификации PGV-03-CERT
+#    (акт docs/cert_pgv03_2026-10-28.md §7/§8; Class B оракулы
+#    корпуса сертификации -- GREEN, смысл оракулов не правился)
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestFP3C1CasAlwaysEnforced:
+    """F-P3C1: «CAS ВСЕГДА» экспорта ENFORCED -- деградировавший снимок
+    контекста сохранённого ответа не отключает сверку (класс F-P2C2:
+    fail-closed, НЕ тихий пропуск; прецедент PGV-02-FIX)."""
+
+    def test_partial_snapshot_context_degraded_conflicts(self, monkeypatch):
+        from dataclasses import replace as dc_replace
+
+        from apps.api.research_runs import get_research_run_store
+        from apps.api import visual_producers as vp
+        from apps.api.visual_artifacts import PrintContextConflict
+        from apps.api.visual_producers import (
+            get_saved_visual_response,
+            save_visual_response,
+        )
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        # Момент фиксации: context-компонент сессии деградировал
+        # (исключение current_context_id -> saved.context_id=None),
+        # ревизия доступна. Снимок ЧАСТИЧНЫЙ.
+        original_ctx = vp._session_context_id
+        monkeypatch.setattr(vp, "_session_context_id", lambda s: None)
+        ref = save_visual_response(session, response=_distribution_response(120))
+        monkeypatch.setattr(vp, "_session_context_id", original_ctx)
+        assert ref is not None
+        saved = get_saved_visual_response(RUN_ID, ref)
+        assert saved is not None and saved.context_id is None
+        # Durable-зеркало отражает НОВЫЙ контекст (ревизия не тронута).
+        run = get_research_run_store().get_run(RUN_ID)
+        get_research_run_store().upsert_run(
+            dc_replace(run, context_id="ctx-p03-0002", data_revision=7)
+        )
+        from apps.api.visual_producers import freeze_saved_visual
+
+        with pytest.raises(PrintContextConflict):
+            freeze_saved_visual(
+                RUN_ID, _owner_subject(),
+                view_id="upload.distribution.scatter", result_ref=ref,
+                session_id=SESSION_ID,
+            )
+        assert _visual_results() == []  # НИЧЕГО не зарегистрировано
+
+    def test_partial_snapshot_revision_degraded_conflicts(self, monkeypatch):
+        from dataclasses import replace as dc_replace
+
+        from apps.api.research_runs import get_research_run_store
+        from apps.api.visual_artifacts import PrintContextConflict
+        from apps.api.visual_producers import (
+            freeze_saved_visual,
+            get_saved_visual_response,
+            save_visual_response,
+        )
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        # Деградация ОДНОГО измерения: _session_data_revision -> None
+        # (duck-typed сессия без int-ревизии), контекст сохранён --
+        # частичный снимок, второе измерение. (У реальной AnalysisSession
+        # не-int ревизия ломает и вычисление контекста -- компоненты
+        # парсят revision как int; поэтому шов изолируется monkeypatch,
+        # а связанная деградация обоих измерений -- отдельный тест ниже.)
+        from apps.api import visual_producers as vp
+
+        original_rev = vp._session_data_revision
+        monkeypatch.setattr(vp, "_session_data_revision", lambda s: None)
+        ref = save_visual_response(session, response=_distribution_response(120))
+        monkeypatch.setattr(vp, "_session_data_revision", original_rev)
+        assert ref is not None
+        saved = get_saved_visual_response(RUN_ID, ref)
+        assert saved is not None and saved.data_revision is None
+        assert saved.context_id is not None
+        run = get_research_run_store().get_run(RUN_ID)
+        get_research_run_store().upsert_run(dc_replace(run, data_revision=8))
+        with pytest.raises(PrintContextConflict):
+            freeze_saved_visual(
+                RUN_ID, _owner_subject(),
+                view_id="upload.distribution.scatter", result_ref=ref,
+                session_id=SESSION_ID,
+            )
+        assert _visual_results() == []
+
+    def test_empty_snapshot_is_source_unavailable(self):
+        # План PGV-03-FIX §8.1: пустой снимок (оба измерения неизвестны)
+        # -- честный VisualSourceUnavailable (сверять нечем), не 409.
+        # Реальная связанная деградация AnalysisSession: не-int ревизия
+        # ломает и вычисление контекста (компоненты парсят revision как
+        # int) -> saved.context_id=None И saved.data_revision=None.
+        from apps.api.visual_producers import (
+            VisualSourceUnavailable,
+            freeze_saved_visual,
+            get_saved_visual_response,
+            save_visual_response,
+        )
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        session.data_revision = "seven"
+        ref = save_visual_response(session, response=_distribution_response(120))
+        assert ref is not None
+        saved = get_saved_visual_response(RUN_ID, ref)
+        assert saved is not None
+        assert saved.context_id is None and saved.data_revision is None
+        with pytest.raises(VisualSourceUnavailable):
+            freeze_saved_visual(
+                RUN_ID, _owner_subject(),
+                view_id="upload.distribution.scatter", result_ref=ref,
+                session_id=SESSION_ID,
+            )
+        assert _visual_results() == []
+
+    def test_full_snapshot_context_move_still_conflicts(self):
+        """Полный снимок -- CAS PGV-02 по обоим измерениям сохранён
+        (фикс не ослабил штатную сверку; контекст-измерение -- пин
+        ORACLE-ONLY M01, поднятый в repo-канал)."""
+        from dataclasses import replace as dc_replace
+
+        from apps.api.research_runs import get_research_run_store
+        from apps.api.visual_artifacts import PrintContextConflict
+        from apps.api.visual_producers import (
+            freeze_saved_visual,
+            save_visual_response,
+        )
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        ref = save_visual_response(session, response=_distribution_response(120))
+        assert ref is not None
+        run = get_research_run_store().get_run(RUN_ID)
+        get_research_run_store().upsert_run(
+            dc_replace(run, context_id="ctx-p03-0003")  # ревизия та же
+        )
+        with pytest.raises(PrintContextConflict):
+            freeze_saved_visual(
+                RUN_ID, _owner_subject(),
+                view_id="upload.distribution.scatter", result_ref=ref,
+                session_id=SESSION_ID,
+            )
+        assert _visual_results() == []
+
+
+class TestFP3C2HonestTime:
+    """F-P3C2: wiring-канал передаёт время КАК ЕСТЬ -- None -> честная
+    причина producer_not_reported (время вызова НЕ подставляется);
+    кэш-запись и payload несут одно время фиксации."""
+
+    def _notify(self, session, **kwargs):
+        from types import SimpleNamespace
+
+        from apps.api.promotion_integration import notify_visual_result
+        from apps.api.session_store import SESSION_COOKIE_NAME
+
+        request = SimpleNamespace(
+            cookies={SESSION_COOKIE_NAME: SESSION_ID}, headers={}
+        )
+        return notify_visual_result(
+            request, session,
+            view_ids=("upload.distribution.scatter",),
+            response=_distribution_response(120),
+            **kwargs,
+        )
+
+    def test_notify_without_handler_time_reports_honest_reason(self):
+        from apps.api.visual_producers import get_saved_visual_response
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        outcome = self._notify(session)  # обработчик время не сообщил
+        assert outcome is not None
+        artifacts = _visual_results()
+        assert len(artifacts) == 1
+        payload = _payload_of(artifacts[0])
+        assert payload["execution"]["computed_at"] is None
+        assert payload["execution"]["computed_at_reason"] == "producer_not_reported"
+        saved = get_saved_visual_response(RUN_ID, outcome.result_ref)
+        assert saved is not None and saved.computed_at is None
+        # Один ответ -- одно время фиксации (payload == кэш-запись).
+        assert payload["execution"]["computed_at"] == saved.computed_at
+
+    def test_notify_with_reported_time_carries_it_everywhere(self):
+        from apps.api.visual_producers import get_saved_visual_response
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        reported = "2026-10-28T09:00:00+00:00"
+        outcome = self._notify(session, computed_at=reported)
+        assert outcome is not None
+        artifacts = _visual_results()
+        payload = _payload_of(artifacts[0])
+        assert payload["execution"]["computed_at"] == reported
+        assert payload["execution"]["computed_at_reason"] is None
+        saved = get_saved_visual_response(RUN_ID, outcome.result_ref)
+        assert saved is not None and saved.computed_at == reported
+
+    def test_direct_cache_save_without_time_keeps_save_moment(self):
+        """Прямой вызов кэша без времени: запись хранит момент
+        сохранения (докстринг save) -- semantics сентинела _SAVE_MOMENT."""
+        from apps.api.visual_producers import (
+            get_saved_visual_response,
+            save_visual_response,
+        )
+
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        ref = save_visual_response(session, response=_distribution_response(120))
+        assert ref is not None
+        saved = get_saved_visual_response(RUN_ID, ref)
+        assert saved is not None
+        assert saved.computed_at, "реальное время фиксации ответа"
+
+
+class TestFP3C3DeepCopySnapshot:
+    """F-P3C3: снимок в кэше изолирован глубокой копией -- пост-мутация
+    источника (вложенные структуры) не меняет сохранённое и замороженное."""
+
+    def test_post_save_mutation_does_not_change_saved_or_frozen(self):
+        from apps.api.visual_producers import (
+            freeze_saved_visual,
+            get_saved_visual_response,
+            save_visual_response,
+        )
+
+        response = _distribution_response(120)
+        params = {"selected_column": "value", "extra": {"nested": [1, 2]}}
+        _seed_run()
+        session = _seed_session_object()
+        _sync_run_to_session(session)
+        ref = save_visual_response(session, response=response, params=params)
+        assert ref is not None
+        saved = get_saved_visual_response(RUN_ID, ref)
+        assert saved is not None
+        expected_scatter = [dict(p) for p in saved.response["scatter"]]
+        expected_ref = saved.result_ref
+        # Мутация источника ПОСЛЕ сохранения (вложенные списки).
+        response["scatter"].append({"x": 999, "y": 999.0})
+        params["extra"]["nested"].append(3)
+        # Кэш-запись изолирована.
+        assert saved.response["scatter"] == expected_scatter
+        assert saved.params["extra"]["nested"] == [1, 2]
+        # Заморозка несёт момент фиксации, а не пост-мутационный контент;
+        # ref пересчитанный по снимку совпадает с исходным токеном.
+        artifact = freeze_saved_visual(
+            RUN_ID, _owner_subject(),
+            view_id="upload.distribution.scatter", result_ref=ref,
+            session_id=SESSION_ID,
+        )
+        payload = _payload_of(artifact)
+        assert payload["payload"]["data"]["series"] == expected_scatter
+        assert payload["execution"]["result_ref"] == expected_ref
