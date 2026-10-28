@@ -103,6 +103,16 @@ ARTIFACT_KINDS: tuple[str, ...] = (
     "data_frame",
     "validation_result",
     "correction_recipe",
+    # PGV-02 (spec_passport_graphics_visual.md §6/§8): durable inputs
+    # научных визуализаций и паспортов. «Новый kind visual_result
+    # расширяет schema/migrations/pins/tests»; VisualPrintSnapshot --
+    # frozen печатный вход renderer'а; passport_checkpoint -- факт
+    # подтверждения EDA handoff (идемпотентность по checkpoint_id).
+    # Продюсеры (PGV-03/04) морозят их через apps/api/visual_artifacts.py
+    # (валидация payload обязателен); legacy kinds не меняются.
+    "visual_result",
+    "visual_print_snapshot",
+    "passport_checkpoint",
 )
 
 ARTIFACT_ID_PATTERN = re.compile(r"^art-[0-9a-f]{32}$")

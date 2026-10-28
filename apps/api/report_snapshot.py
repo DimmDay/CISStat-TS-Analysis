@@ -97,6 +97,50 @@ _KIND_ALIAS: dict[str, str] = {
 for _code, (_kind, _title, _stage) in DOCUMENT_KINDS.items():
     _KIND_ALIAS[_kind] = _code
 
+# ── PGV-02: versioned каталог печатных типов документов ─────────────
+# spec_passport_graphics_visual.md §10.2: «Аддитивные типы: V01
+# scientific visual, P01 saved passport/комплект, P02 comparison.
+# D01-D12 и D02 source passport сохраняют смысл. Требуются versioned
+# catalog/validators/API/UI/SQL changes, не переименование D02».
+#
+# Семантика семейств:
+#   * snapshot_section (D01-D12) -- секции frozen report snapshot'а;
+#     ревизии создаются снапшот-сборщиком (resolve_kinds НЕ принимает
+#     печатные типы -- их ревизии идут мимо снапшот-потока, §10.2:
+#     POST /visuals и /passport-documents, PGV-13/15);
+#   * print_document (V01/P01/P02) -- ревизии с frozen basis из durable
+#     print inputs (артефакты visual_print_snapshot / паспорта /
+#     сравнение), таблица document_print_revisions (миграция 0016).
+# Каталог версионирован: изменение состава -- новая версия версии
+# каталога, legacy-читатели пинят D01-D12 (test_doclog2/8).
+DOCUMENT_CATALOG_VERSION = "pgv.document_catalog/2"
+
+PRINT_DOCUMENT_KINDS: dict[str, tuple[str, str]] = {
+    "V01": ("scientific_visual", "Научная визуализация"),
+    "P01": ("passport_print", "Паспорта свойств ряда"),
+    "P02": ("passport_comparison", "Сравнение паспортов"),
+}
+
+SNAPSHOT_SECTION_KINDS: frozenset[str] = frozenset(DOCUMENT_KINDS)
+PRINT_DOCUMENT_KIND_CODES: frozenset[str] = frozenset(PRINT_DOCUMENT_KINDS)
+
+
+def document_kind_family(code: Any) -> Optional[str]:
+    """Семейство типа документа: 'snapshot_section' (D01-D12),
+    'print_document' (V01/P01/P02), None -- неизвестный код."""
+    if not isinstance(code, str):
+        return None
+    if code in SNAPSHOT_SECTION_KINDS:
+        return "snapshot_section"
+    if code in PRINT_DOCUMENT_KIND_CODES:
+        return "print_document"
+    return None
+
+
+def is_print_document_kind(code: Any) -> bool:
+    return document_kind_family(code) == "print_document"
+
+
 REF_KIND_ARTIFACT = "artifact"
 REF_KIND_CHECKPOINT = "checkpoint"
 REF_KIND_EVENT = "event"
@@ -140,9 +184,16 @@ def resolve_kinds(requested: Any) -> list[str]:
     for item in requested:
         code = _KIND_ALIAS.get(str(item))
         if code is None:
+            print_hint = ""
+            if str(item) in PRINT_DOCUMENT_KIND_CODES:
+                print_hint = (
+                    f"; {item!r} -- печатный тип (PGV-02, каталог "
+                    f"{DOCUMENT_CATALOG_VERSION}): его ревизии создаются "
+                    "печатным потоком документации, а не секциями отчёта"
+                )
             raise ValueError(
                 f"Неизвестный вид документа: {item!r}; "
-                f"известные: {sorted(DOCUMENT_KINDS)}"
+                f"известные: {sorted(DOCUMENT_KINDS)}{print_hint}"
             )
         if code not in resolved:
             resolved.append(code)

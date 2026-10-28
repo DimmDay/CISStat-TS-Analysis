@@ -1278,6 +1278,38 @@ MIGRATION_STATEMENTS_0015: tuple[str, ...] = (
     "ON doc_anchor_records (rendition_id, anchored_at)",
 )
 
+# PGV-02 (spec_passport_graphics_visual.md §6/§8/§10.2/§13): печатные
+# ревизии документов V01/P01/P02 -- durable basis из print inputs.
+# Аддитивно: legacy D01-D12 (document_revisions 0010, snapshot_id NOT
+# NULL) остаются читаемыми; паритет с файлом-дублем
+# migrations/0016_pgv2_print_documents.sql страхуется тестами
+# (паттерн PROGR-5.1).
+MIGRATION_STATEMENTS_0016: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS document_print_revisions (
+        print_revision_id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES documents(document_id) ON DELETE CASCADE,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        print_kind TEXT NOT NULL,
+        basis_kind TEXT NOT NULL,
+        basis_artifact_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+        snapshot_id TEXT REFERENCES report_snapshots(snapshot_id) ON DELETE CASCADE,
+        profile_id TEXT NOT NULL DEFAULT 'figure-landscape',
+        manifest_artifact_id TEXT,
+        basis_fingerprint TEXT NOT NULL DEFAULT '',
+        version_no BIGINT NOT NULL,
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (document_id, version_no),
+        UNIQUE (document_id, basis_fingerprint)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_document_print_revisions_run "
+    "ON document_print_revisions (run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_document_print_revisions_document "
+    "ON document_print_revisions (document_id, version_no)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1286,7 +1318,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0009 + MIGRATION_STATEMENTS_0010
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
     + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
-    + MIGRATION_STATEMENTS_0015
+    + MIGRATION_STATEMENTS_0015 + MIGRATION_STATEMENTS_0016
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1307,6 +1339,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0013_doclog7_logs_support.sql", MIGRATION_STATEMENTS_0013),
     ("0014_doclog8_monitoring.sql", MIGRATION_STATEMENTS_0014),
     ("0015_doclog9_profiles.sql", MIGRATION_STATEMENTS_0015),
+    ("0016_pgv2_print_documents.sql", MIGRATION_STATEMENTS_0016),
 )
 
 

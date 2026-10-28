@@ -52,8 +52,18 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+from apps.api.artifact_store import ARTIFACT_SCHEMA_VERSION as ARTIFACT_SCHEMA_VERSION_DEFAULT
+
 PASSPORT_PROMOTION_STAGES = ("start", "validation", "exit", "modeling_entry")
 PANEL_PASSPORT_STAGE = "panel_entry"
+
+# PGV-02 (spec_passport_graphics_visual.md §6/§8): kinds durable inputs;
+# имя источника истины -- apps/api/visual_artifacts.py
+# (VISUAL_ARTIFACT_KINDS с версиями схем; здесь -- только множество имён
+# для гейта persist_visual_artifact, ленивый импорт без цикла модулей).
+VISUAL_ARTIFACT_KIND_NAMES = frozenset(
+    {"visual_result", "visual_print_snapshot", "passport_checkpoint"}
+)
 
 
 # ── Исключения контура ───────────────────────────────────────────────
@@ -140,6 +150,7 @@ class PromotionService:
         producer_key: str,
         payload: Any,
         media_type: str = "application/json",
+        schema_version: Optional[str] = None,
         input_kind: Optional[str] = None,
         panel: Optional[dict[str, Any]] = None,
         dependencies: Optional[list[str]] = None,
@@ -205,6 +216,7 @@ class PromotionService:
                 else None
             ),
             storage_key=storage_key,
+            schema_version=schema_version or ARTIFACT_SCHEMA_VERSION_DEFAULT,
             context_id=context_id,
             data_revision=data_revision,
             input_kind=input_kind,
@@ -239,6 +251,90 @@ class PromotionService:
         используется единой точкой producer-интеграции для честных
         счётчиков sweep-промоушена (новый артефакт vs no-op повтор)."""
         return self._find_by_producer(run_id, producer_key)
+
+    def persist_visual_artifact(
+        self,
+        run_id: str,
+        subject: Any,
+        *,
+        kind: str,
+        payload: Any,
+        producer_key: str,
+        session_id: str = "",
+        dependencies: Optional[list[str]] = None,
+        refs: Optional[dict[str, Any]] = None,
+        context_id: Optional[str] = None,
+        data_revision: Optional[int] = None,
+        created_by: Optional[str] = None,
+    ) -> Any:
+        """PGV-02 (spec_passport_graphics_visual.md §6/§8): запись
+        durable inputs (visual_result / visual_print_snapshot /
+        passport_checkpoint) через ЕДИНЫЙ конвейер _persist с
+        обязательным валидационным гейтом payload. Невалидный payload
+        НЕ регистрируется вовсе (ArtifactPayloadInvalid -- честный
+        отказ, AC12-дух: gap, не «готовая» картинка). Ленивый импорт
+        валидатора -- без цикла модулей (visual_artifacts вызывает
+        этот метод, валидатор живёт там же)."""
+        if kind not in VISUAL_ARTIFACT_KIND_NAMES:
+            raise ValueError(
+                f"persist_visual_artifact: kind {kind!r} не является "
+                "visual artifact kind"
+            )
+        from apps.api.visual_artifacts import (  # лениво -- без цикла
+            ArtifactPayloadInvalid,
+            validate_visual_artifact_payload,
+        )
+
+        violations = validate_visual_artifact_payload(kind, payload)
+        if violations:
+            raise ArtifactPayloadInvalid(violations)
+        # §11: «Idempotency scoped по ... action+payload digest; иной
+        # payload с прежним key -- 409». _persist возвращает existing по
+        # producer_key без сверки контента (достаточно для DOCLOG-1,
+        # где key выводится из источника); для durable inputs контентная
+        # сверка обязательна: тот же ключ с другим payload -- честный
+        # конфликт (подмена подтверждения/результата не маскируется).
+        from apps.api.artifact_store import (
+            ArtifactConflictError,
+            SerializationError,
+            artifact_content_sha256,
+            canonical_json_bytes,
+        )
+
+        existing = self.find_by_producer(run_id, producer_key)
+        if existing is not None:
+            try:
+                content = canonical_json_bytes(payload)
+            except SerializationError:
+                from apps.api.print_schema import PrintSchemaViolation
+
+                raise ArtifactPayloadInvalid(
+                    [PrintSchemaViolation(
+                        "serialization_error", "(root)",
+                        "payload неканоничен (NaN/Infinity) -- честный отказ",
+                    )]
+                ) from None
+            if existing.payload_sha256 != artifact_content_sha256(content):
+                raise ArtifactConflictError(
+                    "Тот же producer_key с другим payload -- 409 (§11: "
+                    "иной payload с прежним idempotency-ключом конфликтует)"
+                )
+            return existing
+        from apps.api.visual_artifacts import VISUAL_ARTIFACT_SCHEMA_VERSIONS
+
+        return self._persist(
+            run_id=run_id,
+            subject=subject,
+            kind=kind,
+            producer_key=producer_key,
+            payload=payload,
+            schema_version=VISUAL_ARTIFACT_SCHEMA_VERSIONS[kind],
+            dependencies=dependencies,
+            refs=refs,
+            context_id=context_id,
+            data_revision=data_revision,
+            created_by=created_by,
+        )
 
     @staticmethod
     def _session_context(session: Any) -> tuple[Optional[str], Optional[int]]:

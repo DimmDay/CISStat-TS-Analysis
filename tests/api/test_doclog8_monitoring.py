@@ -1263,12 +1263,13 @@ class TestStaticCatalogs:
     def test_migration_catalog_counts(self):
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
-        assert len(MIGRATION_FILES) == 15
+        assert len(MIGRATION_FILES) == 16
         # DOCLOG-9 (честное обновление пина): последний файл каталога --
         # 0015; миграция DOCLOG-8 пинуется по имени (предпоследняя).
         assert "0014_doclog8_monitoring.sql" in [n for n, _ in MIGRATION_FILES]
-        # 85 (0014) + 8 statement 0015 (2 ALTER + 3 таблицы + 3 индекса).
-        assert len(MIGRATION_STATEMENTS) == 93
+        # 85 (0014) + 8 statement 0015 + 3 statement 0016 (PGV-02:
+        # 1 таблица печатных ревизий + 2 индекса).
+        assert len(MIGRATION_STATEMENTS) == 96
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

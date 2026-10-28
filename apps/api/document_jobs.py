@@ -50,6 +50,8 @@ download_requested/response_stream_started/response_stream_finished
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import re
@@ -160,6 +162,12 @@ def new_job_id() -> str:
     return _new_id("djob-")
 
 
+def new_print_revision_id() -> str:
+    """PGV-02: id печатной ревизии (document_print_revisions, миграция
+    0016) -- отдельный префикс от snapshot-ревизий (drev-)."""
+    return _new_id("dprint-")
+
+
 def is_valid_document_id(value: Any) -> bool:
     return isinstance(value, str) and bool(re.fullmatch(r"doc-[0-9a-f]{32}", value))
 
@@ -256,6 +264,62 @@ class DocumentRevisionRecord:
             "created_by": self.created_by,
             "created_at": self.created_at,
         }
+
+
+@dataclass
+class DocumentPrintRevisionRecord:
+    """PGV-02 (spec_passport_graphics_visual.md §10.2): ревизия печатного
+    документа V01/P01/P02. Basis -- frozen print inputs (артефакты
+    visual_print_snapshot / паспорта / сравнение), НЕ report snapshot:
+    document_revisions.snapshot_id NOT NULL сохраняется для legacy
+    читателей D01-D12 (критерий PGV-02). snapshot_id допускает NULL как
+    опциональный паспортный anchor. Идемпотентность -- по
+    basis_fingerprint (UNIQUE(document_id, basis_fingerprint)): повтор с
+    тем же basis не плодит версии (§11 идемпотентность по digest)."""
+
+    print_revision_id: str
+    document_id: str
+    run_id: str
+    print_kind: str
+    basis_kind: str
+    basis_artifact_ids: list[str] = field(default_factory=list)
+    snapshot_id: Optional[str] = None
+    profile_id: str = "figure-landscape"
+    manifest_artifact_id: Optional[str] = None
+    basis_fingerprint: str = ""
+    version_no: int = 0
+    created_by: Optional[str] = None
+    created_at: str = field(default_factory=_now_iso)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "print_revision_id": self.print_revision_id,
+            "document_id": self.document_id,
+            "run_id": self.run_id,
+            "print_kind": self.print_kind,
+            "basis_kind": self.basis_kind,
+            "basis_artifact_ids": list(self.basis_artifact_ids),
+            "snapshot_id": self.snapshot_id,
+            "profile_id": self.profile_id,
+            "manifest_artifact_id": self.manifest_artifact_id,
+            "basis_fingerprint": self.basis_fingerprint,
+            "version_no": self.version_no,
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "DocumentPrintRevisionRecord":
+        known = {f for f in cls.__dataclass_fields__}  # noqa: C416
+        return cls(
+            **{key: value for key, value in data.items() if key in known}
+        )
+
+    def copy(self) -> "DocumentPrintRevisionRecord":
+        return DocumentPrintRevisionRecord(
+            **{k: (list(v) if k == "basis_artifact_ids" else v)
+               for k, v in self.to_dict().items()}
+        )
 
 
 @dataclass
@@ -390,6 +454,28 @@ class DocumentRegistry(ABC):
     def list_revisions(self, document_id: str) -> list[DocumentRevisionRecord]:  # pragma: no cover
         raise NotImplementedError
 
+    # -- PGV-02: печатные ревизии (document_print_revisions, 0016) --
+
+    def register_print_revision(
+        self, revision: DocumentPrintRevisionRecord
+    ) -> DocumentPrintRevisionRecord:  # pragma: no cover
+        raise NotImplementedError
+
+    def get_print_revision(
+        self, print_revision_id: str
+    ) -> Optional[DocumentPrintRevisionRecord]:  # pragma: no cover
+        raise NotImplementedError
+
+    def find_print_revision_by_fingerprint(
+        self, document_id: str, basis_fingerprint: str
+    ) -> Optional[DocumentPrintRevisionRecord]:  # pragma: no cover
+        raise NotImplementedError
+
+    def list_print_revisions(
+        self, document_id: str
+    ) -> list[DocumentPrintRevisionRecord]:  # pragma: no cover
+        raise NotImplementedError
+
     def register_rendition(
         self, rendition: DocumentRenditionRecord
     ) -> DocumentRenditionRecord:  # pragma: no cover
@@ -456,6 +542,7 @@ class MemoryDocumentRegistry(DocumentRegistry):
         self._lock = threading.RLock()
         self._documents: dict[str, DocumentRecord] = {}
         self._revisions: dict[str, DocumentRevisionRecord] = {}
+        self._print_revisions: dict[str, DocumentPrintRevisionRecord] = {}
         self._renditions: dict[str, DocumentRenditionRecord] = {}
         self._jobs: dict[str, DocumentJobRecord] = {}
 
@@ -511,6 +598,51 @@ class MemoryDocumentRegistry(DocumentRegistry):
                 if revision.document_id == document_id
             ]
         return sorted(revisions, key=lambda item: (item.version_no, item.revision_id))
+
+    # -- PGV-02: печатные ревизии (паритет Postgres, урок F-D2C1) --
+
+    def register_print_revision(
+        self, revision: DocumentPrintRevisionRecord
+    ) -> DocumentPrintRevisionRecord:
+        with self._lock:
+            self._print_revisions[revision.print_revision_id] = revision.copy()
+            document = self._documents.get(revision.document_id)
+            if document is not None:
+                document.current_revision_id = revision.print_revision_id
+            return revision.copy()
+
+    def get_print_revision(
+        self, print_revision_id: str
+    ) -> Optional[DocumentPrintRevisionRecord]:
+        with self._lock:
+            revision = self._print_revisions.get(print_revision_id)
+            return revision.copy() if revision else None
+
+    def find_print_revision_by_fingerprint(
+        self, document_id: str, basis_fingerprint: str
+    ) -> Optional[DocumentPrintRevisionRecord]:
+        with self._lock:
+            for revision in self._print_revisions.values():
+                if (
+                    revision.document_id == document_id
+                    and revision.basis_fingerprint == basis_fingerprint
+                ):
+                    return revision.copy()
+            return None
+
+    def list_print_revisions(
+        self, document_id: str
+    ) -> list[DocumentPrintRevisionRecord]:
+        with self._lock:
+            revisions = [
+                revision
+                for revision in self._print_revisions.values()
+                if revision.document_id == document_id
+            ]
+        return sorted(
+            [r.copy() for r in revisions],
+            key=lambda item: (item.version_no, item.print_revision_id),
+        )
 
     def register_rendition(
         self, rendition: DocumentRenditionRecord
@@ -840,6 +972,102 @@ class PostgresDocumentRegistry(DocumentRegistry):
             )
             rows = cur.fetchall()
         return [self._revision_from_row(row) for row in rows]
+
+    # -- PGV-02: печатные ревизии (document_print_revisions, 0016) --
+
+    def register_print_revision(
+        self, revision: DocumentPrintRevisionRecord
+    ) -> DocumentPrintRevisionRecord:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO document_print_revisions (print_revision_id, "
+                "document_id, run_id, print_kind, basis_kind, "
+                "basis_artifact_ids, snapshot_id, profile_id, "
+                "manifest_artifact_id, basis_fingerprint, version_no, "
+                "created_by, created_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    revision.print_revision_id,
+                    revision.document_id,
+                    revision.run_id,
+                    revision.print_kind,
+                    revision.basis_kind,
+                    json.dumps(revision.basis_artifact_ids),
+                    revision.snapshot_id,
+                    revision.profile_id,
+                    revision.manifest_artifact_id,
+                    revision.basis_fingerprint,
+                    revision.version_no,
+                    revision.created_by,
+                    revision.created_at,
+                ),
+            )
+            cur.execute(
+                "UPDATE documents SET current_revision_id = %s "
+                "WHERE document_id = %s",
+                (revision.print_revision_id, revision.document_id),
+            )
+        return revision.copy()
+
+    _PRINT_REVISION_SELECT = (
+        "SELECT print_revision_id, document_id, run_id, print_kind, "
+        "basis_kind, basis_artifact_ids, snapshot_id, profile_id, "
+        "manifest_artifact_id, basis_fingerprint, version_no, created_by, "
+        "created_at FROM document_print_revisions"
+    )
+
+    @staticmethod
+    def _print_revision_from_row(row: tuple) -> DocumentPrintRevisionRecord:
+        return DocumentPrintRevisionRecord(
+            print_revision_id=str(row[0]),
+            document_id=str(row[1]),
+            run_id=str(row[2]),
+            print_kind=str(row[3]),
+            basis_kind=str(row[4]),
+            basis_artifact_ids=list(row[5] or []),
+            snapshot_id=(str(row[6]) if row[6] else None),
+            profile_id=str(row[7] or "figure-landscape"),
+            manifest_artifact_id=(str(row[8]) if row[8] else None),
+            basis_fingerprint=str(row[9] or ""),
+            version_no=int(row[10]),
+            created_by=row[11],
+            created_at=row[12].isoformat() if row[12] else _now_iso(),
+        )
+
+    def get_print_revision(
+        self, print_revision_id: str
+    ) -> Optional[DocumentPrintRevisionRecord]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._PRINT_REVISION_SELECT + " WHERE print_revision_id = %s",
+                (print_revision_id,),
+            )
+            row = cur.fetchone()
+        return self._print_revision_from_row(row) if row is not None else None
+
+    def find_print_revision_by_fingerprint(
+        self, document_id: str, basis_fingerprint: str
+    ) -> Optional[DocumentPrintRevisionRecord]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._PRINT_REVISION_SELECT
+                + " WHERE document_id = %s AND basis_fingerprint = %s",
+                (document_id, basis_fingerprint),
+            )
+            row = cur.fetchone()
+        return self._print_revision_from_row(row) if row is not None else None
+
+    def list_print_revisions(
+        self, document_id: str
+    ) -> list[DocumentPrintRevisionRecord]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._PRINT_REVISION_SELECT
+                + " WHERE document_id = %s ORDER BY version_no, print_revision_id",
+                (document_id,),
+            )
+            rows = cur.fetchall()
+        return [self._print_revision_from_row(row) for row in rows]
 
     # -- renditions --
 
@@ -1366,6 +1594,143 @@ class DocumentDeliveryService:
             )
         )
         return document, revision, True
+
+    # -- PGV-02: печатные документы/ревизии (V01/P01/P02, §10.2) --
+
+    def ensure_print_document_revision(
+        self,
+        run_id: str,
+        subject: Any,
+        *,
+        session_id: str = "",
+        print_kind: str,
+        basis_kind: str,
+        basis_artifact_ids: Optional[list[str]] = None,
+        snapshot_id: Optional[str] = None,
+        profile_id: str = "figure-landscape",
+        manifest_artifact_id: Optional[str] = None,
+    ) -> tuple[DocumentRecord, DocumentPrintRevisionRecord, bool]:
+        """Find-or-create печатный документ (run, print_kind) + ревизия с
+        frozen basis из durable print inputs (§10.2: «Создаётся revision
+        с frozen refs/pins без capture и перерасчёта»). Идемпотентность
+        -- по basis_fingerprint (UNIQUE(document_id, basis_fingerprint)):
+        тот же basis -- та же ревизия (§12.2 «повторный клик не создаёт
+        дубли»); иной basis/profile -- новая версия. D01-D12 -- через
+        снапшот-поток (ensure_document_revision), печатные типы -- только
+        здесь (каталог pgv.document_catalog/2 различает семейства).
+        Basis-артефакты пинятся с причиной (§16)."""
+        from apps.api.artifact_store import canonical_json_bytes
+        from apps.api.report_snapshot import is_print_document_kind
+
+        if not is_print_document_kind(print_kind):
+            raise UnsupportedFormatError(
+                f"ensure_print_document_revision: {print_kind!r} -- не "
+                "печатный тип (V01/P01/P02); D01-D12 идут через "
+                "снапшот-поток"
+        )
+        self._authorized_run(run_id, subject, session_id=session_id, action="write")
+        basis_ids = list(basis_artifact_ids or [])
+        # Идемпотентный ключ тела (§11): действие + basis digest.
+        fingerprint = hashlib.sha256(
+            canonical_json_bytes(
+                {
+                    "print_kind": print_kind,
+                    "basis_kind": basis_kind,
+                    "basis_artifact_ids": basis_ids,
+                    "snapshot_id": snapshot_id,
+                    "profile_id": profile_id,
+                }
+            )
+        ).hexdigest()
+        document = self.registry.find_document_by_kind(run_id, print_kind)
+        if document is None:
+            document = self.registry.register_document(
+                DocumentRecord(
+                    document_id=new_document_id(),
+                    run_id=run_id,
+                    kind_code=print_kind,
+                    created_by=getattr(subject, "subject_id", None),
+                )
+            )
+        existing = self.registry.find_print_revision_by_fingerprint(
+            document.document_id, fingerprint
+        )
+        if existing is not None:
+            return document, existing, False
+        revisions = self.registry.list_print_revisions(document.document_id)
+        version_no = (revisions[-1].version_no + 1) if revisions else 1
+        revision = self.registry.register_print_revision(
+            DocumentPrintRevisionRecord(
+                print_revision_id=new_print_revision_id(),
+                document_id=document.document_id,
+                run_id=run_id,
+                print_kind=print_kind,
+                basis_kind=basis_kind,
+                basis_artifact_ids=basis_ids,
+                snapshot_id=snapshot_id,
+                profile_id=profile_id,
+                manifest_artifact_id=manifest_artifact_id,
+                basis_fingerprint=fingerprint,
+                version_no=version_no,
+                created_by=getattr(subject, "subject_id", None),
+            )
+        )
+        # §16: metadata graph хранит ПРИЧИНЫ ссылок -- pin basis с
+        # причиной (keeper/GC не сотрёт basis печатной ревизии).
+        for artifact_id in basis_ids:
+            self.registry_pin_artifact(
+                run_id,
+                artifact_id,
+                reason=f"print_revision:{revision.print_revision_id}",
+                created_by=getattr(subject, "subject_id", None),
+            )
+        return document, revision, True
+
+    def registry_pin_artifact(
+        self, run_id: str, artifact_id: str, *, reason: str, created_by: Optional[str]
+    ) -> None:
+        """Pin артефакта через артефактный реестр (pin_ref -- контракт
+        ArtifactRegistry); отказ pin -- честный сбой ревизии."""
+        from apps.api.artifact_store import get_artifact_registry
+
+        get_artifact_registry().pin_ref(
+            run_id, "artifact", artifact_id, reason=reason, created_by=created_by
+        )
+
+    def list_print_documents(
+        self,
+        run_id: str,
+        subject: Any,
+        *,
+        session_id: str = "",
+        print_kind: Optional[str] = None,
+    ) -> list[tuple[DocumentRecord, list[DocumentPrintRevisionRecord]]]:
+        """Печатные документы запуска с ревизиями (субстрат PGV-15:
+        фильтры «Визуализации»/«Паспорта свойств»). Легаси list_documents
+        (D01-D12, snapshot-ревизии) НЕ задействован -- ответ legacy API
+        сохраняет прежнюю форму (критерий PGV-02)."""
+        from apps.api.report_snapshot import PRINT_DOCUMENT_KINDS, is_print_document_kind
+
+        if print_kind is not None:
+            if not is_print_document_kind(print_kind):
+                raise UnsupportedFormatError(
+                    f"list_print_documents: {print_kind!r} -- не печатный тип"
+                )
+            codes: list[str] = [print_kind]
+        else:
+            codes = list(PRINT_DOCUMENT_KINDS)
+        self._authorized_run(run_id, subject, session_id=session_id, action="read")
+        documents = []
+        for code in codes:
+            document = self.registry.find_document_by_kind(run_id, code)
+            if document is not None:
+                documents.append(document)
+        result = []
+        for document in documents:
+            result.append(
+                (document, self.registry.list_print_revisions(document.document_id))
+            )
+        return result
 
     def list_documents(
         self,
