@@ -1,0 +1,150 @@
+{
+ "total": 30,
+ "killed": {
+  "DUAL-KILLED": [
+   "M01",
+   "M02",
+   "M05",
+   "M06",
+   "M07",
+   "M11",
+   "M12",
+   "M13",
+   "M14",
+   "M15",
+   "M16",
+   "M18",
+   "M20",
+   "M23",
+   "M24",
+   "S1",
+   "S2",
+   "S3"
+  ],
+  "ORACLE-ONLY": [
+   "M03",
+   "M04",
+   "M08",
+   "M09",
+   "M10",
+   "M17",
+   "M19",
+   "M21",
+   "M22"
+  ],
+  "CONTROL": [
+   "K01",
+   "K02",
+   "K03"
+  ]
+ },
+ "expectation_mismatch": [
+  {
+   "mid": "M01",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M02",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M03",
+   "expectation": "DUAL",
+   "verdict": "ORACLE-ONLY"
+  },
+  {
+   "mid": "M04",
+   "expectation": "DUAL",
+   "verdict": "ORACLE-ONLY"
+  },
+  {
+   "mid": "M05",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M06",
+   "expectation": "ORACLE-ONLY",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M07",
+   "expectation": "ORACLE-ONLY",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M11",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M12",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M13",
+   "expectation": "ORACLE-ONLY",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M14",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M15",
+   "expectation": "ORACLE-ONLY",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M16",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M18",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M19",
+   "expectation": "SURVIVED",
+   "verdict": "ORACLE-ONLY"
+  },
+  {
+   "mid": "M20",
+   "expectation": "ORACLE-ONLY",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M23",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "M24",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "S1",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "S2",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  },
+  {
+   "mid": "S3",
+   "expectation": "DUAL",
+   "verdict": "DUAL-KILLED"
+  }
+ ],
+ "restore_fail": [],
+ "errors": []
+}

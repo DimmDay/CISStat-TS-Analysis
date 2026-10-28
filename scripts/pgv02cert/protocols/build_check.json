@@ -1,0 +1,53 @@
+{
+ "routes_total": 221,
+ "routes_documentation": 25,
+ "no_print_routes": true,
+ "artifact_kinds": [
+  "passport",
+  "oof_backtest",
+  "model_card",
+  "forecast",
+  "data_frame",
+  "validation_result",
+  "correction_recipe",
+  "visual_result",
+  "visual_print_snapshot",
+  "passport_checkpoint"
+ ],
+ "visual_schema_versions": {
+  "visual_result": "pgv.visual_result/1",
+  "visual_print_snapshot": "pgv.visual_print_snapshot/1",
+  "passport_checkpoint": "pgv.passport_checkpoint/1"
+ },
+ "document_kinds_count": 12,
+ "print_kinds": {
+  "V01": "scientific_visual",
+  "P01": "passport_print",
+  "P02": "passport_comparison"
+ },
+ "catalog_version": "pgv.document_catalog/2",
+ "migration_files": 16,
+ "migration_statements": 96,
+ "audit_actions": 29,
+ "print_methods_in_abc": [],
+ "py_compile": [
+  "apps/api/visual_artifacts.py",
+  "apps/api/artifact_promotion.py",
+  "apps/api/report_snapshot.py",
+  "apps/api/document_jobs.py",
+  "apps/api/research_runs.py",
+  "scripts/pgv02/check_documents.py"
+ ],
+ "git_diff_check_rc": 0,
+ "product_tree_eq_head": {
+  "apps/api/visual_artifacts.py": true,
+  "apps/api/artifact_promotion.py": true,
+  "apps/api/report_snapshot.py": true,
+  "apps/api/document_jobs.py": true,
+  "apps/api/research_runs.py": true,
+  "apps/api/artifact_store.py": true,
+  "apps/api/migrations/0016_pgv2_print_documents.sql": true,
+  "tests/api/test_pgv02_durable_inputs.py": true
+ },
+ "BUILD": "OK"
+}

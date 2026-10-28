@@ -1,0 +1,21 @@
+{
+ "M19": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "SURVIVED",
+  "note": "указатель current_revision_id не обновляется -- пинуют ли это корпуса? (пре-регистрация выжившего: проверка класса)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.98s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.31
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 90 passed in 5.63s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.52
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ }
+}

@@ -1,0 +1,116 @@
+{
+ "S1": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "2-й порядок: M05 (инверсия CAS) + M11 (гейт снят) -- каскад маскировки: конфликт мимо гейта",
+  "repo": {
+   "cmd_tail": "========================= 4 failed, 62 passed in 7.16s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.64
+  },
+  "oracle": {
+   "cmd_tail": "========================= 8 failed, 81 passed in 5.60s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.63
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "S2": {
+  "file": "apps/api/report_snapshot.py",
+  "expectation": "DUAL",
+  "note": "2-й порядок: kind-имя V01 искажено вместе с каталогом лимитов",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 6.89s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.31
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.42s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.33
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "S3": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "DUAL",
+  "note": "2-й порядок: идемпотентный поиск снят + дубли версий",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.01s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.31
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.75s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.86
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "K01": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "CONTROL",
+  "note": "комментарий -- поведения нет",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.30s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.86
+  },
+  "oracle": {
+   "cmd_tail": "============================== 89 passed in 5.70s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 8.75
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "K02": {
+  "file": "apps/api/artifact_promotion.py",
+  "expectation": "CONTROL",
+  "note": "docstring -- поведения нет",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.05s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.4
+  },
+  "oracle": {
+   "cmd_tail": "============================== 89 passed in 5.59s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 8.58
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "K03": {
+  "file": "apps/api/report_snapshot.py",
+  "expectation": "CONTROL",
+  "note": "хвостовой комментарий -- поведения нет",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.14s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.61
+  },
+  "oracle": {
+   "cmd_tail": "============================== 89 passed in 5.73s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 8.8
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ }
+}

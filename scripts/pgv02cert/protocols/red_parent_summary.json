@@ -1,0 +1,17 @@
+{
+ "class_a": {
+  "returncode": 1,
+  "tail": "========================= 86 failed, 5 passed in 5.70s ========================="
+ },
+ "class_b": {
+  "returncode": 4,
+  "tail": "============================ no tests ran in 0.00s ============================="
+ },
+ "repo_pgv02": {
+  "returncode": 4,
+  "tail": "============================ no tests ran in 0.00s ============================="
+ },
+ "visual_artifacts_absent": true,
+ "migration_0016_absent": true,
+ "RED": true
+}

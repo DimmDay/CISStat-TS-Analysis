@@ -1,0 +1,116 @@
+{
+ "M01": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "перепутанные версии схем visual_result/snapshot",
+  "repo": {
+   "cmd_tail": "========================= 2 failed, 64 passed in 6.87s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.07
+  },
+  "oracle": {
+   "cmd_tail": "========================= 3 failed, 86 passed in 5.45s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.36
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M02": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "panel_entry выпал из каталога стадий (AC14)",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 6.97s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.31
+  },
+  "oracle": {
+   "cmd_tail": "========================= 2 failed, 87 passed in 5.56s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.48
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M03": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "AC11: unchanged без reused разрешён (позиционный маркер вместо пустой замены -- урок PGV-00-CERT)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.09s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.49
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.63s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.63
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M04": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "ослабление формата checkpoint_id (идемпотентность §8)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.99s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.3
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.44s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.3
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M05": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "DUAL",
+  "note": "инверсия CAS по context_id (AC07)",
+  "repo": {
+   "cmd_tail": "========================= 4 failed, 62 passed in 6.84s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.06
+  },
+  "oracle": {
+   "cmd_tail": "========================= 8 failed, 81 passed in 6.01s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 9.03
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M06": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "CAS по ревизии снят -- repo-канал пинует только context_id",
+  "repo": {
+   "cmd_tail": "========================= 2 failed, 64 passed in 6.89s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.18
+  },
+  "oracle": {
+   "cmd_tail": "========================= 2 failed, 87 passed in 5.42s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.28
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

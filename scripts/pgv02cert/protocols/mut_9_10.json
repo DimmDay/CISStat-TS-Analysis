@@ -1,0 +1,21 @@
+{
+ "M10": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "get_passport_checkpoint игнорирует id -- фабкация чужого факта (a21)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.13s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.57
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 90 passed in 5.63s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.68
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ }
+}

@@ -1,0 +1,116 @@
+{
+ "M13": {
+  "file": "apps/api/artifact_promotion.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "per-kind schema_version потерян -- repo пинует словарь, не артефакт",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.04s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.44
+  },
+  "oracle": {
+   "cmd_tail": "========================= 4 failed, 85 passed in 5.73s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.78
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M14": {
+  "file": "apps/api/report_snapshot.py",
+  "expectation": "DUAL",
+  "note": "kind-имя P02 искажено (§10.2)",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.03s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.33
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.76s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.79
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M15": {
+  "file": "apps/api/report_snapshot.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "подсказка resolve_kinds ослеплена -- repo пинует только отказ",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.03s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.39
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.65s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.72
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M16": {
+  "file": "apps/api/report_snapshot.py",
+  "expectation": "DUAL",
+  "note": "семейство document_kind_family искажено",
+  "repo": {
+   "cmd_tail": "========================= 6 failed, 60 passed in 7.22s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.57
+  },
+  "oracle": {
+   "cmd_tail": "========================= 8 failed, 81 passed in 5.75s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.72
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M17": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "префикс печатных ревизий столкнут со snapshot-ревизиями",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.17s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.59
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.95s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 9.08
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M18": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "DUAL",
+  "note": "profile_id вне basis_fingerprint -- смена профиля не создаёт версию",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.43s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.96
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.52s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.39
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

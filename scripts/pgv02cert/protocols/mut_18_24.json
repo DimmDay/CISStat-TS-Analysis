@@ -1,0 +1,116 @@
+{
+ "M19": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "SURVIVED",
+  "note": "указатель current_revision_id не обновляется -- пинуют ли это корпуса? (пре-регистрация выжившего: проверка класса)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.17s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.58
+  },
+  "oracle": {
+   "cmd_tail": "============================== 89 passed in 5.49s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 8.51
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "M20": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "монотонность version_no нарушена -- repo пинует только v1/v2 профиля",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.48s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 12.07
+  },
+  "oracle": {
+   "cmd_tail": "========================= 2 failed, 87 passed in 5.60s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.6
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M21": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "авторизация list_print_documents снята -- чужое чтение (a29)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.93s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.3
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.70s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.77
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M22": {
+  "file": "apps/api/document_jobs.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "причина пина basis искажена -- repo пинует подстроку id",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 7.30s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.81
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.85s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.89
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M23": {
+  "file": "apps/api/research_runs.py",
+  "expectation": "DUAL",
+  "note": "UNIQUE(document_id, basis_fingerprint) выпал из DDL 0016",
+  "repo": {
+   "cmd_tail": "========================= 5 failed, 61 passed in 7.07s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.48
+  },
+  "oracle": {
+   "cmd_tail": "========================= 2 failed, 87 passed in 5.57s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.57
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M24": {
+  "file": "apps/api/research_runs.py",
+  "expectation": "DUAL",
+  "note": "0016 выпала из конкатенации -- счётчик 96→93",
+  "repo": {
+   "cmd_tail": "========================= 4 failed, 62 passed in 7.08s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.44
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.75s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.77
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

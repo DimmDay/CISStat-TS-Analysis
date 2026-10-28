@@ -1,0 +1,116 @@
+{
+ "M07": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "числовая строка ревизии перестаёт сверяться (a13)",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 6.96s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.22
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.65s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.66
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M08": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "точная причина пина зависимости нарушена (§16); repo пинует подстроку id, не шаблон",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.84s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.07
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.49s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.42
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M09": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "фильтр list_visual_results по view_id снят (a21)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.86s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.07
+  },
+  "oracle": {
+   "cmd_tail": "========================= 1 failed, 88 passed in 5.47s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.34
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M10": {
+  "file": "apps/api/visual_artifacts.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "get_passport_checkpoint игнорирует id -- фабкация чужого факта (a21)",
+  "repo": {
+   "cmd_tail": "============================== 66 passed in 6.94s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 11.12
+  },
+  "oracle": {
+   "cmd_tail": "============================== 89 passed in 5.73s ==============================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 8.86
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "M11": {
+  "file": "apps/api/artifact_promotion.py",
+  "expectation": "DUAL",
+  "note": "валидационный гейт снят -- невалидный payload регистрируется",
+  "repo": {
+   "cmd_tail": "========================= 4 failed, 62 passed in 7.29s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.8
+  },
+  "oracle": {
+   "cmd_tail": "========================= 4 failed, 85 passed in 5.60s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.47
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M12": {
+  "file": "apps/api/artifact_promotion.py",
+  "expectation": "DUAL",
+  "note": "контентная сверка §11 снята -- подмена маскируется",
+  "repo": {
+   "cmd_tail": "========================= 1 failed, 65 passed in 7.00s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 11.3
+  },
+  "oracle": {
+   "cmd_tail": "========================= 3 failed, 86 passed in 5.75s =========================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 8.72
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}
