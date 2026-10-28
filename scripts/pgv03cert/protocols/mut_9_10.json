@@ -1,0 +1,21 @@
+{
+ "M10": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "digest фабрикуется (паритет пинов repo payload-тестов)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.34s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.7
+  },
+  "oracle": {
+   "cmd_tail": "================== 19 failed, 296 passed, 17 skipped in 2.91s ==================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.47
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

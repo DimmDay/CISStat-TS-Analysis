@@ -1,0 +1,6 @@
+[CONFIRMED] P1 selection_keys⊆view_params (48 wired): все 48 адаптеров в allowlist реестра
+[CONFIRMED] P2 каждый wired view добирается wiring/sweep: 48 = wiring-точки + sweep(comparison/oof)
+[CONFIRMED] P3 unknown view -> честный отказ: UnknownVisualView
+[CONFIRMED] P4 CAS fail-open при expected_*=None (freeze_saved_visual с деградировавшим контекстом): context сменился ctx-OLD→ctx-NEW, rev 3→4; freeze прошёл без конфликта, артефактов=1
+[CONFIRMED] P5 двойной _now_iso() в notify_visual_result: сохранение и freeze берут независимые _now_iso() (вхождений: 2)
+[CONFIRMED] P6 кэш хранит поверхностную копию ответа: мутация вложенного списка ответа видна в кэше (общие ссылки)

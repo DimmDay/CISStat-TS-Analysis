@@ -1,0 +1,59 @@
+{
+ "K01": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "CONTROL",
+  "note": "no-op комментарий -- контроль мёртвости каналов",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.29s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.57
+  },
+  "oracle": {
+   "cmd_tail": "======================= 315 passed, 17 skipped in 2.68s ========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 5.13
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "K02": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "CONTROL",
+  "note": "перестановка ключей словаря (каноническая сериализация сортирует)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.32s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.64
+  },
+  "oracle": {
+   "cmd_tail": "======================= 315 passed, 17 skipped in 2.96s ========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 5.43
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "K03": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "CONTROL",
+  "note": "no-op комментарий в единой точке интеграции",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.12s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.27
+  },
+  "oracle": {
+   "cmd_tail": "======================= 315 passed, 17 skipped in 2.72s ========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 5.17
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ }
+}

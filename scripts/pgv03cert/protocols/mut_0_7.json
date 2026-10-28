@@ -1,0 +1,135 @@
+{
+ "M01": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "context-CAS экспорта снят (repo пинит только ревизионный путь)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 5.90s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.02
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.51s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.77
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M02": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "revision-CAS экспорта снят (repo: смена ревизии -> конфликт)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.19s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.37
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.61s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.04
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M03": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "origin первого экспорта подменён (§6: два момента фиксации)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 5.94s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 9.78
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.57s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.79
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M04": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "урезанный токен (32 -> 16 hex) -- ослабление идемпотентности",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 5.99s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.09
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.63s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.1
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M05": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "params вне тела ref: zoom/selection не различимы (AC08)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.33s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.66
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.79s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.16
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M06": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "LTTB/даунсэмпл игнорирован: downsampled -> full (скрытый detail upgrade)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 5.81s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 9.66
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 274 passed, 14 skipped in 2.47s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.74
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M07": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "zoom сериальных видов игнорирован (windowed -> full)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.25s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.46
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.57s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.82
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

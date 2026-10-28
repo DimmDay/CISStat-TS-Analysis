@@ -1,0 +1,21 @@
+{
+ "M13": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "честная причина отсутствия времени снята (computed_at=None без причины)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.22s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.5
+  },
+  "oracle": {
+   "cmd_tail": "================== 4 failed, 311 passed, 17 skipped in 2.88s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.35
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

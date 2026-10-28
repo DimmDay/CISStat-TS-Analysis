@@ -1,0 +1,59 @@
+{
+ "M23": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "durable-receipt сбоя не пишется (сбой невидим в аудите)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.26s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.52
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.66s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.93
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M24": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "X-Visual-Context-Id не ставится (§6: response содержит context token)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 5.91s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.0
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.54s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.8
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M25": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "DUAL",
+  "note": "sweep-добор comparison/oof отключён (восстановимая доставка)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.07s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.37
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.79s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.27
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

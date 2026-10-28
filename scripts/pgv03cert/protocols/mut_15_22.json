@@ -1,0 +1,135 @@
+{
+ "M16": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "run-скоуп кэша снят (ответ чужого запуска отдаётся)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.25s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.52
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.77s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.2
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M17": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "честный недобор замолчан: unwired view морозится",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.35s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.65
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 313 passed, 17 skipped in 2.69s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.93
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M18": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "static_demo допущен к freeze (§1: демо -- не результат исследования)",
+  "repo": {
+   "cmd_tail": "=================== 2 failed, 61 passed, 1 warning in 6.36s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.62
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.71s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.06
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M19": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "ревизия момента ответа не запоминается (CAS экспорта ослепает)",
+  "repo": {
+   "cmd_tail": "=================== 3 failed, 60 passed, 1 warning in 6.40s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.8
+  },
+  "oracle": {
+   "cmd_tail": "================== 3 failed, 312 passed, 17 skipped in 2.79s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.18
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M20": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "ref кэша без params: разные selection коллидируют в кэше",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.33s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.62
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.69s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.07
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M21": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "DUAL",
+  "note": "ответ не сохраняется в кэш: экспорт по ref всегда недоступен",
+  "repo": {
+   "cmd_tail": "=================== 22 failed, 41 passed, 1 warning in 6.24s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.73
+  },
+  "oracle": {
+   "cmd_tail": "================== 6 failed, 309 passed, 17 skipped in 2.85s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.24
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M22": {
+  "file": "apps/api/promotion_integration.py",
+  "expectation": "DUAL",
+  "note": "best-effort сломан: сбой freeze ломает научный ответ",
+  "repo": {
+   "cmd_tail": "=================== 2 failed, 61 passed, 1 warning in 6.38s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.75
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 313 passed, 17 skipped in 2.71s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.13
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "M14": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "единицы сырого ряда ВЫДУМАНЫ (spec §6: не выдумывать units)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.22s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.47
+  },
+  "oracle": {
+   "cmd_tail": "================== 8 failed, 307 passed, 17 skipped in 2.70s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.14
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M15": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "LRU-лимит 256 снят (неограниченная память процесса)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.19s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.44
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 314 passed, 17 skipped in 2.65s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.06
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "M09": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "windowed smoothing/forecast игнорирован",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.28s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.54
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 313 passed, 17 skipped in 2.72s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.17
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ }
+}

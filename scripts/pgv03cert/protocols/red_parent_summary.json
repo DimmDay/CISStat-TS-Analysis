@@ -1,0 +1,17 @@
+{
+ "class_a": {
+  "returncode": 2,
+  "tail": "============================== 3 errors in 1.51s ==============================="
+ },
+ "class_b": {
+  "returncode": 2,
+  "tail": "=============================== 1 error in 1.50s ==============================="
+ },
+ "repo_pgv03": {
+  "returncode": 4,
+  "tail": "============================ no tests ran in 0.00s ============================="
+ },
+ "visual_producers_absent": true,
+ "repo_suite_absent": true,
+ "RED": true
+}

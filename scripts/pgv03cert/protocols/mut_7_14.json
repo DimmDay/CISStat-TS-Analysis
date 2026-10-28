@@ -1,0 +1,117 @@
+{
+ "M08": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "zoom гистограммы/KDE игнорирован (окно расчёта не видно)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.02s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 9.88
+  },
+  "oracle": {
+   "cmd_tail": "================== 1 failed, 275 passed, 14 skipped in 2.63s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 4.94
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M09": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "windowed smoothing/forecast игнорирован",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.34s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.63
+  },
+  "oracle": {
+   "cmd_tail": "======================= 276 passed, 14 skipped in 2.82s ========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 5.26
+  },
+  "verdict": "SURVIVED",
+  "restored": true
+ },
+ "M10": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "digest фабрикуется (паритет пинов repo payload-тестов)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.28s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.55
+  },
+  "oracle": {
+   "cmd_tail": "================== 16 failed, 260 passed, 14 skipped in 2.66s ==================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.07
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M11": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "DUAL",
+  "note": "allowlist trusted-параметров снят (все params как trusted)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 6.36s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 10.62
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 274 passed, 14 skipped in 2.75s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.16
+  },
+  "verdict": "DUAL-KILLED",
+  "restored": true
+ },
+ "M12": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "гейт trusted-origins снят (client_request проходит)",
+  "repo": {
+   "cmd_tail": "======================== 63 passed, 1 warning in 6.16s =========================",
+   "returncode": 0,
+   "failed": false,
+   "duration_s": 10.47
+  },
+  "oracle": {
+   "cmd_tail": "================== 2 failed, 274 passed, 14 skipped in 2.78s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.09
+  },
+  "verdict": "ORACLE-ONLY",
+  "restored": true
+ },
+ "M13": {
+  "file": "apps/api/visual_producers.py",
+  "expectation": "ORACLE-ONLY",
+  "note": "честная причина отсутствия времени снята (computed_at=None без причины)",
+  "repo": {
+   "cmd_tail": "=================== 1 failed, 62 passed, 1 warning in 5.79s ====================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 9.83
+  },
+  "oracle": {
+   "cmd_tail": "================== 4 failed, 272 passed, 14 skipped in 2.66s ===================",
+   "returncode": 1,
+   "failed": true,
+   "duration_s": 5.06
+  },
+  "verdict": "DUAL-KILLED",
+  "restore": "RESTORE-FAIL: RuntimeError: RESTORE: якорь замены неуникален: M13 (61)",
+  "restored": false
+ }
+}
