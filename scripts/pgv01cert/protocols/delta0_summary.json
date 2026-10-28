@@ -1,0 +1,33 @@
+{
+  "jest": {
+    "rc": 0,
+    "tail": [
+      "PASS packages/ui/print/printSchema.test.ts",
+      "",
+      "Test Suites: 224 passed, 224 total",
+      "Tests:       2475 passed, 2475 total",
+      "Snapshots:   0 total",
+      "Time:        101.199 s, estimated 189 s"
+    ]
+  },
+  "typecheck": {
+    "rc": 0
+  },
+  "py_compile": {
+    "ok": true
+  },
+  "api_import": {
+    "rc": 0,
+    "routes": "221"
+  },
+  "guards": {
+    "pgv01_rc": 0,
+    "pgv00_rc": 0
+  },
+  "git_diff_check": {
+    "rc": 0
+  },
+  "tree_cleanliness": {
+    "unexpected": []
+  }
+}

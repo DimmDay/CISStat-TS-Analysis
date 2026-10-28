@@ -528,3 +528,43 @@ Cert-корпус: 48/48 GREEN (25 статических + 17 coverage с ан�
 (1) renderer_kind navigator.upload.preview.schema = html_cards — отклонение от кандидата html_table акта §7.2 по сигнатурным данным (задокументировано в записи реестра и §8 инвентаря). (2) Мутационная кампания PGV-00-CERT не перезапускалась — протоколы остаются свидетельствами на 2ef6947; фикс верифицирован Class A+B корпуса, repo-оракулами, guard'ами и полным jest. (3) required_refs comparison/sensitivity — проектные (context_id/data_revision/forecast_artifact_ref по конвенции веток модуля; уточнение PGV-03). (4) Исторические документы (акт PGV-00-CERT, записи PGV-00/PGV-01 worklog) не правились — дельта-0 честность; живые документы (инвентарь, pgv01_print_schema.md) актуализированы с пометками. (5) Перенос ORACLE-ONLY пинов в repo-канал (§7.3 акта) — вне скоупа этой задачи, остаётся кандидатом.
 
 Deliverable: ZIP cisstat-pgv00-fix.zip → открытый контейнер сессии (download/) и веб-приложение :3000 (страница поставки с кнопкой скачивания). Состав: packages/ui/lib/visualExportRegistry.ts, packages/ui/lib/visualExportRegistry.pgv00fix.test.ts (НОВЫЙ), packages/ui/lib/visualExportRegistry.coverage.test.ts, packages/ui/print/printSchema.test.ts, config/visual_registry.json, tests/api/test_pgv01_print_schema.py, scripts/pgv00/check_documents.py, scripts/pgv01/check_documents.py, scripts/pgv00cert/p0scan.py, scripts/pgv00cert/test_p0cert_oracle_static.py, scripts/pgv00cert/test_p0cert_oracle_coverage.py, docs/pgv00_render_site_inventory.md, docs/pgv01_print_schema.md, worklog/worklog11.md. Без commit/push (AGENTS.md). Манифест sha256 не ведётся (указание тимлида, прецедент DOCLOG-2-FIX…9).
+
+---
+
+## Task ID: PGV-01-CERT (2026-10-28) — Независимая сертификация PGV-01 «Print schema/metadata/profile»: оракулы на своих данных, мутанты на своих мутантах, RED на родителе, дельта-0, акт с находками F-P1C1–F-P1C3
+
+Постановка: «Синхронизируйся до 7b72636. Изучи spec_passport_graphics_visual.md, spec_documentation_logging.md и текущую кодовую базу. Проведи честную сертификацию Task ID: PGV-01 (2026-10-27) — Print schema/metadata/profile. Учитывай приёмочные сценарии. При аудите используй мутантов на своих мутантах и оракулов на своих данных. Следуй правилам AGENTS.md. По завершении выложи zip в download/ и через веб-приложение :3000». База: main@7b72636 (клон, рабочее дерево байт-идентично апстриму; родитель поставки 2ef6947). Вердикт: **PASSED WITH FINDINGS** (3 находки, акт docs/cert_pgv01_2026-10-28.md).
+
+### Проектирование → точки аудита
+
+Аудируемая поставка (4fe6aa7): printSchema.ts (1349 строк, источник истины: версии схем, каталог 3 профилей §7, лимиты, правила по scope/renderer_kind, 3 валидатора, builder, сериализация твина), config/print_schema.json (твин), apps/api/print_schema.py (Python-зеркало preflight PGV-02/09), 2 repo-сюиты (43 jest + 35 pytest), doc-гвард 121/121, уточнение реестра (+data_revision ×2). Точки аудита: критерий §13 «Result/version/date/units/sampling обязательны по applicability, параметры trusted», §6 (честные null-причины, панель, checkpoint), §7 (профили/лимиты/манифест), AC-вклад из docs/pgv01_print_schema.md §6.
+
+### Корпус сертификатора (оракулы на своих данных)
+
+scripts/pgv01cert/ — namespace p1cert-* (дизъюнкт пинится): p1cases.py — 94 собственных кейса (65/10/15/4 по kind; 11 валидных контролей все renderer_kinds × все scope; 69 негативных по семействам кодов; 3 OO; 4 U-пина isUnitDeclared; 7 F-свидетельств), все с прегистрированными ожиданиями (мультимножество code+path); p1ts_driver.ts — TS-канал над реальными валидаторами и реестром (спец-маркеры NaN/Infinity — JSON их не носит); p1harness.py — Python-канал + компараторы (полная сила multiset(code,path) / ослабленная set(code) для MV2; исключения каналов — детерминированный псевдо-исход). Класс A 203 теста GREEN (спека 18/24, родитель §19/§19.1, твин собственной транскрипцией 37 кодов/профили/лимиты/правила, реестр 93/8/16-68-8-1, пин литералов контракта в исходниках обоих каналов, анти-вакуус, дизъюнкт, паритет+прегистрация+детерминизм драйвера ×2). Класс B 9 тестов RED (F-P1C1×4 + F-P1C2×3 + F-P1C3×2).
+
+### RED на родителе 2ef6947 (git-worktree)
+
+3/3 канала RED: корпус — ModuleNotFoundError apps.api.print_schema; драйвер — ERR_MODULE_NOT_FOUND printSchema.ts; файлы поставки отсутствуют (protocols/red_parent_summary.json).
+
+### Мутационная кампания «на своих мутантах»
+
+26 мутантов (23 боевых + 3 контроли K01-K03), каналы REPO (jest+pytest+2 guard'а) и ORACLE (Класс A без Класса B): **17 DUAL + 6 ORACLE-ONLY (M06/M19 light-print, M10 expected_context, M11 mixed, M16 whitespace-строки, M17 UPPERCASE hex — слепые зоны repo-каналов) + 0 REPO-ONLY + 0 SURVIVED; контроли 3/3 ALIVE; MV5-атрибуция exact; восстановление md5==HEAD (MV3)**. MV2 (декой под ослаблением): F2a выживает при set(code)-сравнении, ловится multiset(code,path) — ценность полной силы показана на живых каналах. Эволюция ожиданий честно: M03 переатрибутирован ORACLE-ONLY→DUAL (repo-пины jest/pytest), M10/M11 перепроектированы (if(false)-обёртки убивались ts-диагностиками TS2367/TS2339 — компиляция, не поведение; перенесены на внутренние условия), M01/M09/M15 усилены пином литералов исходников, M04 — U-семьёй (helper вне валидаторов).
+
+### Находки (акт §5)
+
+F-P1C1 (средняя; паритет/робастность): Python-зеркало на non-finite — page_count=Infinity → OverflowError, revision=NaN → ValueError (TS: missing_field), point_cap=NaN и heatmap domain=[inf,1] молча принимаются (TS: missing_point_cap/missing_heatmap_scale); root cause _num без Number.isFinite-семантики + негардящие int(); reachability честная — json.loads принимает Infinity/NaN, зеркало — preflight PGV-02/09. F-P1C2 (средняя/низкая; паритет кодов): непрерывность порядка страниц — TS forEach считает каждый несовпавший индекс, PY break после первого и исключает невалидные из базлайна → счётчики (code,path) расходятся ([1,2,4,5] 2vs1; [0,1] 3vs1; [1,1,2] 3vs2). F-P1C3 (низкая; класс F-P0C1): устаревшие пины «89» в комментариях printSchema.ts и check_documents.py после PGV-00-FIX (93). Наблюдения: N1 манифест 0 страниц валиден; N2 page_role/dependencies не валидируются; N3 site-less режим слабее; N4 посторонний kwarg в repo-тесте.
+
+### Регресс, сборка (дельта-0)
+
+Первый прогон поймал внешнюю деградацию venv сессии (pywt/pandera отсутствовали — среда, не поставка) + 2 последовательных флака; окружение восстановлено по apps/api/requirements.txt. Повторный: полный jest 224 сюиты / 2475 тестов — 0 failed; typecheck:all rc=0; py_compile OK; import apps.api.main — 221 маршрут; guard'ы 121/121 + 365/365; coverage-оракул 16/16; git diff --check PASS; продуктовое дерево байт-чистое (protocols/delta0_summary.json).
+
+### План PGV-01-FIX (кандидат)
+
+1) F-P1C1: конечность чисел в зеркале (_num → Number.isFinite-семантика; гард int()) → честные коды обоих каналов; 2) F-P1C2: канонизация forEach-семантики непрерывности + синхронизация зеркала (либо решение тимлида с фиксацией в спеке); 3) F-P1C3: комментарии 89→93; 4) опционально: пин минимума страниц/валидация page_role/dependencies, документация site-less, чистка kwarg. После фикса Класс B обязан стать GREEN без правки смысла оракулов.
+
+### Честные границы
+
+(1) PGV-01 — контрактный слой, не runtime: durable store/producer/jobs/renderer — PGV-02…09 (браузерная/пиксельная приёмка неприменима, граница зафиксирована). (2) Паритет TS⇄JSON реестра и coverage-оракул — каналы PGV-00/PGV-00-CERT, не дублировались. (3) Full-jest-флаки атрибутированы по прецеденту (зелёны повторным прогоном). (4) Деградация venv — внешнее событие среды, зафиксировано для честности. (5) ORACLE-ONLY пины (theme/expected_context/mixed/whitespace/hex) — кандидаты на перенос в repo-канал после PGV-01-FIX.
+
+Deliverable: ZIP cisstat-pgv01-cert.zip → открытый контейнер сессии (download/) и веб-приложение :3000 (страница с кнопкой скачивания). Состав: scripts/pgv01cert/ (12 файлов: p1cases.py, p1ts_driver.ts, p1harness.py, test_p1cert_oracle_static.py, test_p1cert_parity.py, test_p1cert_findings_evidence.py, mutations.py, run_campaign.py, red_parent.py, regress_delta0.py, protocols/×3), docs/cert_pgv01_2026-10-28.md (НОВЫЙ), worklog/worklog11.md. Без commit/push (AGENTS.md). Манифест sha256 не ведётся (указание тимлида, прецедент DOCLOG-2-FIX…9).

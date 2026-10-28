@@ -1,0 +1,19 @@
+{
+  "parent": "2ef6947",
+  "checks": {
+    "cert_corpus": {
+      "RED": true,
+      "module_not_found_evidence": true,
+      "tail": "otFoundError: No module named 'apps.api.print_schema'\n=========================== short test summary info ============================\nERROR scripts/pgv01cert/test_p1cert_findings_evidence.py\nERROR scripts/pgv01cert/test_p1cert_parity.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!\n============================== 2 errors in 0.19s ===============================\n"
+    },
+    "ts_driver": {
+      "RED": true,
+      "module_not_found_evidence": true,
+      "tail": "dules/esm/loader:687:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33)\n    at ModuleJob.link (node:internal/modules/esm/module_job:381:17) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///home/z/my-project/cisstat-pgv01-parent-worktree/packages/ui/print/printSchema.ts'\n}\n\nNode.js v24.22.1\n"
+    },
+    "repo_suite_file_absent": {
+      "RED": true
+    }
+  },
+  "RED_on_parent": true
+}

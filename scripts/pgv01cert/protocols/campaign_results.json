@@ -1,0 +1,483 @@
+{
+  "mv": {
+    "MV1_anchors_unique": true,
+    "MV2_comparator_power": {
+      "decoy": "F2a",
+      "full_detects": true,
+      "weakened_passes": true,
+      "ts": [
+        [
+          "page_order_gap",
+          "pages.index"
+        ],
+        [
+          "page_order_gap",
+          "pages.index"
+        ]
+      ],
+      "py": [
+        [
+          "page_order_gap",
+          "pages.index"
+        ]
+      ]
+    },
+    "MV3_restoration_md5": true,
+    "MV4_controls_alive": true,
+    "MV5_attribution_exact": true
+  },
+  "results": [
+    {
+      "id": "M01",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "ослабление мандата research-refs (критерий version)"
+    },
+    {
+      "id": "M02",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "доверие клиентскому origin (параметры trusted)"
+    },
+    {
+      "id": "M03",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "тихое исключение heatmap из sampling (переатрибутировано: repo убивают jest-пин samplingRequiredForSite(matrix) и pytest test_sampling_rules_match_registry_kinds)"
+    },
+    {
+      "id": "M04",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "XOR→OR в isUnitDeclared (принимает value+reason)"
+    },
+    {
+      "id": "M05",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие требования point_cap (скрытый detail upgrade)"
+    },
+    {
+      "id": "M06",
+      "class": "ORACLE-ONLY",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие мандата light-print (repo-канал не тестирует theme)"
+    },
+    {
+      "id": "M07",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "разрешение raw данных в metadata"
+    },
+    {
+      "id": "M08",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие проверки непрерывности порядка страниц"
+    },
+    {
+      "id": "M09",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "дрейф закреплённых пикселей A4 (PGV-AC16)"
+    },
+    {
+      "id": "M10",
+      "class": "ORACLE-ONLY",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие мандата expected_context (PGV-AC07): типобезопасная правка ВНУТРЕННЕГО условия — repo-канал поведенчески слеп (обёртка if (false) снаружи отбрасывала narrowing value и убивалась ts-диагностикой TS2339 — честно зафиксировано и перепроектировано)"
+    },
+    {
+      "id": "M11",
+      "class": "ORACLE-ONLY",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "mixed-сайт с одной секцией допустим; типобезопасный вариант — repo-канал поведенчески слеп (первая редакция убивалась ts-диагностикой TS2339 — честно зафиксировано и перепроектировано)"
+    },
+    {
+      "id": "M12",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "разрешение entity на univariate (panel mixing)"
+    },
+    {
+      "id": "M13",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "инверсия data_included (валидный манифест отбивается)"
+    },
+    {
+      "id": "M14",
+      "class": "DUAL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие запрета дубликатов имён страниц"
+    },
+    {
+      "id": "M15",
+      "class": "DUAL",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "ослабление мандата research-refs в зеркале"
+    },
+    {
+      "id": "M16",
+      "class": "ORACLE-ONLY",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "принятие whitespace-строк (кейс O01; repo-канал без такого фиксатора)"
+    },
+    {
+      "id": "M17",
+      "class": "ORACLE-ONLY",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "принятие UPPERCASE hex-hash (кейс O02; repo-канал слеп)"
+    },
+    {
+      "id": "M18",
+      "class": "DUAL",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие point_cap в зеркале"
+    },
+    {
+      "id": "M19",
+      "class": "ORACLE-ONLY",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие light-print в зеркале (repo-канал не тестирует theme)"
+    },
+    {
+      "id": "M20",
+      "class": "DUAL",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "разрешение raw данных в зеркале"
+    },
+    {
+      "id": "M21",
+      "class": "DUAL",
+      "file": "config/print_schema.json",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "дрейф лимита §7 в твине"
+    },
+    {
+      "id": "M22",
+      "class": "DUAL",
+      "file": "config/print_schema.json",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "потеря кода нарушения в контракте твина"
+    },
+    {
+      "id": "M23",
+      "class": "DUAL",
+      "file": "config/visual_registry.json",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "expected": {
+        "REPO": "KILL",
+        "ORACLE": "KILL"
+      },
+      "matched": true,
+      "note": "снятие уточнения PGV-01 у upload.structure.schema"
+    },
+    {
+      "id": "K01",
+      "class": "CONTROL",
+      "file": "packages/ui/print/printSchema.ts",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "matched": true,
+      "note": "no-op комментарий в TS"
+    },
+    {
+      "id": "K02",
+      "class": "CONTROL",
+      "file": "apps/api/print_schema.py",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "matched": true,
+      "note": "no-op комментарий в Python"
+    },
+    {
+      "id": "K03",
+      "class": "CONTROL",
+      "file": "config/print_schema.json",
+      "applied": true,
+      "restored_md5": true,
+      "actual": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "expected": {
+        "REPO": "ALIVE",
+        "ORACLE": "ALIVE"
+      },
+      "matched": true,
+      "note": "перестановка ключей (структурное равенство сохраняется)"
+    }
+  ],
+  "summary": {
+    "mutants_total": 26,
+    "battle": 23,
+    "kills": {
+      "DUAL": 17,
+      "ORACLE_ONLY": 6,
+      "CONTROL_ALIVE": 3
+    },
+    "unexpected": []
+  }
+}
