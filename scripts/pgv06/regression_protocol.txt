@@ -1,0 +1,16 @@
+Адресный регресс (PGV-02..05 + dataset_passport + passport_session_state + cert):
+tests/api/test_pgv02_durable_inputs.py test_pgv03_producer_adapters.py
+test_pgv04_passport_checkpoints.py test_pgv05_passport_history.py
+test_dataset_passport.py test_passport_session_state.py
+test_pgv04_cert_oracles.py test_pgv04_cert_findings.py
+=> 254 passed, 0 failed
+
+Дельта-0 полного tests/api (одна среда, кэш pytest отключён):
+  база 4479321:  68 failed / 3048 passed / 44 skipped (прогон 1)
+                 67 failed (прогон 2, список; одна неустойчивая средовая
+                 проба между прогонами -- известные классы psycopg/
+                 upload_db/forecasting_session/garch/egarch)
+  HEAD (PGV-06): 67 failed / 3081 passed / 44 skipped
+  Список 67 FAILED идентичен base vs HEAD (diff пуст):
+  дельта поставки = +32 passed (корпус PGV-06), 0 новых падений,
+  0 изменённых падений.

@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+collected 32 items
+
+tests/api/test_pgv06_passport_comparison.py FFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 87%]
+FFFF                                                                     [100%]
+
+=================================== FAILURES ===================================
+_ TestModuleBoundaries.test_module_imports_exclude_session_store_pandas_redis __
+tests/api/test_pgv06_passport_comparison.py:266: in test_module_imports_exclude_session_store_pandas_redis
+    source = Path("apps/api/passport_comparison.py").read_text(encoding="utf-8")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'apps/api/passport_comparison.py'
+_ TestModuleBoundaries.test_session_orchestration_no_longer_imports_engine_directly _
+tests/api/test_pgv06_passport_comparison.py:290: in test_session_orchestration_no_longer_imports_engine_directly
+    assert "_compare_ts_props" not in names, (
+E   AssertionError: session orchestration импортирует движок напрямую вместо versioned adapter
+E   assert '_compare_ts_props' not in {'_compare_ts_props', 'calculate_ts_passport', 'prepare_passport_series', 'series_fingerprint'}
+_ TestModuleBoundaries.test_adapter_delegates_to_existing_engine_without_duplication _
+tests/api/test_pgv06_passport_comparison.py:298: in test_adapter_delegates_to_existing_engine_without_duplication
+    _upload(client)
+tests/api/test_pgv06_passport_comparison.py:107: in _upload
+    assert resp.status_code == 200, resp.text
+E   AssertionError: {"detail":"Not Found"}
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+_________ TestModuleBoundaries.test_adapter_is_pure_no_store_required __________
+tests/api/test_pgv06_passport_comparison.py:320: in test_adapter_is_pure_no_store_required
+    from apps.api import passport_comparison
+E   ImportError: cannot import name 'passport_comparison' from 'apps.api' (/home/z/my-project/CISStat-TS-Analysis/apps/api/__init__.py)
+______________ TestModuleBoundaries.test_engine_version_is_pinned ______________
+tests/api/test_pgv06_passport_comparison.py:338: in test_engine_version_is_pinned
+    from apps.api import passport_comparison
+E   ImportError: cannot import name 'passport_comparison' from 'apps.api' (/home/z/my-project/CISStat-TS-Analysis/apps/api/__init__.py)
+___ TestTrajectoryCheckpointMode.test_full_trajectory_ordered_refs_and_pairs ___
+FAILED tests/api/test_pgv06_passport_comparison.py::TestPanelAccessAndPurity::test_resolution_is_read_only_and_deterministic
+FAILED tests/api/test_pgv06_passport_comparison.py::TestPanelAccessAndPurity::test_session_endpoint_response_uses_shared_engine
+============================== 32 failed in 3.81s ==============================

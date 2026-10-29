@@ -1,0 +1,10 @@
+schema_version: pgv.passport_comparison/1
+mode: trajectory_checkpoint | completeness: complete
+path: ['start', 'validation', 'exit', 'modeling_entry']
+ordered_refs: ['rs-56703be791554f9', 'rs-43fbba4f63564fe', 'rs-b5c2596d47344f5', 'rs-e4e2608f9f8a469']
+pairs: [('start', 'validation'), ('validation', 'exit'), ('exit', 'modeling_entry')]
+confirmation: {'confirmed_at': '2026-10-29T09:07:59.663006+00:00', 'reused': False, 'unchanged': False}
+method_versions.engine: {'id': 'app.core.passport._compare_ts_props', 'version': 'v1.0'}
+definitions keys: ['absolute', 'delta_color', 'relative', 'zero_denominator_reason']
+endpoint parity: OK (3/3 пар идентичны)
+SMOKE OK

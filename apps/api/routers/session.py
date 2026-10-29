@@ -228,11 +228,14 @@ from apps.api.schemas import (
     DerivedColumnOut,
 )
 from app.core.passport import (
-    _compare_ts_props,
     calculate_ts_passport,
     prepare_passport_series,
     series_fingerprint,
 )
+# PGV-06 (§9): сравнение паспортов -- ТОЛЬКО через versioned adapter
+# общего pure comparison resolver'а (без прямой ссылки на приватный
+# движок; формулы -- в app/core/passport, не в orchestration).
+from apps.api.passport_comparison import compare_passports_via_engine
 from app.data.detectors import (
     detect_column_frequency,
     score_all_columns_as_date,
@@ -5987,7 +5990,7 @@ def compare_dataset_passports(
             "to_stage": new_stage,
             "from_snapshot_id": old.snapshot_id,
             "to_snapshot_id": new.snapshot_id,
-            "comparison": _compare_ts_props(old.passport, new.passport),
+            "comparison": compare_passports_via_engine(old.passport, new.passport),
         })
     return DatasetPassportCompareResponse(
         target_column=session.target_column or snapshots[path[0]].target_column,
