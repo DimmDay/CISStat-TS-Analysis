@@ -1,0 +1,37 @@
+PGV-06 CERT: протокол мутационной кампании
+REPO = 32 теста поставки; ORACLE = 25 оракулов сертификатора
+База: main@cb46e3a
+
+ M01 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M02 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M03 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M04 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M05 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M06 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M07 MUTANT  ORACLE-ONLY-KILLED   repo_alive=True oracle_alive=False
+ M08 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M09 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M10 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M11 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M12 MUTANT  ORACLE-ONLY-KILLED   repo_alive=True oracle_alive=False
+ M13 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M14 MUTANT  ALIVE                repo_alive=True oracle_alive=True
+ M15 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M16 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M17 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M18 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M19 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M20 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M21 MUTANT  ORACLE-ONLY-KILLED   repo_alive=True oracle_alive=False
+ M22 MUTANT  ORACLE-ONLY-KILLED   repo_alive=True oracle_alive=False
+ M23 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M24 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M25 MUTANT  DUAL-KILLED          repo_alive=False oracle_alive=False
+ M26 MUTANT  ALIVE                repo_alive=True oracle_alive=True
+ M27 MUTANT  ORACLE-ONLY-KILLED   repo_alive=True oracle_alive=False
+ M28 MUTANT  ALIVE                repo_alive=True oracle_alive=True
+ K01 CONTROL ALIVE                repo_alive=True oracle_alive=True
+ K02 CONTROL ALIVE                repo_alive=True oracle_alive=True
+ K03 CONTROL ALIVE                repo_alive=True oracle_alive=True
+
+DUAL=20 REPO-ONLY=0 ORACLE-ONLY=5 ALIVE=['M14', 'M26', 'M28', 'K01', 'K02', 'K03']; controls_alive=True
