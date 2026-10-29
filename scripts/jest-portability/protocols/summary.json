@@ -1,0 +1,19 @@
+{
+  "numTotalTestSuites": 237,
+  "numPassedTestSuites": 237,
+  "numFailedTestSuites": 0,
+  "numTotalTests": 2739,
+  "numPassedTests": 2739,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "success": true,
+  "durationSeconds": 107.652,
+  "rendererBuild": "PASS",
+  "typecheckEmbedded": "PASS",
+  "typecheckStandalone": "PASS",
+  "pgv07Guard": "41/41",
+  "pgv08Guard": "48/48",
+  "windowsNative": "NOT RUN",
+  "nextProductionBuilds": "BLOCKED: ENOENT uv_resident_set_memory"
+}

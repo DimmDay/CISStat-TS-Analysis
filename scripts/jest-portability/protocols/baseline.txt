@@ -1,0 +1,31 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      51 |     const actualCount = Number(actual![2]);
+      52 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 53 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      54 |   });
+      55 | });
+      56 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:53:25)
+
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 64 passed, 65 total
+Snapshots:   0 total
+Time:        4.28 s
+Ran all test suites within paths "apps/print-renderer/src/launchGuard.test.ts", "scripts/pgv07cert/test_p7cert_findings.test.tsx", "apps/print-renderer/src/rendererFix.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts".
+Test results written to: scripts/jest-portability/protocols/baseline.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

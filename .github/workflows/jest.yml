@@ -1,0 +1,28 @@
+name: Jest (Linux and Windows)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  jest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install all workspaces (including renderer and root dev dependencies)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: All Jest tests (real Git POSIX shell on Windows, no skips)
+        run: npx jest --maxWorkers=2
+      - name: Build renderer
+        run: npm run build --workspace=@cisstat/print-renderer
+      - name: Typecheck both apps
+        run: npm run typecheck:all

@@ -1785,9 +1785,13 @@ describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта о�
     );
     await renderAndUpload();
 
-    // Штатные отчёты загрузки идут до user-действия (pending/warning-
-    // снапшоты); первое отправление -- неудачное (ok:false).
-    await waitFor(() => expect(stopsCalls().length).toBeGreaterThanOrEqual(1));
+    // The first POST can still precede structure detection (pending).
+    // Wait for the warning this scenario intends to change, rather than
+    // letting the user action race detection/initial delivery.
+    await waitFor(() => {
+      const last = stopsCalls()[stopsCalls().length - 1];
+      expect(String(last?.[1]?.body ?? '')).toContain('"structure":"warning"');
+    });
 
     // Открываем остановку «Структура» и меняем решение пользователя:
     // warning -> pending «ждёт подтверждения» -- новый снапшот, контур

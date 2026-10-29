@@ -23,7 +23,7 @@
  *     ломается, но контрактно возможная форма ломается фабкацией-ломкой.
  */
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { runPythonScript } from "../testing/runtimes";
 import path from "node:path";
 import React from "react";
 import { render } from "@testing-library/react";
@@ -42,10 +42,7 @@ describe("p7cert Class B: F-P7C1 счётчик doc-contract гварда в ж�
     const declared = pgv07Record.match(/check_documents\.py[^\n]*?(\d+)\/\d+/);
     expect(declared).not.toBeNull(); // заявление присутствует
     const declaredCount = Number(declared![1]);
-    const guard = execSync("python3 scripts/pgv07/check_documents.py", {
-      cwd: repoRoot,
-      encoding: "utf8",
-    });
+    const guard = runPythonScript("scripts/pgv07/check_documents.py", repoRoot);
     const actual = guard.match(/гвард: (\d+)\/(\d+)/);
     expect(actual).not.toBeNull();
     const actualCount = Number(actual![2]);

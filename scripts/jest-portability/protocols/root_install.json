@@ -1,0 +1,21 @@
+[
+  {
+    "phase": "before",
+    "install_exit": 0,
+    "resolve_exit": 2,
+    "result": {
+      "local": false,
+      "error": "MODULE_NOT_FOUND"
+    }
+  },
+  {
+    "phase": "after",
+    "install_exit": 0,
+    "resolve_exit": 0,
+    "result": {
+      "local": true,
+      "version": "1.57.0",
+      "path": "/workspace/scratch/baee966ab828/npm-root-probe/node_modules/playwright-core/package.json"
+    }
+  }
+]

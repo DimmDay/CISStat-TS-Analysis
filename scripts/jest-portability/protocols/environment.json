@@ -1,0 +1,9 @@
+{
+  "platform": "Linux",
+  "node": "v24.22.1",
+  "python": "Python 3.12.14",
+  "head": "781de348decc9549919831039f51df32b3339142",
+  "windows_native_execution": "NOT RUN: no Windows host in this session",
+  "chromium_docker_acceptance": "NOT REASSESSED",
+  "next_production_build": "BLOCKED: ENOENT uv_resident_set_memory"
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "app": "embedded",
+    "exit": 1
+  },
+  {
+    "app": "standalone",
+    "exit": 1
+  }
+]

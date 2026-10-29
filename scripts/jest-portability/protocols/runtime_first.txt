@@ -1,0 +1,23 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/testing/runtimes.test.ts
+  ● test runtime discovery (Windows branches exercised without a Windows host) › Python script is executed without shell interpolation, in UTF-8; guard failure is propagated
+
+    TypeError: Cannot redefine property: execFileSync
+        at Object.defineProperty (<anonymous>)
+
+      66 |     const executable = "C:\\Python tools\\python.exe";
+      67 |     const probe = jest.fn(() => pythonOk);
+    > 68 |     const exec = jest.spyOn(childProcess, 'execFileSync').mockReturnValue('гвард: 41/41');
+         |                       ^
+      69 |     const script = "scripts/с пробелом ' $(never).py";
+      70 |     expect(runPythonScript(script, '/repo root', { env: { CISSTAT_TEST_PYTHON: executable }, probe } as RuntimeOptions)).toBe('гвард: 41/41');
+      71 |     expect(exec).toHaveBeenCalledWith(executable, ['-X', 'utf8', script], expect.objectContaining({ cwd: '/repo root', encoding: 'utf8', shell: false }));
+
+      at ModuleMocker.spyOn (node_modules/jest-mock/build/index.js:616:16)
+      at Object.<anonymous> (scripts/testing/runtimes.test.ts:68:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 9 passed, 10 total
+Snapshots:   0 total
+Time:        2.309 s
+Ran all test suites within paths "scripts/testing/runtimes.test.ts".

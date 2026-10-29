@@ -1,0 +1,13 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+Test Suites: 5 passed, 5 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        4.848 s
+Ran all test suites within paths "scripts/testing/runtimes.test.ts", "apps/print-renderer/src/launchGuard.test.ts", "scripts/pgv07cert/test_p7cert_findings.test.tsx", "apps/print-renderer/src/rendererFix.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts".
+Test results written to: scripts/jest-portability/protocols/targeted.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

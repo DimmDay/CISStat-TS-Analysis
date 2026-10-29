@@ -1,0 +1,265 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/testing/runtimes.test.ts
+  ● Test suite failed to run
+
+    [96mscripts/testing/runtimes.test.ts[0m:[93m15[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m15[0m     expect(findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toEqual({ command: 'py', args: ['-3'] });
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m21[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m21[0m     expect(findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toEqual({ command: 'python3', args: [] });
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m27[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m27[0m     expect(findPython({ platform: 'win32', env: { CISSTAT_TEST_PYTHON: command }, probe } as RuntimeOptions).command).toBe(command);
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m29[0m:[93m29[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m29[0m     expect(() => findPython({ env: { CISSTAT_TEST_PYTHON: command }, probe } as RuntimeOptions)).toThrow(/CISSTAT_TEST_PYTHON/);
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m35[0m:[93m29[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m35[0m     expect(() => findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toThrow(/Python 3.*CISSTAT_TEST_PYTHON/);
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m41[0m:[93m35[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { Path: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ Path: string; }' but required in type 'ProcessEnv'.
+
+    [7m41[0m     const actual = findPosixShell({ platform: 'win32', env: { Path: 'D:\\Dev tools\\Git\\cmd;C:\\Windows\\System32' }, probe } as RuntimeOptions);
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m49[0m:[93m27[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { ProgramFiles: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ ProgramFiles: string; }' but required in type 'ProcessEnv'.
+
+    [7m49[0m     expect(findPosixShell({ platform: 'win32', env: { ProgramFiles: 'C:\\Program Files' }, probe } as RuntimeOptions)).toBe(gitBin);
+    [7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m54[0m:[93m27[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "linux"; env: {}; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m54[0m     expect(findPosixShell({ platform: 'linux', env: {}, probe } as RuntimeOptions)).toBe('/usr/bin/sh');
+    [7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m61[0m:[93m33[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { CISSTAT_TEST_SH: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_SH: string; }' but required in type 'ProcessEnv'.
+
+    [7m61[0m     expect(() => findPosixShell({ platform: 'win32', env: { CISSTAT_TEST_SH: 'missing.exe' }, probe } as RuntimeOptions)).toThrow(/CISSTAT_TEST_SH/);
+    [7m  [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m70[0m:[93m50[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m70[0m     expect(runPythonScript(script, '/repo root', { env: { CISSTAT_TEST_PYTHON: executable }, probe } as RuntimeOptions)).toBe('гвард: 41/41');
+    [7m  [0m [91m                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m73[0m:[93m56[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m73[0m     expect(() => runPythonScript(script, '/repo root', { env: { CISSTAT_TEST_PYTHON: executable }, probe } as RuntimeOptions)).toThrow('guard failed 1/41');
+    [7m  [0m [91m                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+
+
+Summary of all failing tests
+FAIL scripts/testing/runtimes.test.ts
+  ● Test suite failed to run
+
+    [96mscripts/testing/runtimes.test.ts[0m:[93m15[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m15[0m     expect(findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toEqual({ command: 'py', args: ['-3'] });
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m21[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m21[0m     expect(findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toEqual({ command: 'python3', args: [] });
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m27[0m:[93m23[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m27[0m     expect(findPython({ platform: 'win32', env: { CISSTAT_TEST_PYTHON: command }, probe } as RuntimeOptions).command).toBe(command);
+    [7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m29[0m:[93m29[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m29[0m     expect(() => findPython({ env: { CISSTAT_TEST_PYTHON: command }, probe } as RuntimeOptions)).toThrow(/CISSTAT_TEST_PYTHON/);
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m35[0m:[93m29[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: {}; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m35[0m     expect(() => findPython({ platform: 'win32', env: {}, probe } as RuntimeOptions)).toThrow(/Python 3.*CISSTAT_TEST_PYTHON/);
+    [7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m41[0m:[93m35[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { Path: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ Path: string; }' but required in type 'ProcessEnv'.
+
+    [7m41[0m     const actual = findPosixShell({ platform: 'win32', env: { Path: 'D:\\Dev tools\\Git\\cmd;C:\\Windows\\System32' }, probe } as RuntimeOptions);
+    [7m  [0m [91m                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m49[0m:[93m27[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { ProgramFiles: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; } | { status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ ProgramFiles: string; }' but required in type 'ProcessEnv'.
+
+    [7m49[0m     expect(findPosixShell({ platform: 'win32', env: { ProgramFiles: 'C:\\Program Files' }, probe } as RuntimeOptions)).toBe(gitBin);
+    [7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m54[0m:[93m27[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "linux"; env: {}; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [command: string], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{}' but required in type 'ProcessEnv'.
+
+    [7m54[0m     expect(findPosixShell({ platform: 'linux', env: {}, probe } as RuntimeOptions)).toBe('/usr/bin/sh');
+    [7m  [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m61[0m:[93m33[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ platform: "win32"; env: { CISSTAT_TEST_SH: string; }; probe: jest.Mock<{ status: any; stdout: string; stderr: string; error: Error; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_SH: string; }' but required in type 'ProcessEnv'.
+
+    [7m61[0m     expect(() => findPosixShell({ platform: 'win32', env: { CISSTAT_TEST_SH: 'missing.exe' }, probe } as RuntimeOptions)).toThrow(/CISSTAT_TEST_SH/);
+    [7m  [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m70[0m:[93m50[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m70[0m     expect(runPythonScript(script, '/repo root', { env: { CISSTAT_TEST_PYTHON: executable }, probe } as RuntimeOptions)).toBe('гвард: 41/41');
+    [7m  [0m [91m                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+    [96mscripts/testing/runtimes.test.ts[0m:[93m73[0m:[93m56[0m - [91merror[0m[90m TS2352: [0mConversion of type '{ env: { CISSTAT_TEST_PYTHON: string; }; probe: jest.Mock<{ status: number; stdout: string; stderr: string; }, [], any>; }' to type 'RuntimeOptions' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+      Types of property 'env' are incompatible.
+        Property 'NODE_ENV' is missing in type '{ CISSTAT_TEST_PYTHON: string; }' but required in type 'ProcessEnv'.
+
+    [7m73[0m     expect(() => runPythonScript(script, '/repo root', { env: { CISSTAT_TEST_PYTHON: executable }, probe } as RuntimeOptions)).toThrow('guard failed 1/41');
+    [7m  [0m [91m                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+      [96mnode_modules/next/types/global.d.ts[0m:[93m22[0m:[93m14[0m
+        [7m22[0m     readonly NODE_ENV: 'development' | 'production' | 'test'
+        [7m  [0m [96m             ~~~~~~~~[0m
+        'NODE_ENV' is declared here.
+
+
+Test Suites: 1 failed, 236 passed, 237 total
+Tests:       2729 passed, 2729 total
+Snapshots:   0 total
+Time:        102.353 s
+Ran all test suites.
+Test results written to: scripts/jest-portability/protocols/full_final.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

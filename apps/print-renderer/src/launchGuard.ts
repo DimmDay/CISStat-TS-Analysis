@@ -11,13 +11,17 @@ export interface LaunchGuard {
   cancel(): void;
   cleanup(): void;
 }
+/** Git's POSIX shell accepts C:/ paths; preserve literal backslashes on Unix. */
+export function toShellPath(path: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? path.replace(/\\/g, '/') : path;
+}
 export function createLaunchGuard(tmpDir: string): LaunchGuard {
   const directory = mkdtempSync(join(tmpDir, "cisstat-render-"));
   const pidPath = join(directory, "browser.pid");
   const pidPart = join(directory, "browser.pid.part");
   const cancelled = join(directory, "cancelled");
   const wrapper = join(directory, "launch.sh");
-  const quote = (s: string) => "'" + s.replace(/'/g, "'\\''") + "'";
+  const quote = (s: string) => "'" + toShellPath(s).replace(/'/g, "'\\''") + "'";
   writeFileSync(wrapper, `#!/bin/sh\nset -eu\nprintf '%s' "$$" > ${quote(pidPart)}\n/bin/mv -f ${quote(pidPart)} ${quote(pidPath)}\nif [ -f ${quote(cancelled)} ]; then exit 125; fi\nexec "$@"\n`, { mode: 0o600 });
   return {
     directory, wrapper,

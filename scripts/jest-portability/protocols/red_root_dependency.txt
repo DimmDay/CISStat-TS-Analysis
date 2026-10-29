@@ -1,0 +1,23 @@
+FAIL scripts/testing/runtimes.test.ts
+  ● test runtime discovery (Windows branches exercised without a Windows host) › root Jest explicitly owns the same Playwright pin as renderer and lock
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "1.57.0"
+    Received: undefined
+
+      80 |     const pin = read('apps/print-renderer/package.json').dependencies['playwright-core'];
+      81 |     expect(pin).toBe('1.57.0');
+    > 82 |     expect(read('package.json').devDependencies['playwright-core']).toBe(pin);
+         |                                                                     ^
+      83 |     expect(read('package-lock.json').packages[''].devDependencies['playwright-core']).toBe(pin);
+      84 |     expect(require('playwright-core/package.json').version).toBe(pin);
+      85 |   });
+
+      at Object.<anonymous> (scripts/testing/runtimes.test.ts:82:69)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 9 skipped, 10 total
+Snapshots:   0 total
+Time:        2.644 s
+Ran all test suites within paths "scripts/testing/runtimes.test.ts".

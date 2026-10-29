@@ -1,0 +1,24 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/testing/runtimes.test.ts
+  ● Test suite failed to run
+
+    The error below may be caused by using the wrong test environment, see https://jestjs.io/docs/configuration#testenvironment-string.
+    Consider using the "jsdom" test environment.
+
+    ReferenceError: window is not defined
+
+      66 |
+      67 | // matchMedia: jsdom не реализует, но отдельные компоненты могут звать.
+    > 68 | window.matchMedia =
+         | ^
+      69 |   window.matchMedia ||
+      70 |   ((query) => ({
+      71 |     matches: false,
+
+      at Object.<anonymous> (jest.setup.js:68:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.366 s
+Ran all test suites within paths "scripts/testing/runtimes.test.ts".
