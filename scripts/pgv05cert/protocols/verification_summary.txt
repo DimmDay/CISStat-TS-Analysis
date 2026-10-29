@@ -1,0 +1,40 @@
+PGV-05-CERT — верификация (одна среда, кэш pytest отключён, python 3.12)
+
+== Class A (оракулы на своих данных) ==
+tests/api/test_pgv05_cert_oracles.py: 23 passed (детерминизм прогона x2:
+23 passed / 23 passed).
+
+== Class B (RED-свидетельства находок) ==
+tests/api/test_pgv05_cert_findings.py: 1 failed (B1, F-P5C1 -- по
+построению RED до PGV-05-FIX), 1 passed (B2 -- инвариант: ранtimesmoke
+честен, дефект только в докстринге).
+
+== Адресный регресс ==
+Корпус поставки PGV-05 (18) + субстрат pgv02+pgv03+pgv04+
+dataset_passport+passport_session_state+deepar_panel_pivot+
+doclog_recheck_fix: 280 passed, 1 skipped, 0 failed.
+
+== Мутационная кампания «на своих мутантах» ==
+MV0: REPO 18 passed | ORACLE 23 passed (оба канала GREEN без мутантов).
+21 боевой мутант + 3 контроли K01-K03 над apps/api/passport_history.py.
+Итог: 12 DUAL-KILLED + 8 ORACLE-ONLY-KILLED + 1 ALIVE (M14 --
+эквивалентный мутант: пре-фильтр списка дублирует проверки
+_snapshot_record, поведение идентично); контроли 3/3 ALIVE.
+MV1: все замены уникальны (count==1). MV2: файл восстановлен после
+каждого мутанта. MV3: финальный md5 == HEAD (11eda6788829aee0f173ec51a6cb6f38).
+Продуктовое дерево после кампании: git diff HEAD -- apps/ пуст.
+
+== Дельта-0 полного tests/api ==
+Родитель ad597cb (чистый worktree): 74F/3040P/44S.
+HEAD ad597cb + корпус сертификации: 75F/3064P/44S.
+diff_target_only = 1 (ровно Class B B1 RED по построению);
+diff_parent_only = [] (родительская сторона без потерь);
+дельта passed = +24 (23 оракула Class A + 1 инвариант Class B GREEN).
+
+== Сборка/паритеты поставки (перепроверены сертификатором) ==
+import apps.api.main OK -- 221 маршрутов; ARTIFACT_KINDS = 10;
+миграции 0001-0016 (16); AST apps/api/passport_history.py: нет
+session_store/pandas/redis импортов, нет write-вызовов промоушена.
+Адресный регресс 262 (заявка поставки) воспроизведён: 262 passed/1 skip.
+Smoke scripts/pgv05/check_reader.py: 4 снимка x 15 групп, picker
+1 чекпоинт/4 записи (заявка worklog подтверждена).

@@ -1,0 +1,286 @@
+{
+  "target": "apps/api/passport_history.py",
+  "head_md5": "11eda6788829aee0f173ec51a6cb6f38",
+  "channels": {
+    "REPO": "tests/api/test_pgv05_passport_history.py",
+    "ORACLE": "tests/api/test_pgv05_cert_oracles.py"
+  },
+  "mv_protocol": {
+    "MV0": {
+      "repo_green": true,
+      "repo_tail": "============================== 18 passed in 5.75s ==============================",
+      "oracle_green": true,
+      "oracle_tail": "============================== 23 passed in 6.63s =============================="
+    },
+    "MV3": {
+      "final_md5": "11eda6788829aee0f173ec51a6cb6f38",
+      "matches_head": true
+    }
+  },
+  "results": [
+    {
+      "id": "K01",
+      "description": "neutral: logger name suffix (no behavior)",
+      "control": true,
+      "repo_killed": false,
+      "oracle_killed": false,
+      "status": "ALIVE",
+      "repo_tail": "============================== 18 passed in 5.35s ==============================",
+      "oracle_tail": "============================== 23 passed in 6.56s ==============================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "K02",
+      "description": "neutral: comment wording only",
+      "control": true,
+      "repo_killed": false,
+      "oracle_killed": false,
+      "status": "ALIVE",
+      "repo_tail": "============================== 18 passed in 5.62s ==============================",
+      "oracle_tail": "============================== 23 passed in 6.65s ==============================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "K03",
+      "description": "neutral: dead local constant (never read)",
+      "control": true,
+      "repo_killed": false,
+      "oracle_killed": false,
+      "status": "ALIVE",
+      "repo_tail": "============================== 18 passed in 5.41s ==============================",
+      "oracle_tail": "============================== 23 passed in 6.77s ==============================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M01",
+      "description": "drop run-membership check in _snapshot_record (foreign rs-ref leak)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.48s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.54s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M02",
+      "description": "drop run check in _passport_artifact_for dependency branch (cross-run artifact)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.66s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 7.23s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M17",
+      "description": "drop _authorized_run from list_passport_checkpoints",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.67s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.70s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M03",
+      "description": "drop payload.snapshot_id association check (substituted association accepted)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.46s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.39s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M04",
+      "description": "drop payload_sha256 registry verification (second integrity layer)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.40s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.56s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M05",
+      "description": "serve payload despite registry-hash mismatch (corrupt content leak)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.42s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 7.05s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M06",
+      "description": "corrupt artifact branch claims content_status=present",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.66s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.83s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M07",
+      "description": "fabricate schema version 'v1' instead of legacy_unknown",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.38s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.30s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M19",
+      "description": "XOR machine broken: reason set even when value present",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.29s ==============================",
+      "oracle_tail": "========================= 5 failed, 18 passed in 6.45s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M18",
+      "description": "source_hash confusion: source_hash := fingerprint (hash identity mixed)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.40s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.41s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M08",
+      "description": "captured_at := invented constant (AC12: invented date)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 3 failed, 15 passed in 5.45s =========================",
+      "oracle_tail": "========================= 2 failed, 21 passed in 6.40s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M12",
+      "description": "trajectory confirmed_at := artifact.created_at (promotion time substitution)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 2 failed, 16 passed in 5.49s =========================",
+      "oracle_tail": "========================= 2 failed, 21 passed in 6.41s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M09",
+      "description": "panel_entry universe mapped to single (universes mixed)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 2 failed, 16 passed in 5.65s =========================",
+      "oracle_tail": "========================= 2 failed, 21 passed in 6.60s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M10",
+      "description": "universe filter inverted in list_passport_snapshots",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.74s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.66s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M11",
+      "description": "reused alias under wrong key (always 'confirmed')",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.74s =========================",
+      "oracle_tail": "========================= 2 failed, 21 passed in 6.46s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M16",
+      "description": "stage_refs resolution gaps silently dropped",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.44s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.31s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M20",
+      "description": "stage := None (provable stage lost)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 3 failed, 15 passed in 5.44s =========================",
+      "oracle_tail": "========================= 3 failed, 20 passed in 6.53s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M14",
+      "description": "list_passport_snapshots drops D02/prefix filter (foreign records leak)",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": false,
+      "status": "ALIVE",
+      "repo_tail": "============================== 18 passed in 5.47s ==============================",
+      "oracle_tail": "============================== 23 passed in 6.39s ==============================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M13",
+      "description": "picker sorted by checkpoint_id instead of confirmed_at",
+      "control": false,
+      "repo_killed": false,
+      "oracle_killed": true,
+      "status": "ORACLE-ONLY-KILLED",
+      "repo_tail": "============================== 18 passed in 5.55s ==============================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.63s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M15",
+      "description": "picker fingerprint := None (confirmed snapshot identity lost)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 6.61s =========================",
+      "oracle_tail": "========================= 1 failed, 22 passed in 6.38s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    },
+    {
+      "id": "M21",
+      "description": "checkpoint lookup returns first artifact (checkpoint_id match ignored)",
+      "control": false,
+      "repo_killed": true,
+      "oracle_killed": true,
+      "status": "DUAL-KILLED",
+      "repo_tail": "========================= 1 failed, 17 passed in 5.67s =========================",
+      "oracle_tail": "========================= 2 failed, 21 passed in 6.29s =========================",
+      "restored_md5": "11eda6788829aee0f173ec51a6cb6f38"
+    }
+  ]
+}
