@@ -1,0 +1,56 @@
+test_all_consumers (__main__.Contract.test_all_consumers) ... FAIL
+test_base_and_status (__main__.Contract.test_base_and_status) ... FAIL
+test_lifecycle (__main__.Contract.test_lifecycle) ... FAIL
+test_markdown (__main__.Contract.test_markdown) ... ok
+test_source_references (__main__.Contract.test_source_references) ... FAIL
+test_tasks (__main__.Contract.test_tasks) ... FAIL
+
+======================================================================
+FAIL: test_all_consumers (__main__.Contract.test_all_consumers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-kb-ingestion/scripts/knowledge_ingestion_spec/check_spec.py", line 13, in test_all_consumers
+    for t in ['buildLearningStack','describeNode','glossary','registry_data.json','PROMOTE_KNOWLEDGE','lru_cache','stage_id','directions']:self.assertIn(t,self.s)
+                                                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'buildLearningStack' not found in ''
+
+======================================================================
+FAIL: test_base_and_status (__main__.Contract.test_base_and_status)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-kb-ingestion/scripts/knowledge_ingestion_spec/check_spec.py", line 9, in test_base_and_status
+    for t in ['cb46e3aca646cc77cc600af0de5d80094678c1b8','не реализован','14 статей','78','28']:self.assertIn(t,self.s)
+                                                                                                ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'cb46e3aca646cc77cc600af0de5d80094678c1b8' not found in ''
+
+======================================================================
+FAIL: test_lifecycle (__main__.Contract.test_lifecycle)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-kb-ingestion/scripts/knowledge_ingestion_spec/check_spec.py", line 11, in test_lifecycle
+    for t in ['source_version','content_hash','review_required','release_id','last-known-good','manifest','UTF-8','Markdown','DOCX','PDF','OCR','dry-run']:self.assertIn(t,self.s)
+                                                                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'source_version' not found in ''
+
+======================================================================
+FAIL: test_source_references (__main__.Contract.test_source_references)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-kb-ingestion/scripts/knowledge_ingestion_spec/check_spec.py", line 15, in test_source_references
+    parts=self.s.split('<!-- SOURCE_PATHS -->');self.assertEqual(len(parts),3)
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 3
+
+======================================================================
+FAIL: test_tasks (__main__.Contract.test_tasks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-kb-ingestion/scripts/knowledge_ingestion_spec/check_spec.py", line 20, in test_tasks
+    self.assertGreaterEqual(len(rows),8);done=set()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 not greater than or equal to 8
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+FAILED (failures=5)

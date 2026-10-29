@@ -1,0 +1,11 @@
+test_all_consumers (__main__.Contract.test_all_consumers) ... ok
+test_base_and_status (__main__.Contract.test_base_and_status) ... ok
+test_lifecycle (__main__.Contract.test_lifecycle) ... ok
+test_markdown (__main__.Contract.test_markdown) ... ok
+test_source_references (__main__.Contract.test_source_references) ... ok
+test_tasks (__main__.Contract.test_tasks) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
