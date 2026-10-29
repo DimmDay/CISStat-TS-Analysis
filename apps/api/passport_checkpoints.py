@@ -38,10 +38,17 @@ pgv.passport_checkpoint/1 и register_passport_checkpoint уже
 
 3. BACKFILL (legacy_import). Sweep-точка моделирования
    (notify_modeling_artifacts_updated) добирает чекпоинты без durable
-   представления ТОЛЬКО из доказуемых session-записей -- retry БЕЗ
-   capture/пересчёта науки (§9.3). Уже замороженные (любой provenance)
-   пропускаются по producer_key БЕЗ чтения payload -- конфликтов
-   контента не возникает, provenance первого успеха сохраняется.
+   представления ТОЛЬКО из доказуемых session-записей (single --
+   passport_checkpoints, panel -- panel_entry_checkpoints) -- retry
+   БЕЗ capture/пересчёта науки (§9.3; PGV-04-FIX F-P4C1: панельный
+   список читается из РЕАЛЬНОГО поля session-контура). Уже
+   замороженные (любой provenance) пропускаются по producer_key БЕЗ
+   чтения payload -- конфликтов контента не возникает, provenance
+   первого успеха сохраняется. Изоляция per-entry (PGV-04-FIX
+   F-P4C2, паритет sweep-цикла): честный недобор
+   (PromotionUnavailable) -- info-гэп без receipt; прочий сбой
+   КОНКРЕТНОЙ записи -- durable-receipt + счётчик failed, добор
+   остальных продолжается (восстановимая доставка).
 
 КЛЮЧЕВЫЕ РЕШЕНИЯ ЧЕСТНОСТИ:
 
@@ -375,10 +382,17 @@ def freeze_passport_checkpoint(
     по checkpoint_id -- PGV-02).
 
     Порядок: rs-записи вовлечённых снимков (идемпотентно) -> payload из
-    session-фактов -> register_passport_checkpoint. Отсутствие
-    обязательных точек траектории -- PromotionUnavailable (честный
-    недобор: вызывающий гарантированно ничего не записал). Существующий
-    producer_key возвращается без переписывания (§8)."""
+    session-фактов -> register_passport_checkpoint.
+
+    Честная семантика частичной rs-записи (PGV-04-FIX F-P4C3):
+    rs-записи вовлечённых снимков создаются ДО проверки полноты
+    траектории и при честном недоборе (PromotionUnavailable --
+    отсутствие обязательной точки) ОСТАЮТСЯ в реестре: это адресуемые
+    факты СУЩЕСТВУЮЩИХ session-снимков (не фабкация; идемпотентность
+    pgv-passport:{snapshot_id} §8 не нарушена -- повторный вызов и
+    добор переиспользуют их без переписывания). Сам durable-чекпоинт
+    при недоборе НЕ регистрируется. Существующий producer_key
+    возвращается без переписывания (§8)."""
     from apps.api.artifact_promotion import PromotionUnavailable
     from apps.api.visual_artifacts import register_passport_checkpoint
 
@@ -479,6 +493,39 @@ def _current_context_or_none(session: Any) -> Optional[str]:
 # ── Backfill (retry без capture) ─────────────────────────────────────
 
 
+def _record_backfill_entry_failure(
+    run_id: str,
+    subject: Any,
+    session_id: str,
+    checkpoint: Any,
+    error: BaseException,
+) -> None:
+    """Durable-receipt сбоя добора КОНКРЕТНОЙ записи (PGV-04-FIX
+    F-P4C2). Receipt-семантика -- ЕДИНАЯ точка promotion_integration
+    (инвариант 3 «одна точка интеграции»); никогда не бросает."""
+    try:
+        from apps.api.promotion_integration import _record_failure
+
+        _record_failure(
+            run_id=run_id,
+            operation="backfill_passport_checkpoint",
+            producer_key=(
+                "pgv.checkpoint:"
+                f"{durable_checkpoint_id(checkpoint.checkpoint_id)}"
+            ),
+            error=error,
+            subject=subject,
+            session_id=session_id,
+        )
+    except Exception:  # pragma: no cover -- receipt не ломает добор
+        logger.warning(
+            "Passport checkpoint backfill failure receipt could not be "
+            "recorded: checkpoint=%s -- %s",
+            getattr(checkpoint, "checkpoint_id", ""),
+            error,
+        )
+
+
 def backfill_passport_checkpoints(
     run_id: str,
     subject: Any,
@@ -492,16 +539,33 @@ def backfill_passport_checkpoints(
     session-записи; provenance=legacy_import; существующие (любой
     provenance) пропускаются по producer_key без чтения payload.
 
-    Возвращает счётчики: frozen / skipped_missing_stage_refs."""
+    Изоляция per-entry (PGV-04-FIX F-P4C2, паритет sweep-цикла
+    notify_modeling_artifacts_updated): честный недобор
+    (PromotionUnavailable) -- info-гэп БЕЗ receipt (штатное состояние
+    конвейера, retry следующего sweep'а доберёт); прочий сбой ОДНОЙ
+    записи (битая легаси-фактура -> ArtifactPayloadInvalid, конфликт,
+    KeyError) -- durable-receipt класса сбоя промоушена + счётчик
+    failed, добор остальных записей ПРОДОЛЖАЕТСЯ (восстановимая
+    доставка: следующий sweep не упирается в блокирующий сбой партии;
+    rs-записи, созданные до отказа сбойной записи, -- честные
+    адресуемые факты существующих снимков, см. freeze).
+
+    Возвращает счётчики: frozen / skipped_missing_stage_refs / failed
+    (ключ failed присутствует только когда сбои доставки были --
+    отсутствие ключа означает, что сбоев не было)."""
     counts = {"frozen": 0, "skipped_missing_stage_refs": 0}
     if not run_id:
         return counts
     from apps.api.artifact_promotion import PromotionUnavailable
 
     service = _authorized_service(run_id, subject, session_id)
+    # F-P4C1: панельные чекпоинты -- РЕАЛЬНОЕ поле session-контура
+    # panel_entry_checkpoints (ранее читалось несуществующее
+    # panel_passport_checkpoints: панель молчаливо не добиралась --
+    # «retry без capture» §13 для panel_entry не enforced).
     session_checkpoints = list(
         getattr(session, "passport_checkpoints", None) or []
-    ) + list(getattr(session, "panel_passport_checkpoints", None) or [])
+    ) + list(getattr(session, "panel_entry_checkpoints", None) or [])
     for checkpoint in session_checkpoints:
         producer_key = f"pgv.checkpoint:{durable_checkpoint_id(checkpoint.checkpoint_id)}"
         try:
@@ -528,4 +592,13 @@ def backfill_passport_checkpoints(
                 exc,
             )
             counts["skipped_missing_stage_refs"] += 1
+        except Exception as exc:
+            # F-P4C2: сбой доставки КОНКРЕТНОЙ записи не прерывает добор
+            # остальных (per-entry изоляция -- паритет sweep-цикла);
+            # сбойная запись получает durable-receipt (класс сбоя
+            # промоушена), добор продолжается.
+            _record_backfill_entry_failure(
+                run_id, subject, session_id, checkpoint, exc
+            )
+            counts["failed"] = counts.get("failed", 0) + 1
     return counts

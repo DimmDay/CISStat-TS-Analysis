@@ -216,14 +216,23 @@ def _seed_session_checkpoints(session, *, confirmed_at: str | None = None):
 
 def _seed_panel_checkpoints(session):
     """Панельная фактура: panel_entry снимок + checkpoint (reused,
-    previous == сам снимок -- конвенция панельного confirm)."""
-    snapshot = session.append_passport_snapshot(
-        "panel_entry",
-        {"entity_column": "region", "models": {}},
+    previous == сам снимок -- конвенция панельного confirm).
+    PGV-04-FIX (N-P4C3): реальный panel-API контура
+    (append_panel_passport_snapshot + append_panel_entry_checkpoint +
+    panel_columns) -- мёртвый сломанный хелпер (с certify-маркером
+    «задуманный и не написанный панельный тест») оживлён и используется
+    панельным backfill-тестом (F-P4C1)."""
+    session.modeling_artifacts["panel_columns"] = {
+        "date_column": "date",
+        "entity_column": "entity",
+        "value_columns": ["y"],
+        "target_column": "value",
+    }
+    snapshot = session.append_panel_passport_snapshot(
+        passport={"entity_column": "region", "models": {}},
         fingerprint="fp-panel-" + "0" * 55,
     )
-    checkpoint = session.append_passport_checkpoint(
-        "panel_entry",
+    checkpoint = session.append_panel_entry_checkpoint(
         snapshot,
         previous_snapshot_id=snapshot.snapshot_id,
         created_snapshot=False,
@@ -789,6 +798,75 @@ class TestBackfill:
             "", _owner_subject(), session=session, session_id=SESSION_ID,
         )
         assert counts == {"frozen": 0, "skipped_missing_stage_refs": 0}
+
+    def test_backfill_covers_panel_checkpoints(self):
+        """PGV-04-FIX (F-P4C1): панельный чекпоинт добирается backfill'ом
+        из РЕАЛЬНОГО поля session panel_entry_checkpoints (критерий §13
+        «retry без capture» для panel_entry enforced; класс F-P2C2
+        «контракт не enforced» + молчаливый пропуск устранены); payload:
+        stage=panel_entry, entity-контекст (AC14), provenance=legacy_import;
+        повтор -- no-op (идемпотентность §8)."""
+        from apps.api.passport_checkpoints import backfill_passport_checkpoints
+
+        _seed_run()
+        session = _seed_session_object()
+        _snapshot, panel_checkpoint = _seed_panel_checkpoints(session)
+        get_session_store().save(session)
+
+        counts = backfill_passport_checkpoints(
+            RUN_ID, _owner_subject(), session=session, session_id=SESSION_ID,
+        )
+        assert counts["frozen"] == 1, counts
+        artifact = _durable_checkpoint(RUN_ID, panel_checkpoint.checkpoint_id)
+        assert artifact is not None, (
+            "панельный чекпоинт не добран backfill'ом (F-P4C1)"
+        )
+        payload = _checkpoint_payload(artifact)
+        assert payload["stage"] == "panel_entry"
+        assert payload["provenance"]["source"] == "legacy_import"
+        assert payload["context"]["entity_id"] == "entity"
+        assert payload["stage_refs"]["panel"].startswith("rs-")
+
+        counts_again = backfill_passport_checkpoints(
+            RUN_ID, _owner_subject(), session=session, session_id=SESSION_ID,
+        )
+        assert counts_again["frozen"] == 0
+        assert "failed" not in counts_again
+
+    def test_backfill_per_entry_isolation_with_failed_counter(self):
+        """PGV-04-FIX (F-P4C2): сбой ОДНОЙ записи (панельный чекпоинт с
+        утраченными panel_columns -> ArtifactPayloadInvalid -- реалистичный
+        легаси-путь) НЕ прерывает добор легитимных; вызов не бросает;
+        счётчик failed честен; сбойная запись не доставляется (паритет
+        per-entry sweep-цикла notify_modeling_artifacts_updated)."""
+        from apps.api.passport_checkpoints import backfill_passport_checkpoints
+
+        _seed_run()
+        session = _seed_session_object()
+        _snapshots, single_checkpoint = _seed_session_checkpoints(session)
+        # Сбойная панельная запись: панель-снимок есть, panel_columns
+        # УТРАЧЕНЫ (легаси-фактура) -> payload entity_id=None ->
+        # ArtifactPayloadInvalid (НЕ PromotionUnavailable -- инвариант B6).
+        panel_snapshot = session.append_panel_passport_snapshot(
+            passport={"entity_column": "region", "models": {}},
+            fingerprint="fp-panel-" + "0" * 55,
+        )
+        panel_checkpoint = session.append_panel_entry_checkpoint(
+            panel_snapshot,
+            previous_snapshot_id=panel_snapshot.snapshot_id,
+            created_snapshot=False,
+        )
+        get_session_store().save(session)
+
+        counts = backfill_passport_checkpoints(
+            RUN_ID, _owner_subject(), session=session, session_id=SESSION_ID,
+        )
+        assert counts["frozen"] == 1, counts
+        assert counts.get("failed", 0) == 1, counts
+        assert _durable_checkpoint(RUN_ID, single_checkpoint.checkpoint_id) is not None, (
+            "сбой одной записи прервал добор легитимного чекпоинта (F-P4C2)"
+        )
+        assert _durable_checkpoint(RUN_ID, panel_checkpoint.checkpoint_id) is None
 
 
 # ══════════════════════════════════════════════════════════════════════

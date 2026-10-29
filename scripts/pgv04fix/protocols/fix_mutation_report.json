@@ -1,0 +1,111 @@
+{
+  "campaign": "PGV-04-FIX targeted re-mutation (на своих мутантах)",
+  "parent": "ad597cb (PGV-04-CERT)",
+  "module": "apps/api/passport_checkpoints.py",
+  "repo_suite": "tests/api/test_pgv04_passport_checkpoints.py",
+  "oracle_suite": "tests/api/test_pgv04_cert_oracles.py",
+  "class_b_suite": "tests/api/test_pgv04_cert_findings.py",
+  "oracle_deselected_static_doc_pins": [
+    "tests/api/test_pgv04_cert_oracles.py::TestStaticPins::test_cert_document_exists_with_verdict",
+    "tests/api/test_pgv04_cert_oracles.py::TestStaticPins::test_worklog_entry_present"
+  ],
+  "mv0_baseline": {
+    "repo_failed": [],
+    "oracle_failed": [],
+    "class_b_failed": [],
+    "ok": true
+  },
+  "mutants": [
+    {
+      "id": "M01FIX",
+      "desc": "drop panel-списка backfill'а (эквивалент M01 акта на исправленной строке)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 5,
+      "repo_failed_ids": [
+        "test_backfill_covers_panel_checkpoints",
+        "test_backfill_per_entry_isolation_with_failed_counter"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [
+        "test_panel_checkpoint_is_backfilled_as_legacy_import",
+        "test_panel_backfill_idempotent_repeat",
+        "test_panel_and_single_backfilled_together",
+        "test_broken_entry_does_not_block_legitimate_ones",
+        "test_broken_entry_receipt_and_retry_isolation"
+      ],
+      "class_b_killed": true,
+      "verdict": "REPO-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "M02FIX",
+      "desc": "per-entry изоляция убрана: generic-сбой ре-рейзится (поведение до фикса)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 2,
+      "repo_failed_ids": [
+        "test_backfill_per_entry_isolation_with_failed_counter"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [
+        "test_broken_entry_does_not_block_legitimate_ones",
+        "test_broken_entry_receipt_and_retry_isolation"
+      ],
+      "class_b_killed": true,
+      "verdict": "REPO-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "M03FIX",
+      "desc": "durable-receipt сбойной записи убран (сбой глотается молча)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [
+        "test_broken_entry_receipt_and_retry_isolation"
+      ],
+      "class_b_killed": true,
+      "verdict": "CLASS-B-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "KFIX01",
+      "desc": "контроль: нейтральный комментарий (обязан SURVIVED)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [],
+      "class_b_killed": false,
+      "verdict": "SURVIVED",
+      "mv2_restore": true
+    }
+  ],
+  "mv3_final_md5_ok": true,
+  "summary": {
+    "battle_killed": [
+      "M01FIX",
+      "M02FIX",
+      "M03FIX"
+    ],
+    "battle_survived": [],
+    "control": {
+      "id": "KFIX01",
+      "expected": "SURVIVED",
+      "actual": "SURVIVED"
+    },
+    "obligation_M01_ac": [
+      "M01FIX",
+      "M02FIX",
+      "M03FIX"
+    ]
+  }
+}
