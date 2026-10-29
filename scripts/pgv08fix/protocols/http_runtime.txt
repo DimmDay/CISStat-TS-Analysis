@@ -1,0 +1,90 @@
+{
+  "verdict": "PASS",
+  "results": [
+    {
+      "id": "missing-dependency",
+      "passed": true,
+      "detail": {
+        "status": "unavailable",
+        "dependency_status": "unavailable",
+        "unavailable_reason": "missing_browser",
+        "checks": {
+          "browser": false,
+          "fonts": true,
+          "bundle": true
+        },
+        "renderer_version": "print-renderer/1",
+        "font_profile": "print-fonts-dejavu/1"
+      }
+    },
+    {
+      "id": "scale-before-browser",
+      "passed": true,
+      "detail": {
+        "error": {
+          "code": "invalid_payload",
+          "message": "payload не прошёл валидацию pgv.render_payload/1",
+          "retryable": false,
+          "renderer_version": "print-renderer/1"
+        },
+        "violations": [
+          {
+            "code": "invalid_scale",
+            "path": "options.scale",
+            "message": "scale: конечное число от 0.05 до 1 (mini-probe или полный профиль)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "render-dependency",
+      "passed": true,
+      "detail": {
+        "error": {
+          "code": "render_dependency_unavailable",
+          "message": "missing_browser",
+          "retryable": false,
+          "renderer_version": "print-renderer/1"
+        }
+      }
+    },
+    {
+      "id": "cold-timeout",
+      "passed": true,
+      "detail": {
+        "status": 503,
+        "body": {
+          "error": {
+            "code": "render_timeout",
+            "message": "render_timeout: превышен hard timeout 1 s",
+            "retryable": true,
+            "renderer_version": "print-renderer/1"
+          }
+        },
+        "seconds": 1.0054815860003146
+      }
+    },
+    {
+      "id": "cold-executable-started",
+      "passed": true,
+      "detail": "actual Playwright subprocess wrote its own PID"
+    },
+    {
+      "id": "cold-child-reaped",
+      "passed": true,
+      "detail": {
+        "pid": 290,
+        "probe": "kill(pid,0) after actual Playwright launch timeout"
+      }
+    },
+    {
+      "id": "server-survives",
+      "passed": true,
+      "detail": {
+        "status": "ok",
+        "renderer_version": "print-renderer/1"
+      }
+    }
+  ],
+  "boundary": "launch uses a deliberately slow shell executable, not Chromium; Docker/PNG pixels/OCR are not certified"
+}

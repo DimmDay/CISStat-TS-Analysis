@@ -1,0 +1,120 @@
+{
+  "records": [
+    {
+      "id": "M01-url",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08 rendererCore: sandbox-политика (PGV-AC19) политика запросов: http/https/file/blob/ftp — блок, data:/about:blank — разрешён",
+        "PGV-08 rendererCore: sandbox-политика (PGV-AC19) санитайзер frozen SVG удаляет script/foreignObject/on*-атрибуты и внешние ссылки",
+        "p8cert RED-свидетельства (падают, пока находки не устранены) R1 / F-P8C4: не-перечисленные схемы (javascript:/chrome:/vbscript:) обязаны блокироваться allowlist'ом",
+        "PGV-08-FIX independent boundaries URL javascript:alert(1) is denied by default",
+        "PGV-08-FIX independent boundaries URL chrome://settings is denied by default",
+        "PGV-08-FIX independent boundaries URL vbscript:x is denied by default",
+        "PGV-08-FIX independent boundaries URL custom:payload is denied by default",
+        "PGV-08-FIX independent boundaries URL //host/x is denied by default",
+        "PGV-08-FIX independent boundaries URL relative.svg is denied by default",
+        "PGV-08-FIX independent boundaries SVG reference javascript:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference vbscript:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference custom:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference relative.png is removed",
+        "PGV-08-FIX independent boundaries SVG reference file:///etc/passwd is removed"
+      ]
+    },
+    {
+      "id": "M02-scale",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08-FIX independent boundaries invalid production scale 1.1 is rejected"
+      ]
+    },
+    {
+      "id": "M03-launch-budget",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08-FIX cold launch cancellation late launch is killed and never starts a page after timeout"
+      ]
+    },
+    {
+      "id": "M04-sandbox",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08-FIX cold launch cancellation late launch is killed and never starts a page after timeout"
+      ]
+    },
+    {
+      "id": "M05-ih",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08-FIX independent boundaries IH fixture denominator equals its population",
+        "p8cert RED-свидетельства (падают, пока находки не устранены) R3 / F-P8C6: знаменатели смоук-фикстуры IH согласны (row_totals суммируются к n_observations)"
+      ]
+    },
+    {
+      "id": "M06-phys",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) заменяет существующий pHYs, а не дублирует (идемпотентность)",
+        "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) removes a legal pHYs located after another ancillary chunk"
+      ]
+    },
+    {
+      "id": "M07-cold-gate",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08 launch ownership before handshake cancellation before spawn prevents exec, even when the wrapper starts later"
+      ]
+    },
+    {
+      "id": "M08-process-group",
+      "killed": true,
+      "failed_oracles": [
+        "PGV-08 launch ownership before handshake known job PID is killed as an entire process group"
+      ]
+    },
+    {
+      "id": "M09-ssr-abort",
+      "killed": true,
+      "failed_oracles": [
+        "actual compiled worker thread abort oracle"
+      ]
+    },
+    {
+      "id": "K01-noop",
+      "alive": true,
+      "failed_oracles": []
+    },
+    {
+      "id": "S01-url-scale",
+      "killed": true,
+      "dual_kill": true,
+      "failed_oracles": [
+        "PGV-08-FIX independent boundaries URL javascript:alert(1) is denied by default",
+        "PGV-08-FIX independent boundaries URL chrome://settings is denied by default",
+        "PGV-08-FIX independent boundaries URL vbscript:x is denied by default",
+        "PGV-08-FIX independent boundaries URL custom:payload is denied by default",
+        "PGV-08-FIX independent boundaries URL //host/x is denied by default",
+        "PGV-08-FIX independent boundaries URL relative.svg is denied by default",
+        "PGV-08-FIX independent boundaries SVG reference javascript:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference vbscript:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference custom:x is removed",
+        "PGV-08-FIX independent boundaries SVG reference relative.png is removed",
+        "PGV-08-FIX independent boundaries SVG reference file:///etc/passwd is removed",
+        "PGV-08-FIX independent boundaries invalid production scale 1.1 is rejected",
+        "PGV-08 rendererCore: sandbox-политика (PGV-AC19) политика запросов: http/https/file/blob/ftp — блок, data:/about:blank — разрешён",
+        "PGV-08 rendererCore: sandbox-политика (PGV-AC19) санитайзер frozen SVG удаляет script/foreignObject/on*-атрибуты и внешние ссылки",
+        "p8cert RED-свидетельства (падают, пока находки не устранены) R1 / F-P8C4: не-перечисленные схемы (javascript:/chrome:/vbscript:) обязаны блокироваться allowlist'ом"
+      ]
+    },
+    {
+      "id": "S02-sandbox-gate",
+      "killed": true,
+      "dual_kill": true,
+      "failed_oracles": [
+        "PGV-08-FIX cold launch cancellation late launch is killed and never starts a page after timeout",
+        "PGV-08 launch ownership before handshake cancellation before spawn prevents exec, even when the wrapper starts later"
+      ]
+    }
+  ],
+  "restored_exact_bytes": true,
+  "verdict": "PASS"
+}

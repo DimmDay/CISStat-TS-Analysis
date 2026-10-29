@@ -1,0 +1,11 @@
+{
+  "versions": {
+    "node": "v24.22.1",
+    "playwright": "1.57.0"
+  },
+  "base": "bddc180218dffaa1a81f10d9f1998f250f174d0d",
+  "docker_cli": false,
+  "proc_available": false,
+  "chromium_download": "BLOCKED gateway; see browser_install.txt",
+  "full_image_certification": "BLOCKED BY ENVIRONMENT"
+}

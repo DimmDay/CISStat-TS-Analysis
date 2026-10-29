@@ -22,6 +22,11 @@ function emit(value: unknown): void {
 
 async function main(): Promise<void> {
   const mode = process.argv[2] ?? "--smoke";
+  if (mode === "--serve") {
+    const { startRendererServer } = require("./server") as typeof import("./server");
+    startRendererServer();
+    return;
+  }
   const config = readConfig();
   const worker = new PrintRenderWorker(config);
 
@@ -32,19 +37,6 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  if (mode === "--serve") {
-    // Продовый путь — делегируем server.ts (require, чтобы сохранить
-    // семантику main() с обработчиками сигналов самого сервера).
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { createRendererServer } = require("./server") as typeof import("./server");
-    const server = createRendererServer();
-    server.listen(config.port, "0.0.0.0", () => {
-      process.stdout.write(
-        `${JSON.stringify({ event: "renderer_listening", port: config.port })}\n`,
-      );
-    });
-    return;
-  }
 
   try {
     const manifest = worker.dependencyManifest();

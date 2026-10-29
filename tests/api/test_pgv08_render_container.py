@@ -223,3 +223,19 @@ class TestDeliveryDoc:
             "runbook обязан показывать запуск без сети"
         )
         assert "10001" in readme
+
+
+class TestGeometryContract:
+    def test_worker_and_smoke_geometry_match_the_shared_profile_catalog(self):
+        schema = _read(REPO_ROOT / 'packages/ui/print/printSchema.ts')
+        catalog = {
+            m.group(1): tuple(map(int, m.groups()[1:]))
+            for m in re.finditer(r'id:\s*"([a-z0-9-]+)"[\s\S]*?width_px:\s*(\d+),\s*\n\s*height_px:\s*(\d+),\s*\n\s*ppi:\s*(\d+)', schema)
+        }
+        assert len(catalog) == 3
+        for source in (WORKER_SRC, SMOKE_SCEN_SRC):
+            mirror = {
+                m.group(1): tuple(map(int, m.groups()[1:]))
+                for m in re.finditer(r'"([a-z0-9-]+)":\s*\{ width:\s*(\d+), height:\s*(\d+), ppi:\s*(\d+) \}', _read(source))
+            }
+            assert mirror == catalog, f'geometry drift: {source}'

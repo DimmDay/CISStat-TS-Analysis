@@ -1,0 +1,327 @@
+FAIL apps/print-renderer/src/rendererFix.test.ts
+  ● PGV-08-FIX independent boundaries › URL javascript:alert(1) is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › URL chrome://settings is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › URL vbscript:x is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › URL custom:payload is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › URL //host/x is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › URL relative.svg is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       5 | describe('PGV-08-FIX independent boundaries', () => {
+       6 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  7 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       8 |   });
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:7:51
+
+  ● PGV-08-FIX independent boundaries › SVG reference javascript:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"javascript:x\""
+    Received string:        "<svg><image href=\"javascript:x\"/></svg>"
+
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 11 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      12 |     expect(result.warnings.length).toBeGreaterThan(0);
+      13 |   });
+      14 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:11:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference vbscript:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"vbscript:x\""
+    Received string:        "<svg><image href=\"vbscript:x\"/></svg>"
+
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 11 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      12 |     expect(result.warnings.length).toBeGreaterThan(0);
+      13 |   });
+      14 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:11:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference custom:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"custom:x\""
+    Received string:        "<svg><image href=\"custom:x\"/></svg>"
+
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 11 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      12 |     expect(result.warnings.length).toBeGreaterThan(0);
+      13 |   });
+      14 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:11:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference relative.png is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"relative.png\""
+    Received string:        "<svg><image href=\"relative.png\"/></svg>"
+
+       9 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      10 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 11 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      12 |     expect(result.warnings.length).toBeGreaterThan(0);
+      13 |   });
+      14 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:11:28
+
+  ● PGV-08-FIX independent boundaries › invalid production scale 0 is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": 0}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › invalid production scale -1 is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": -1}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › invalid production scale NaN is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": NaN}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › invalid production scale Infinity is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": Infinity}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › invalid production scale 2 is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": 2}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › invalid production scale 3 is rejected
+
+    expect(received).toBeNull()
+
+    Received: {"options": {"scale": 3}, "request_id": "smoke-cyrillic", "schema_version": "pgv.render_payload/1", "sections": [{"cards": [{"label": "Наблюдений", "unit": {"reason": null, "value": "набл."}, "value": "9 876"}, {"label": "Пропусков", "unit": {"reason": "dimensionless", "value": null}, "value": "12"}, {"label": "Среднее", "unit": {"reason": null, "value": "млрд руб."}, "value": "1 234,5"}], "kind": "html_cards", "section_id": "smoke-cards", "title": "Ключевые показатели (кириллица)"}, {"caption": "Смоук-таблица кириллицы: длинные русские подписи, ЁёЙй Ѫѫ пример", "headings": {"column": [], "row": ["Месяц", "Оборот", "Доля"]}, "kind": "html_table", "rows": [["Январь 2026", "1 050,2", "33,3 %"], ["Февраль 2026", "1 100,5", "66,7 %"]], "section_id": "smoke-table", "title": "Оборот розничной торговли по месяцам", "units": [{"reason": null, "value": "млрд руб."}]}], "snapshot": {"annotations": {"author": "analyst", "revision": 0, "text": null}, "checkpoint": null, "data_artifact": {"artifact_id": null, "artifact_version": "smoke-v1", "hash_algorithm": null, "hash_reason": "smoke-фикстура без durable-источника", "source_hash": null}, "data_flow": {"after_revision": null, "before_revision": null}, "dimensions": {"date_column": "Месяц", "entity_column": null, "entity_id": null, "mode": "univariate", "target_column": "Оборот розничной торговли"}, "display": {"detail_level": "compact", "sections": [], "subtitle": "PGV-08 — финальный образ: шрифты/бандл/браузер", "title": "Смоук рендер-контейнера: кириллица, IH, A4"}, "expected_context": {"context_id": null, "data_revision": null, "expected_data_digest": null}, "method": {"method": "smoke", "origin": "producer_freeze", "parameters": {"suite": "pgv08"}}, "print": {"page_count": 1, "profile_id": "figure-landscape", "theme": "light-print"}, "refs": {"demo_dataset_id": "smoke-demo-0001"}, "renderer_env": {"dependency_status": "available", "font_profile": "print-fonts-dejavu/1", "renderer_version": "print-renderer/1", "unavailable_reason": null}, "result": {"result_digest": "smoke", "result_digest_reason": null, "result_ref": "vr-smoke0800000001", "result_schema_version": "pgv.visual_result/1"}, "sampling": {"applicable": true, "mode": "full", "point_cap": null, "reason": null}, "schema_version": "pgv.visual_print_snapshot/1", "scope": "demo", "selection": {"allowlist": [], "values": {}}, "sensitive": {"raw_data_included": false, "sensitive_fields_policy": "metadata_only"}, "times": {"captured_at": "2026-10-29T10:05:00+00:00", "captured_at_reason": null, "checkpoint_confirmed_at": null, "computed_at": "2026-10-29T10:00:00+00:00", "computed_at_reason": null, "locale": "ru-RU", "render_requested_at": null, "timezone": "UTC"}, "view_id": "smoke.pgv08.container", "warnings": ["Смоук-сценарий: данные фиксированные, известные counts/rates/bins."]}}
+
+      17 |   test.each([0, -1, NaN, Infinity, 2, 3])('invalid production scale %s is rejected', scale => {
+      18 |     const payload = cyrillicScenario(); payload.options = { scale };
+    > 19 |     expect(validateRenderPayload(payload).payload).toBeNull();
+         |                                                    ^
+      20 |   });
+      21 |   test('mini probes and full-size scale are valid', () => {
+      22 |     for (const scale of [.05, 1]) { const p = cyrillicScenario(); p.options = { scale }; expect(validateRenderPayload(p).violations).toEqual([]); }
+
+      at apps/print-renderer/src/rendererFix.test.ts:19:52
+
+  ● PGV-08-FIX independent boundaries › IH fixture denominator equals its population
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 9876
+    Received: 600
+
+      25 |     const section = ihScenario().sections[0];
+      26 |     if (section.kind !== 'ih_conditional') throw new Error('IH missing');
+    > 27 |     expect(section.ih_input.row_totals!.reduce((a,b) => a!+b!,0)).toBe(section.ih_input.n_observations);
+         |                                                                   ^
+      28 |   });
+      29 |   test('direct worker call rejects oversized payload before dependency/browser work', async () => {
+      30 |     const worker = new PrintRenderWorker(readConfig({}));
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererFix.test.ts:27:67)
+
+  ● PGV-08-FIX independent boundaries › direct worker call rejects oversized payload before dependency/browser work
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected pattern: /invalid_payload/
+    Received message: "render_dependency_unavailable: missing_browser"
+
+          316 |     const manifest = this.dependencyManifest();
+          317 |     if (manifest.dependency_status === "unavailable") {
+        > 318 |       throw new RenderDependencyError(manifest.unavailable_reason ?? "unknown");
+              |             ^
+          319 |     }
+          320 |     const browser = await this.ensureBrowser();
+          321 |     setBrowser(browser);
+
+      at PrintRenderWorker.doRender (apps/print-renderer/src/renderWorker.ts:318:13)
+      at PrintRenderWorker.renderPayload (apps/print-renderer/src/renderWorker.ts:266:25)
+      at Object.<anonymous> (apps/print-renderer/src/rendererFix.test.ts:33:25)
+      at Object.toThrow (../CISStat-TS-Analysis/node_modules/expect/build/index.js:2155:20)
+      at Object.<anonymous> (apps/print-renderer/src/rendererFix.test.ts:33:63)
+
+  ● PGV-08-FIX cold launch cancellation › late launch is killed and never starts a page after timeout
+
+    expect(received).toBeInstanceOf(expected)
+
+    Expected constructor: RenderTimeoutError
+    Received constructor: TypeError
+
+      54 |     const result=worker.renderPayload(payload,1,1).catch((e:any)=>e);
+      55 |     await jest.advanceTimersByTimeAsync(1000);
+    > 56 |     expect(await result).toBeInstanceOf(RenderTimeoutError);
+         |                          ^
+      57 |     // Real launchServer enforces its own deadline; this fake deliberately resolves later.
+      58 |     finishLaunch(module.chromium.launchServer.mock.calls.length ? server : browser);
+      59 |     await jest.advanceTimersByTimeAsync(0);
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererFix.test.ts:56:26)
+
+Test Suites: 1 failed, 1 total
+Tests:       19 failed, 3 passed, 22 total
+Snapshots:   0 total
+Time:        3.482 s
+Ran all test suites within paths "apps/print-renderer/src/rendererFix.test.ts".

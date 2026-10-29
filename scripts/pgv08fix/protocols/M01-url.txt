@@ -1,0 +1,247 @@
+FAIL apps/print-renderer/src/rendererCore.test.ts
+  ● PGV-08 rendererCore: sandbox-политика (PGV-AC19) › политика запросов: http/https/file/blob/ftp — блок, data:/about:blank — разрешён
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      328 |   it("политика запросов: http/https/file/blob/ftp — блок, data:/about:blank — разрешён", () => {
+      329 |     const policy = buildRequestPolicy();
+    > 330 |     expect(policy.shouldBlock("http://example.com/x.png")).toBe(true);
+          |                                                            ^
+      331 |     expect(policy.shouldBlock("https://example.com/x.png")).toBe(true);
+      332 |     expect(policy.shouldBlock("file:///etc/passwd")).toBe(true);
+      333 |     expect(policy.shouldBlock("blob:https://x/y")).toBe(true);
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:330:60)
+
+  ● PGV-08 rendererCore: sandbox-политика (PGV-AC19) › санитайзер frozen SVG удаляет script/foreignObject/on*-атрибуты и внешние ссылки
+
+    expect(received).not.toMatch(expected)
+
+    Expected pattern: not /href='http/i
+    Received string:      "<svg xmlns='http://www.w3.org/2000/svg'><image href='http://127.0.0.1:9/x.png'/><rect width='10' height='10' fill='#2563EB'/></svg>"
+
+      366 |     expect(result.xml).not.toMatch(/foreignObject/i);
+      367 |     expect(result.xml).not.toMatch(/onload/i);
+    > 368 |     expect(result.xml).not.toMatch(/href='http/i);
+          |                            ^
+      369 |     expect(result.xml).toContain("<rect");
+      370 |     expect(result.warnings.length).toBeGreaterThan(0);
+      371 |   });
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:368:28)
+
+FAIL scripts/pgv08cert/test_p8cert_red_evidence.test.ts
+  ● p8cert RED-свидетельства (падают, пока находки не устранены) › R1 / F-P8C4: не-перечисленные схемы (javascript:/chrome:/vbscript:) обязаны блокироваться allowlist'ом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       99 |     // Собственный контракт реализации: «разрешены только data: и about:blank».
+      100 |     // Фактически blocklist пропускает всё, что не начинается с перечисленных префиксов.
+    > 101 |     expect(policy.shouldBlock("javascript:alert(1)")).toBe(true);
+          |                                                       ^
+      102 |     expect(policy.shouldBlock("chrome://settings")).toBe(true);
+      103 |     expect(policy.shouldBlock("vbscript:msgbox")).toBe(true);
+      104 |   });
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_red_evidence.test.ts:101:55)
+
+FAIL apps/print-renderer/src/rendererFix.test.ts
+  ● PGV-08-FIX independent boundaries › URL javascript:alert(1) is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › URL chrome://settings is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › URL vbscript:x is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › URL custom:payload is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › URL //host/x is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › URL relative.svg is denied by default
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       6 | describe('PGV-08-FIX independent boundaries', () => {
+       7 |   test.each(['javascript:alert(1)', 'chrome://settings', 'vbscript:x', 'custom:payload', '//host/x', 'relative.svg'])('URL %s is denied by default', url => {
+    >  8 |     expect(buildRequestPolicy().shouldBlock(url)).toBe(true);
+         |                                                   ^
+       9 |   });
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+
+      at apps/print-renderer/src/rendererFix.test.ts:8:51
+
+  ● PGV-08-FIX independent boundaries › SVG reference javascript:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"javascript:x\""
+    Received string:        "<svg><image href=\"javascript:x\"/></svg>"
+
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 12 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      13 |     expect(result.warnings.length).toBeGreaterThan(0);
+      14 |   });
+      15 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:12:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference vbscript:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"vbscript:x\""
+    Received string:        "<svg><image href=\"vbscript:x\"/></svg>"
+
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 12 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      13 |     expect(result.warnings.length).toBeGreaterThan(0);
+      14 |   });
+      15 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:12:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference custom:x is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"custom:x\""
+    Received string:        "<svg><image href=\"custom:x\"/></svg>"
+
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 12 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      13 |     expect(result.warnings.length).toBeGreaterThan(0);
+      14 |   });
+      15 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:12:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference relative.png is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"relative.png\""
+    Received string:        "<svg><image href=\"relative.png\"/></svg>"
+
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 12 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      13 |     expect(result.warnings.length).toBeGreaterThan(0);
+      14 |   });
+      15 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:12:28
+
+  ● PGV-08-FIX independent boundaries › SVG reference file:///etc/passwd is removed
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "href=\"file:///etc/passwd\""
+    Received string:        "<svg><image href=\"file:///etc/passwd\"/></svg>"
+
+      10 |   test.each(['javascript:x', 'vbscript:x', 'custom:x', 'relative.png', 'file:///etc/passwd'])('SVG reference %s is removed', ref => {
+      11 |     const result = sanitizeFrozenSvg(`<svg><image href="${ref}"/></svg>`);
+    > 12 |     expect(result.xml).not.toContain(`href="${ref}"`);
+         |                            ^
+      13 |     expect(result.warnings.length).toBeGreaterThan(0);
+      14 |   });
+      15 |   test('local SVG fragments survive', () => {
+
+      at apps/print-renderer/src/rendererFix.test.ts:12:28
+
+
+Test Suites: 3 failed, 1 passed, 4 total
+Tests:       14 failed, 54 passed, 68 total
+Snapshots:   0 total
+Time:        3.258 s, estimated 4 s
+Test results written to: scripts/pgv08fix/protocols/M01-url.json

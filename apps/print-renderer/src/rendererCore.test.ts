@@ -173,7 +173,7 @@ const IH_SECTION = {
       { x_bin: "[100; 250)", values: [25, 50, 25] },
       { x_bin: "[250; ∞)", values: [10, 20, 70] },
     ],
-    n_observations: 9876,
+    n_observations: 600,
     row_totals: [100, 200, 300],
     denominator_note: null,
   },
@@ -233,6 +233,19 @@ describe("PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16)", () => 
     const physChunks = readChunks(twice).filter((c) => c.type === "pHYs");
     expect(physChunks.length).toBe(1);
     expect(physChunks[0].data.readUInt32BE(0)).toBe(11811);
+  });
+
+  it("removes a legal pHYs located after another ancillary chunk", () => {
+    const original = injectPngPhys(makePng(8, 8), 72);
+    const chunks = readChunks(original);
+    const shifted = Buffer.concat([original.subarray(0, 8),
+      chunk("IHDR", chunks.find(c => c.type === "IHDR")!.data),
+      chunk("tEXt", Buffer.from("Comment\0density")),
+      ...chunks.filter(c => c.type !== "IHDR").map(c => chunk(c.type, c.data))]);
+    const replaced = readChunks(injectPngPhys(shifted, 300));
+    expect(replaced.filter(c => c.type === "pHYs")).toHaveLength(1);
+    expect(replaced[1].type).toBe("pHYs");
+    expect(replaced[1].data.readUInt32BE(0)).toBe(11811);
   });
 
   it("ppi→px/m конверсия честна: 72 ppi → 2835, 600 ppi → 23622", () => {
@@ -482,7 +495,7 @@ describe("PGV-08 rendererCore: SSR print page из общего бандла PGV
     expect(html).toContain("[0; 100)");
     expect(html).toContain("[250; ∞)");
     expect(html).toContain("60 %");
-    expect(html).toContain("9 876");
+    expect(html).toContain("600");
     expect(html).toContain("суммируется до 100");
   });
 
@@ -571,7 +584,7 @@ describe("PGV-08 rendererCore: SSR print page из общего бандла PGV
       1,
     );
     expect(html).toContain("Наблюдений");
-    expect(html).toContain("9 876");
+    expect(html).toContain("600");
     expect(html).toContain("без единицы (dimensionless)");
   });
 });

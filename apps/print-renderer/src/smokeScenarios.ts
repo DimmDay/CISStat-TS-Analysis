@@ -143,7 +143,7 @@ export function ihScenario(): RenderPagePayload {
             { x_bin: "[100; 250)", values: [25, 50, 25] },
             { x_bin: "[250; ∞)", values: [10, 20, 70] },
           ],
-          n_observations: 9876,
+          n_observations: 600,
           row_totals: [100, 200, 300],
           denominator_note: null,
         },

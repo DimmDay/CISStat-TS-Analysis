@@ -7,7 +7,7 @@
 // "Структура"/"Качество" сначала кликают по соответствующей кнопке
 // степпера.
 
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TsAnalysisUpload } from "./TsAnalysisUpload";
 import { AppShellProvider } from "../context/AppShellContext";
@@ -1794,12 +1794,17 @@ describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта о�
     // обязан повторить отчёт несмотря на неудачу первого отправления.
     fireEvent.click(screen.getByText("Структура"));
     await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
-    fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
+    // This transition triggers async binding/delivery state updates. Flush the
+    // React async work before observing the subsequent delivery snapshot.
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
+    });
 
     // Последний отчёт -- уже новый снапшот (structure=pending: решение
     // уверенное, но НЕ подтверждено -- UPLOAD-RECOMP-2a), причём по
     // правильному URL: неудача не «заморозила» контур.
     await waitFor(() => {
+      expect(stopsCalls().length).toBeGreaterThanOrEqual(2);
       const last = stopsCalls()[stopsCalls().length - 1];
       expect(String(last?.[1]?.body ?? "")).toContain('"structure":"pending"');
     });

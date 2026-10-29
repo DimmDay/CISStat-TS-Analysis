@@ -1,0 +1,42 @@
+FAIL apps/print-renderer/src/rendererCore.test.ts
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › заменяет существующий pHYs, а не дублирует (идемпотентность)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      232 |     const twice = injectPngPhys(png, 300);
+      233 |     const physChunks = readChunks(twice).filter((c) => c.type === "pHYs");
+    > 234 |     expect(physChunks.length).toBe(1);
+          |                               ^
+      235 |     expect(physChunks[0].data.readUInt32BE(0)).toBe(11811);
+      236 |   });
+      237 |
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:234:31)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › removes a legal pHYs located after another ancillary chunk
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 1
+    Received length: 2
+    Received array:  [{"data": {"data": [0, 0, 46, 35, 0, 0, 46, 35, 1], "type": "Buffer"}, "type": "pHYs"}, {"data": {"data": [0, 0, 11, 19, 0, 0, 11, 19, 1], "type": "Buffer"}, "type": "pHYs"}]
+
+      244 |       ...chunks.filter(c => c.type !== "IHDR").map(c => chunk(c.type, c.data))]);
+      245 |     const replaced = readChunks(injectPngPhys(shifted, 300));
+    > 246 |     expect(replaced.filter(c => c.type === "pHYs")).toHaveLength(1);
+          |                                                     ^
+      247 |     expect(replaced[1].type).toBe("pHYs");
+      248 |     expect(replaced[1].data.readUInt32BE(0)).toBe(11811);
+      249 |   });
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:246:53)
+
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       2 failed, 66 passed, 68 total
+Snapshots:   0 total
+Time:        3.61 s, estimated 4 s
+Test results written to: scripts/pgv08fix/protocols/M06-phys.json

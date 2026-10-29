@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix
+configfile: pytest.ini
+plugins: anyio-4.15.1, typeguard-4.6.0, platformdirs-4.13.0
+collected 23 items
+
+tests/api/test_pgv08_render_container.py .......................         [100%]
+
+============================== 23 passed in 0.05s ==============================

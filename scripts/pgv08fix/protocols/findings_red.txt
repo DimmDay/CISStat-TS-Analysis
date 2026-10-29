@@ -1,0 +1,57 @@
+FAIL scripts/pgv08cert/test_p8cert_red_evidence.test.ts
+  ● p8cert RED-свидетельства (падают, пока находки не устранены) › R1 / F-P8C4: не-перечисленные схемы (javascript:/chrome:/vbscript:) обязаны блокироваться allowlist'ом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       99 |     // Собственный контракт реализации: «разрешены только data: и about:blank».
+      100 |     // Фактически blocklist пропускает всё, что не начинается с перечисленных префиксов.
+    > 101 |     expect(policy.shouldBlock("javascript:alert(1)")).toBe(true);
+          |                                                       ^
+      102 |     expect(policy.shouldBlock("chrome://settings")).toBe(true);
+      103 |     expect(policy.shouldBlock("vbscript:msgbox")).toBe(true);
+      104 |   });
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_red_evidence.test.ts:101:55)
+
+  ● p8cert RED-свидетельства (падают, пока находки не устранены) › R2 / F-P8C5: scale, выводящий рендер за 12 MP (PGV-01), обязан нарушать валидацию
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      121 |     };
+      122 |     const res = validateRenderPayload(payload);
+    > 123 |     expect(res.violations.length).toBeGreaterThan(0);
+          |                                   ^
+      124 |   });
+      125 |
+      126 |   it("R3 / F-P8C6: знаменатели смоук-фикстуры IH согласны (row_totals суммируются к n_observations)", () => {
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_red_evidence.test.ts:123:35)
+
+  ● p8cert RED-свидетельства (падают, пока находки не устранены) › R3 / F-P8C6: знаменатели смоук-фикстуры IH согласны (row_totals суммируются к n_observations)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 9876
+    Received: 600
+
+      129 |     if (!ih || ih.kind !== "ih_conditional") throw new Error("ожидается ih_conditional");
+      130 |     const sum = (ih.ih_input.row_totals ?? []).reduce((acc, v) => acc + (v ?? 0), 0);
+    > 131 |     expect(sum).toBe(ih.ih_input.n_observations);
+          |                 ^
+      132 |   });
+      133 | });
+      134 |
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_red_evidence.test.ts:131:17)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        3.125 s
+Ran all test suites within paths "scripts/pgv08cert/test_p8cert_red_evidence.test.ts".

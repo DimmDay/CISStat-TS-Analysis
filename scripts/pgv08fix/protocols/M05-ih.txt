@@ -1,0 +1,41 @@
+FAIL apps/print-renderer/src/rendererFix.test.ts
+  ● PGV-08-FIX independent boundaries › IH fixture denominator equals its population
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 601
+    Received: 600
+
+      26 |     const section = ihScenario().sections[0];
+      27 |     if (section.kind !== 'ih_conditional') throw new Error('IH missing');
+    > 28 |     expect(section.ih_input.row_totals!.reduce((a,b) => a!+b!,0)).toBe(section.ih_input.n_observations);
+         |                                                                   ^
+      29 |   });
+      30 |   test('direct worker call rejects oversized payload before dependency/browser work', async () => {
+      31 |     const worker = new PrintRenderWorker(readConfig({}));
+
+      at Object.<anonymous> (apps/print-renderer/src/rendererFix.test.ts:28:67)
+
+FAIL scripts/pgv08cert/test_p8cert_red_evidence.test.ts
+  ● p8cert RED-свидетельства (падают, пока находки не устранены) › R3 / F-P8C6: знаменатели смоук-фикстуры IH согласны (row_totals суммируются к n_observations)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 601
+    Received: 600
+
+      129 |     if (!ih || ih.kind !== "ih_conditional") throw new Error("ожидается ih_conditional");
+      130 |     const sum = (ih.ih_input.row_totals ?? []).reduce((acc, v) => acc + (v ?? 0), 0);
+    > 131 |     expect(sum).toBe(ih.ih_input.n_observations);
+          |                 ^
+      132 |   });
+      133 | });
+      134 |
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_red_evidence.test.ts:131:17)
+
+Test Suites: 2 failed, 2 passed, 4 total
+Tests:       2 failed, 66 passed, 68 total
+Snapshots:   0 total
+Time:        3.912 s, estimated 4 s
+Test results written to: scripts/pgv08fix/protocols/M05-ih.json

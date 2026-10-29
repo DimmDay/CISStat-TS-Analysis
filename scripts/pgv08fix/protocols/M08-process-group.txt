@@ -1,0 +1,25 @@
+FAIL apps/print-renderer/src/launchGuard.test.ts
+  ● PGV-08 launch ownership before handshake › known job PID is killed as an entire process group
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: -43210, "SIGKILL"
+
+    Number of calls: 0
+
+      34 |     writeFileSync(join(guard.directory, 'browser.pid'), '43210');
+      35 |     guard.cancel();
+    > 36 |     expect(kill).toHaveBeenCalledWith(-43210, 'SIGKILL');
+         |                  ^
+      37 |     guard.cleanup();
+      38 |   });
+      39 |   test.each(['0', '-1', 'not-a-pid'])('unsafe PID %s cannot signal another group', pid => {
+
+      at Object.<anonymous> (apps/print-renderer/src/launchGuard.test.ts:36:18)
+
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 67 passed, 68 total
+Snapshots:   0 total
+Time:        3.482 s
+Test results written to: scripts/pgv08fix/protocols/M08-process-group.json

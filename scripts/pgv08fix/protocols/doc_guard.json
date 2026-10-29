@@ -1,0 +1,248 @@
+{
+ "guard": "pgv08",
+ "head": "bddc180",
+ "passed": 48,
+ "total": 48,
+ "checks": [
+  {
+   "check": "spec_pgv08_row",
+   "ok": true,
+   "detail": "строка §13"
+  },
+  {
+   "check": "spec_criterion",
+   "ok": true,
+   "detail": "критерий готовности"
+  },
+  {
+   "check": "spec_dependency_pgv07",
+   "ok": true,
+   "detail": "зависимость PGV-07 реализована"
+  },
+  {
+   "check": "spec_PGV-AC16",
+   "ok": true,
+   "detail": "сценарий присутствует в §14"
+  },
+  {
+   "check": "doc_PGV-AC16",
+   "ok": true,
+   "detail": "сценарий отображён в документе поставки"
+  },
+  {
+   "check": "spec_PGV-AC17",
+   "ok": true,
+   "detail": "сценарий присутствует в §14"
+  },
+  {
+   "check": "doc_PGV-AC17",
+   "ok": true,
+   "detail": "сценарий отображён в документе поставки"
+  },
+  {
+   "check": "spec_PGV-AC19",
+   "ok": true,
+   "detail": "сценарий присутствует в §14"
+  },
+  {
+   "check": "doc_PGV-AC19",
+   "ok": true,
+   "detail": "сценарий отображён в документе поставки"
+  },
+  {
+   "check": "spec_PGV-AC20",
+   "ok": true,
+   "detail": "сценарий присутствует в §14"
+  },
+  {
+   "check": "doc_PGV-AC20",
+   "ok": true,
+   "detail": "сценарий отображён в документе поставки"
+  },
+  {
+   "check": "spec_PGV-AC23",
+   "ok": true,
+   "detail": "сценарий присутствует в §14"
+  },
+  {
+   "check": "doc_PGV-AC23",
+   "ok": true,
+   "detail": "сценарий отображён в документе поставки"
+  },
+  {
+   "check": "file::apps/print-renderer/package.json",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/tsconfig.build.json",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/rendererCore.tsx",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/renderWorker.ts",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/server.ts",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/smokeScenarios.ts",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/smoke.ts",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/src/rendererCore.test.ts",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/build/Dockerfile",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/build/deployment/docker-compose.yml",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::apps/print-renderer/build/deployment/README.md",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::tests/api/test_pgv08_render_container.py",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/verify_local.py",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/check_documents.py",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::docs/pgv08_render_container.md",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/protocols/red_jest.txt",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/protocols/red_python.txt",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/protocols/smoke_run.json",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "file::scripts/pgv08/protocols/local_verification.json",
+   "ok": true,
+   "detail": "файл поставки существует"
+  },
+  {
+   "check": "doc_task_id",
+   "ok": true,
+   "detail": "документ о задаче PGV-08"
+  },
+  {
+   "check": "worklog_entry",
+   "ok": true,
+   "detail": "worklog-запись присутствует"
+  },
+  {
+   "check": "worklog_base",
+   "ok": true,
+   "detail": "база зафиксирована"
+  },
+  {
+   "check": "worklog_mentions::rendererCore",
+   "ok": true,
+   "detail": "состав файлов упомянут в worklog"
+  },
+  {
+   "check": "worklog_mentions::renderWorker",
+   "ok": true,
+   "detail": "состав файлов упомянут в worklog"
+  },
+  {
+   "check": "worklog_mentions::smokeScenarios",
+   "ok": true,
+   "detail": "состав файлов упомянут в worklog"
+  },
+  {
+   "check": "worklog_mentions::docker-compose.yml",
+   "ok": true,
+   "detail": "состав файлов упомянут в worklog"
+  },
+  {
+   "check": "worklog_mentions::verify_local.py",
+   "ok": true,
+   "detail": "состав файлов упомянут в worklog"
+  },
+  {
+   "check": "doc_test_counts",
+   "ok": true,
+   "detail": "счётчики берутся из нового machine-readable протокола"
+  },
+  {
+   "check": "doc_honest_docker_boundary",
+   "ok": true,
+   "detail": "честная граница R2 зафиксирована"
+  },
+  {
+   "check": "pin_playwright",
+   "ok": true,
+   "detail": "пин playwright-core 1.57.0 согласован"
+  },
+  {
+   "check": "pin_timeout",
+   "ok": true,
+   "detail": "hard timeout 60 == PGV-01"
+  },
+  {
+   "check": "pin_port",
+   "ok": true,
+   "detail": "порт 8907 согласован"
+  },
+  {
+   "check": "pin_ppi",
+   "ok": true,
+   "detail": "пины ppi/браузера"
+  },
+  {
+   "check": "sandbox_none",
+   "ok": true,
+   "detail": "no-network согласован"
+  },
+  {
+   "check": "head_recorded",
+   "ok": true,
+   "detail": "HEAD=bddc180"
+  }
+ ]
+}

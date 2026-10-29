@@ -1,0 +1,206 @@
+{
+ "inventory_basis": "verified delivery ZIP + git index",
+ "guard": "p8cert-oracles",
+ "head": "bddc180",
+ "passed": 28,
+ "total": 28,
+ "failed": [],
+ "checks": [
+  {
+   "check": "PB1::committed::apps/print-renderer/build/Dockerfile",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::apps/print-renderer/build/deployment/docker-compose.yml",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::apps/print-renderer/build/deployment/README.md",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::tests/api/test_pgv08_render_container.py",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "git=True, fs=True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/verify_local.py",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "git=True, fs=True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/check_documents.py",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "git=True, fs=True"
+  },
+  {
+   "check": "PB1::committed::docs/pgv08_render_container.md",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "git=True, fs=True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/red_jest.txt",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/red_python.txt",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/smoke_run.json",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/local_verification.json",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "в git-индексе: True; на fs: True"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/server_main.log",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "заявлены в docs §2, обязаны быть в коммите"
+  },
+  {
+   "check": "PB1::committed::scripts/pgv08/protocols/server_dependency.log",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "заявлены в docs §2, обязаны быть в коммите"
+  },
+  {
+   "check": "PB2::doc_mentions_committed",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "не в коммите: []"
+  },
+  {
+   "check": "PB3::catalog_parsed",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "каталог PGV-01: ['a4-landscape', 'a4-portrait', 'figure-landscape']"
+  },
+  {
+   "check": "PB3::mirror_paritet::renderWorker.PROFILE_GEOMETRY",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "зеркало == каталог: True (['a4-landscape', 'a4-portrait', 'figure-landscape'] vs ['a4-landscape', 'a4-portrait', 'figure-landscape'])"
+  },
+  {
+   "check": "PB3::mirror_paritet::smokeScenarios.EXPECTED_GEOMETRY",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "зеркало == каталог: True (['a4-landscape', 'a4-portrait', 'figure-landscape'] vs ['a4-landscape', 'a4-portrait', 'figure-landscape'])"
+  },
+  {
+   "check": "PB4::worker_sigkill",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "по таймауту процесс браузера убивается SIGKILL"
+  },
+  {
+   "check": "PB4::worker_finally",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "cleanup обязан быть в finally"
+  },
+  {
+   "check": "PB4::no_no_sandbox",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "песочница Chromium не выключается в массиве chromiumArgs (fail-closed)"
+  },
+  {
+   "check": "PB5::env_allowlist",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "чтения env только CISSTAT_PRINT_RENDERER_*; unexpected=[]"
+  },
+  {
+   "check": "PB6::spec_row",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "строка §13"
+  },
+  {
+   "check": "PB6::spec_criterion",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "критерий готовности"
+  },
+  {
+   "check": "PB6::spec::PGV-AC16",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "сценарий §14"
+  },
+  {
+   "check": "PB6::spec::PGV-AC17",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "сценарий §14"
+  },
+  {
+   "check": "PB6::spec::PGV-AC19",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "сценарий §14"
+  },
+  {
+   "check": "PB6::spec::PGV-AC20",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "сценарий §14"
+  },
+  {
+   "check": "PB6::spec::PGV-AC23",
+   "expected": true,
+   "actual": true,
+   "ok": true,
+   "detail": "сценарий §14"
+  }
+ ]
+}

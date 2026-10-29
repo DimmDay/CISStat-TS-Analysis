@@ -1,0 +1,7 @@
+
+Test Suites: 236 passed, 236 total
+Tests:       2726 passed, 2726 total
+Snapshots:   0 total
+Time:        182.938 s
+Ran all test suites.
+Test results written to: scripts/pgv08fix/protocols/jest_final.json

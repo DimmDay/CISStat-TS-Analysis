@@ -145,6 +145,19 @@ export function validateRenderPayload(raw: unknown): {
     );
   }
 
+  // All entry points (HTTP and direct worker) share the same geometry gate.
+  const options = value.options;
+  if (options != null && (typeof options !== "object" || Array.isArray(options))) {
+    out.push(violation("invalid_scale", "options", "options обязан быть объектом"));
+  }
+  const scale = (options as RenderPagePayload["options"])?.scale ?? 1;
+  const geometry = typeof profile === "string" ? resolvePrintProfile(profile) : undefined;
+  if (typeof scale !== "number" || !Number.isFinite(scale) || scale < 0.05 || scale > 1) {
+    out.push(violation("invalid_scale", "options.scale", "scale: конечное число от 0.05 до 1 (mini-probe или полный профиль)"));
+  } else if (geometry && Math.round(geometry.width_px * scale) * Math.round(geometry.height_px * scale) > PRINT_LIMITS.max_megapixels_per_page * 1_000_000) {
+    out.push(violation("page_too_large", "options.scale", "страница превышает pixel budget PGV-01"));
+  }
+
   const sections = value.sections;
   if (!Array.isArray(sections) || sections.length === 0) {
     out.push(violation("empty_sections", "sections", "список секций не может быть пустым"));
@@ -302,12 +315,10 @@ export interface RequestPolicy {
  * разрешены только data: и about:blank (страница — инлайн-HTML от SSR).
  */
 export function buildRequestPolicy(): RequestPolicy {
-  const blockedPrefixes = ["http://", "https://", "file://", "blob:", "ftp://", "ws://", "wss://"];
   const shouldBlock = (url: string): boolean => {
-    const lowered = (url ?? "").toLowerCase().trim();
-    if (lowered === "" || lowered === "about:blank") return false;
-    if (lowered.startsWith("data:")) return false;
-    return blockedPrefixes.some((prefix) => lowered.startsWith(prefix));
+    const normalized = (url ?? "").trim().toLowerCase();
+    // Empty is a non-request sentinel retained for compatibility, not a URL.
+    return !(normalized === "" || normalized === "about:blank" || normalized.startsWith("data:"));
   };
   return {
     shouldBlock,
@@ -354,12 +365,19 @@ export function sanitizeFrozenSvg(xml: string): SanitizeResult {
     out = out.replace(/\son[a-zA-Z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
     warnings.push("svg: удалены on*-обработчики");
   }
-  const externalRef = /(\s(?:href|xlink:href|src)\s*=\s*)(["'])(?!data:|#)(?:https?:|file:|blob:|ftp:|\/\/)[^"']*\2/gi;
-  if (externalRef.test(out)) {
-    out = out.replace(externalRef, "$1$2$2");
-    warnings.push("svg: удалены внешние ссылки (href/src)");
-  }
-  return { xml: out, warnings };
+  // Allow only local fragments / inline data, including unquoted references.
+  // Unknown schemes and relative URLs are denied, not guessed to be harmless.
+  out = out.replace(/(\s(?:href|xlink:href|src)\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (_match, prefix: string, double: string, single: string, bare: string) => {
+      const value = double ?? single ?? bare ?? "";
+      if (value.startsWith("#") || !buildRequestPolicy().shouldBlock(value)) {
+        const quote = double !== undefined ? '"' : single !== undefined ? "'" : '"';
+        return `${prefix}${quote}${value}${quote}`;
+      }
+      warnings.push("svg: удалены внешние ссылки (href/src)");
+      return `${prefix}""`;
+    });
+  return { xml: out, warnings: [...new Set(warnings)] };
 }
 
 // ── Hard timeout (AC20) ───────────────────────────────────────────
@@ -471,27 +489,28 @@ export function injectPngPhys(png: Buffer, ppi: number): Buffer {
   phys.writeUInt32BE(ppu, 4);
   phys[8] = 1; // unit = метр
   const physChunk = pngChunk("pHYs", phys);
-  // Позиция сразу после IHDR-чанка: 8 (сигнатура) + 12 + 13 (IHDR).
-  const ihdrEnd = 8 + 12 + 13;
-  // Идемпотентность: если pHYs уже есть сразу после IHDR — вырезаем.
-  const len = png.readUInt32BE(ihdrEnd);
-  const nextType = png.toString("ascii", ihdrEnd + 4, ihdrEnd + 8);
-  let head: Buffer;
-  let tail: Buffer;
-  if (nextType === "pHYs") {
-    head = png.subarray(0, ihdrEnd);
-    tail = png.subarray(ihdrEnd + 12 + len);
-  } else {
-    head = png.subarray(0, ihdrEnd);
-    tail = png.subarray(ihdrEnd);
+  const chunks: Buffer[] = [PNG_SIGNATURE];
+  let offset = 8;
+  let ended = false;
+  while (offset + 12 <= png.length) {
+    const length = png.readUInt32BE(offset);
+    const end = offset + length + 12;
+    if (end > png.length) throw new Error("injectPngPhys: truncated PNG chunk");
+    const type = png.toString("ascii", offset + 4, offset + 8);
+    if (offset === 8 && (type !== "IHDR" || length !== 13)) throw new Error("injectPngPhys: missing IHDR");
+    if (type !== "pHYs") chunks.push(png.subarray(offset, end));
+    if (type === "IHDR") chunks.push(physChunk);
+    offset = end;
+    if (type === "IEND") { ended = true; break; }
   }
-  return Buffer.concat([head, physChunk, tail]);
+  if (!ended || offset !== png.length) throw new Error("injectPngPhys: incomplete PNG");
+  return Buffer.concat(chunks);
 }
 
 // ── SSR print page (§4.1: общий бандл PGV-07, без второй реализации) ──
 
 const CSP_META =
-  "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src none; script-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none'; script-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 function renderSectionElement(section: RenderSectionContent): React.ReactElement {
   if (section.kind === "html_table") {

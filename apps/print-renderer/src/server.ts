@@ -239,7 +239,6 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
       "X-Render-Duration-Ms": String(outcome.durationMs),
       "X-Render-Sha256": outcome.sha256,
       "X-Render-Sanitized-Warnings": String(outcome.sanitizerWarnings.length),
-      "X-Render-Retryable": "false",
       filename: `page-1-${payload.snapshot.print.profile_id}.png`,
     });
   } catch (error) {
@@ -299,7 +298,7 @@ export function createRendererServer(): Server {
           if (cached) {
             sendJson(res, cached.status, cached.body, {
               "X-Readyz-Cache": "hit",
-              "X-Render-Retryable": cached.status === 503 ? "false" : "true",
+              ...(cached.status === 503 ? { "X-Render-Retryable": "false" } : {}),
             });
             return;
           }
@@ -307,7 +306,7 @@ export function createRendererServer(): Server {
           readyzCache.set(readiness.status, readiness.body);
           sendJson(res, readiness.status, readiness.body, {
             "X-Readyz-Cache": "miss",
-            "X-Render-Retryable": readiness.status === 503 ? "false" : "true",
+            ...(readiness.status === 503 ? { "X-Render-Retryable": "false" } : {}),
           });
           return;
         }
@@ -338,7 +337,7 @@ export function createRendererServer(): Server {
 
 // ── Запуск (node dist/.../server.js) ──────────────────────────────
 
-function main(): void {
+export function startRendererServer(): Server {
   const server = createRendererServer();
   server.listen(config.port, "0.0.0.0", () => {
     log("info", "renderer_listening", {
@@ -357,8 +356,9 @@ function main(): void {
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
+  return server;
 }
 
 if (require.main === module) {
-  main();
+  startRendererServer();
 }

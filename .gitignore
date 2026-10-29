@@ -131,3 +131,10 @@ __pycache__/
 *.pyc
 .ps1
 
+
+# PGV-08 deployment is authored source, not generated build output.
+!apps/print-renderer/build/
+!apps/print-renderer/build/**
+# Explicitly retained, payload-free renderer evidence (not arbitrary logs).
+!scripts/pgv08/protocols/server_main.log
+!scripts/pgv08/protocols/server_dependency.log

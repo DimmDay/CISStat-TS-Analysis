@@ -21,8 +21,11 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { Worker } from "node:worker_threads";
+import { join } from "node:path";
+import { createLaunchGuard, type LaunchGuard } from "./launchGuard";
 
-import type { Browser, BrowserContext } from "playwright-core";
+import type { Browser, BrowserContext, BrowserServer } from "playwright-core";
 
 import {
   buildDependencyManifest,
@@ -33,6 +36,7 @@ import {
   DEFAULT_HARD_TIMEOUT_S,
   injectPngPhys,
   RENDERER_FONT_PROFILE,
+  validateRenderPayload,
   RENDERER_VERSION,
   type DependencyManifest,
   type RenderPagePayload,
@@ -56,7 +60,7 @@ const DEFAULT_FONT_FILES = [
   "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
 ];
 
-export function readConfig(env: NodeJS.ProcessEnv = process.env): RendererConfig {
+export function readConfig(env: Record<string, string | undefined> = process.env): RendererConfig {
   const intEnv = (name: string, fallback: number): number => {
     const raw = env[name];
     if (raw === undefined || raw === "") return fallback;
@@ -142,7 +146,9 @@ interface RenderOutcome {
 
 export class PrintRenderWorker {
   private readonly config: RendererConfig;
-  private browserPromise: Promise<Browser> | null = null;
+  private readonly servers = new Set<BrowserServer>();
+  private readonly launches = new Set<LaunchGuard>();
+  private stopping = false;
   private playwrightModule: typeof import("playwright-core") | null = null;
   private active = 0;
 
@@ -188,53 +194,53 @@ export class PrintRenderWorker {
     }
   }
 
-  private async ensureBrowser(): Promise<Browser> {
-    if (!this.browserPromise) {
-      this.browserPromise = (async () => {
-        if (!this.playwrightModule) {
-          this.playwrightModule = await import("playwright-core");
-        }
-        const manifest = this.dependencyManifest();
-        if (manifest.dependency_status === "unavailable") {
-          throw new RenderDependencyError(manifest.unavailable_reason ?? "unknown");
-        }
-        const spec = buildSandboxLaunchSpec();
-        const executablePath =
-          this.config.browserPath ?? (this.playwrightModule!.chromium.executablePath() as string);
-        return this.playwrightModule!.chromium.launch({
-          executablePath,
-          headless: true,
-          args: spec.chromiumArgs,
-          timeout: 30_000,
-        });
-      })();
-      this.browserPromise.catch(() => {
-        // Провал запуска сбрасывает синглтон: следующий запрос честно
-        // повторит диагностику (AC17 — без залипшего false-ready).
-        this.browserPromise = null;
-      });
+  /** A separate browser server per admitted render avoids cancelling another job.
+   * launchServer owns and kills an incomplete launch on its own bounded timeout.
+   * Its public process() handle supports a real SIGKILL (Browser has no such API).
+   */
+  private async ensureBrowser(
+    remainingMs: () => number,
+    onServer: (server: BrowserServer) => void,
+    onGuard: (guard: LaunchGuard) => void,
+    cancelled: () => boolean,
+  ): Promise<Browser> {
+    if (!this.playwrightModule) this.playwrightModule = await import("playwright-core");
+    if (cancelled() || this.stopping) throw new RenderTimeoutError(0);
+    const spec = buildSandboxLaunchSpec();
+    const guard = createLaunchGuard(this.config.tmpDir);
+    this.launches.add(guard);
+    onGuard(guard);
+    const actualExecutable = this.config.browserPath ?? this.playwrightModule.chromium.executablePath();
+    const server = await this.playwrightModule.chromium.launchServer({
+      executablePath: "/bin/sh",
+      ignoreDefaultArgs: true,
+      headless: true,
+      host: "127.0.0.1",
+      // Browser receives no platform secrets inherited from the API environment.
+      env: { HOME: this.config.tmpDir, TMPDIR: this.config.tmpDir, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" },
+      chromiumSandbox: true,
+      // Explicit Chromium flags because the executable is the shell gate.
+      args: [guard.wrapper, actualExecutable, "--remote-debugging-pipe", "--headless",
+        `--user-data-dir=${join(guard.directory, "profile")}`, ...spec.chromiumArgs],
+      timeout: remainingMs(),
+    });
+    this.servers.add(server);
+    onServer(server);
+    if (cancelled() || this.stopping) {
+      this.killBrowser(server);
+      throw new RenderTimeoutError(0);
     }
-    return this.browserPromise;
+    return this.playwrightModule.chromium.connect(server.wsEndpoint(), { timeout: remainingMs() });
   }
 
-  /** Аварийное уничтожение браузера (AC20: зависший процесс не переживает таймаут). */
-  private killBrowser(browser: Browser | null): void {
-    try {
-      // process() есть в рантайме playwright-core, но не в публичных
-      // typings ряда версий — честный структурный каст.
-      const proc = (
-        browser as unknown as {
-          process?: () => { pid?: number; kill: (signal: string) => void } | null;
-        }
-      ).process?.();
-      if (proc && proc.pid) {
-        proc.kill("SIGKILL");
-      }
-      void browser?.close({ reason: "hard timeout kill" }).catch(() => undefined);
-    } catch {
-      // Процесс мог уже умереть — не маскируем основной отказ.
-    }
-    this.browserPromise = null;
+  /** SIGKILL belongs to this render's BrowserServer, never a shared Browser. */
+  private killBrowser(server: BrowserServer | null): void {
+    if (!server) return;
+    // Playwright 1.57 kills the entire browser process group with SIGKILL.
+    // Do not first ChildProcess.kill(): it marks the parent killed and can
+    // prevent Playwright from reaping its descendants.
+    void server.kill().catch(() => undefined);
+    this.servers.delete(server);
   }
 
   /**
@@ -252,53 +258,49 @@ export class PrintRenderWorker {
     pageIndex: number,
     pageCount: number,
   ): Promise<RenderOutcome> {
+    if (validateRenderPayload(payload).payload === null) {
+      throw new Error("invalid_payload: render input violates the shared contract");
+    }
+    if (this.stopping) throw new RenderDependencyError("renderer_stopping");
     if (this.active >= this.config.maxConcurrent) {
       throw new RendererBusyError(this.config.maxConcurrent);
     }
     this.active += 1;
     const startedAt = Date.now();
-    let context: BrowserContext | null = null;
-    let browser: Browser | null = null;
-    let timedOut = false;
-    let deadlineTimer: NodeJS.Timeout | null = null;
     const effectiveS = clampTimeoutSeconds(payload.options?.timeout_s, this.config.hardTimeoutS);
+    const deadlineAt = startedAt + effectiveS * 1000;
+    let server: BrowserServer | null = null;
+    let launch: LaunchGuard | null = null;
+    let timedOut = false;
+    const abort = new AbortController();
+    let deadlineTimer: NodeJS.Timeout | null = null;
+    const cancelled = () => timedOut || Date.now() >= deadlineAt || this.stopping;
+    const remainingMs = () => Math.max(1, deadlineAt - Date.now());
     try {
-      const work = this.doRender(
-        payload,
-        pageIndex,
-        pageCount,
-        effectiveS,
-        startedAt,
-        (b) => {
-          browser = b;
-        },
-        (c) => {
-          context = c;
-        },
-      );
-      const timeoutPromise = new Promise<never>((_, reject) => {
+      const work = this.doRender(payload, pageIndex, pageCount, effectiveS, startedAt,
+        remainingMs, cancelled, abort.signal, (value) => { server = value; }, (value) => { launch = value; });
+      const deadline = new Promise<never>((_, reject) => {
         deadlineTimer = setTimeout(() => {
           timedOut = true;
+          abort.abort();
+          launch?.cancel();
+          this.killBrowser(server);
           reject(new RenderTimeoutError(effectiveS));
-        }, effectiveS * 1000);
+        }, remainingMs());
       });
-      return await Promise.race([work, timeoutPromise]);
+      return await Promise.race([work, deadline]);
     } catch (error) {
-      if (timedOut) {
-        // AC20: таймаут убивает браузер (не только контекст) — зависший
-        // рендер не должен переживать запрос ни процессом, ни потоком.
-        this.killBrowser(browser);
-        browser = null;
-        context = null;
+      abort.abort();
+      launch?.cancel();
+      this.killBrowser(server);
+      // Playwright's launch/connect timeout may win a few ms before our timer.
+      if (timedOut || (error instanceof Error && error.name === "TimeoutError")) {
+        timedOut = true;
+        throw new RenderTimeoutError(effectiveS);
       }
       throw error;
     } finally {
       if (deadlineTimer) clearTimeout(deadlineTimer);
-      try {
-        if (context) await context.close();
-      } catch {
-        // Контекст мог уже умереть при kill.
-      }
       this.active -= 1;
     }
   }
@@ -310,33 +312,44 @@ export class PrintRenderWorker {
     pageCount: number,
     effectiveS: number,
     startedAt: number,
-    setBrowser: (browser: Browser) => void,
-    setContext: (context: BrowserContext) => void,
+    remainingMs: () => number,
+    cancelled: () => boolean,
+    signal: AbortSignal,
+    setServer: (server: BrowserServer) => void,
+    setGuard: (guard: LaunchGuard) => void,
   ): Promise<RenderOutcome> {
     const manifest = this.dependencyManifest();
     if (manifest.dependency_status === "unavailable") {
       throw new RenderDependencyError(manifest.unavailable_reason ?? "unknown");
     }
-    const browser = await this.ensureBrowser();
-    setBrowser(browser);
+    let ownedServer: BrowserServer | null = null;
+    let ownedGuard: LaunchGuard | null = null;
+    let context: BrowserContext | null = null;
+    try {
+    const browser = await this.ensureBrowser(remainingMs, value => {
+      ownedServer = value;
+      setServer(value);
+    }, value => { ownedGuard = value; setGuard(value); }, cancelled);
+    if (cancelled()) throw new RenderTimeoutError(effectiveS);
     const spec = buildSandboxLaunchSpec();
     const scale = payload.options?.scale ?? 1;
-    const html = buildPrintHtml(payload, pageIndex, pageCount);
+    const html = await renderHtmlInWorker(payload, pageIndex, pageCount, signal);
+    if (cancelled()) throw new RenderTimeoutError(effectiveS);
     const profile = payload.snapshot.print;
     const geometry = payload.snapshot.print;
     const width = Math.round(profileWidthPx(geometry.profile_id) * scale);
     const height = Math.round(profileHeightPx(geometry.profile_id) * scale);
 
-    const context = await browser.newContext({
+    context = await browser.newContext({
       ...spec.pageContextOptions,
       viewport: { width: Math.max(50, width), height: Math.max(50, height) },
       deviceScaleFactor: 1,
       reducedMotion: "reduce",
       timezoneId: payload.snapshot.times.timezone || "UTC",
     });
-    setContext(context);
+    if (cancelled()) throw new RenderTimeoutError(effectiveS);
     const page = await context.newPage();
-    page.setDefaultTimeout(effectiveS * 1000);
+    page.setDefaultTimeout(remainingMs());
     const policy = buildRequestPolicy();
     await page.route("**/*", (route) => {
       const url = route.request().url();
@@ -351,10 +364,10 @@ export class PrintRenderWorker {
     // AC19 блокирует file://; вход страницы — только SSR-строка из
     // общего бандла). Temp-след Chromium (профиль контекста) убирается
     // context.close() в finally; /tmp контейнера — tmpfs (ephemeral).
-    await page.setContent(html, { waitUntil: "load", timeout: effectiveS * 1000 });
+    await page.setContent(html, { waitUntil: "load", timeout: remainingMs() });
 
     const surface = page.locator('[data-testid="print-page-surface"]');
-    const rawPng = await surface.screenshot({ type: "png", timeout: effectiveS * 1000 });
+    const rawPng = await surface.screenshot({ type: "png", timeout: remainingMs() });
     const ppi = profilePpi(geometry.profile_id);
     const png = injectPngPhys(rawPng, ppi);
     return {
@@ -366,20 +379,66 @@ export class PrintRenderWorker {
       sha256: createHash("sha256").update(png).digest("hex"),
       sanitizerWarnings: collectSanitizerWarnings(payload),
     };
-  }
-
-  /** Плавная остановка (SIGTERM): браузер закрывается, не бросая задач. */
-  async shutdown(): Promise<void> {
-    const promise = this.browserPromise;
-    this.browserPromise = null;
-    if (!promise) return;
-    try {
-      const browser = await promise;
-      await browser.close();
-    } catch {
-      // Уже мёртв — не важно.
+    } finally {
+      try {
+      try { await context?.close(); } catch { /* killed context */ }
+      if (ownedServer) {
+        // Normal completion also closes this job's browser; late completions
+        // after cancellation cannot keep a browser or start a new page.
+        if (cancelled()) this.killBrowser(ownedServer);
+        else {
+          try { await ownedServer.close(); }
+          catch (error) { ownedGuard?.cancel(); this.killBrowser(ownedServer); throw error; }
+          finally { this.servers.delete(ownedServer); }
+        }
+      }
+      } finally {
+        if (ownedGuard) {
+          if (cancelled() || !ownedServer) ownedGuard.cancel();
+          ownedGuard.cleanup();
+          this.launches.delete(ownedGuard);
+        }
+      }
     }
   }
+
+  async shutdown(): Promise<void> {
+    this.stopping = true;
+    for (const guard of this.launches) guard.cancel();
+    for (const server of this.servers) this.killBrowser(server);
+  }
+
+}
+
+/** SSR is CPU-bound: a JS timer cannot preempt it on the HTTP event loop.
+ * The shared PGV-07 renderer runs in a terminable worker thread instead. */
+export function renderHtmlInWorker(
+  payload: RenderPagePayload, pageIndex: number, pageCount: number, signal: AbortSignal,
+): Promise<string> {
+  if (signal.aborted) return Promise.reject(new RenderTimeoutError(0));
+  return new Promise((resolve, reject) => {
+    const thread = new Worker(join(__dirname, "htmlWorker.js"), {
+      workerData: { payload, pageIndex, pageCount },
+      resourceLimits: { maxOldGenerationSizeMb: 256 },
+    });
+    let settled = false;
+    const finish = (error?: Error, html?: string) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener("abort", cancel);
+      void thread.terminate().catch(() => undefined);
+      if (error) reject(error); else resolve(html!);
+    };
+    const cancel = () => finish(new RenderTimeoutError(0));
+    signal.addEventListener("abort", cancel, { once: true });
+    thread.once("message", message => {
+      if (typeof message.html === "string") finish(undefined, message.html);
+      else finish(new Error("print SSR failed"));
+    });
+    thread.once("error", error => finish(error));
+    thread.once("exit", () => { if (!settled) finish(new Error("print SSR exited before result")); });
+    if (signal.aborted) cancel();
+  });
 }
 
 // ── Профильные геометрии (зеркало каталога PGV-01 для clip'а) ─────

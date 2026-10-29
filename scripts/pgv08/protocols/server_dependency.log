@@ -1,0 +1,2 @@
+{"ts_level":"info","event":"renderer_listening","renderer_version":"print-renderer/1","port":8987,"hard_timeout_s":1,"max_concurrent":2,"max_body_bytes":8388608}
+{"ts_level":"info","event":"renderer_shutdown","renderer_version":"print-renderer/1","signal":"SIGTERM"}

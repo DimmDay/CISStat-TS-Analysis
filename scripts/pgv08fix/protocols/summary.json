@@ -1,0 +1,17 @@
+{
+  "fixes": "VERIFIED within stated scope",
+  "pgv08_final_image": "BLOCKED BY ENVIRONMENT",
+  "jest": {
+    "numTotalTests": 2726,
+    "numPassedTests": 2726,
+    "numFailedTests": 0,
+    "numTotalTestSuites": 236,
+    "numFailedTestSuites": 0
+  },
+  "mutants_killed": 9,
+  "second_order_dual_killed": 2,
+  "control_alive": 1,
+  "http_checks_passed": 7,
+  "deployment_tests_passed": 23,
+  "doc_guard_passed": 48
+}

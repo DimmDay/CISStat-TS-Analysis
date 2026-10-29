@@ -1,0 +1,6 @@
+
+Test Suites: 4 passed, 4 total
+Tests:       68 passed, 68 total
+Snapshots:   0 total
+Time:        3.334 s, estimated 4 s
+Test results written to: scripts/pgv08fix/protocols/K01-noop.json

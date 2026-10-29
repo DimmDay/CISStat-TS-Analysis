@@ -26,6 +26,7 @@ import json
 import re
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -39,7 +40,17 @@ def check(name: str, expected: bool, actual: bool, detail: str = "") -> None:
 def committed_files() -> set[str]:
     """Файлы в git-индексе HEAD (filesystem может нести session-артефакты)."""
     res = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True)
-    return set(res.stdout.splitlines())
+    inventory = set(res.stdout.splitlines())
+    if "--delivery-zip" in sys.argv:
+        archive = Path(sys.argv[sys.argv.index("--delivery-zip") + 1])
+        with zipfile.ZipFile(archive) as delivery:
+            assert delivery.testzip() is None
+            for name in delivery.namelist():
+                rel = Path(name)
+                assert not rel.is_absolute() and ".." not in rel.parts
+                assert (REPO / rel).read_bytes() == delivery.read(name), name
+                inventory.add(name)
+    return inventory
 
 
 def git_head() -> str:
@@ -142,7 +153,7 @@ def main() -> int:
 
     passed = sum(1 for item in OUT if item["ok"])
     failed = [item for item in OUT if not item["ok"]]
-    report = {"guard": "p8cert-oracles", "head": head, "passed": passed, "total": len(OUT), "failed": failed, "checks": OUT}
+    report = {"inventory_basis": "verified delivery ZIP + git index" if "--delivery-zip" in sys.argv else "git index only", "guard": "p8cert-oracles", "head": head, "passed": passed, "total": len(OUT), "failed": failed, "checks": OUT}
     if "--json" in sys.argv:
         print(json.dumps(report, ensure_ascii=False, indent=1))
     else:

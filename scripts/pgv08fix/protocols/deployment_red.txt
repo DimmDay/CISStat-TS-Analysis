@@ -1,0 +1,122 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix
+configfile: pytest.ini
+plugins: anyio-4.15.1, typeguard-4.6.0, platformdirs-4.13.0
+collected 22 items
+
+tests/api/test_pgv08_render_container.py ..FFFFFFFFF..........F          [100%]
+
+=================================== FAILURES ===================================
+_____________ TestPins.test_dockerfile_pins_node_and_browsers_path _____________
+tests/api/test_pgv08_render_container.py:64: in test_dockerfile_pins_node_and_browsers_path
+    df = _read(DOCKERFILE)
+         ^^^^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile').exists
+_______________ TestPins.test_dockerfile_installs_cyrillic_fonts _______________
+tests/api/test_pgv08_render_container.py:72: in test_dockerfile_installs_cyrillic_fonts
+    df = _read(DOCKERFILE)
+         ^^^^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile').exists
+_____________ TestSandboxDeployment.test_compose_network_mode_none _____________
+tests/api/test_pgv08_render_container.py:83: in test_compose_network_mode_none
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+_______________ TestSandboxDeployment.test_compose_non_root_user _______________
+tests/api/test_pgv08_render_container.py:89: in test_compose_non_root_user
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+_____ TestSandboxDeployment.test_compose_read_only_rootfs_and_tmpfs_noexec _____
+tests/api/test_pgv08_render_container.py:93: in test_compose_read_only_rootfs_and_tmpfs_noexec
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+_ TestSandboxDeployment.test_compose_drops_capabilities_and_no_new_privileges __
+tests/api/test_pgv08_render_container.py:100: in test_compose_drops_capabilities_and_no_new_privileges
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+______ TestSandboxDeployment.test_compose_resource_limits_and_healthcheck ______
+tests/api/test_pgv08_render_container.py:105: in test_compose_resource_limits_and_healthcheck
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+_________ TestSandboxDeployment.test_dockerfile_declares_non_root_user _________
+tests/api/test_pgv08_render_container.py:111: in test_dockerfile_declares_non_root_user
+    df = _read(DOCKERFILE)
+         ^^^^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/Dockerfile').exists
+_______________ TestHardTimeout.test_default_timeout_env_is_60s ________________
+tests/api/test_pgv08_render_container.py:124: in test_default_timeout_env_is_60s
+    compose = _read(COMPOSE)
+              ^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/docker-compose.yml').exists
+________________ TestDeliveryDoc.test_deployment_readme_runbook ________________
+tests/api/test_pgv08_render_container.py:221: in test_deployment_readme_runbook
+    readme = _read(DEPLOY_README)
+             ^^^^^^^^^^^^^^^^^^^^
+tests/api/test_pgv08_render_container.py:44: in _read
+    assert path.exists(), f"ожидается файл поставки PGV-08: {path}"
+E   AssertionError: ожидается файл поставки PGV-08: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/README.md
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-pgv08-fix/apps/print-renderer/build/deployment/README.md').exists
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv08_render_container.py::TestPins::test_dockerfile_pins_node_and_browsers_path
+FAILED tests/api/test_pgv08_render_container.py::TestPins::test_dockerfile_installs_cyrillic_fonts
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_compose_network_mode_none
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_compose_non_root_user
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_compose_read_only_rootfs_and_tmpfs_noexec
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_compose_drops_capabilities_and_no_new_privileges
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_compose_resource_limits_and_healthcheck
+FAILED tests/api/test_pgv08_render_container.py::TestSandboxDeployment::test_dockerfile_declares_non_root_user
+FAILED tests/api/test_pgv08_render_container.py::TestHardTimeout::test_default_timeout_env_is_60s
+FAILED tests/api/test_pgv08_render_container.py::TestDeliveryDoc::test_deployment_readme_runbook
+======================== 10 failed, 12 passed in 0.12s =========================

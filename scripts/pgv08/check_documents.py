@@ -76,7 +76,7 @@ check("worklog_entry", "Task ID: PGV-08" in worklog, "worklog-запись пр�
 check("worklog_base", "c3dab21" in worklog, "база зафиксирована")
 for marker in ("rendererCore", "renderWorker", "smokeScenarios", "docker-compose.yml", "verify_local.py"):
     check(f"worklog_mentions::{marker}", marker in worklog, "состав файлов упомянут в worklog")
-check("doc_test_counts", "35/35" in doc and "22/22" in doc and "20/20" in doc, "счётчики corps в документе")
+check("doc_test_counts", "jest_final.json" in doc and "исторической арифметики" in doc, "счётчики берутся из нового machine-readable протокола")
 check("doc_honest_docker_boundary", "Docker-демона в среде сессии нет" in doc, "честная граница R2 зафиксирована")
 
 # ── 5. Продуктовые пины согласованы ─────────────────────────────────
