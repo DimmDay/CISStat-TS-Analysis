@@ -1,0 +1,110 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 18 items
+
+tests/api/test_pgv05_passport_history.py FFFFFFFFFFFFFFFFFF              [100%]
+
+=================================== FAILURES ===================================
+_ TestModuleBoundaries.test_module_imports_exclude_session_store_pandas_redis __
+tests/api/test_pgv05_passport_history.py:241: in test_module_imports_exclude_session_store_pandas_redis
+    source = Path("apps/api/passport_history.py").read_text(encoding="utf-8")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'apps/api/passport_history.py'
+____________ TestModuleBoundaries.test_full_read_after_session_loss ____________
+tests/api/test_pgv05_passport_history.py:263: in test_full_read_after_session_loss
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+___________ TestTrajectoryRead.test_full_pipeline_trajectory_fields ____________
+tests/api/test_pgv05_passport_history.py:307: in test_full_pipeline_trajectory_fields
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_____ TestTrajectoryRead.test_selected_trajectory_not_latest_of_each_stage _____
+tests/api/test_pgv05_passport_history.py:346: in test_selected_trajectory_not_latest_of_each_stage
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_______ TestTrajectoryRead.test_reused_handoff_resolves_source_snapshot ________
+tests/api/test_pgv05_passport_history.py:387: in test_reused_handoff_resolves_source_snapshot
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_________ TestTrajectoryRead.test_missing_checkpoint_ref_returns_none __________
+tests/api/test_pgv05_passport_history.py:427: in test_missing_checkpoint_ref_returns_none
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+___________ TestSnapshotRecord.test_snapshot_record_contract_fields ____________
+tests/api/test_pgv05_passport_history.py:447: in test_snapshot_record_contract_fields
+    from apps.api.passport_history import (
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+____ TestSnapshotRecord.test_schema_and_calculation_versions_legacy_unknown ____
+tests/api/test_pgv05_passport_history.py:498: in test_schema_and_calculation_versions_legacy_unknown
+    from apps.api.report_snapshot import (
+E   ImportError: cannot import name 'PASSPORT_RECORD_IDEMPOTENCY_PREFIX' from 'apps.api.report_snapshot' (/home/z/my-project/CISStat-TS-Analysis/apps/api/report_snapshot.py)
+__________ TestSnapshotRecord.test_missing_snapshot_ref_returns_none ___________
+tests/api/test_pgv05_passport_history.py:524: in test_missing_snapshot_ref_returns_none
+    from apps.api.passport_history import read_passport_snapshot
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_________ TestHonestGaps.test_rs_record_without_artifact_is_honest_gap _________
+tests/api/test_pgv05_passport_history.py:547: in test_rs_record_without_artifact_is_honest_gap
+    from apps.api.passport_history import read_passport_snapshot
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+______ TestHonestGaps.test_dangling_stage_ref_yields_gap_not_fabrication _______
+tests/api/test_pgv05_passport_history.py:582: in test_dangling_stage_ref_yields_gap_not_fabrication
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_________ TestHonestGaps.test_corrupt_artifact_bytes_integrity_failure _________
+tests/api/test_pgv05_passport_history.py:638: in test_corrupt_artifact_bytes_integrity_failure
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_____ TestPanelIsolation.test_panel_trajectory_carries_entity_and_universe _____
+tests/api/test_pgv05_passport_history.py:725: in test_panel_trajectory_carries_entity_and_universe
+    from apps.api.passport_history import read_passport_trajectory
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+______________ TestPanelIsolation.test_universe_lists_do_not_mix _______________
+tests/api/test_pgv05_passport_history.py:755: in test_universe_lists_do_not_mix
+    from apps.api.passport_history import list_passport_checkpoints
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_____ TestPickerListsAndAccess.test_list_checkpoints_picker_fields_sorted ______
+tests/api/test_pgv05_passport_history.py:809: in test_list_checkpoints_picker_fields_sorted
+    from apps.api.passport_history import list_passport_checkpoints
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+________ TestPickerListsAndAccess.test_list_snapshots_scoped_and_sorted ________
+tests/api/test_pgv05_passport_history.py:845: in test_list_snapshots_scoped_and_sorted
+    from apps.api.passport_history import list_passport_snapshots
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+__________ TestPickerListsAndAccess.test_empty_run_honest_empty_lists __________
+tests/api/test_pgv05_passport_history.py:872: in test_empty_run_honest_empty_lists
+    from apps.api.passport_history import (
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+_ TestPickerListsAndAccess.test_foreign_subject_and_missing_run_uniform_denial _
+tests/api/test_pgv05_passport_history.py:885: in test_foreign_subject_and_missing_run_uniform_denial
+    from apps.api.passport_history import (
+E   ModuleNotFoundError: No module named 'apps.api.passport_history'
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv05_passport_history.py::TestModuleBoundaries::test_module_imports_exclude_session_store_pandas_redis
+FAILED tests/api/test_pgv05_passport_history.py::TestModuleBoundaries::test_full_read_after_session_loss
+FAILED tests/api/test_pgv05_passport_history.py::TestTrajectoryRead::test_full_pipeline_trajectory_fields
+FAILED tests/api/test_pgv05_passport_history.py::TestTrajectoryRead::test_selected_trajectory_not_latest_of_each_stage
+FAILED tests/api/test_pgv05_passport_history.py::TestTrajectoryRead::test_reused_handoff_resolves_source_snapshot
+FAILED tests/api/test_pgv05_passport_history.py::TestTrajectoryRead::test_missing_checkpoint_ref_returns_none
+FAILED tests/api/test_pgv05_passport_history.py::TestSnapshotRecord::test_snapshot_record_contract_fields
+FAILED tests/api/test_pgv05_passport_history.py::TestSnapshotRecord::test_schema_and_calculation_versions_legacy_unknown
+FAILED tests/api/test_pgv05_passport_history.py::TestSnapshotRecord::test_missing_snapshot_ref_returns_none
+FAILED tests/api/test_pgv05_passport_history.py::TestHonestGaps::test_rs_record_without_artifact_is_honest_gap
+FAILED tests/api/test_pgv05_passport_history.py::TestHonestGaps::test_dangling_stage_ref_yields_gap_not_fabrication
+FAILED tests/api/test_pgv05_passport_history.py::TestHonestGaps::test_corrupt_artifact_bytes_integrity_failure
+FAILED tests/api/test_pgv05_passport_history.py::TestPanelIsolation::test_panel_trajectory_carries_entity_and_universe
+FAILED tests/api/test_pgv05_passport_history.py::TestPanelIsolation::test_universe_lists_do_not_mix
+FAILED tests/api/test_pgv05_passport_history.py::TestPickerListsAndAccess::test_list_checkpoints_picker_fields_sorted
+FAILED tests/api/test_pgv05_passport_history.py::TestPickerListsAndAccess::test_list_snapshots_scoped_and_sorted
+FAILED tests/api/test_pgv05_passport_history.py::TestPickerListsAndAccess::test_empty_run_honest_empty_lists
+FAILED tests/api/test_pgv05_passport_history.py::TestPickerListsAndAccess::test_foreign_subject_and_missing_run_uniform_denial
+============================== 18 failed in 4.82s ==============================

@@ -1,0 +1,10 @@
+=== GREEN: корпус PGV-05 ===
+
+============================== 18 passed in 3.92s ==============================
+
+=== Адресный регресс ===
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 262 passed, 1 skipped, 1 warning in 11.20s ==================
+
+=== Дельта-0 tests/api (полный) ===
+HEAD: 67F/3017P/44S; база c4e90b8: 67F/2999P/44S (PGV-04); дельта = +18 passed (ровно корпус PGV-05), FAILED-ID счёт идентичен (67=67), состав — известные средовые классы (psycopg/upload_db/forecasting_session)
