@@ -1,0 +1,120 @@
+{
+  "verdict": "PASSED",
+  "passed": 20,
+  "total": 20,
+  "stack": {
+    "node": "v24.22.1",
+    "chromium": "chromium-1200 (Chrome for Testing 143.0.7499.4)",
+    "playwright-core": "1.57.0",
+    "fonts": "DejaVu Sans (fonts-dejavu-core 2.37)"
+  },
+  "docker_build_in_session": false,
+  "honest_boundary": "docker-демона в среде сессии нет; приёмка на том же пинованном стеке, что в Dockerfile; смоук образа — entrypoint --smoke (протокол smoke_run.json)",
+  "results": [
+    {
+      "id": "E2E-0.tooling",
+      "passed": true,
+      "detail": "chromium-1200 + playwright-core 1.57.0; OCR-ru=доступен"
+    },
+    {
+      "id": "E2E-0.readyz",
+      "passed": true,
+      "detail": "readyz=ready, checks={'browser': True, 'fonts': True, 'bundle': True, 'smoke': True}"
+    },
+    {
+      "id": "E2E-1.http",
+      "passed": true,
+      "detail": "status=200, bytes=65711, ppi_hdr=300"
+    },
+    {
+      "id": "E2E-1.dimensions",
+      "passed": true,
+      "detail": "size=(2400, 1500) (ожидалось 2400×1500)"
+    },
+    {
+      "id": "E2E-1.dpi300",
+      "passed": true,
+      "detail": "dpi=(299.9994, 299.9994) (pHYs 300 ppi, AC16)"
+    },
+    {
+      "id": "E2E-1.opaque_white",
+      "passed": true,
+      "detail": "alpha_min=255, corner=(255, 255, 255) (AC23: без прозрачного фона)"
+    },
+    {
+      "id": "E2E-1.ink",
+      "passed": true,
+      "detail": "ink-покрытие=0.0053 (>0.5% — контент есть)"
+    },
+    {
+      "id": "E2E-1.ocr_ru",
+      "passed": true,
+      "detail": "OCR-rus фрагмент: 'Оборот розничной торговли по месяцам\\nБраузерная приёмка РС\\\\-08 на реальном Спгоптлт\\nрод чету рмбв.Досы: (вето) источник'"
+    },
+    {
+      "id": "E2E-2.http",
+      "passed": true,
+      "detail": "status=200, size=(3508, 2480)"
+    },
+    {
+      "id": "E2E-2.blue_cells",
+      "passed": true,
+      "detail": "доля синих тепловых ячеек=0.0057 (>0.3%)"
+    },
+    {
+      "id": "E2E-2.ocr_ih",
+      "passed": true,
+      "detail": "OCR фрагмент: 'Условное распределение цели по интервалам фактора\\n\\nБраузерная приёмка РС\\\\-08 на реальном Спгопиит\\n\\nБ'"
+    },
+    {
+      "id": "E2E-3.a4_geometry",
+      "passed": true,
+      "detail": "size=(2480, 3508), aspect=0.70696 vs 0.70707 (AC16: px⇄мм⇄ppi)"
+    },
+    {
+      "id": "E2E-4.determinism",
+      "passed": true,
+      "detail": "sha256 совпали: 82c6112735cb9cd9… == 82c6112735cb9cd9…"
+    },
+    {
+      "id": "E2E-5.ac19",
+      "passed": true,
+      "detail": "status=200, слушатель получил 0 соединений (ожидается 0), sanitized_warnings=4"
+    },
+    {
+      "id": "E2E-5.dirty_png_valid",
+      "passed": true,
+      "detail": "PNG после санитайзера валиден: (2400, 1500)"
+    },
+    {
+      "id": "E2E-6.timeout",
+      "passed": true,
+      "detail": "status=503, code=render_timeout, retryable=true"
+    },
+    {
+      "id": "E2E-6.recovery",
+      "passed": true,
+      "detail": "после kill браузера рендер восстановлен: status=200; chrome-процессов осталось: 2"
+    },
+    {
+      "id": "E2E-8.concurrency",
+      "passed": true,
+      "detail": "3 параллельных при max_concurrent=2 → [200, 200, 429] (ожидается [200,200,429])"
+    },
+    {
+      "id": "E2E-7.readyz_unavailable",
+      "passed": true,
+      "detail": "readyz=503, reason=missing_browser, checks={'browser': False, 'fonts': True, 'bundle': True}"
+    },
+    {
+      "id": "E2E-7.render_unavailable",
+      "passed": true,
+      "detail": "status=503, code=render_dependency_unavailable, retryable=False (AC17: без ложного ready, terminal)"
+    }
+  ],
+  "pngs": {
+    "cyrillic": 65711,
+    "ih": 108817,
+    "a4": 71916
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@cisstat/print-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PGV-08 — Sandboxed renderer container: SSR print-бандла PGV-07 (react-dom/server) и растеризация в PNG headless Chromium (playwright-core, пин 1.57.0 == chromium-1200). No-network/non-root/hard timeout — см. build/.",
+  "main": "dist/apps/print-renderer/src/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/apps/print-renderer/src/server.js",
+    "smoke": "node dist/apps/print-renderer/src/smoke.js --smoke",
+    "probe": "node dist/apps/print-renderer/src/smoke.js --probe"
+  },
+  "dependencies": {
+    "playwright-core": "1.57.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

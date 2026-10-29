@@ -17,6 +17,12 @@
 //   • matchMedia — стандартный polyfill (некоторые UI-компоненты могут
 //     использовать media queries для адаптивности).
 //
+//   • TextEncoder/TextDecoder (PGV-08) — react-dom/server в jsdom-среде
+//     резолвится в browser-сборку (react-dom/server.browser), которой
+//     нужен TextEncoder для потока рендера. В Node-рантайме рендерера
+//     (apps/print-renderer) TextEncoder глобален; polyfill нужен только
+//     jest-оракулам SSR (rendererCore.test.ts).
+//
 // setupFilesAfterEnv запускается ПОСЛЕ установки Jest-глобалов
 // (beforeEach и т.д. доступны), но ДО первого теста в каждом файле —
 // это правильное место для полифилов, см.
@@ -48,6 +54,15 @@ class IntersectionObserverStub {
 
 global.ResizeObserver = ResizeObserverStub;
 global.IntersectionObserver = IntersectionObserverStub;
+
+// TextEncoder/TextDecoder: browser-сборка react-dom/server требует
+// TextEncoder (PGV-08 SSR-оракулы); в свежих Node он глобален, но
+// jsdom-окружение его не экспортирует в window-скоуп.
+if (typeof global.TextEncoder === "undefined") {
+  const { TextEncoder, TextDecoder } = require("node:util");
+  global.TextEncoder = TextEncoder;
+  global.TextDecoder = TextDecoder;
+}
 
 // matchMedia: jsdom не реализует, но отдельные компоненты могут звать.
 window.matchMedia =

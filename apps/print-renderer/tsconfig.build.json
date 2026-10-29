@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["es2022", "dom"],
+    "jsx": "react-jsx",
+    "strict": false,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["node"],
+    "rootDir": "../..",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/ui/print/**/*",
+    "../../packages/ui/lib/chartVars.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "../../packages/ui/print/**/*.test.ts",
+    "../../packages/ui/print/**/*.test.tsx",
+    "dist"
+  ]
+}

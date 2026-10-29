@@ -1,0 +1,73 @@
+{
+  "verdict": "passed",
+  "renderer_version": "print-renderer/1",
+  "scenarios": [
+    {
+      "scenario": "cyrillic",
+      "profile_id": "figure-landscape",
+      "expected_width": 2400,
+      "expected_height": 1500,
+      "actual_width": 2400,
+      "actual_height": 1500,
+      "phys_ppu": 11811,
+      "idat_bytes": 73353,
+      "sha256": "20f2d74835d6e70e0765801c5753ee59a167598011c483828adc760bd6fee087",
+      "checks": {
+        "png_signature": true,
+        "dimensions": true,
+        "phys_300ppi": true,
+        "non_empty_idat": true,
+        "non_trivial_bytes": true
+      },
+      "duration_ms": 519,
+      "error": null
+    },
+    {
+      "scenario": "ih",
+      "profile_id": "a4-landscape",
+      "expected_width": 3508,
+      "expected_height": 2480,
+      "actual_width": 3508,
+      "actual_height": 2480,
+      "phys_ppu": 11811,
+      "idat_bytes": 109827,
+      "sha256": "9e280e242516596b15f14f67d9031b40b00f94eb91e4608091ce24e62fa98dfc",
+      "checks": {
+        "png_signature": true,
+        "dimensions": true,
+        "phys_300ppi": true,
+        "non_empty_idat": true,
+        "non_trivial_bytes": true
+      },
+      "duration_ms": 516,
+      "error": null
+    },
+    {
+      "scenario": "a4",
+      "profile_id": "a4-portrait",
+      "expected_width": 2480,
+      "expected_height": 3508,
+      "actual_width": 2480,
+      "actual_height": 3508,
+      "phys_ppu": 11811,
+      "idat_bytes": 77353,
+      "sha256": "647cf68e9cd18a683de807e70db6c717e96e5d118609e02e7ec2326b8908356a",
+      "checks": {
+        "png_signature": true,
+        "dimensions": true,
+        "phys_300ppi": true,
+        "non_empty_idat": true,
+        "non_trivial_bytes": true
+      },
+      "duration_ms": 475,
+      "error": null
+    }
+  ],
+  "checks": {
+    "cyrillic": true,
+    "ih": true,
+    "a4": true,
+    "distinct_hashes": true
+  },
+  "error": null
+}

@@ -2,9 +2,10 @@
   "name": "cisstat-ts-analysis-monorepo",
   "private": true,
   "workspaces": [
-    "packages/*",
     "apps/embedded",
-    "apps/standalone"
+    "apps/print-renderer",
+    "apps/standalone",
+    "packages/*"
   ],
   "scripts": {
     "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
