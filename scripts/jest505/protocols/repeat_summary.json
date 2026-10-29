@@ -1,0 +1,27 @@
+[
+  {
+    "run": 1,
+    "returncode": 0,
+    "seconds": 3.3
+  },
+  {
+    "run": 2,
+    "returncode": 0,
+    "seconds": 4.47
+  },
+  {
+    "run": 3,
+    "returncode": 0,
+    "seconds": 3.43
+  },
+  {
+    "run": 4,
+    "returncode": 0,
+    "seconds": 4.06
+  },
+  {
+    "run": 5,
+    "returncode": 0,
+    "seconds": 3.03
+  }
+]

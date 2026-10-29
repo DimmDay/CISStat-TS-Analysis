@@ -1,0 +1,23 @@
+FAIL apps/print-renderer/src/launchGuard.test.ts
+  ● PGV-08 launch ownership before handshake › failure to record ownership cannot fall through to browser exec
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      35 |     const child = spawnSync('/bin/sh', ['-c', body, 'gate', '/bin/sh', '-c', 'printf running > "$1"', 'gate', unexpected]);
+      36 |     expect(child.error).toBeUndefined();
+    > 37 |     expect(existsSync(guard.directory)).toBe(false);
+         |                                         ^
+      38 |     expect(child.status).not.toBe(0);
+      39 |     expect(existsSync(unexpected)).toBe(false);
+      40 |     guard.cleanup();
+
+      at Object.<anonymous> (apps/print-renderer/src/launchGuard.test.ts:37:41)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 6 passed, 7 total
+Snapshots:   0 total
+Time:        2.005 s
+Ran all test suites within paths "apps/print-renderer/src/launchGuard.test.ts".

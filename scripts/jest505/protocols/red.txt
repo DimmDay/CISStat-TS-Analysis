@@ -1,0 +1,57 @@
+FAIL scripts/pgv08cert/test_p8cert_oracles.test.ts
+  ● Test suite failed to run
+
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m28[0m:[93m61[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m28[0m import type { Browser, BrowserContext, BrowserServer } from "playwright-core";
+    [7m  [0m [91m                                                            ~~~~~~~~~~~~~~~~~[0m
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m152[0m:[93m43[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m152[0m   private playwrightModule: typeof import("playwright-core") | null = null;
+    [7m   [0m [91m                                          ~~~~~~~~~~~~~~~~~[0m
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m207[0m:[93m70[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m207[0m     if (!this.playwrightModule) this.playwrightModule = await import("playwright-core");
+    [7m   [0m [91m                                                                     ~~~~~~~~~~~~~~~~~[0m
+
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      51 |     const actualCount = Number(actual![2]);
+      52 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 53 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      54 |   });
+      55 | });
+      56 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:53:25)
+
+FAIL apps/print-renderer/src/rendererFix.test.ts
+  ● Test suite failed to run
+
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m28[0m:[93m61[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m28[0m import type { Browser, BrowserContext, BrowserServer } from "playwright-core";
+    [7m  [0m [91m                                                            ~~~~~~~~~~~~~~~~~[0m
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m152[0m:[93m43[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m152[0m   private playwrightModule: typeof import("playwright-core") | null = null;
+    [7m   [0m [91m                                          ~~~~~~~~~~~~~~~~~[0m
+    [96mapps/print-renderer/src/renderWorker.ts[0m:[93m207[0m:[93m70[0m - [91merror[0m[90m TS2307: [0mCannot find module 'playwright-core' or its corresponding type declarations.
+
+    [7m207[0m     if (!this.playwrightModule) this.playwrightModule = await import("playwright-core");
+    [7m   [0m [91m                                                                     ~~~~~~~~~~~~~~~~~[0m
+
+
+Test Suites: 3 failed, 2 passed, 5 total
+Tests:       1 failed, 11 passed, 12 total
+Snapshots:   0 total
+Time:        8.397 s
+Ran all test suites within paths "apps/print-renderer/src/launchGuard.test.ts", "apps/print-renderer/src/rendererFix.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts", "scripts/pgv07cert/test_p7cert_findings.test.tsx", "packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx".
+Test results written to: scripts/jest505/protocols/red.json

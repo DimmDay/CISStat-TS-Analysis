@@ -1,0 +1,1351 @@
+FAIL packages/ui/components/TsAnalysisUpload.test.tsx
+  ● Console
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to AppShellProvider inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to DatasetPassportPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DatasetPassportPanel (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/DatasetPassportPanel.tsx:371:3)
+          at div
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to DatasetPassportPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DatasetPassportPanel (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/DatasetPassportPanel.tsx:371:3)
+          at div
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to DatasetPassportPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DatasetPassportPanel (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/DatasetPassportPanel.tsx:371:3)
+          at div
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to DatasetPassportPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DatasetPassportPanel (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/DatasetPassportPanel.tsx:371:3)
+          at div
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+    console.error
+      Warning: An update to TsAnalysisUpload inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at TsAnalysisUpload (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/components/TsAnalysisUpload.tsx:417:74)
+          at AppShellProvider (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/packages/ui/context/AppShellContext.tsx:85:36)
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+
+  ● TsAnalysisUpload — UPLOAD-SEM-1: тело отчёта /upload-stops › чистая загрузка: quality=pending (было warning по счётчикам), overview=done (просмотрена дефолтная), chart=pending
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      1853 |     const bodies = stopsCalls().map(([, init]) => String(init?.body ?? ""));
+      1854 |     expect(bodies.some((b) => b.includes('"quality":"pending"'))).toBe(true);
+    > 1855 |     expect(bodies.some((b) => b.includes('"overview":"done"'))).toBe(true);
+           |                                                                 ^
+      1856 |     expect(bodies.some((b) => b.includes('"chart":"pending"'))).toBe(true);
+      1857 |     // Жёлтых отчётов по фактам входных данных быть не должно.
+      1858 |     expect(bodies.some((b) => b.includes('"quality":"warning"'))).toBe(false);
+
+      at Object.<anonymous> (packages/ui/components/TsAnalysisUpload.test.tsx:1855:65)
+
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      51 |     const actualCount = Number(actual![2]);
+      52 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 53 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      54 |   });
+      55 | });
+      56 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:53:25)
+
+
+Summary of all failing tests
+FAIL packages/ui/components/TsAnalysisUpload.test.tsx
+  ● TsAnalysisUpload — UPLOAD-SEM-1: тело отчёта /upload-stops › чистая загрузка: quality=pending (было warning по счётчикам), overview=done (просмотрена дефолтная), chart=pending
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      1853 |     const bodies = stopsCalls().map(([, init]) => String(init?.body ?? ""));
+      1854 |     expect(bodies.some((b) => b.includes('"quality":"pending"'))).toBe(true);
+    > 1855 |     expect(bodies.some((b) => b.includes('"overview":"done"'))).toBe(true);
+           |                                                                 ^
+      1856 |     expect(bodies.some((b) => b.includes('"chart":"pending"'))).toBe(true);
+      1857 |     // Жёлтых отчётов по фактам входных данных быть не должно.
+      1858 |     expect(bodies.some((b) => b.includes('"quality":"warning"'))).toBe(false);
+
+      at Object.<anonymous> (packages/ui/components/TsAnalysisUpload.test.tsx:1855:65)
+
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      51 |     const actualCount = Number(actual![2]);
+      52 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 53 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      54 |   });
+      55 | });
+      56 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:53:25)
+
+
+Test Suites: 2 failed, 234 passed, 236 total
+Tests:       2 failed, 2724 passed, 2726 total
+Snapshots:   0 total
+Time:        88.368 s
+Ran all test suites.
+Test results written to: scripts/jest505/protocols/full_before.json

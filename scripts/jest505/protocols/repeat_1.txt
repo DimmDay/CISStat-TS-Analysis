@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       9 passed, 9 total
+Snapshots:   0 total
+Time:        2.893 s, estimated 5 s
+Ran all test suites within paths "apps/print-renderer/src/launchGuard.test.ts", "packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx".

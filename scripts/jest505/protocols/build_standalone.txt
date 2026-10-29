@@ -1,0 +1,32 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-standalone@0.1.0 build
+> next build
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: ENOENT: no such file or directory, uv_resident_set_memory
+    at process.memoryUsage (node:internal/process/per_thread:217:5)
+    at traceMemoryUsage (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/node_modules/next/dist/lib/memory/trace.js:62:33)
+    at /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/node_modules/next/dist/build/index.js:948:42
+    at async Span.traceAsyncFn (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/node_modules/next/dist/trace/trace.js:154:20)
+    at async build (/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/node_modules/next/dist/build/index.js:368:9) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'uv_resident_set_memory'
+}
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/apps/standalone
+npm error workspace @cisstat/ts-analysis-standalone@0.1.0
+npm error location /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis-jest-505c304/apps/standalone
+npm error command failed
+npm error command sh -c next build

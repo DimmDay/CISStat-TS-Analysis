@@ -1,0 +1,7 @@
+
+Test Suites: 236 passed, 236 total
+Tests:       2728 passed, 2728 total
+Snapshots:   0 total
+Time:        68.148 s
+Ran all test suites.
+Test results written to: scripts/jest505/protocols/full_final.json

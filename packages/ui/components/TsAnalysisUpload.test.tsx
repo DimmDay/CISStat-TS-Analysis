@@ -1849,11 +1849,14 @@ describe("TsAnalysisUpload — UPLOAD-SEM-1: тело отчёта /upload-stops
     dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
     await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
 
-    await waitFor(() => expect(stopsCalls().length).toBeGreaterThan(0));
+    // The first delivery can precede the effect recording the default view.
+    // Wait for the complete semantic map, not merely for any request.
+    await waitFor(() => {
+      const maps = stopsCalls().map(([, init]) => JSON.parse(String(init?.body ?? "{}")));
+      expect(maps.some(({ stops }) => stops?.quality === "pending" &&
+        stops?.overview === "done" && stops?.chart === "pending")).toBe(true);
+    });
     const bodies = stopsCalls().map(([, init]) => String(init?.body ?? ""));
-    expect(bodies.some((b) => b.includes('"quality":"pending"'))).toBe(true);
-    expect(bodies.some((b) => b.includes('"overview":"done"'))).toBe(true);
-    expect(bodies.some((b) => b.includes('"chart":"pending"'))).toBe(true);
     // Жёлтых отчётов по фактам входных данных быть не должно.
     expect(bodies.some((b) => b.includes('"quality":"warning"'))).toBe(false);
     expect(bodies.some((b) => b.includes('"chart":"warning"'))).toBe(false);

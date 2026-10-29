@@ -6,14 +6,23 @@ import { createLaunchGuard } from './launchGuard';
 
 describe('PGV-08 launch ownership before handshake', () => {
   let root: string;
-  beforeEach(() => { root = mkdtempSync(join(process.cwd(), 'pgv08-test-')); });
+  beforeEach(() => { root = mkdtempSync(join(process.cwd(), "pgv08-test ' ")); });
   afterEach(() => { jest.restoreAllMocks(); rmSync(root, {recursive:true,force:true}); });
+  test('uncancelled wrapper executes its command on a path with spaces and quotes', () => {
+    const guard = createLaunchGuard(root);
+    const output = join(root, 'executed');
+    const child = spawnSync('/bin/sh', [guard.wrapper, '/bin/sh', '-c', 'printf running > "$1"', 'gate', output], {encoding:'utf8'});
+    expect({error: child.error?.message, status: child.status, stderr: child.stderr}).toEqual({error:undefined,status:0,stderr:''});
+    expect(readFileSync(output, 'utf8')).toBe('running');
+    guard.cleanup();
+  });
   test('cancellation before spawn prevents exec, even when the wrapper starts later', () => {
     const guard = createLaunchGuard(root);
     const unexpected = join(root, 'must-not-exist');
     guard.cancel();
-    const child = spawnSync('/bin/sh', [guard.wrapper, '/bin/sh', '-c', `printf running > '${unexpected}'`]);
-    expect(child.status).toBe(125);
+    const child = spawnSync('/bin/sh', [guard.wrapper, '/bin/sh', '-c', 'printf running > "$1"', 'gate', unexpected]);
+    expect(child.error).toBeUndefined();
+    expect({status:child.status,stderr:child.stderr.toString()}).toEqual({status:125,stderr:''});
     expect(existsSync(unexpected)).toBe(false);
     guard.cleanup();
     expect(existsSync(guard.directory)).toBe(false);
@@ -22,8 +31,11 @@ describe('PGV-08 launch ownership before handshake', () => {
     const guard = createLaunchGuard(root);
     const unexpected = join(root, 'must-not-exist');
     // Simulate a temp directory disappearing after the shell read its script.
-    const body = readFileSync(guard.wrapper, 'utf8').replace("printf '%s'", `/bin/rm -rf '${guard.directory}'\nprintf '%s'`);
-    const child = spawnSync('/bin/sh', ['-c', body, 'gate', '/bin/sh', '-c', `printf running > '${unexpected}'`]);
+    const body = readFileSync(guard.wrapper, 'utf8');
+    rmSync(guard.directory, {recursive:true,force:true});
+    const child = spawnSync('/bin/sh', ['-c', body, 'gate', '/bin/sh', '-c', 'printf running > "$1"', 'gate', unexpected]);
+    expect(child.error).toBeUndefined();
+    expect(existsSync(guard.directory)).toBe(false);
     expect(child.status).not.toBe(0);
     expect(existsSync(unexpected)).toBe(false);
     guard.cleanup();

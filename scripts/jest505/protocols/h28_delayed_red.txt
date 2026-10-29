@@ -1,0 +1,439 @@
+FAIL packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx
+  ● Console
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+    console.warn
+      The width(0) and height(0) of chart should be greater than 0,
+             please check the style of container, or the props width(100%) and height(100%),
+             or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+             height and width.
+
+      at warn (node_modules/recharts/lib/util/LogUtils.js:22:17)
+
+  ● AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая вселенная фактов EDA › H28: просмотры прежней цели не переносятся в карту новой (сброс + re-seed); delayed=true
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 3
+    Received length: 2
+    Received array:  [{"correlation": "pending", "descriptive": "done", "distribution": "pending", "feature_select": "pending", "ih_analysis": "pending", "model_matrix": "pending", "seasonality": "pending", "stationarity": "pending", "structural": "pending", "validation_strategy": "pending"}, {"correlation": "done", "descriptive": "done", "distribution": "pending", "feature_select": "pending", "ih_analysis": "pending", "model_matrix": "pending", "seasonality": "pending", "stationarity": "pending", "structural": "pending", "validation_strategy": "pending"}]
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-5"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-6"[39m
+            [36m>[39m
+              [36m<aside[39m
+                [33mclass[39m=[32m"w-60 shrink-0 flex flex-col gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"mb-1"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2"[39m
+                  [36m>[39m
+                    [36m<svg[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"lucide lucide-telescope text-brand"[39m
+                      [33mfill[39m=[32m"none"[39m
+                      [33mheight[39m=[32m"16"[39m
+                      [33mstroke[39m=[32m"currentColor"[39m
+                      [33mstroke-linecap[39m=[32m"round"[39m
+                      [33mstroke-linejoin[39m=[32m"round"[39m
+                      [33mstroke-width[39m=[32m"2"[39m
+                      [33mviewBox[39m=[32m"0 0 24 24"[39m
+                      [33mwidth[39m=[32m"16"[39m
+                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                    [36m>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m13.56 11.747 4.332-.924"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m16 21-3.105-6.21"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m6.158 8.633 1.114 4.456"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m8 21 3.105-6.21"[39m
+                      [36m/>[39m
+                      [36m<circle[39m
+                        [33mcx[39m=[32m"12"[39m
+                        [33mcy[39m=[32m"13"[39m
+                        [33mr[39m=[32m"2"[39m
+                      [36m/>[39m
+                    [36m</svg>[39m
+                    [36m<h2[39m
+                      [33mclass[39m=[32m"text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1"[39m
+                    [36m>[39m
+                      [0mExploration[0m
+                    [36m</h2>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"shrink-0 text-xs px-2 py-1 rounded transition-colors bg-brand-light text-neutral-700 hover:bg-brand-light/80"[39m
+                    [36m>[39m
+                      [0mСправка[0m
+                    [36m</button>[39m
+                  [36m</div>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-0.5"[39m
+                  [36m>[39m
+                    [0mФинал перед моделированием[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<label[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 block mb-1"[39m
+                    [33mfor[39m=[32m"eda-active-feature"[39m
+                  [36m>[39m
+                    [0mИсследуемый признак:[0m
+                  [36m</label>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"[39m
+                    [33mid[39m=[32m"eda-active-feature"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Year"[39m
+                    [36m>[39m
+                      [0mYear[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Price"[39m
+                    [36m>[39m
+                      [0mPrice[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Volume"[39m
+                    [36m>[39m
+                      [0mVolume[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 tabular-nums"[39m
+                  [36m>[39m
+                    [0m2[0m
+                    [0m/[0m
+                    [0m10[0m
+                  [36m</p>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex-1 bg-neutral-200 rounded-full h-1.5"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"bg-brand h-1.5 rounded-full transition-all"[39m
+                      [33mstyle[39m=[32m"width: 20%;"[39m
+                    [36m/>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-1.5"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors bg-green-50 border-green-200 text-green-800"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"truncate"[39m
+                    [36m>[39m
+                      [0mОписательные статистики[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ml-2 shrink-0"[39m
+                    [36m>[39m
+                      [36m<svg[39m
+                        [33maria-label[39m=[32m"Пройдено"[39m
+                        [33mclass[39m=[32m"lucide lucide-circle-check-big text-green-600  "[39m
+                        [33mfill[39m=[32m"none"[39m
+                        [33mheight[39m=[32m"16"[39m
+                        [33mrole[39m=[32m"img"[39m
+                        [33mstroke[39m=[32m"currentColor"[39m
+                        [33mstroke-linecap[39m=[32m"round"[39m
+                        [33mstroke-linejoin[39m=[32m"round"[39m
+                        [33mstroke-width[39m=[32m"2"[39m
+                        [33mviewBox[39m=[32m"0 0 24 24"[39m
+                        [33mwidth[39m=[32m"16"[39m
+                        [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                      [36m>[39m
+                        [36m<path[39m
+                          [33md[39m=[32m"M21.801 10A10 10 0 1 1 17 3.335"[39m
+                        [36m/>[39m
+                        [36m<path[39m
+                          [33md[39m=[32m"m9...
+
+      140 |     // descriptive просмотрена ТОЛЬКО в прежней вселенной (pending).
+      141 |     await waitFor(() => {
+    > 142 |       expect(edaPosts).toHaveLength(3);
+          |                        ^
+      143 |       expect(edaPosts[2]["correlation"]).toBe("done");
+      144 |       expect(edaPosts[2]["descriptive"]).toBe("pending");
+      145 |     }, { timeout: 4000 });
+
+      at timeout (packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx:142:24)
+
+
+Summary of all failing tests
+FAIL packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx
+  ● AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая вселенная фактов EDA › H28: просмотры прежней цели не переносятся в карту новой (сброс + re-seed); delayed=true
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 3
+    Received length: 2
+    Received array:  [{"correlation": "pending", "descriptive": "done", "distribution": "pending", "feature_select": "pending", "ih_analysis": "pending", "model_matrix": "pending", "seasonality": "pending", "stationarity": "pending", "structural": "pending", "validation_strategy": "pending"}, {"correlation": "done", "descriptive": "done", "distribution": "pending", "feature_select": "pending", "ih_analysis": "pending", "model_matrix": "pending", "seasonality": "pending", "stationarity": "pending", "structural": "pending", "validation_strategy": "pending"}]
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-5"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-6"[39m
+            [36m>[39m
+              [36m<aside[39m
+                [33mclass[39m=[32m"w-60 shrink-0 flex flex-col gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"mb-1"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2"[39m
+                  [36m>[39m
+                    [36m<svg[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"lucide lucide-telescope text-brand"[39m
+                      [33mfill[39m=[32m"none"[39m
+                      [33mheight[39m=[32m"16"[39m
+                      [33mstroke[39m=[32m"currentColor"[39m
+                      [33mstroke-linecap[39m=[32m"round"[39m
+                      [33mstroke-linejoin[39m=[32m"round"[39m
+                      [33mstroke-width[39m=[32m"2"[39m
+                      [33mviewBox[39m=[32m"0 0 24 24"[39m
+                      [33mwidth[39m=[32m"16"[39m
+                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                    [36m>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m13.56 11.747 4.332-.924"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m16 21-3.105-6.21"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m6.158 8.633 1.114 4.456"[39m
+                      [36m/>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m8 21 3.105-6.21"[39m
+                      [36m/>[39m
+                      [36m<circle[39m
+                        [33mcx[39m=[32m"12"[39m
+                        [33mcy[39m=[32m"13"[39m
+                        [33mr[39m=[32m"2"[39m
+                      [36m/>[39m
+                    [36m</svg>[39m
+                    [36m<h2[39m
+                      [33mclass[39m=[32m"text-lg font-semibold text-neutral-800 truncate min-w-0 flex-1"[39m
+                    [36m>[39m
+                      [0mExploration[0m
+                    [36m</h2>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"shrink-0 text-xs px-2 py-1 rounded transition-colors bg-brand-light text-neutral-700 hover:bg-brand-light/80"[39m
+                    [36m>[39m
+                      [0mСправка[0m
+                    [36m</button>[39m
+                  [36m</div>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 mt-0.5"[39m
+                  [36m>[39m
+                    [0mФинал перед моделированием[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<label[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 block mb-1"[39m
+                    [33mfor[39m=[32m"eda-active-feature"[39m
+                  [36m>[39m
+                    [0mИсследуемый признак:[0m
+                  [36m</label>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"[39m
+                    [33mid[39m=[32m"eda-active-feature"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Year"[39m
+                    [36m>[39m
+                      [0mYear[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Price"[39m
+                    [36m>[39m
+                      [0mPrice[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Volume"[39m
+                    [36m>[39m
+                      [0mVolume[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[11px] text-neutral-500 tabular-nums"[39m
+                  [36m>[39m
+                    [0m2[0m
+                    [0m/[0m
+                    [0m10[0m
+                  [36m</p>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex-1 bg-neutral-200 rounded-full h-1.5"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"bg-brand h-1.5 rounded-full transition-all"[39m
+                      [33mstyle[39m=[32m"width: 20%;"[39m
+                    [36m/>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-1.5"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors bg-green-50 border-green-200 text-green-800"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"truncate"[39m
+                    [36m>[39m
+                      [0mОписательные статистики[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ml-2 shrink-0"[39m
+                    [36m>[39m
+                      [36m<svg[39m
+                        [33maria-label[39m=[32m"Пройдено"[39m
+                        [33mclass[39m=[32m"lucide lucide-circle-check-big text-green-600  "[39m
+                        [33mfill[39m=[32m"none"[39m
+                        [33mheight[39m=[32m"16"[39m
+                        [33mrole[39m=[32m"img"[39m
+                        [33mstroke[39m=[32m"currentColor"[39m
+                        [33mstroke-linecap[39m=[32m"round"[39m
+                        [33mstroke-linejoin[39m=[32m"round"[39m
+                        [33mstroke-width[39m=[32m"2"[39m
+                        [33mviewBox[39m=[32m"0 0 24 24"[39m
+                        [33mwidth[39m=[32m"16"[39m
+                        [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                      [36m>[39m
+                        [36m<path[39m
+                          [33md[39m=[32m"M21.801 10A10 10 0 1 1 17 3.335"[39m
+                        [36m/>[39m
+                        [36m<path[39m
+                          [33md[39m=[32m"m9...
+
+      140 |     // descriptive просмотрена ТОЛЬКО в прежней вселенной (pending).
+      141 |     await waitFor(() => {
+    > 142 |       expect(edaPosts).toHaveLength(3);
+          |                        ^
+      143 |       expect(edaPosts[2]["correlation"]).toBe("done");
+      144 |       expect(edaPosts[2]["descriptive"]).toBe("pending");
+      145 |     }, { timeout: 4000 });
+
+      at timeout (packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx:142:24)
+
+
+Test Suites: 1 failed, 235 passed, 236 total
+Tests:       1 failed, 2727 passed, 2728 total
+Snapshots:   0 total
+Time:        62.635 s, estimated 90 s
+Ran all test suites.
+Test results written to: scripts/jest505/protocols/full_final.json

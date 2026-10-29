@@ -1,0 +1,7 @@
+
+Test Suites: 4 passed, 4 total
+Tests:       66 passed, 66 total
+Snapshots:   0 total
+Time:        15.985 s
+Ran all test suites within paths "packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx", "packages/ui/components/prograudit3_eda_seed_freshness.test.tsx", "packages/ui/components/TsAnalysisEDA.test.tsx", "packages/ui/components/prograudit3cert_eda_seed_freshness.test.tsx".
+Test results written to: scripts/jest505/protocols/eda_green.json

@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       53 passed, 53 total
+Snapshots:   0 total
+Time:        3.884 s
+Ran all test suites within paths "apps/print-renderer/src/rendererFix.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts".

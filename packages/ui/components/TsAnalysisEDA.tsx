@@ -1216,7 +1216,11 @@ export function TsAnalysisEDA() {
       next.add(activeCheckId);
       return next;
     });
-  }, [checks, activeCheckId, edaSeedReady]);
+  // Reset + fast seed can be batched: ready remains true and the active
+  // check remains done. Re-evaluate after replacing the viewed set as well,
+  // otherwise the already visible result is never recorded in the new universe.
+  // The prev.has guard returns the same Set once recorded (no render loop).
+  }, [checks, activeCheckId, edaSeedReady, edaViewedIds]);
   // AUDIT-3 (H27): каждый НОВЫЙ просмотр при несостоявшемся seed'е --
   // ретрай seed'а (успех -- отчёт уходит объединённым снапшотом,
   // неудача -- отчёт остаётся удержанным; при отсутствии новых

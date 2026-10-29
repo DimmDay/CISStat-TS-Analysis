@@ -1,0 +1,20 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:all
+> npm run typecheck:clean && npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:clean
+> node -e "const f=require('fs');['apps/embedded/.next','apps/standalone/.next'].forEach(p=>f.rmSync(p,{recursive:true,force:true}))"
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-embedded@0.1.0 typecheck
+> tsc --noEmit
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-standalone@0.1.0 typecheck
+> tsc --noEmit
+

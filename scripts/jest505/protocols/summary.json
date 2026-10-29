@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "numTotalTests": 2728,
+  "numPassedTests": 2728,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTotalTestSuites": 236,
+  "numPassedTestSuites": 236,
+  "numFailedTestSuites": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "eda_tests": 66,
+  "flake_repeat_runs": 5,
+  "flake_tests_per_run": 9,
+  "renderer_build": "PASS",
+  "typecheck_embedded": "PASS",
+  "typecheck_standalone": "PASS",
+  "next_build_embedded": "BLOCKED: ENOENT uv_resident_set_memory",
+  "next_build_standalone": "BLOCKED: ENOENT uv_resident_set_memory",
+  "pgv07_doc_guard": "41/41",
+  "duration_s": 68.148
+}

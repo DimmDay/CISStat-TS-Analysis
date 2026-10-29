@@ -21,7 +21,7 @@
 // Мокирует только свои URL; реальная сеть в jest недоступна.
 
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TsAnalysisEDA } from "./TsAnalysisEDA";
 
 let mockActiveDataset: { datasetId?: string; name: string; rows: number; sizeLabel: string } | null = {
@@ -37,6 +37,7 @@ jest.mock("../context/AppShellContext", () => ({
 
 const edaPosts: Record<string, string>[] = [];
 let traceGets = 0;
+let delayTargetReply = false;
 
 function jsonOk(body: unknown) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
@@ -55,7 +56,12 @@ function makeRouter() {
     }
     if (url.includes("/target-column")) {
       const selected = init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price";
-      return jsonOk({ target_column: selected, suggested_column: "Price", target_column_source: "user", available_columns: ["Year", "Price", "Volume"], has_dataset: true });
+      const body = { target_column: selected, suggested_column: "Price", target_column_source: "user", available_columns: ["Year", "Price", "Volume"], has_dataset: true };
+      // Also exercise a real task boundary, not only Promise microtasks.
+      if (delayTargetReply && init?.method === "POST") {
+        return new Promise(resolve => setTimeout(() => resolve(jsonOk(body)), 0));
+      }
+      return jsonOk(body);
     }
     if (url.includes("/dataset/passport/status")) {
       const emptyPoint = { captured: false, captured_at: null, is_stale: null, fingerprint: null, history_count: 0 };
@@ -96,7 +102,8 @@ describe("AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая в�
       makeRouter()(input, init)) as jest.Mock;
   });
 
-  it("H28: просмотры прежней цели не переносятся в карту новой (сброс + re-seed)", async () => {
+  it.each([false, true])("H28: просмотры прежней цели не переносятся в карту новой (сброс + re-seed); delayed=%s", async delayed => {
+    delayTargetReply = delayed;
     render(<TsAnalysisEDA />);
 
     // Seed (GET /trace) -> descriptive (активная, done) -> POST #1:
@@ -107,13 +114,18 @@ describe("AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая в�
     expect(edaPosts[0]["correlation"]).toBe("pending");
 
     // Просмотр корреляции в контексте цели Price -> POST #2.
-    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    });
     await waitFor(() => expect(edaPosts.length).toBe(2), { timeout: 4000 });
     expect(edaPosts[1]["correlation"]).toBe("done");
 
     // Смена цели Price -> Volume при НЕИЗМЕННОМ datasetId (datasetKey
     // константен) -- POST /target-column.
-    fireEvent.change(selector, { target: { value: "Volume" } });
+    // setColumn awaits POST/json before applying the new universe.
+    await act(async () => {
+      fireEvent.change(selector, { target: { value: "Volume" } });
+    });
     await waitFor(() => expect(selector).toHaveValue("Volume"), { timeout: 4000 });
 
     // Контракт AUDIT-3: смена цели -- НОВАЯ вселенная фактов -- сброс
@@ -126,8 +138,10 @@ describe("AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая в�
     // НОВЫЙ просмотр -> POST #3. Карта нового контекста НЕ переносит
     // просмотры прежней цели: correlation -- новый просмотр (done),
     // descriptive просмотрена ТОЛЬКО в прежней вселенной (pending).
-    await waitFor(() => expect(edaPosts.length).toBe(3), { timeout: 4000 });
-    expect(edaPosts[2]["correlation"]).toBe("done");
-    expect(edaPosts[2]["descriptive"]).toBe("pending");
+    await waitFor(() => {
+      expect(edaPosts).toHaveLength(3);
+      expect(edaPosts[2]["correlation"]).toBe("done");
+      expect(edaPosts[2]["descriptive"]).toBe("pending");
+    }, { timeout: 4000 });
   });
 });
