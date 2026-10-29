@@ -1,0 +1,452 @@
+{
+  "campaign": "PGV-04-CERT mutation campaign (на своих мутантах)",
+  "parent": "c4e90b8",
+  "repo_suite": "tests/api/test_pgv04_passport_checkpoints.py",
+  "oracle_suite": "tests/api/test_pgv04_cert_oracles.py",
+  "oracle_deselected_static_doc_pins": [
+    "tests/api/test_pgv04_cert_oracles.py::TestStaticPins::test_cert_document_exists_with_verdict",
+    "tests/api/test_pgv04_cert_oracles.py::TestStaticPins::test_worklog_entry_present"
+  ],
+  "mv0_baseline": {
+    "repo_failed": [],
+    "oracle_failed": [],
+    "ok": true
+  },
+  "mutants": [
+    {
+      "id": "M01",
+      "desc": "backfill: panel-список выброшен",
+      "killer": "F-P4C1",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "verdict": "SURVIVED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M02",
+      "desc": "stage_refs все = confirmed_record (wrong ref)",
+      "killer": "wrong ref",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_stage_refs_point_to_own_stage_snapshots"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M03",
+      "desc": "confirmed_at подменён wall-clock заморозки",
+      "killer": "wall-clock",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 3,
+      "repo_failed_ids": [
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_backfill_imports_missing_checkpoints_as_legacy"
+      ],
+      "oracle_failed_ids": [
+        "test_build_payload_deterministic_and_pure",
+        "test_build_payload_honest_fields",
+        "test_confirmed_at_exact_session_fact_via_http"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M04",
+      "desc": "фильтр траектории инвертирован (только поздние)",
+      "killer": "trajectory filter",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 11,
+      "oracle_failed_n": 4,
+      "repo_failed_ids": [
+        "test_full_pipeline_freezes_checkpoint_synchronously",
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at",
+        "test_backfill_imports_missing_checkpoints_as_legacy",
+        "test_backfill_skips_already_frozen_without_conflict",
+        "test_retry_without_capture_after_freeze_failure"
+      ],
+      "oracle_failed_ids": [
+        "test_stage_snapshot_at_respects_confirmation_moment_and_tie",
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_confirmed_at_exact_session_fact_via_http",
+        "test_reused_capture_writes_no_passport_receipt"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M05",
+      "desc": "unchanged=True всегда",
+      "killer": "flags",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 3,
+      "oracle_failed_n": 3,
+      "repo_failed_ids": [
+        "test_full_pipeline_freezes_checkpoint_synchronously",
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at"
+      ],
+      "oracle_failed_ids": [
+        "test_build_payload_honest_fields",
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_confirmed_at_exact_session_fact_via_http"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M06",
+      "desc": "условие самоссылки previous инвертировано",
+      "killer": "self-ref",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 3,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at",
+        "test_panel_confirm_freezes_checkpoint_with_entity_context",
+        "test_panel_checkpoint_survives_session_loss"
+      ],
+      "oracle_failed_ids": [
+        "test_reused_capture_writes_no_passport_receipt"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M07",
+      "desc": "backfill provenance=producer_capture (потеря legacy_import)",
+      "killer": "provenance",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [
+        "test_backfill_imports_missing_checkpoints_as_legacy"
+      ],
+      "oracle_failed_ids": [],
+      "verdict": "REPO-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M08",
+      "desc": "raise при битом confirmed_at удалён",
+      "killer": "AC12",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_corrupted_confirmed_at_honest_unavailable_no_writes"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M09",
+      "desc": "panel entity_id=None всегда",
+      "killer": "AC14",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [
+        "test_panel_confirm_freezes_checkpoint_with_entity_context",
+        "test_panel_checkpoint_survives_session_loss"
+      ],
+      "oracle_failed_ids": [
+        "test_build_payload_panel_entity_from_panel_columns"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M10",
+      "desc": "skip существующих producer_key убран",
+      "killer": "idempotency",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [
+        "test_backfill_skips_already_frozen_without_conflict",
+        "test_sweep_counts_via_notify_modeling_artifacts_updated"
+      ],
+      "oracle_failed_ids": [],
+      "verdict": "REPO-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M12",
+      "desc": "rs-префикс pgv-passport изменён",
+      "killer": "idempotency",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 2,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_idempotency_prefixes_pinned"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M13",
+      "desc": "_find_passport_artifact всегда None",
+      "killer": "content-gap",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [
+        "test_record_pins_passport_artifact_when_available"
+      ],
+      "oracle_failed_ids": [
+        "test_snapshot_record_pins_passport_artifact_with_reason"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M14",
+      "desc": "pin паспортного артефакта не ставится",
+      "killer": "no-pin",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_snapshot_record_pins_passport_artifact_with_reason"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M15",
+      "desc": "класс отказа honest-недобора изменён (ValueError)",
+      "killer": "failure-class",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 3,
+      "repo_failed_ids": [
+        "test_missing_stage_refs_gap_is_permanent_for_that_checkpoint",
+        "test_missing_prerequisites_raise_honest_unavailable"
+      ],
+      "oracle_failed_ids": [
+        "test_freeze_checkpoint_absent_on_missing_stage_snapshot",
+        "test_start_only_backfill_counts_and_no_receipt",
+        "test_notify_honest_skip_no_receipt_via_http"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M16",
+      "desc": "счётчик frozen не инкрементится",
+      "killer": "counter",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 3,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [
+        "test_backfill_imports_missing_checkpoints_as_legacy",
+        "test_retry_without_capture_after_freeze_failure",
+        "test_sweep_counts_via_notify_modeling_artifacts_updated"
+      ],
+      "oracle_failed_ids": [],
+      "verdict": "REPO-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M20",
+      "desc": "durable_checkpoint_id без префикса pck-",
+      "killer": "id-format",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 13,
+      "oracle_failed_n": 4,
+      "repo_failed_ids": [
+        "test_full_pipeline_freezes_checkpoint_synchronously",
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at",
+        "test_panel_confirm_freezes_checkpoint_with_entity_context",
+        "test_panel_checkpoint_survives_session_loss",
+        "test_backfill_imports_missing_checkpoints_as_legacy"
+      ],
+      "oracle_failed_ids": [
+        "test_durable_checkpoint_id_deterministic",
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_confirmed_at_exact_session_fact_via_http",
+        "test_reused_capture_writes_no_passport_receipt"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M19",
+      "desc": "payload context.data_revision=None всегда",
+      "killer": "context",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 13,
+      "oracle_failed_n": 3,
+      "repo_failed_ids": [
+        "test_full_pipeline_freezes_checkpoint_synchronously",
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at",
+        "test_panel_confirm_freezes_checkpoint_with_entity_context",
+        "test_panel_checkpoint_survives_session_loss",
+        "test_backfill_imports_missing_checkpoints_as_legacy"
+      ],
+      "oracle_failed_ids": [
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_confirmed_at_exact_session_fact_via_http",
+        "test_reused_capture_writes_no_passport_receipt"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M11",
+      "desc": "honest-skip в notify уходит в generic except (receipt)",
+      "killer": "receipt",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_notify_honest_skip_no_receipt_via_http"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M18",
+      "desc": "sweep не вызывает backfill (доставка потеряна)",
+      "killer": "sweep",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [
+        "test_sweep_counts_via_notify_modeling_artifacts_updated"
+      ],
+      "oracle_failed_ids": [],
+      "verdict": "REPO-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M17",
+      "desc": "capture modeling_entry: заморозка не вызывается",
+      "killer": "wiring",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 3,
+      "oracle_failed_n": 4,
+      "repo_failed_ids": [
+        "test_full_pipeline_freezes_checkpoint_synchronously",
+        "test_confirmed_at_is_session_fact_not_wallclock",
+        "test_reused_handoff_no_fourth_copy_and_own_confirmed_at"
+      ],
+      "oracle_failed_ids": [
+        "test_stage_refs_point_to_own_stage_snapshots",
+        "test_confirmed_at_exact_session_fact_via_http",
+        "test_reused_capture_writes_no_passport_receipt",
+        "test_wiring_exactly_two_freeze_call_sites"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "M21",
+      "desc": "попутный фикс stage=snapshot.stage откачен к modeling_entry",
+      "killer": "stage-fix-revert",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 1,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [
+        "test_reused_capture_writes_no_passport_receipt"
+      ],
+      "verdict": "ORACLE-ONLY",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "K01",
+      "desc": "комментарий в хвосте строки логгера (не-поведенческий)",
+      "killer": "CONTROL",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "verdict": "SURVIVED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "K02",
+      "desc": "текст log-сообщения (не-поведенческий; дефект первой порции -- содержал namespace p4cert и ловился дизъюнктом)",
+      "killer": "CONTROL",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "verdict": "SURVIVED",
+      "mv2_restored_md5_ok": true
+    },
+    {
+      "id": "K03",
+      "desc": "порядок верхнеуровневых импортов (не-поведенческий)",
+      "killer": "CONTROL",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "verdict": "SURVIVED",
+      "mv2_restored_md5_ok": true
+    }
+  ],
+  "mv3_final_md5_ok": true,
+  "summary": {
+    "total": 24,
+    "dual_killed": [
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M09",
+      "M13",
+      "M15",
+      "M20",
+      "M19",
+      "M17"
+    ],
+    "oracle_only": [
+      "M02",
+      "M08",
+      "M12",
+      "M14",
+      "M11",
+      "M21"
+    ],
+    "repo_only": [
+      "M07",
+      "M10",
+      "M16",
+      "M18"
+    ],
+    "survived_combat": [
+      "M01",
+      "K01",
+      "K02",
+      "K03"
+    ],
+    "controls_alive": [
+      "K01",
+      "K02",
+      "K03"
+    ],
+    "controls_killed": []
+  }
+}

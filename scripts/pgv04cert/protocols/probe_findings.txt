@@ -1,0 +1,27 @@
+{
+  "P1_panel_backfill": {
+    "counts": {
+      "frozen": 0,
+      "skipped_missing_stage_refs": 0
+    },
+    "frozen": false,
+    "session_checkpoint_fields": [
+      "panel_entry_checkpoints",
+      "passport_checkpoints"
+    ],
+    "backfill_reads_panel_passport_checkpoints": true,
+    "session_store_field": "panel_entry_checkpoints"
+  },
+  "P2_backfill_isolation": {
+    "backfill_catches_only_promotion_unavailable": true,
+    "per_entry_generic_except_in_backfill": false
+  },
+  "P3_partial_rs_on_honest_skip": {
+    "promotion_unavailable_raised": true,
+    "exc_head": "Снимок этапа 'validation' на момент подтверждения отсутствует -- честный недобор",
+    "rs_record_created_despite_skip": true
+  },
+  "P4_confirmed_at_fidelity": {
+    "confirmed_at_is_session_fact": true
+  }
+}
