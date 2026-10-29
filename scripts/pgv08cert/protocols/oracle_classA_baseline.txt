@@ -1,0 +1,4 @@
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        3.331 s
+Ran all test suites matching scripts/pgv08cert/test_p8cert_oracles.test.ts.

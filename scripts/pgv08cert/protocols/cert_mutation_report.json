@@ -1,0 +1,458 @@
+{
+ "campaign": "p8cert-mutation",
+ "head": "3500775",
+ "protocol": {
+  "MV0": {
+   "ORACLE": {
+    "rc": 0
+   },
+   "REPO": {
+    "rc": 0
+   },
+   "PY": {
+    "rc": 1,
+    "baseline_failures": 10
+   }
+  },
+  "MV3_md5_clean": true,
+  "MV5_no_foreign_tails": true,
+  "git_status": "?? scripts/pgv08cert/\n"
+ },
+ "mutants": [
+  {
+   "id": "M01",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: ppu 11811→11810 — оракулы AC16 (repo + oracle)",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M02",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: unit метр→безразмерный — AC16",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M03",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: первая причина недоступности врётся — AC17",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M04",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: file:// больше не блокируется — AC19",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M05",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: foreignObject проходит санитайзер — AC19",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M06",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: запрос расширяет hard cap — AC20",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M07",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: retryability по контрактному коду потеряна; PY-канал выживает — литерал render_timeout остаётся в печати через PRINT_LIMITS.render_timeout_s (честная переатрибуция TRI→DUAL)",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M08",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL ORACLE-ONLY: escapeHtml теряет &-escape — ловит ТОЛЬКО амперсанд-тест сертификатора",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M09",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: duplicate_section не детектируется — паритет PGV-01",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M10",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "KILL DUAL: CSP ослаблен — AC19",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "M11",
+   "file": "apps/print-renderer/src/renderWorker.ts",
+   "expectation": "KILL ORACLE-ONLY: дефолт перегрузки 2→3 — ловит только readConfig-оракул сертификатора",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true,
+     "detail": "rc=1"
+    },
+    "REPO": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [
+    "ORACLE"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  }
+ ],
+ "controls": [
+  {
+   "id": "K01",
+   "file": "apps/print-renderer/src/rendererCore.tsx",
+   "expectation": "ALIVE: no-op не обязан убиваться каналами",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "REPO": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [],
+   "verdict": "SURVIVED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "K02",
+   "file": "apps/print-renderer/src/renderWorker.ts",
+   "expectation": "ALIVE: no-op не обязан убиваться каналами",
+   "anchor_unique": true,
+   "channels": {
+    "ORACLE": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "REPO": {
+     "killed": false,
+     "detail": "rc=0"
+    },
+    "PY": {
+     "killed": false,
+     "detail": "failed=10 (base 10)"
+    }
+   },
+   "killed_by": [],
+   "verdict": "SURVIVED",
+   "restore_md5_ok": true
+  }
+ ],
+ "second_order": [
+  {
+   "id": "S1",
+   "parts": [
+    "M01",
+    "M02"
+   ],
+   "expectation": "pHYs ppu-1 И unit=0 — маскирования нет",
+   "applied": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true
+    },
+    "REPO": {
+     "killed": true
+    },
+    "PY": {
+     "killed": false
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "S2",
+   "parts": [
+    "M04",
+    "M09"
+   ],
+   "expectation": "file:// разблокирован И дубликаты разрешены",
+   "applied": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true
+    },
+    "REPO": {
+     "killed": true
+    },
+    "PY": {
+     "killed": false
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  },
+  {
+   "id": "S3",
+   "parts": [
+    "M06",
+    "M07"
+   ],
+   "expectation": "clamp сломан И render_timeout переименован",
+   "applied": true,
+   "channels": {
+    "ORACLE": {
+     "killed": true
+    },
+    "REPO": {
+     "killed": true
+    },
+    "PY": {
+     "killed": false
+    }
+   },
+   "killed_by": [
+    "ORACLE",
+    "REPO"
+   ],
+   "verdict": "KILLED",
+   "restore_md5_ok": true
+  }
+ ],
+ "corpus_sensitivity": {
+  "id": "CM1",
+  "desc": "ослабление ОБОИХ &-пинов ORACLE (A12+A7) → M08 обязан перейти KILLED→ALIVE",
+  "m08_applied": true,
+  "oracle_killed_under_weakened_corpus": false,
+  "detail": "rc=0",
+  "verdict": "CONFIRMED",
+  "restore_md5_ok": true,
+  "rekill_with_intact_corpus": true
+ },
+ "summary": {
+  "combat_total": 11,
+  "combat_killed": 11,
+  "combat_survived": 0,
+  "controls_total": 2,
+  "controls_alive": 2,
+  "second_order_total": 3,
+  "second_order_killed": 3,
+  "patch_fail": 0,
+  "restore_fail": 0,
+  "mv3_md5_clean": true,
+  "mv5_no_foreign_tails": true
+ }
+}

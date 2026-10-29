@@ -1,0 +1,46 @@
+{
+  "probe": "p8cert-e2e",
+  "stack": {
+    "node": "v24.22.1",
+    "chromium": "chromium-1200 (playwright-core 1.57.0)"
+  },
+  "results": [
+    {
+      "id": "P1.413_contract",
+      "passed": true,
+      "detail": "status=413, code=payload_too_large, retryable_hdr=false"
+    },
+    {
+      "id": "P2.scale_unclamped",
+      "passed": true,
+      "detail": "status=200, X-Width=7200×4500, PNG=(7200, 4500) = 32.4 MP > 12 MP каталога PGV-01 → зажим отсутствует (F-P8C5)"
+    },
+    {
+      "id": "P4.own_data_render",
+      "passed": true,
+      "detail": "status=200, size=(2400, 1500), dpi=(299.9994, 299.9994), ink=0.0050"
+    },
+    {
+      "id": "P4.own_data_ocr",
+      "passed": true,
+      "detail": "OCR-rus фрагмент: 'Экспорт продукции по округам: сертификационный прогон  Е2Е-проба сертификатора РС\\\\-08-СЕВТ  Экспорт по федерал'"
+    },
+    {
+      "id": "P3.cold_timeout",
+      "passed": true,
+      "detail": "status=503, code=render_timeout, retryable=true"
+    },
+    {
+      "id": "P3.cold_leak",
+      "passed": true,
+      "detail": "живых chrome-потомков node-сервера после таймаута: 1 ['10464:chrome'] → УТЕЧКА браузера: SIGKILL не достался launch-в-полёте (F-P8C3)"
+    },
+    {
+      "id": "P3.server_alive",
+      "passed": true,
+      "detail": "healthz после инцидента = 200"
+    }
+  ],
+  "verdict": "PASSED",
+  "note": "P3.cold_leak — специальная проба: passed=true означает ОБНАРУЖЕННУЮ утечку (находка F-P8C3), а не дефект проверки"
+}
