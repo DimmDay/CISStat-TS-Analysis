@@ -576,3 +576,33 @@ describe("PGV-07 AC04: рендер в тёмной теме байт-идент
     expect(darkSurface.getAttribute("style")).not.toContain("var(");
   });
 });
+
+// ── PGV-07-FIX: честная маркировка свотчей легенды (F-P7C2) ───────
+
+// До PGV-07-FIX: свотчи PrintLegendStrip — синтетическое чередование двух
+// цветов (index % 2), при ≥3 сериях записи неразличимы, а свотч выглядел
+// фактическим цветом серии, которым не является (series_styles контрактом
+// PGV-01 не передаются). Честное решение: явная маркировка иллюстративности
+// (фабкация фактического вида запрещена §6/AC12).
+
+describe("PGV-07-FIX: маркировка иллюстративности свотчей легенды (F-P7C2)", () => {
+  test("свотчи сопровождаются явной маркировкой «иллюстративные»", () => {
+    const { getByTestId } = render(<PrintLegendStrip ordering={["Ряд 1", "Ряд 2", "Ряд 3"]} />);
+    const legend = getByTestId("print-legend");
+    // Записи легенды не теряются и сохраняют порядок.
+    const text = legend.textContent ?? "";
+    expect(text.indexOf("Ряд 1")).toBeLessThan(text.indexOf("Ряд 2"));
+    expect(text.indexOf("Ряд 2")).toBeLessThan(text.indexOf("Ряд 3"));
+    // Маркировка честности: свотч — не фактический цвет серии.
+    expect(text).toContain("иллюстративн");
+  });
+
+  test("маркировка присутствует и при пользовательской note (не замещается)", () => {
+    const { getByTestId } = render(
+      <PrintLegendStrip ordering={["A", "B"]} note="порядок следования серий" />,
+    );
+    const text = getByTestId("print-legend").textContent ?? "";
+    expect(text).toContain("порядок следования серий");
+    expect(text).toContain("иллюстративн");
+  });
+});

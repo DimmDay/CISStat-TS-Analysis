@@ -1,0 +1,323 @@
+{
+  "protocol": "MV0-MV3 (прецедент PGV-06-FIX)",
+  "mutants": [
+    {
+      "id": "FM1",
+      "desc": "откат: вложенный applicable:false снова разворачивается рекурсией (dead-branch регрессия)",
+      "file": "packages/ui/print/printPassport.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 52,
+          "failed": 1
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 74,
+          "failed": 1
+        },
+        "CLASS_B": {
+          "ok": false,
+          "passed": 4,
+          "failed": 1
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    {
+      "id": "FM2",
+      "desc": "обёртка applicable:true не разворачивается -> «[object Object]»",
+      "file": "packages/ui/print/printPassport.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 51,
+          "failed": 2
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 72,
+          "failed": 3
+        },
+        "CLASS_B": {
+          "ok": false,
+          "passed": 3,
+          "failed": 2
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    {
+      "id": "FM3",
+      "desc": "искажён контрактный текст «не применимо: » (двоеточие потеряно)",
+      "file": "packages/ui/print/printPassport.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 52,
+          "failed": 1
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 74,
+          "failed": 1
+        },
+        "CLASS_B": {
+          "ok": false,
+          "passed": 4,
+          "failed": 1
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    {
+      "id": "FM4",
+      "desc": "muted снят у строки «не применимо»",
+      "file": "packages/ui/print/printPassport.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 52,
+          "failed": 1
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 74,
+          "failed": 1
+        },
+        "CLASS_B": {
+          "ok": true,
+          "passed": 5,
+          "failed": null
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "ALIVE",
+          "actual": "ALIVE",
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    {
+      "id": "FM5",
+      "desc": "маркировка иллюстративности свотчей удалена (регрессия F-P7C2)",
+      "file": "packages/ui/print/printLayout.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 51,
+          "failed": 2
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 74,
+          "failed": 1
+        },
+        "CLASS_B": {
+          "ok": false,
+          "passed": 4,
+          "failed": 1
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    {
+      "id": "FM6",
+      "desc": "маркировка без токена «иллюстративн» («примерные»)",
+      "file": "packages/ui/print/printLayout.tsx",
+      "channels": {
+        "REPO": {
+          "ok": false,
+          "passed": 51,
+          "failed": 2
+        },
+        "ORACLE": {
+          "ok": false,
+          "passed": 74,
+          "failed": 1
+        },
+        "CLASS_B": {
+          "ok": false,
+          "passed": 4,
+          "failed": 1
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "KILLED",
+          "actual": "KILLED",
+          "match": true
+        }
+      },
+      "all_match": true
+    }
+  ],
+  "controls": [
+    {
+      "id": "KFIX01",
+      "desc": "нейтральный контроль: комментарий (не-поведенческая замена)",
+      "file": "packages/ui/print/printPassport.tsx",
+      "channels": {
+        "REPO": {
+          "ok": true,
+          "passed": 53,
+          "failed": null
+        },
+        "ORACLE": {
+          "ok": true,
+          "passed": 75,
+          "failed": null
+        },
+        "CLASS_B": {
+          "ok": true,
+          "passed": 5,
+          "failed": null
+        }
+      },
+      "restored_md5": true,
+      "verdict": {
+        "REPO": {
+          "expect": "ALIVE",
+          "actual": "ALIVE",
+          "match": true
+        },
+        "ORACLE": {
+          "expect": "ALIVE",
+          "actual": "ALIVE",
+          "match": true
+        },
+        "CLASS_B": {
+          "expect": "ALIVE",
+          "actual": "ALIVE",
+          "match": true
+        }
+      },
+      "all_match": true
+    }
+  ],
+  "mv0": {
+    "REPO": {
+      "ok": true,
+      "passed": 53,
+      "failed": null
+    },
+    "ORACLE": {
+      "ok": true,
+      "passed": 75,
+      "failed": null
+    },
+    "CLASS_B": {
+      "ok": true,
+      "passed": 5,
+      "failed": null
+    }
+  },
+  "mv1": {
+    "ok": true,
+    "failures": []
+  },
+  "mv3": {
+    "ok": true,
+    "md5": {
+      "packages/ui/print/printPassport.tsx": "2bb67c0577428f4e0da5c9a6d2635ab2",
+      "packages/ui/print/printLayout.tsx": "98f2807f3a3d147baa7d71f30bc6b21c"
+    }
+  },
+  "verdict": "PASS"
+}

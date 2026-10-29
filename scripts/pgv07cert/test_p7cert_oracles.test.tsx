@@ -650,8 +650,9 @@ describe("p7cert A6: печатный паспорт на своих данны�
     const text = getByTestId("print-passport-page").textContent ?? "";
     expect(text).toContain("нисходящий");
     expect(text).toContain("нестационарен");
-    // Группа с applicable:false: reason печатается (нечего не выдумывается; см. Class B F-P7C3 —
-    // заявленная в доке семантика «не применимо: …» — мёртвая ветка).
+    // Группа с applicable:false: reason печатается (ничего не выдумывается).
+    // (PGV-07-FIX: вложенная семантика «не применимо: …» теперь реализована —
+    // см. A6.11; group-level форма не менялась.)
     expect(text).toContain("ряд короче 32 точек");
   });
 
@@ -716,12 +717,25 @@ describe("p7cert A6: печатный паспорт на своих данны�
     expect(map["applicable"]).toBe("Да");
   });
 
-  test("A6.11 фактическая семантика вложенного applicable:false — рекурсия по полям, applicable подавлена, без фабкации (док-расхождение — Class B F-P7C3)", () => {
+  test("A6.11 контрактная семантика вложенного applicable:false (PGV-07-FIX) — «не применимо: <reason>», muted, поля не фабкуются", () => {
+    // До PGV-07-FIX оракул пинил фактическое поведение (рекурсия по полям,
+    // док-расхождение Class B F-P7C3); фикс реализовал §3.6 — пин переведён
+    // на контрактную семантику (по прецеденту PGV-00-FIX: пины сертификатора
+    // актуализируются вместе с фиксами, честно задокументировано).
     const rows = flattenPassportGroup({ nested: { applicable: false, reason: "p7cert-причина", value: null } });
     const map = Object.fromEntries(rows.map((r) => [r.label, r.value]));
-    expect(map["nested.reason"]).toBe("p7cert-причина");
-    expect(map["nested.value"]).toBe("—");
-    expect(rows.some((r) => r.label === "nested.applicable")).toBe(false); // подавлена
+    expect(map["nested"]).toBe("не применимо: p7cert-причина");
+    expect(rows.find((r) => r.label === "nested")?.muted).toBe(true);
+    // Поля неаппликабельной группы не фабкуются отдельными строками.
+    expect(rows.some((r) => r.label.startsWith("nested."))).toBe(false);
+  });
+
+  test("A6.11-ext вложенный applicable:true разворачивается по полям без «[object Object]» (PGV-07-FIX)", () => {
+    const rows = flattenPassportGroup({ wrapper: { value: 1.5, applicable: true } });
+    const map = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(map["wrapper.value"]).toBe("1,5");
+    expect(map["wrapper.applicable"]).toBe("Да");
+    expect(JSON.stringify(rows)).not.toContain("[object Object]");
   });
 
   test("A6.12 номер страницы паспорта: свои значения", () => {
@@ -957,6 +971,16 @@ describe("p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данны
     const text = getByTestId("print-legend").textContent ?? "";
     for (const s of ["Альфа", "Бета", "Гамма", "Дельта", "p7cert-note"]) expect(text).toContain(s);
     expect(text.indexOf("Альфа")).toBeLessThan(text.indexOf("Дельта"));
+  });
+
+  test("A10.1-ext маркировка иллюстративности свотчей присутствует и не замещает note (PGV-07-FIX)", () => {
+    const { getByTestId } = render(<PrintLegendStrip ordering={["Альфа", "Бета", "Гамма", "Дельта"]} note="p7cert-note" />);
+    const text = getByTestId("print-legend").textContent ?? "";
+    // Честная маркировка синтетики: свотч — не фактический цвет серии (F-P7C2).
+    expect(text).toContain("иллюстративн");
+    expect(text).toContain("фактические цвета серий");
+    // note пользовательский и маркировка сосуществуют.
+    expect(text).toContain("p7cert-note");
   });
 
   test("A10.2 PrintSectionTitle рендерит текст своего раздела", () => {

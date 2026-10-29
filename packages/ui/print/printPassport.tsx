@@ -125,17 +125,11 @@ export function flattenPassportGroup(group: Record<string, unknown>, prefix = ""
   for (const [key, value] of Object.entries(group)) {
     const label = prefix ? `${prefix}.${key}` : key;
     if (key === "applicable" && value === false) continue; // причина печатается рядом
-    if (
-      value !== null &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      !(value as Record<string, unknown>).applicable
-    ) {
-      rows.push(...flattenPassportGroup(value as Record<string, unknown>, label));
-      continue;
-    }
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const nested = value as Record<string, unknown>;
+      // §3.6: applicable:false + reason — «не применимо: <причина>». Ветка
+      // достижима (PGV-07-FIX: ранее перехватывалась рекурсией по полям —
+      // dead code, находка сертификации F-P7C3).
       if (nested.applicable === false) {
         rows.push({
           label,
@@ -144,6 +138,11 @@ export function flattenPassportGroup(group: Record<string, unknown>, prefix = ""
         });
         continue;
       }
+      // Остальные plain-объекты — включая обёртки applicable:true —
+      // разворачиваются по полям с префиксом (applicable печатается «Да»,
+      // как на уровне группы); «[object Object]» невозможен (PGV-07-FIX).
+      rows.push(...flattenPassportGroup(nested, label));
+      continue;
     }
     if (key === "direction" && typeof value === "string" && TREND_DIRECTIONS[value]) {
       rows.push({ label, value: TREND_DIRECTIONS[value] });

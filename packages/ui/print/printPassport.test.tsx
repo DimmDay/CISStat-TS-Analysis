@@ -24,6 +24,7 @@ import React from "react";
 import { render } from "@testing-library/react";
 
 import {
+  flattenPassportGroup,
   KNOWN_PASSPORT_GROUPS,
   PrintPassportPage,
   type PrintPassportRecord,
@@ -308,5 +309,52 @@ describe("PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13)", ()
       <PrintPassportComparisonPage snapshot={comparisonSnapshot({ cross_context: true })} />,
     );
     expect(getByTestId("print-comparison-page").textContent).toContain("cross_context");
+  });
+});
+
+// ── PGV-07-FIX: вложенные applicable-объекты (§3.6, находка F-P7C3) ─
+
+// До PGV-07-FIX: ветка «не применимо: …» была недостижима (первый if
+// перехватывал ВСЕ объекты с ключом applicable и разворачивал их
+// рекурсивно), а объект с applicable:true печатался «[object Object]».
+// Контракт §3.6: applicable:false + reason — «не применимо: <причина>».
+
+describe("PGV-07-FIX: семантика вложенных applicable (§3.6, F-P7C3)", () => {
+  test("вложенный applicable:false печатает «не применимо: <reason>» без рекурсии по полям", () => {
+    const rows = flattenPassportGroup({
+      nested: { applicable: false, reason: "короткий ряд вложенной группы", value: null },
+    });
+    const row = rows.find((r) => r.label === "nested");
+    expect(row).toBeDefined();
+    expect(row!.value).toBe("не применимо: короткий ряд вложенной группы");
+    // Приглушение служебной строки (muted) — конвенция печатного слоя.
+    expect(row!.muted).toBe(true);
+    // Поля неаппликабельной вложенной группы не фабкуются отдельными строками.
+    expect(rows.some((r) => r.label.startsWith("nested."))).toBe(false);
+  });
+
+  test("вложенный applicable:true разворачивается по полям без «[object Object]»", () => {
+    const rows = flattenPassportGroup({ wrapper: { value: 1.5, applicable: true } });
+    const map = Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(map["wrapper.value"]).toBe("1,5");
+    expect(map["wrapper.applicable"]).toBe("Да");
+    expect(JSON.stringify(rows)).not.toContain("[object Object]");
+  });
+
+  test("печатная страница паспорта не производит «[object Object]» на смешанной форме группы", () => {
+    const record: PrintPassportRecord = {
+      ...fullRecord(),
+      passport: {
+        freq: { value: "D" },
+        mixed: { plain: 1, nested_wrapper: { value: 2, applicable: true } },
+      },
+    };
+    const { getByTestId } = render(<PrintPassportPage record={record} pageIndex={1} pageCount={1} />);
+    const page = getByTestId("print-passport-page").textContent ?? "";
+    expect(page).not.toContain("[object Object]");
+    // Метки flatten не включают имя группы (конвенция печатного слоя):
+    // вложенная обёртка разворачивается по полям с внутригрупповым префиксом.
+    expect(page).toContain("nested_wrapper.value");
+    expect(page).toContain("nested_wrapper.applicable");
   });
 });
