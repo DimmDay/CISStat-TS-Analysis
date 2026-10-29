@@ -1,0 +1,13 @@
+FAIL packages/ui/print/printPassport.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/print/printPassport.test.tsx[0m:[93m30[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module './printPassport' or its corresponding type declarations.
+
+    [7m30[0m } from "./printPassport";
+    [7m  [0m [91m       ~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/print/printPassport.test.tsx[0m:[93m35[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module './printComparison' or its corresponding type declarations.
+
+    [7m35[0m } from "./printComparison";
+    [7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~[0m
+
+5
