@@ -1,0 +1,58 @@
+{
+  "journal": [
+    {
+      "id": "M02",
+      "file": "packages/ui/print/printTheme.ts",
+      "expect": "KILL: цвет перестаёт дублироваться знаком (§7); repo 121-133 + oracle A10.3",
+      "repo_pass": false,
+      "oracle_pass": false,
+      "status": "DUAL-KILLED",
+      "restored": true
+    },
+    {
+      "id": "M16",
+      "file": "packages/ui/print/printSections.tsx",
+      "expect": "KILL: минимальный размер 2 (1 строка/часть сломана); repo 400-407 + oracle A4.2",
+      "repo_pass": true,
+      "oracle_pass": false,
+      "status": "ORACLE-ONLY-KILLED",
+      "restored": true
+    },
+    {
+      "id": "M19",
+      "file": "packages/ui/print/printSections.tsx",
+      "expect": "KILL: clamp домена снят; oracle A4.5/пробы P5 (repo-слепой)",
+      "repo_pass": true,
+      "oracle_pass": false,
+      "status": "ORACLE-ONLY-KILLED",
+      "restored": true
+    },
+    {
+      "id": "M24",
+      "file": "packages/ui/print/printIh.tsx",
+      "expect": "KILL: правило 100 % теряется; repo 510-517 + oracle A5.1",
+      "repo_pass": true,
+      "oracle_pass": false,
+      "status": "ORACLE-ONLY-KILLED",
+      "restored": true
+    },
+    {
+      "id": "M25",
+      "file": "packages/ui/print/printPassport.tsx",
+      "expect": "KILL: фабкация пустых секций отсутствующих групп; repo 85-95 (косв.) + oracle A6.1",
+      "repo_pass": true,
+      "oracle_pass": false,
+      "status": "ORACLE-ONLY-KILLED",
+      "restored": true
+    }
+  ],
+  "tree_clean": true,
+  "head_md5": {
+    "packages/ui/print/printComparison.tsx": "7fe22d5986677b9465558c6f89c42148",
+    "packages/ui/print/printIh.tsx": "25d486b604a666412ce7f50666ebd2ad",
+    "packages/ui/print/printLayout.tsx": "beda5346b850b4e2ff7fbbecde185ee5",
+    "packages/ui/print/printPassport.tsx": "a354e93031d8b584e61d4c29f070cd7e",
+    "packages/ui/print/printSections.tsx": "0817c1d8096a3104aaf28671c83764a8",
+    "packages/ui/print/printTheme.ts": "cec822a62dee30b4afaa5736150d4c56"
+  }
+}
