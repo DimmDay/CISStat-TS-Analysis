@@ -1,0 +1,1 @@
+FAILED tests/api/test_pgv06_cert_findings.py::TestFP6C1TrajectoryGapDetailDisclosure::test_b1_foreign_and_absent_refs_uniform_in_trajectory_gaps

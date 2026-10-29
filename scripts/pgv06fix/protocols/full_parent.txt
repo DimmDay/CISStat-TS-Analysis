@@ -1,0 +1,391 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/z/my-project/cisstat-repo
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 3245 items / 1 skipped
+
+tests/api/test_admin_analytics.py ............................           [  0%]
+tests/api/test_admin_logs_audit_reasons.py .....                         [  1%]
+tests/api/test_admin_progress_api.py .......................             [  1%]
+tests/api/test_cv.py ...................................                 [  2%]
+tests/api/test_dataset_consistency_correction.py ....                    [  2%]
+tests/api/test_dataset_derived_columns.py ..........                     [  3%]
+tests/api/test_dataset_derived_columns_delete.py .................       [  3%]
+tests/api/test_dataset_eda_correlation.py ....                           [  3%]
+tests/api/test_dataset_eda_descriptive.py ....                           [  4%]
+tests/api/test_dataset_eda_distribution.py ...                           [  4%]
+tests/api/test_dataset_eda_feature_selection.py ..                       [  4%]
+tests/api/test_dataset_eda_model_matrix.py ..                            [  4%]
+tests/api/test_dataset_eda_seasonality.py ....                           [  4%]
+tests/api/test_dataset_eda_stationarity.py F...                          [  4%]
+tests/api/test_dataset_eda_structural_breaks.py F.                       [  4%]
+tests/api/test_dataset_eda_validation_strategy.py ..                     [  4%]
+tests/api/test_dataset_format_correction.py ...                          [  4%]
+tests/api/test_dataset_inclusion_correction.py ....                      [  4%]
+tests/api/test_dataset_missing_correction.py .................           [  5%]
+tests/api/test_dataset_outlier_correction.py ........................    [  6%]
+tests/api/test_dataset_passport.py ............................          [  6%]
+tests/api/test_dataset_preprocessing_decomposition.py ....               [  7%]
+tests/api/test_dataset_preprocessing_feature_engineering.py ...          [  7%]
+tests/api/test_dataset_preprocessing_regularity.py .........             [  7%]
+tests/api/test_dataset_preprocessing_scaling.py ...                      [  7%]
+tests/api/test_dataset_preprocessing_smoothing.py .....                  [  7%]
+tests/api/test_dataset_preprocessing_spectral.py ...                     [  7%]
+tests/api/test_dataset_preprocessing_stationarity.py .....               [  7%]
+tests/api/test_dataset_preprocessing_variance.py ....                    [  8%]
+tests/api/test_dataset_profile_detail_level.py FF........                [  8%]
+tests/api/test_dataset_range_correction.py ....                          [  8%]
+tests/api/test_dataset_referential_correction.py ...                     [  8%]
+tests/api/test_dataset_regularity_correction.py ...                      [  8%]
+tests/api/test_dataset_rows.py ...........                               [  8%]
+tests/api/test_dataset_sufficiency_plan.py ...                           [  9%]
+tests/api/test_dataset_text_quality_correction.py ....                   [  9%]
+tests/api/test_dataset_type_conversion.py ....                           [  9%]
+tests/api/test_dataset_type_schema.py ....                               [  9%]
+tests/api/test_dataset_uniqueness_correction.py ...                      [  9%]
+tests/api/test_dataset_validate.py ...............                       [ 10%]
+tests/api/test_dataset_validation_rules.py ............                  [ 10%]
+tests/api/test_deepar_panel_pivot.py ............................s...... [ 11%]
+......                                                                   [ 11%]
+tests/api/test_diagnostics.py ......                                     [ 11%]
+tests/api/test_diagnostics_internal.py ...                               [ 11%]
+tests/api/test_distribution.py ..........                                [ 12%]
+tests/api/test_docker_image_layout.py ....                               [ 12%]
+tests/api/test_doclog0_identity.py ..................................... [ 13%]
+.....                                                                    [ 13%]
+tests/api/test_doclog1_artifacts.py .................................... [ 14%]
+.......................                                                  [ 15%]
+tests/api/test_doclog2_snapshots.py .................................... [ 16%]
+......................................                                   [ 17%]
+tests/api/test_doclog3_telemetry_audit.py .............................. [ 18%]
+..................................................................       [ 20%]
+tests/api/test_doclog4_document_delivery.py ............................ [ 21%]
+......................                                                   [ 22%]
+tests/api/test_doclog5_formats_worker.py .............ss..........F..... [ 23%]
+F.............................                                           [ 24%]
+tests/api/test_doclog6_approvals_archive.py ............................ [ 24%]
+.....................                                                    [ 25%]
+tests/api/test_doclog7_logs_support.py ................................. [ 26%]
+.....                                                                    [ 26%]
+tests/api/test_doclog8_monitoring.py ................................... [ 27%]
+............................                                             [ 28%]
+tests/api/test_doclog9_profiles.py ..................................... [ 29%]
+................                                                         [ 30%]
+tests/api/test_doclog_pdf_font_deploy.py ....                            [ 30%]
+tests/api/test_doclog_pdf_full_upload_e2e.py .F                          [ 30%]
+tests/api/test_doclog_pdf_render_env_classification.py ...               [ 30%]
+tests/api/test_doclog_pdf_render_env_deploy.py .......F....              [ 31%]
+tests/api/test_doclog_recheck_fix.py ..................                  [ 31%]
+tests/api/test_egarch_session.py FFFF                                    [ 31%]
+tests/api/test_feature_regressors_api.py .......F...                     [ 32%]
+tests/api/test_forecasting_session.py .....FFFF.FFFFFFFFFFFF             [ 32%]
+tests/api/test_garch_session.py FFFF.                                    [ 32%]
+tests/api/test_h29_documents_durable.py .............                    [ 33%]
+tests/api/test_internal_backtest.py ............                         [ 33%]
+tests/api/test_internal_candidates.py .......                            [ 33%]
+tests/api/test_knowledge_api.py ........................................ [ 35%]
+.                                                                        [ 35%]
+tests/api/test_mentor_rules.py ......................................... [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+................                                                         [ 41%]
+tests/api/test_missing_manual_editor.py ..............                   [ 41%]
+tests/api/test_modeling_comparison_spec.py ..                            [ 41%]
+tests/api/test_modeling_diagnostics_spec.py .....                        [ 41%]
+tests/api/test_modeling_selection_spec.py ..                             [ 42%]
+tests/api/test_modeling_workflow.py ...F..FF............................ [ 43%]
+....F.....                                                               [ 43%]
+tests/api/test_models_backtest_neural_capacity.py F.                     [ 43%]
+tests/api/test_models_backtest_real.py ...............F.....F.           [ 44%]
+tests/api/test_models_candidates.py ...........................F........ [ 45%]
+..                                                                       [ 45%]
+tests/api/test_node_status_engine.py ................................... [ 46%]
+.................................                                        [ 47%]
+tests/api/test_outlier_manual_editor.py .................                [ 48%]
+tests/api/test_panel_contract.py .............                           [ 48%]
+tests/api/test_panel_execution.py ..............................         [ 49%]
+tests/api/test_panel_transforms.py ................                      [ 49%]
+tests/api/test_param_space.py ..............                             [ 50%]
+tests/api/test_passport_session_state.py ............                    [ 50%]
+tests/api/test_pgv01_print_schema.py ................................... [ 51%]
+                                                                         [ 51%]
+tests/api/test_pgv02_durable_inputs.py ................................. [ 52%]
+....................................                                     [ 53%]
+tests/api/test_pgv03_producer_adapters.py .............................. [ 54%]
+.........................................                                [ 56%]
+tests/api/test_pgv04_cert_findings.py ........                           [ 56%]
+tests/api/test_pgv04_cert_oracles.py ......................              [ 56%]
+tests/api/test_pgv04_passport_checkpoints.py ..........................  [ 57%]
+tests/api/test_pgv05_cert_findings.py F.                                 [ 57%]
+tests/api/test_pgv05_cert_oracles.py .......................             [ 58%]
+tests/api/test_pgv05_passport_history.py ..................              [ 59%]
+tests/api/test_pgv06_cert_findings.py F                                  [ 59%]
+tests/api/test_pgv06_cert_oracles.py ............................        [ 59%]
+tests/api/test_pgv06_passport_comparison.py ............................ [ 60%]
+....                                                                     [ 60%]
+tests/api/test_pipeline_graph.py ....................................... [ 62%]
+........................................................................ [ 64%]
+.....................................                                    [ 65%]
+tests/api/test_progress_audit_1a.py .................................... [ 66%]
+                                                                         [ 66%]
+tests/api/test_progress_audit_2a.py ......................               [ 67%]
+tests/api/test_progress_audit_3.py .........................             [ 68%]
+tests/api/test_progress_audit_4.py ..................................... [ 69%]
+...........                                                              [ 69%]
+tests/api/test_progress_audit_5b.py ...........FFFF..FFF                 [ 70%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 71%]
+ss                                                                       [ 71%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 72%]
+.............ss                                                          [ 72%]
+tests/api/test_progress_audit_6c.py .................Fs.s..............F [ 74%]
+....ss                                                                   [ 74%]
+tests/api/test_progress_audit_7a.py ...................                  [ 74%]
+tests/api/test_progress_audit_7b.py .................................    [ 75%]
+tests/api/test_progress_audit_8.py ...............                       [ 76%]
+tests/api/test_progress_audit_c.py ................................      [ 77%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 77%]
+tests/api/test_progress_audit_h1.py ..........................           [ 78%]
+tests/api/test_progress_audit_s.py ..................................... [ 79%]
+....                                                                     [ 79%]
+tests/api/test_progress_defects_progr13.py ........                      [ 79%]
+tests/api/test_progress_panel.py ..F................                     [ 80%]
+tests/api/test_progress_progr13a.py .........................            [ 81%]
+tests/api/test_progress_progr13b.py ...................                  [ 81%]
+tests/api/test_progress_progr13c.py ..................                   [ 82%]
+tests/api/test_progress_progr16.py ...........                           [ 82%]
+tests/api/test_progress_progr17.py .........                             [ 82%]
+tests/api/test_progress_progr18.py .........                             [ 83%]
+tests/api/test_progress_progr23.py .....................                 [ 83%]
+tests/api/test_progress_progr25a.py ................                     [ 84%]
+tests/api/test_progress_progr25c.py ........                             [ 84%]
+tests/api/test_progress_progr25d.py .........                            [ 84%]
+tests/api/test_progress_trace_hook.py .................................. [ 85%]
+..................                                                       [ 86%]
+tests/api/test_research_runs.py ........................................ [ 87%]
+....................                                                     [ 88%]
+tests/api/test_run_report.py ........................................... [ 89%]
+..................                                                       [ 90%]
+tests/api/test_session_date_column.py ..........                         [ 90%]
+tests/api/test_session_store.py ........................................ [ 91%]
+...............................................                          [ 93%]
+tests/api/test_status_original_series.py ............................... [ 94%]
+.                                                                        [ 94%]
+tests/api/test_structure_detection.py .......                            [ 94%]
+tests/api/test_target_column.py ....................                     [ 95%]
+tests/api/test_tasks_causes.py .........                                 [ 95%]
+tests/api/test_timeseries_decomposition.py ...................           [ 95%]
+tests/api/test_trace_events.py ........................                  [ 96%]
+tests/api/test_tune.py ................................................. [ 98%]
+...........                                                              [ 98%]
+tests/api/test_tune_production_dispatch.py ....                          [ 98%]
+tests/api/test_tune_real_models.py ..........                            [ 98%]
+tests/api/test_upload.py .....                                           [ 99%]
+tests/api/test_upload_db.py .........FFF.F.F.FFFFFFFFF...FF              [100%]
+
+=============================== warnings summary ===============================
+tests/api/test_dataset_consistency_correction.py::test_apply_persists_sort_updates_metadata_and_revalidation_passes
+  /home/z/my-project/cisstat-repo/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_format_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_text_quality_correction.py: 3 warnings
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 14 warnings
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+  /home/z/my-project/cisstat-repo/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 1 warning
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+  /home/z/my-project/cisstat-repo/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_diagnostics.py: 2 warnings
+tests/api/test_modeling_workflow.py: 1 warning
+tests/api/test_models_backtest_real.py: 9 warnings
+tests/api/test_models_candidates.py: 1 warning
+tests/api/test_tune.py: 2 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:978: UserWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    warn('Non-invertible starting MA parameters found.'
+
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restore_keeps_auto_origin
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restored_session_origin_visible_in_trace_header
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 211 warnings
+tests/api/test_modeling_workflow.py: 189 warnings
+tests/api/test_tasks_causes.py: 56 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:730: RuntimeWarning: invalid value encountered in log
+    tmp = np.log(iota - a)[i:]
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 211 warnings
+tests/api/test_modeling_workflow.py: 189 warnings
+tests/api/test_tasks_causes.py: 56 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:732: RuntimeWarning: invalid value encountered in log
+    lr2[i] = -t * np.log(1 - a[i])
+
+tests/api/test_forecasting_session.py: 84 warnings
+tests/api/test_modeling_workflow.py: 45 warnings
+tests/api/test_progress_audit_7a.py: 20 warnings
+tests/api/test_progress_trace_hook.py: 4 warnings
+tests/api/test_tasks_causes.py: 24 warnings
+  /home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In future, it will be an error for 'np.bool' scalars to be interpreted as an index
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:966: UserWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    warn('Non-stationary starting autoregressive parameters'
+
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/base/model.py:607: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    warnings.warn("Maximum Likelihood optimization failed to "
+
+tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+tests/api/test_progress_defects_progr13.py::test_mentor_phase_stays_upload_after_upload_page_actions
+tests/api/test_progress_defects_progr13.py::test_passport_start_event_attributed_to_upload_stage
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:955: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2*np.log(2*np.pi) - nobs2*np.log(ssr / nobs) - nobs2
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:866: UserWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    warn('Too few observations to estimate starting parameters%s.'
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_dataset_eda_stationarity.py::test_eda_stationarity_returns_tests_rolling_views_and_real_pp
+FAILED tests/api/test_dataset_eda_structural_breaks.py::test_eda_structural_breaks_returns_complementary_diagnostics_and_views
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_compact_default_matches_current_contract
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_expanded_raises_density_within_ceiling
+FAILED tests/api/test_doclog5_formats_worker.py::TestCrossFormatFactsConsistency::test_ac03_same_facts_across_all_formats
+FAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_all_heavy_formats_end_to_end
+FAILED tests/api/test_doclog_pdf_full_upload_e2e.py::TestFullUploadStageToPdf::test_health_ops_reports_render_environment
+FAILED tests/api/test_doclog_pdf_render_env_deploy.py::TestRenderDependenciesStatus::test_status_keys_and_self_consistency
+FAILED tests/api/test_egarch_session.py::test_egarch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_egarch_session.py::test_egarch_runs_volatility_session_backtest
+FAILED tests/api/test_egarch_session.py::test_egarch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_egarch_session.py::test_egarch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_feature_regressors_api.py::TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it
+FAILED tests/api/test_forecasting_session.py::test_forecast_naive_full_run_shape_and_storage
+FAILED tests/api/test_forecasting_session.py::test_forecast_horizon_defaults_to_card_training_horizon
+FAILED tests/api/test_forecasting_session.py::test_forecast_custom_horizon_and_alpha_are_honored
+FAILED tests/api/test_forecasting_session.py::test_forecast_ets_runs_parametric_simulation_end_to_end
+FAILED tests/api/test_forecasting_session.py::test_forecast_history_returns_all_runs
+FAILED tests/api/test_forecasting_session.py::test_forecast_get_by_id - KeyEr...
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_csv_contains_history_and_forecast_columns
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_json_is_self_contained_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_png_export_event_is_recorded_via_trace_endpoint
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_returns_referenced_runs_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_requires_two_distinct_existing_forecasts
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_uses_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_covers_exact_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_rejects_empty_param_space
+FAILED tests/api/test_forecasting_session.py::test_forecasts_are_invalidated_together_with_model_cards
+FAILED tests/api/test_forecasting_session.py::test_forecast_run_survives_session_roundtrip
+FAILED tests/api/test_garch_session.py::test_garch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_garch_session.py::test_garch_runs_volatility_session_backtest
+FAILED tests/api/test_garch_session.py::test_garch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_garch_session.py::test_garch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_modeling_workflow.py::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+FAILED tests/api/test_modeling_workflow.py::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+FAILED tests/api/test_modeling_workflow.py::test_feature_plan_enters_session_cohort_and_gates_regressors
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+FAILED tests/api/test_models_backtest_real.py::TestBacktestImplementationsRegistry::test_registry_has_23_implementations
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+FAILED tests/api/test_pgv06_cert_findings.py::TestFP6C1TrajectoryGapDetailDisclosure::test_b1_foreign_and_absent_refs_uniform_in_trajectory_gaps
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+FAILED tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_postgres_probe_failure_is_safe
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+FAILED tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_engine_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_clickhouse_native_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_sqlite_real_no_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_file_not_found_ok_false
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_bad_extension_422
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_test_does_not_create_session
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_sqlite_returns_upload_contract
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_registers_session_pipeline_entry
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_writes_upload_completed_trace
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_duckdb_csv_direct_select
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_delete_rejected_422_no_dataset
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_multistatement_rejected_422
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_row_limit_applied_and_warned
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_env_cap_stronger_than_request
+FAILED tests/api/test_upload_db.py::TestFamilies::test_public_test_with_api_key_ok
+FAILED tests/api/test_upload_db.py::TestFamilies::test_public_load_with_api_key_ok
+==== 69 failed, 3133 passed, 44 skipped, 1263 warnings in 212.15s (0:03:32) ====

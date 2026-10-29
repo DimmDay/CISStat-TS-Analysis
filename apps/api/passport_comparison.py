@@ -34,6 +34,10 @@ partial явно перечисляет пропуски».
     access-контур, XOR-честность gaps/legacy_unknown, изоляция вселенных
     наследуются; резолюция read-only (AC06-дух: сравнение не пишет в
     durable state и не пересчитывает науку).
+  - Uniform-доступ (AC18-дух; F-P6C1, PGV-06-FIX): гэп «rs-запись не
+    разрешена» несёт ЕДИНЫЙ reason/detail в обоих режимах -- деталь
+    reader-гэпов траектории нормализуется на границе резолвера;
+    существование чужой записи не дисклоужируется.
 
 Семантика путей (прежняя, проверяется тестами поставки):
   - trajectory-режим (default): путь -- ЗАМОРОЖЕННЫЕ stage_refs
@@ -86,6 +90,15 @@ _STAGE_RANK = {
     "panel": 4,
     "panel_entry": 4,
 }
+
+# Uniform-деталь гэпа «rs-запись не разрешена» (AC18-дух; F-P6C1,
+# PGV-06-FIX): одна строка для отсутствующей/чужой/не паспортной
+# записи -- существование чужой записи не дисклоужируется. Единый
+# источник для обоих режимов: explicit строит гэп сам, trajectory
+# нормализует reader-гэпы на границе резолвера.
+_UNIFORM_MISSING_RECORD_DETAIL = (
+    "rs-запись отсутствует/чужая/не паспортная -- сравнение не фабкуется"
+)
 
 # Определения метрик (AC13/§9): описывают ФАКТИЧЕСКИЕ конвенции
 # движка (проверяются parity-оракулами), не переписывают формулы.
@@ -366,10 +379,20 @@ def _resolve_from_trajectory(
         path_stages = [s for s in path_stages if s != checkpoint_stage]
     ordered_refs = [snapshots[s].get("snapshot_ref") for s in path_stages]
 
-    # Content-проблемы -- честные gaps по записям пути (не нули).
-    gaps: list[dict[str, Any]] = [
-        dict(gap) for gap in (trajectory.get("gaps") or [])
-    ]
+    # Reader-гэпы траектории -- с нормализацией detail на границе
+    # резолвера (F-P6C1, AC18-дух, PGV-06-FIX): reader различает
+    # «чужую» и «отсутствующую» rs-запись человекочитаемой detail-
+    # строкой; существование чужой записи не дисклоужируется -- reason
+    # остаётся uniform (missing_snapshot_record), detail приводится к
+    # единой строке; адрес дыры (at/snapshot_ref) сохраняется честно.
+    # Content-проблемы -- честные gaps по записям пути (не нули;
+    # строятся резолвером ниже, их диагностика НЕ нормализуется).
+    gaps: list[dict[str, Any]] = []
+    for raw_gap in trajectory.get("gaps") or []:
+        gap = dict(raw_gap)
+        if gap.get("reason") == "missing_snapshot_record":
+            gap["detail"] = _UNIFORM_MISSING_RECORD_DETAIL
+        gaps.append(gap)
     present: dict[str, bool] = {}
     for stage_key in path_stages:
         gap = _content_gap(snapshots[stage_key], at=f"path.{stage_key}")
@@ -458,10 +481,7 @@ def _resolve_from_refs(
                 "at": f"refs.{idx}",
                 "snapshot_ref": ref,
                 "reason": "missing_snapshot_record",
-                "detail": (
-                    "rs-запись отсутствует/чужая/не паспортная -- "
-                    "сравнение не фабкуется"
-                ),
+                "detail": _UNIFORM_MISSING_RECORD_DETAIL,
             })
             positions.append(None)
             continue

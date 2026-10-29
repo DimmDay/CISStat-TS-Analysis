@@ -1,0 +1,135 @@
+{
+  "campaign": "PGV-06-FIX targeted re-mutation (на своих мутантах)",
+  "parent": "3d04f88 (PGV-06-CERT)",
+  "module": "apps/api/passport_comparison.py",
+  "finding": "F-P6C1 (AC18-дух: uniform detail trajectory-гэпов)",
+  "repo_suite": "tests/api/test_pgv06_passport_comparison.py",
+  "oracle_suite": "tests/api/test_pgv06_cert_oracles.py",
+  "class_b_suite": "tests/api/test_pgv06_cert_findings.py",
+  "mv0_baseline": {
+    "repo_failed": [],
+    "oracle_failed": [],
+    "class_b_failed": [],
+    "ok": true
+  },
+  "mutants": [
+    {
+      "id": "FM1",
+      "desc": "нормализация убрана: reader-гэпы AS-IS (поведение до фикса)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 1,
+      "repo_failed_ids": [
+        "test_trajectory_gap_detail_uniform_foreign_vs_absent",
+        "test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [
+        "test_b1_foreign_and_absent_refs_uniform_in_trajectory_gaps"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "FM2",
+      "desc": "частичная нормализация: только stage_refs-позиции (snapshot_ref/previous_snapshot_ref -- с reader-деталью)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 0,
+      "repo_failed_ids": [
+        "test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [],
+      "verdict": "REPO-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "FM3",
+      "desc": "сверх-нормализация: content-гэпы получают uniform-строку (диагностика порчи потеряна, AC12)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 1,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 0,
+      "repo_failed_ids": [
+        "test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [],
+      "verdict": "REPO-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "FM4",
+      "desc": "нормализация огрубляет адрес дыры (at := trajectory)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 0,
+      "repo_failed_ids": [
+        "test_trajectory_gap_detail_uniform_foreign_vs_absent",
+        "test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [],
+      "verdict": "REPO-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "FM5",
+      "desc": "хрупкая строковая нормализация (по подстроке, не по reason): absent-гэп остаётся с reader-деталью",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 2,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 1,
+      "repo_failed_ids": [
+        "test_trajectory_gap_detail_uniform_foreign_vs_absent",
+        "test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs"
+      ],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [
+        "test_b1_foreign_and_absent_refs_uniform_in_trajectory_gaps"
+      ],
+      "verdict": "DUAL-KILLED",
+      "mv2_restore": true
+    },
+    {
+      "id": "KFIX01",
+      "desc": "контроль: нейтральный комментарий (обязан SURVIVED)",
+      "mv1_unique_replacement": true,
+      "repo_failed_n": 0,
+      "oracle_failed_n": 0,
+      "class_b_failed_n": 0,
+      "repo_failed_ids": [],
+      "oracle_failed_ids": [],
+      "class_b_failed_ids": [],
+      "verdict": "SURVIVED",
+      "mv2_restore": true
+    }
+  ],
+  "mv3_final_md5_ok": true,
+  "summary": {
+    "battle_killed": [
+      "FM1",
+      "FM2",
+      "FM3",
+      "FM4",
+      "FM5"
+    ],
+    "battle_survived": [],
+    "control": {
+      "id": "KFIX01",
+      "expected": "SURVIVED",
+      "actual": "SURVIVED"
+    },
+    "obligation_F_P6C1_B1": [
+      "FM1",
+      "FM2",
+      "FM3",
+      "FM4",
+      "FM5"
+    ]
+  }
+}

@@ -631,6 +631,265 @@ class TestTrajectoryCheckpointMode:
         assert "rs-" + "c" * 32 in gap_refs  # validation -- явный gap
         assert snapshot["path"] == []  # ни одна точка не доказана
 
+    def test_trajectory_gap_detail_uniform_foreign_vs_absent(self):
+        """PGV-06-FIX / F-P6C1 (AC18-дух): в trajectory-режиме гэп по
+        ЧУЖОМУ существующему ref (stage_refs crafted чекпоинта)
+        неразличим от гэпа по отсутствующему ref -- reason И detail;
+        машина-читаемый reason uniform, адрес дыры (at/snapshot_ref)
+        сохраняется. До фикса reader-детали различали «не принадлежит
+        запуску» vs «отсутствует в реестре» -- дисклоужение существования
+        чужой записи."""
+        from apps.api import passport_comparison
+        from apps.api.passport_checkpoints import durable_checkpoint_id
+        from apps.api.passport_history import list_passport_snapshots
+        from apps.api.visual_artifacts import register_passport_checkpoint
+
+        with TestClient(app) as owner_client:
+            _upload(owner_client)
+            _select_series(owner_client)
+            _capture_full_trajectory(owner_client)
+            run_id = _run_id_of(owner_client)
+            subject = _client_subject(owner_client)
+            sid = _client_session_id(owner_client)
+
+            with TestClient(app) as other_client:
+                _upload(other_client)
+                _select_series(other_client)
+                _capture_full_trajectory(other_client)
+                other_records = list_passport_snapshots(
+                    _run_id_of(other_client),
+                    _client_subject(other_client),
+                    session_id=_client_session_id(other_client),
+                )
+                assert other_records
+                foreign_ref = other_records[0]["snapshot_ref"]
+
+            def crafted(tag: str, start_ref: str) -> dict:
+                return {
+                    "schema_version": "pgv.passport_checkpoint/1",
+                    "checkpoint_id": durable_checkpoint_id(
+                        f"cp-p06-uniform-{tag}"
+                    ),
+                    "stage": "modeling_entry",
+                    "confirmed_at": "2026-11-02T09:00:00+00:00",
+                    "confirmed_at_reason": None,
+                    "snapshot_ref": "rs-" + "a" * 32,
+                    "previous_snapshot_ref": None,
+                    "flags": {
+                        "created": True, "reused": False, "unchanged": False,
+                    },
+                    "stage_refs": {
+                        "start": start_ref,
+                        "validation": "rs-" + "2" * 32,
+                        "exit": "rs-" + "3" * 32,
+                    },
+                    "context": {
+                        "run_id": run_id,
+                        "context_id": "ctx-p06-uniform",
+                        "data_revision": 2,
+                        "target_column": "value",
+                        "entity_id": None,
+                    },
+                    "provenance": {"source": "legacy_import"},
+                }
+
+            art_f = register_passport_checkpoint(
+                run_id, subject,
+                payload=crafted("foreign", foreign_ref), session_id=sid,
+            )
+            art_a = register_passport_checkpoint(
+                run_id, subject,
+                payload=crafted("absent", "rs-" + "0" * 32), session_id=sid,
+            )
+            assert art_f is not None and art_a is not None
+            snap_f = passport_comparison.resolve_passport_comparison(
+                run_id, subject,
+                checkpoint_id=art_f.refs["checkpoint_id"], session_id=sid,
+            )
+            snap_a = passport_comparison.resolve_passport_comparison(
+                run_id, subject,
+                checkpoint_id=art_a.refs["checkpoint_id"], session_id=sid,
+            )
+            gf = next(
+                (g for g in snap_f["gaps"] if g["snapshot_ref"] == foreign_ref),
+                None,
+            )
+            ga = next(
+                (g for g in snap_a["gaps"]
+                 if g["snapshot_ref"] == "rs-" + "0" * 32),
+                None,
+            )
+            assert gf is not None and ga is not None, (
+                "обе записи обязаны дать гэпы (иначе фабкация резолюции)"
+            )
+            assert gf["reason"] == ga["reason"] == "missing_snapshot_record"
+            # Ключевой дифференциальный оракул F-P6C1: uniform detail.
+            assert gf["detail"] == ga["detail"], (
+                "деталь trajectory-гэпа различает чужой "
+                f"({gf['detail']!r}) и отсутствующий ({ga['detail']!r}) "
+                "ref -- дисклоужение существования чужой записи "
+                "(AC18-дух)"
+            )
+            # Адрес дыры сохраняется (не огрубляется нормализацией).
+            assert gf["at"] == ga["at"] == "stage_refs.start"
+
+    def test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs(
+        self, client,
+    ):
+        """PGV-06-FIX / F-P6C1: uniform-detail нормализация покрывает ВСЕ
+        позиции reader-гэпов траектории -- подтверждённый ref
+        (snapshot_ref) и previous_snapshot_ref, не только stage_refs;
+        content-гэпы (corrupt-диагностика) при этом НЕ нормализуются
+        (свои честные detail из content_gap_reason)."""
+        import json
+
+        from apps.api import passport_comparison
+        from apps.api.artifact_store import (
+            get_artifact_object_store,
+            get_artifact_registry,
+        )
+        from apps.api.passport_checkpoints import durable_checkpoint_id
+        from apps.api.passport_history import (
+            list_passport_snapshots,
+            read_passport_snapshot,
+        )
+        from apps.api.visual_artifacts import register_passport_checkpoint
+
+        _upload(client)
+        _select_series(client)
+        _capture_full_trajectory(client)
+        run_id = _run_id_of(client)
+        subject = _client_subject(client)
+        sid = _client_session_id(client)
+        records = list_passport_snapshots(run_id, subject, session_id=sid)
+        assert len(records) >= 2
+        # Порча passport-артефакта ПЕРВОЙ записи -- честный content-гэп.
+        corrupt_ref = records[0]["snapshot_ref"]
+        dep_artifact = get_artifact_registry().get_artifact(
+            records[0]["artifact_id"]
+        )
+        assert dep_artifact is not None
+        object_path = get_artifact_object_store().path_for_key(
+            dep_artifact.storage_key
+        )
+        assert json.loads(object_path.read_bytes().decode("utf-8"))
+        object_path.write_bytes(b'{"tampered": true}')
+        corrupt_record = read_passport_snapshot(
+            run_id, subject, snapshot_ref=corrupt_ref, session_id=sid,
+        )
+        assert corrupt_record is not None
+        assert corrupt_record["content_status"] != "present"
+        corrupt_reason = corrupt_record["content_gap_reason"]
+        present_ref = records[-1]["snapshot_ref"]
+
+        with TestClient(app) as other_client:
+            _upload(other_client)
+            _select_series(other_client)
+            _capture_full_trajectory(other_client)
+            other_records = list_passport_snapshots(
+                _run_id_of(other_client),
+                _client_subject(other_client),
+                session_id=_client_session_id(other_client),
+            )
+            assert other_records
+            foreign_ref = other_records[0]["snapshot_ref"]
+
+        def crafted(tag: str, *, confirmed: str, previous: str) -> dict:
+            return {
+                "schema_version": "pgv.passport_checkpoint/1",
+                "checkpoint_id": durable_checkpoint_id(
+                    f"cp-p06-unif2-{tag}"
+                ),
+                "stage": "modeling_entry",
+                "confirmed_at": "2026-11-02T09:30:00+00:00",
+                "confirmed_at_reason": None,
+                "snapshot_ref": confirmed,
+                "previous_snapshot_ref": previous,
+                "flags": {
+                    "created": True, "reused": False, "unchanged": False,
+                },
+                "stage_refs": {
+                    "start": corrupt_ref,
+                    "validation": "rs-" + "4" * 32,
+                    "exit": "rs-" + "5" * 32,
+                },
+                "context": {
+                    "run_id": run_id,
+                    "context_id": "ctx-p06-unif2",
+                    "data_revision": 2,
+                    "target_column": "value",
+                    "entity_id": None,
+                },
+                "provenance": {"source": "legacy_import"},
+            }
+
+        def resolve(payload: dict) -> dict:
+            artifact = register_passport_checkpoint(
+                run_id, subject, payload=payload, session_id=sid,
+            )
+            assert artifact is not None
+            snapshot = passport_comparison.resolve_passport_comparison(
+                run_id, subject,
+                checkpoint_id=artifact.refs["checkpoint_id"],
+                session_id=sid,
+            )
+            assert snapshot is not None
+            return snapshot
+
+        # Ось подтверждённого ref: чужой vs отсутствующий.
+        snap_cf = resolve(crafted(
+            "conf-foreign", confirmed=foreign_ref, previous="rs-" + "6" * 32,
+        ))
+        snap_ca = resolve(crafted(
+            "conf-absent", confirmed="rs-" + "e" * 32,
+            previous="rs-" + "6" * 32,
+        ))
+        g_cf = next(
+            (g for g in snap_cf["gaps"] if g["at"] == "snapshot_ref"), None,
+        )
+        g_ca = next(
+            (g for g in snap_ca["gaps"] if g["at"] == "snapshot_ref"), None,
+        )
+        assert g_cf is not None and g_ca is not None
+        assert g_cf["reason"] == g_ca["reason"] == "missing_snapshot_record"
+        assert g_cf["detail"] == g_ca["detail"], (
+            "деталь гэпа подтверждённого ref различает чужой "
+            f"({g_cf['detail']!r}) и отсутствующий ({g_ca['detail']!r}) -- "
+            "дисклоужение (AC18-дух)"
+        )
+        # Ось previous_snapshot_ref: чужой vs отсутствующий.
+        snap_pf = resolve(crafted(
+            "prev-foreign", confirmed=present_ref, previous=foreign_ref,
+        ))
+        snap_pa = resolve(crafted(
+            "prev-absent", confirmed=present_ref,
+            previous="rs-" + "7" * 32,
+        ))
+        g_pf = next(
+            (g for g in snap_pf["gaps"]
+             if g["at"] == "previous_snapshot_ref"), None,
+        )
+        g_pa = next(
+            (g for g in snap_pa["gaps"]
+             if g["at"] == "previous_snapshot_ref"), None,
+        )
+        assert g_pf is not None and g_pa is not None
+        assert g_pf["reason"] == g_pa["reason"] == "missing_snapshot_record"
+        assert g_pf["detail"] == g_pa["detail"], (
+            "деталь гэпа previous_snapshot_ref различает чужой "
+            f"({g_pf['detail']!r}) и отсутствующий ({g_pa['detail']!r}) -- "
+            "дисклоужение (AC18-дух)"
+        )
+        # Content-гэп порченой записи НЕ нормализуется: своя честная
+        # диагностика (AC12), reason отличен от missing_snapshot_record.
+        g_content = next(
+            (g for g in snap_pf["gaps"] if g["snapshot_ref"] == corrupt_ref),
+            None,
+        )
+        assert g_content is not None
+        assert g_content["reason"] == "content_corrupt"
+        assert g_content["detail"] == corrupt_reason
+
 
 # ══════════════════════════════════════════════════════════════════════
 # 3. Совместимость контекстов (AC13/AC14): incompatible/cross-context

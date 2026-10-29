@@ -95,7 +95,8 @@ Runtime-границы: P02 documents/lifecycle — PGV-13; печатная к�
    Content-проблемы записей (missing_artifact/corrupt) — явные gaps
    (`content_missing`/`content_corrupt` с деталью из content_gap_reason); пары,
    затронутые дырой, не строятся; здоровые соседние пары строятся. Dangling refs
-   чекпоинта — gaps из reader'а AS-IS. `completeness=complete` только при нулевых
+   чекпоинта — gaps из reader'а с uniform-detail нормализацией на границе
+   резолвера (PGV-06-FIX, §7). `completeness=complete` только при нулевых
    gaps; partial явно перечисляет пропуски.
 
 6. **Определения метрик (AC13: zero denominator reason).** `definitions` описывают
@@ -146,3 +147,51 @@ Runtime-границы: P02 documents/lifecycle — PGV-13; печатная к�
   вместе с P02-эндпоинтами PGV-13; текущий session-эндпоинт сохраняет прежний
   контракт ответа.
 - Пагинация колонок/этапов печатного сравнения — PGV-14; UI — PGV-15.
+
+## 7. PGV-06-FIX (2026-10-29) — закрытие находки F-P6C1
+
+**Находка** (акт независимой сертификации docs/cert_pgv06_2026-10-29.md, Class B B1,
+тяжесть низкая, AC18-дух): trajectory-режим копировал reader-гэпы AS-IS, а
+PassportHistoryReader (`_snapshot_record`, субстрат PGV-05) даёт разные
+человекочитаемые detail-строки «чужой существующий ref» («не принадлежит запуску»)
+и «отсутствующий ref» («отсутствует в реестре») — crafted чекпоинт со stage_refs на
+чужой ref дисклоужировал существование чужой записи. Машиночитаемый reason был
+uniform (`missing_snapshot_record`); explicit-режим чист (строит uniform-гэп сам).
+
+**Решение — нормализация на границе резолвера** (не в reader'е: субстрат PGV-05 и
+его сертифицированный контракт `pgv.passport_history/1` не меняются ни байтом):
+
+- единая константа `_UNIFORM_MISSING_RECORD_DETAIL` («rs-запись
+  отсутствует/чужая/не паспортная -- сравнение не фабкуется») — единый источник
+  для обоих режимов; explicit-режим переведён на неё (поведение прежнее);
+- в `_resolve_from_trajectory` reader-гэпы с reason `missing_snapshot_record`
+  получают uniform-detail; адрес дыры (at/snapshot_ref) и reason сохраняются;
+  content-гэпы (corrupt/missing, AC12) НЕ нормализуются — диагностика порчи
+  (`content_gap_reason`) остаётся честной;
+- покрытие всех трёх осей reader-гэпов траектории: stage_refs.*, snapshot_ref
+  (подтверждённый ref), previous_snapshot_ref.
+
+**TDD:** два новых пина в корпусе поставки
+(`test_trajectory_gap_detail_uniform_foreign_vs_absent` — stage_refs-ось;
+`test_trajectory_gap_detail_uniform_on_confirmed_and_previous_refs` — оси
+подтверждённого/previous ref + content-гэпы не нормализуются): RED при базе
+3d04f88, GREEN после фикса; оракул акта B1 — RED → GREEN без ослабления смысла.
+Прогоны ×2 (детерминизм): 34 passed (поставка) + 28 (оракулы акта) + 1 (Class B)
+= 63.
+
+**Ремутация «на своих мутантах»** (scripts/pgv06fix/verify_mutants.py, прецедент
+PGV-04-FIX; MV0–MV3: база GREEN, замены уникальны, md5 восстановлен на каждом
+шаге, финал == исходнику): 5/5 боевых мутантов убиты — FM1 (откат нормализации)
+DUAL-KILLED (REPO+CLASS_B), FM2 (частичная — только stage_refs) REPO-KILLED,
+FM3 (сверх-нормализация content-гэпов) REPO-KILLED, FM4 (огрубление адреса)
+REPO-KILLED, FM5 (хрупкая строковая нормализация) DUAL-KILLED; контроль KFIX01
+(комментарий) SURVIVED. Классификация честная: ORACLE-канал акта trajectory-гэпы
+чужих refs не покрывает — поэтому пины добавлены в корпус поставки. Отчёт:
+scripts/pgv06fix/protocols/fix_mutation_report.json.
+
+**Регресс и сборка:** адресный регресс pgv02–pgv06 + passport-своды — 341 passed,
+1 RED (известный F-P5C1 акта PGV-05-CERT, ждёт PGV-05-FIX). Дельта-0 полного
+tests/api (родитель 3d04f88 vs фикс, одна среда, кэш отключён): fix 68F/3136P/44S
+vs parent 69F/3133P/44S; fix-only FAILED = ∅, parent-only FAILED = ровно {B1}
+(RED-свидетельство стало GREEN) — scripts/pgv06fix/protocols/. Сборка: py_compile
+OK; import apps.api.main OK — 221 маршрут (паритет); пины schema/engine целы.
