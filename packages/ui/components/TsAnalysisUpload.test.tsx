@@ -1843,14 +1843,25 @@ describe("TsAnalysisUpload — UPLOAD-SEM-1: тело отчёта /upload-stops
     ) as Array<[string, RequestInit?]>;
   }
 
-  it("чистая загрузка: quality=pending (было warning по счётчикам), overview=done (просмотрена дефолтная), chart=pending", async () => {
+  it.each([false, true])("чистая загрузка: quality=pending (было warning по счётчикам), overview=done (просмотрена дефолтная), chart=pending; delayed seed=%s", async (delayedSeed) => {
     mockFetchSequence(okUploadResponse);
+    const router = global.fetch;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (delayedSeed && url.includes("/trace")) {
+        return new Promise<Response>((resolve) => setTimeout(() => resolve(router(url, init)), 0));
+      }
+      return router(url, init);
+    }) as jest.Mock;
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
-    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    // A cached trace response can batch seed-ready false -> true with reset.
+    // Flush the upload's async React work before examining its delivered facts.
+    await act(async () => {
+      dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    });
     await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
 
     // The first delivery can precede the effect recording the default view.

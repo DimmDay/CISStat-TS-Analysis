@@ -1,0 +1,22 @@
+[
+  {
+    "repo": "actions/checkout@v6",
+    "url": "https://raw.githubusercontent.com/actions/checkout/v6/action.yml",
+    "runtime": "node24"
+  },
+  {
+    "repo": "actions/setup-node@v6",
+    "url": "https://raw.githubusercontent.com/actions/setup-node/v6/action.yml",
+    "runtime": "node24"
+  },
+  {
+    "repo": "actions/setup-python@v6",
+    "url": "https://raw.githubusercontent.com/actions/setup-python/v6/action.yml",
+    "runtime": "node24"
+  },
+  {
+    "repo": "actions/upload-artifact@v6",
+    "url": "https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml",
+    "runtime": "node24"
+  }
+]

@@ -104,6 +104,7 @@ site/
 # ТЕСТЫ И ПОКРЫТИЕ
 # ══════════════════════════════════════════════════════
 .pytest_cache/
+/jest-results.json
 .coverage
 htmlcov/
 .tox/

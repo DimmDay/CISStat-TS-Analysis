@@ -1,0 +1,116 @@
+{
+  "base": "b613120f32138ff8530320660ddc991cb2778992",
+  "date": "2026-10-30",
+  "npmCi": {
+    "exitCode": 0,
+    "packagesAdded": 520
+  },
+  "baseline": {
+    "exitCode": 1,
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 236,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 2739,
+    "numPassedTests": 2738,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "success": false
+  },
+  "b1Red": {
+    "exitCode": 1,
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 0,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 5,
+    "numPassedTests": 4,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "success": false
+  },
+  "uploadRedFull": {
+    "exitCode": 1,
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 236,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 2739,
+    "numPassedTests": 2738,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "success": false
+  },
+  "uploadTimingProbeBeforeProductFix": {
+    "exitCode": 0,
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 1,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 47,
+    "numPassedTests": 2,
+    "numFailedTests": 0,
+    "numPendingTests": 45,
+    "numRuntimeErrorTestSuites": 0,
+    "success": true
+  },
+  "targetedGreen": {
+    "exitCode": 0,
+    "numTotalTestSuites": 2,
+    "numPassedTestSuites": 2,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 52,
+    "numPassedTests": 52,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "success": true
+  },
+  "fullFinal": {
+    "exitCode": 0,
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 237,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 2740,
+    "numPassedTests": 2740,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "success": true
+  },
+  "rendererBuild": {
+    "exitCode": 0
+  },
+  "typecheckAll": {
+    "exitCode": 0
+  },
+  "nextEmbedded": {
+    "exitCode": 1,
+    "status": "BLOCKED",
+    "reason": "ENOENT uv_resident_set_memory",
+    "evidence": "build-embedded-recheck.txt"
+  },
+  "nextStandalone": {
+    "exitCode": 1,
+    "status": "BLOCKED",
+    "reason": "ENOENT uv_resident_set_memory",
+    "evidence": "build-standalone.txt"
+  },
+  "guards": {
+    "PGV07": "41/41",
+    "PGV08": "48/48"
+  },
+  "ciBaseline": {
+    "runId": 40932604002,
+    "jobs": [
+      123654681135,
+      123654681735
+    ],
+    "suites": 237,
+    "tests": 2739,
+    "failed": 1,
+    "passed": 2738,
+    "failure": "B1: expected 62, received 41"
+  },
+  "remoteFixedWorkflowExecuted": false,
+  "unresolved": "User local summary 234 suites / 2666 tests / 8 failing suites / 13 failing tests not supplied with detailed errors; cannot attribute all failures."
+}

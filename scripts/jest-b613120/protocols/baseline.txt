@@ -1,0 +1,51 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      48 |     const actualCount = Number(actual![2]);
+      49 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 50 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      51 |   });
+      52 | });
+      53 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)
+
+
+Summary of all failing tests
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      48 |     const actualCount = Number(actual![2]);
+      49 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 50 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      51 |   });
+      52 | });
+      53 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)
+
+
+Test Suites: 1 failed, 236 passed, 237 total
+Tests:       1 failed, 2738 passed, 2739 total
+Snapshots:   0 total
+Time:        94.284 s
+Ran all test suites.
+Test results written to: scripts/jest-b613120/protocols/baseline.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

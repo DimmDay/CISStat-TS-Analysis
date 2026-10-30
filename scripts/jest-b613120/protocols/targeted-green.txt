@@ -1,0 +1,7 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       52 passed, 52 total
+Snapshots:   0 total
+Time:        8.307 s
+Ran all test suites within paths "packages/ui/components/TsAnalysisUpload.test.tsx", "scripts/pgv07cert/test_p7cert_findings.test.tsx".
+Test results written to: scripts/jest-b613120/protocols/targeted-green.json

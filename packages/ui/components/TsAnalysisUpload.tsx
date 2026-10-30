@@ -1205,7 +1205,10 @@ export function TsAnalysisUpload() {
     if (!stopId) return;
     setViewedStops((prev) => (prev.has(stopId) ? prev : new Set(prev).add(stopId)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStop, isUploaded, numericCols.length, uploadData, uploadSeedReady]);
+  // Reset and a fast seed may batch false -> true without changing ready.
+  // Revisit the visible stop after its viewed set is replaced, as in EDA.
+  // The prev.has guard preserves Set identity once recorded (no render loop).
+  }, [activeStop, isUploaded, numericCols.length, uploadData, uploadSeedReady, viewedStops]);
 
   // AUDIT-3 (H27): новый просмотр при несостоявшемся seed'е -- ретрай
   // seed'а (успех -- отчёт уходит объединённым снапшотом; неудача --

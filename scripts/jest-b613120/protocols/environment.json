@@ -1,0 +1,24 @@
+{
+  "base": {
+    "exitCode": 0,
+    "stdout": "b613120f32138ff8530320660ddc991cb2778992",
+    "stderr": ""
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "node": {
+    "exitCode": 0,
+    "stdout": "v24.22.1",
+    "stderr": ""
+  },
+  "npm": {
+    "exitCode": 0,
+    "stdout": "11.9.0",
+    "stderr": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm."
+  },
+  "python": "3.12.14",
+  "dependencies": {
+    "exitCode": 0,
+    "stdout": "cisstat-ts-analysis-monorepo@ /workspace/scratch/baee966ab828/CISStat-b613120\n├─┬ @cisstat/print-renderer@0.1.0 -> ./apps/print-renderer\n│ ├── playwright-core@1.57.0 deduped\n│ └── typescript@5.9.3\n├─┬ @cisstat/ts-analysis-embedded@0.1.0 -> ./apps/embedded\n│ └── typescript@5.9.3\n├─┬ @cisstat/ts-analysis-standalone@0.1.0 -> ./apps/standalone\n│ └── typescript@5.9.3\n├─┬ @cisstat/ui@0.1.0 -> ./packages/ui\n│ └── typescript@5.9.3\n├── jest@30.4.2\n├── playwright-core@1.57.0\n└── ts-jest@29.4.12",
+    "stderr": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm."
+  }
+}

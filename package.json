@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "test:ci": "jest --ci --maxWorkers=2 --json --outputFile=jest-results.json",
     "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
     "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
     "build": "npm run build --workspace=@cisstat/ts-analysis-standalone",

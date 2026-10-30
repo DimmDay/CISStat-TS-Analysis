@@ -2,27 +2,49 @@ name: Jest (Linux and Windows)
 
 on: [push, pull_request, workflow_dispatch]
 
+permissions:
+  contents: read
+
 jobs:
   jest:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Explicit OS releases avoid an unreviewed migration of the latest labels.
+        os: [ubuntu-24.04, windows-2025]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Install all workspaces (including renderer and root dev dependencies)
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        id: install
+        run: npm ci --include=dev --workspaces --include-workspace-root --ignore-scripts --no-audit --no-fund
+      - name: Record revision and test toolchain
+        run: |
+          git rev-parse HEAD
+          node --version
+          npm --version
+          python --version
+          npm ls jest ts-jest typescript playwright-core --depth=0
       - name: All Jest tests (real Git POSIX shell on Windows, no skips)
-        run: npx jest --maxWorkers=2
+        run: npm run test:ci
+      - name: Preserve full Jest report on success or failure
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: jest-results-${{ matrix.os }}
+          path: jest-results.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Build renderer
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build --workspace=@cisstat/print-renderer
       - name: Typecheck both apps
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run typecheck:all

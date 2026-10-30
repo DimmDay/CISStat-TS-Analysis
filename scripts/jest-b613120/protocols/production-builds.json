@@ -1,0 +1,20 @@
+[
+  {
+    "command": [
+      "npm",
+      "run",
+      "build",
+      "--workspace=@cisstat/ts-analysis-embedded"
+    ],
+    "exitCode": 1
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "build",
+      "--workspace=@cisstat/ts-analysis-standalone"
+    ],
+    "exitCode": 1
+  }
+]

@@ -1,0 +1,24 @@
+FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 62
+    Received: 41
+
+      48 |     const actualCount = Number(actual![2]);
+      49 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+    > 50 |     expect(actualCount).toBe(declaredCount);
+         |                         ^
+      51 |   });
+      52 | });
+      53 |
+
+      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 4 passed, 5 total
+Snapshots:   0 total
+Time:        3.438 s
+Ran all test suites within paths "scripts/pgv07cert/test_p7cert_findings.test.tsx".
+Test results written to: scripts/jest-b613120/protocols/b1-red.json
