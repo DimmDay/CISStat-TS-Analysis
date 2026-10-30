@@ -11,7 +11,8 @@
 // (реальный Chromium), docker-сборка — build/Dockerfile (среда сессии
 // без docker-демона — честная граница, пин R2).
 
-import { crc32, deflateSync } from "node:zlib";
+import { deflateSync } from "node:zlib";
+import { pngCrc32Oracle as crc32 } from "../../../scripts/testing/pngCrc32Oracle";
 import {
   buildDependencyManifest,
   buildErrorBody,

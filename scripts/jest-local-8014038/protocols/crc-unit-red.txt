@@ -1,0 +1,14 @@
+FAIL apps/print-renderer/src/pngCrc32.test.ts
+  ● Test suite failed to run
+
+    [96mapps/print-renderer/src/pngCrc32.test.ts[0m:[93m1[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module './pngCrc32' or its corresponding type declarations.
+
+    [7m1[0m import { pngCrc32 } from './pngCrc32';
+    [7m [0m [91m                         ~~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        2.255 s
+Ran all test suites within paths "apps/print-renderer/src/pngCrc32.test.ts".
+Test results written to: scripts/jest-local-8014038/protocols/crc-unit-red.json

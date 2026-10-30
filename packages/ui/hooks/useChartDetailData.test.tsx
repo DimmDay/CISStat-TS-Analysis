@@ -210,29 +210,42 @@ describe("useChartDetailData", () => {
   });
 
   it("кэш ограничен: старейшие записи вытесняются (FIFO)", async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_B));
+    let finishRequest!: (response: Response) => void;
+    (global.fetch as jest.Mock).mockImplementation(() => new Promise<Response>((resolve) => {
+      finishRequest = resolve;
+    }));
     const { result, rerender } = renderHook(
       ({ fingerprint }: { fingerprint: string }) =>
         useChartDetailData<Payload>({ ...BASE_OPTIONS, enabled: true, fingerprint }),
       { initialProps: { fingerprint: "k-0" } },
     );
-    await waitFor(() => expect(result.current.data).toEqual(PAYLOAD_B));
+    // Complete the controlled transport inside act, without a 50ms poll for
+    // each of the 41 requests. Check the payload as well as loading=false.
+    async function deliver(payload: Payload) {
+      await act(async () => { finishRequest(jsonResponse(payload)); });
+      expect(result.current.data).toEqual(payload);
+      expect(result.current.loading).toBe(false);
+    }
+    await deliver(PAYLOAD_B);
 
     // заполняем кэш до потолка и ещё на одну запись
     for (let index = 1; index <= MAX_CHART_DETAIL_CACHE_ENTRIES; index += 1) {
       rerender({ fingerprint: `k-${index}` });
       // eslint-disable-next-line no-await-in-loop
-      await waitFor(() => expect(result.current.loading).toBe(false));
+      await deliver(PAYLOAD_B);
     }
 
-    expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(
-      MAX_CHART_DETAIL_CACHE_ENTRIES + 1,
-    );
+    expect(global.fetch).toHaveBeenCalledTimes(MAX_CHART_DETAIL_CACHE_ENTRIES + 1);
+
+    // The next-oldest entry survives: eviction must not clear the whole cache.
+    rerender({ fingerprint: "k-1" });
+    expect(result.current.data).toEqual(PAYLOAD_B);
+    expect(global.fetch).toHaveBeenCalledTimes(MAX_CHART_DETAIL_CACHE_ENTRIES + 1);
 
     // самая первая запись вытеснена — возврат к ней идёт в сеть снова
     (global.fetch as jest.Mock).mockClear();
-    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_A));
     rerender({ fingerprint: "k-0" });
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    await deliver(PAYLOAD_A);
   });
 });

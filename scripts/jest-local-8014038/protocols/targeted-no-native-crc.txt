@@ -1,0 +1,7 @@
+
+Test Suites: 5 passed, 5 total
+Tests:       96 passed, 96 total
+Snapshots:   0 total
+Time:        9.42 s
+Ran all test suites within paths "apps/print-renderer/src/pngCrc32.test.ts", "apps/print-renderer/src/rendererCore.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts", "packages/ui/hooks/useChartDetailData.test.tsx", "packages/ui/components/validation-dataset-editor-toggle.test.tsx".
+Test results written to: scripts/jest-local-8014038/protocols/targeted-no-native-crc.json

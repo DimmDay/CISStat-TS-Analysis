@@ -1,0 +1,117 @@
+{
+  "base": "8014038fe40f4b2e399fb1104823e0c6d9ea7bd4",
+  "date": "2026-10-30",
+  "userFailures": {
+    "suites": 237,
+    "tests": 2740,
+    "failedSuites": 4,
+    "failedTests": 13,
+    "crcErrors": 11,
+    "timeoutErrors": 2,
+    "nodeVersion": "not supplied"
+  },
+  "ciMatrixUnchanged": [
+    "ubuntu-24.04",
+    "windows-2025"
+  ],
+  "npmCi": {
+    "exitCode": 0
+  },
+  "baselineWithoutNativeCrc": {
+    "exitCode": 1,
+    "success": false,
+    "numTotalTestSuites": 4,
+    "numPassedTestSuites": 2,
+    "numFailedTestSuites": 2,
+    "numTotalTests": 82,
+    "numPassedTests": 71,
+    "numFailedTests": 11,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "durationSeconds": 11.156
+  },
+  "newCrcUnitImportRed": {
+    "exitCode": 1,
+    "success": false,
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 0,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 0,
+    "numPassedTests": 0,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 1,
+    "durationSeconds": 2.256
+  },
+  "targetedWithoutNativeCrc": {
+    "exitCode": 0,
+    "success": true,
+    "numTotalTestSuites": 5,
+    "numPassedTestSuites": 5,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 96,
+    "numPassedTests": 96,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "durationSeconds": 9.417
+  },
+  "fullNative": {
+    "exitCode": 0,
+    "success": true,
+    "numTotalTestSuites": 238,
+    "numPassedTestSuites": 238,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 2754,
+    "numPassedTests": 2754,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "durationSeconds": 98.73
+  },
+  "fullWithoutNativeCrc": {
+    "exitCode": 0,
+    "success": true,
+    "numTotalTestSuites": 238,
+    "numPassedTestSuites": 238,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 2754,
+    "numPassedTests": 2754,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "durationSeconds": 103.85
+  },
+  "fifoDurationMsSameHost": {
+    "baseline-no-native-crc.json": 2163,
+    "targeted-no-native-crc.json": 20
+  },
+  "workersConfig": {
+    "default": 2,
+    "explicitOverride": 3
+  },
+  "nativeCrcParity": {
+    "runtime": "v24.22.1",
+    "cases": 257,
+    "nativeCrcAvailable": true,
+    "exactParity": true
+  },
+  "rendererBuild": {
+    "exitCode": 0
+  },
+  "typecheckAll": {
+    "exitCode": 0
+  },
+  "guards": {
+    "pgv07": "41/41",
+    "pgv08": "48/48"
+  },
+  "testCountArithmetic": "2740 + 8 split validation cases + 6 CRC cases = 2754; 237 + 1 CRC suite = 238",
+  "limitations": [
+    "Host timeout failures were not reproduced here; measured baseline cases passed.",
+    "Feature absence was injected; no assertion of a complete old-Node runtime certification.",
+    "Native Windows/local user host and final Docker/Chromium image were not executed.",
+    "Production Next app builds were not rerun; changed runtime renderer was built."
+  ],
+  "commitPushPerformed": false
+}

@@ -1,0 +1,216 @@
+Summary of all failing tests
+ FAIL  scripts/pgv08cert/test_p8cert_oracles.test.ts (10.643 s)
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › 150 ppi → 5906 px/m, позиция сразу после IHDR, до IDAT
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:241:31)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › 96 ppi → 3780 px/m; 300 ppi → 11811 px/m (конверсия честна)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:253:42)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › CRC чанка честен (независимый пересчёт сертификатора)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:260:31)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › байты изображения не меняются; повторная инъекция идемпотентна
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:267:17)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › не-PNG вход → отказ без молчаливой порчи; parsePngChunks честен
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:284:47)
+
+ FAIL  apps/print-renderer/src/rendererCore.test.ts (11.159 s)
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › вставляет pHYs после IHDR с 11811 px/m для 300 ppi
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:197:17)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › сохраняет байты исходного изображения (IHDR/IDAT/IEND не менялись)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:219:17)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › заменяет существующий pHYs, а не дублирует (идемпотентность)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:231:31)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › removes a legal pHYs located after another ancillary chunk
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:239:36)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › ppi→px/m конверсия честна: 72 ppi → 2835, 600 ppi → 23622
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:252:40)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › parsePngChunks возвращает размеры IHDR (база смоука без растровых библиотек)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:263:35)
+
+ FAIL  packages/ui/hooks/useChartDetailData.test.tsx (18.243 s)
+  ● useChartDetailData › кэш ограничен: старейшие записи вытесняются (FIFO)
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      145 |   // Волна 2 plan_review_charts.md (RCH-2): глобальная инвалидация —
+      146 |   // единственная точка истины, обработчик apply «Предобработки». После
+    > 147 |   // invalidateChartDetailCache() следующее раскрытие обязано уйти в сеть,
+          |     ^
+      148 |   // а не отдать payload из модуль-глобального кэша (он переживает
+      149 |   // ремоунты, переходы между остановками и модулями).
+      150 |   it("волна 2 (RCH-2): после invalidateChartDetailCache() следующее раскрытие уходит в сеть, а не в кэш", async () => {
+
+      at packages/ui/hooks/useChartDetailData.test.tsx:147:5
+      at Object.<anonymous> (packages/ui/hooks/useChartDetailData.test.tsx:25:1)
+
+ FAIL  packages/ui/components/validation-dataset-editor-toggle.test.tsx (16.74 s)
+  ● «Редактор датасета» в заголовках Мастеров Валидации (DATASET-VIEW-EDITOR-1) › кнопка есть во всех 9 остановках-источниках флаг-колонок
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      152 |   });
+      153 |
+    > 154 |   it("кнопка есть во всех 9 остановках-источниках флаг-колонок", async () => {
+          |   ^
+      155 |     renderValidation();
+      156 |     const leftAside = screen.getByRole("heading", { name: "Data Quality", level: 2 }).closest("aside")!;
+      157 |     for (const [stopLabel, fixLabel] of NEWCOL_STOPS) {
+
+      at packages/ui/components/validation-dataset-editor-toggle.test.tsx:154:3
+      at Object.<anonymous> (packages/ui/components/validation-dataset-editor-toggle.test.tsx:119:1)
+
+
+Test Suites: 4 failed, 233 passed, 237 total
+Tests:       13 failed, 2727 passed, 2740 total

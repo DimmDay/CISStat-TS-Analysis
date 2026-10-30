@@ -27,8 +27,8 @@
 
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { crc32 } from "node:zlib";
 import { deflateSync } from "node:zlib";
+import { pngCrc32 } from "./pngCrc32";
 
 import type { PrintProfileId, UnitDeclaration, VisualPrintSnapshotV1 } from "../../../packages/ui/print/printSchema";
 import { PRINT_PROFILE_CATALOG, resolvePrintProfile } from "../../../packages/ui/print/printSchema";
@@ -422,7 +422,7 @@ function pngChunk(type: string, data: Buffer): Buffer {
   len.writeUInt32BE(data.length, 0);
   const typeBuf = Buffer.from(type, "ascii");
   const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+  crc.writeUInt32BE(pngCrc32(Buffer.concat([typeBuf, data])), 0);
   return Buffer.concat([len, typeBuf, data, crc]);
 }
 

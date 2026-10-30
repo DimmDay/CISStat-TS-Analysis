@@ -1,0 +1,6 @@
+{
+  "runtime": "v24.22.1",
+  "cases": 257,
+  "nativeCrcAvailable": true,
+  "exactParity": true
+}

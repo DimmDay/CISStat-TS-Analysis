@@ -1,4 +1,4 @@
-# PGV-08-FIX. Build context: repository root. Node 24 required for zlib.crc32.
+# PGV-08-FIX. Build context: repository root; Node 24 image pin retained.
 FROM node:24-bookworm-slim AS compiler
 WORKDIR /app
 COPY package.json package-lock.json ./

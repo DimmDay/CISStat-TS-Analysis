@@ -18,7 +18,8 @@
  * исполняются»), §543 («timeout renderer возвращает failed, а не
  * повреждённый ready файл»).
  */
-import { crc32, deflateSync } from "node:zlib";
+import { deflateSync } from "node:zlib";
+import { pngCrc32Oracle as crc32 } from "../testing/pngCrc32Oracle";
 
 import {
   buildDependencyManifest,

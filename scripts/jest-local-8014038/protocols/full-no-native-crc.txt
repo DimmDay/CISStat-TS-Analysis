@@ -1,0 +1,7 @@
+
+Test Suites: 238 passed, 238 total
+Tests:       2754 passed, 2754 total
+Snapshots:   0 total
+Time:        103.979 s
+Ran all test suites.
+Test results written to: scripts/jest-local-8014038/protocols/full-no-native-crc.json

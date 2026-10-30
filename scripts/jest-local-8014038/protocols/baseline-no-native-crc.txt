@@ -1,0 +1,185 @@
+FAIL scripts/pgv08cert/test_p8cert_oracles.test.ts
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › 150 ppi → 5906 px/m, позиция сразу после IHDR, до IDAT
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:241:31)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › 96 ppi → 3780 px/m; 300 ppi → 11811 px/m (конверсия честна)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:253:42)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › CRC чанка честен (независимый пересчёт сертификатора)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:260:31)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › байты изображения не меняются; повторная инъекция идемпотентна
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:267:17)
+
+  ● p8cert A2: pHYs-инъекция на своих ppi (AC16) › не-PNG вход → отказ без молчаливой порчи; parsePngChunks честен
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      63 |   const typeBuf = Buffer.from(type, "ascii");
+      64 |   const crc = Buffer.alloc(4);
+    > 65 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      66 |   return Buffer.concat([len, typeBuf, data, crc]);
+      67 | }
+      68 |
+
+      at chunk (scripts/pgv08cert/test_p8cert_oracles.test.ts:65:26)
+      at makePng (scripts/pgv08cert/test_p8cert_oracles.test.ts:86:5)
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:284:47)
+
+FAIL apps/print-renderer/src/rendererCore.test.ts
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › вставляет pHYs после IHDR с 11811 px/m для 300 ppi
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:197:17)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › сохраняет байты исходного изображения (IHDR/IDAT/IEND не менялись)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:219:17)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › заменяет существующий pHYs, а не дублирует (идемпотентность)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:231:31)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › removes a legal pHYs located after another ancillary chunk
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:239:36)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › ppi→px/m конверсия честна: 72 ppi → 2835, 600 ppi → 23622
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:252:40)
+
+  ● PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) › parsePngChunks возвращает размеры IHDR (база смоука без растровых библиотек)
+
+    TypeError: (0 , node_zlib_1.crc32) is not a function
+
+      41 |   const typeBuf = Buffer.from(type, "ascii");
+      42 |   const crc = Buffer.alloc(4);
+    > 43 |   crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0, 0);
+         |                          ^
+      44 |   return Buffer.concat([len, typeBuf, data, crc]);
+      45 | }
+      46 |
+
+      at chunk (apps/print-renderer/src/rendererCore.test.ts:43:26)
+      at makePng (apps/print-renderer/src/rendererCore.test.ts:64:36)
+      at Object.<anonymous> (apps/print-renderer/src/rendererCore.test.ts:263:35)
+
+
+Test Suites: 2 failed, 2 passed, 4 total
+Tests:       11 failed, 71 passed, 82 total
+Snapshots:   0 total
+Time:        11.16 s
+Ran all test suites within paths "apps/print-renderer/src/rendererCore.test.ts", "scripts/pgv08cert/test_p8cert_oracles.test.ts", "packages/ui/hooks/useChartDetailData.test.tsx", "packages/ui/components/validation-dataset-editor-toggle.test.tsx".
+Test results written to: scripts/jest-local-8014038/protocols/baseline-no-native-crc.json

@@ -22,6 +22,9 @@
 process.env.TZ = "UTC";
 
 module.exports = {
+  // Match the CI resource budget for plain `npx jest` on local machines too.
+  // Callers can explicitly override this with --maxWorkers / --runInBand.
+  maxWorkers: 2,
   testEnvironment: "jsdom",
   transform: {
     "^.+\\.tsx?$": [

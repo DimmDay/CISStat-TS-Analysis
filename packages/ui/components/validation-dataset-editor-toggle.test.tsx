@@ -151,18 +151,14 @@ describe("«Редактор датасета» в заголовках Маст
     );
   });
 
-  it("кнопка есть во всех 9 остановках-источниках флаг-колонок", async () => {
+  it.each(NEWCOL_STOPS)("кнопка есть в остановке %s (мастер «%s»)", async (stopLabel, fixLabel) => {
     renderValidation();
+    // Hydrate the initial check before selecting this independent stop.
+    await screen.findByRole("button", { name: "Исправить форматы и шаблоны" });
     const leftAside = screen.getByRole("heading", { name: "Data Quality", level: 2 }).closest("aside")!;
-    for (const [stopLabel, fixLabel] of NEWCOL_STOPS) {
-      fireEvent.click(within(leftAside).getByRole("button", { name: stopLabel }));
-      try {
-        fireEvent.click(await screen.findByRole("button", { name: fixLabel }));
-        expect(await screen.findByRole("button", { name: "Редактор датасета" })).toBeInTheDocument();
-      } catch {
-        throw new Error(`остановка «${stopLabel}»: кнопка «Редактор датасета» не найдена (мастер «${fixLabel}»?)`);
-      }
-    }
+    fireEvent.click(within(leftAside).getByRole("button", { name: stopLabel }));
+    fireEvent.click(await screen.findByRole("button", { name: fixLabel }));
+    expect(await screen.findByRole("button", { name: "Редактор датасета" })).toBeInTheDocument();
   });
 
   it("у «Типов данных» кнопки НЕТ (байт-инвариант остановки без новых колонок)", async () => {
