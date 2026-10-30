@@ -1,0 +1,21 @@
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 25.955s
+
+OK

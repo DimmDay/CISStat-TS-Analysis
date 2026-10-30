@@ -1,0 +1,110 @@
+{
+  "base": "962ccda96c15aed5d1a6661364d8c50d8a301cbe",
+  "date": "2026-10-30",
+  "scope": "AUTH-00: source route/operation inventory and threat model, no runtime AuthN enforcement",
+  "entries": 531,
+  "counts": {
+    "api": 217,
+    "framework": 8,
+    "internal_operation": 3,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 27,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 6,
+    "task_alias": 4,
+    "transport": 2,
+    "worker": 6
+  },
+  "policies": 21,
+  "reviewedSourceFiles": 181,
+  "threats": 20,
+  "tests": {
+    "command": "python3 -m unittest discover -s tests/unit -p test_auth00_inventory.py -v",
+    "passed": 26,
+    "failed": 0,
+    "exitCode": 0,
+    "seconds": 28.575
+  },
+  "redProtocols": {
+    "red.txt": "missing collector",
+    "collector-red.txt": "BOM/trailing slash + missing review/snapshot",
+    "crlf-red.txt": "1 error: newline-only source drift",
+    "review-integrity-red.txt": "3 failures: overwrite source path / invent manual HTTP / unknown threat",
+    "framework-red.txt": "1 failure: disabled docs must remove OAuth redirect",
+    "functional-red.txt": "1 failure: functional registration cannot be skipped",
+    "binding-threat-red.txt": "1 failure: entry threat reference",
+    "topology-red.txt": "2 failures: new Python/Node service root",
+    "methods-red.txt": "1 failure: string methods cannot become character methods",
+    "job-classification-red.txt": "1 failure: generic job name is tuning by contract"
+  },
+  "checks": {
+    "inventory": {
+      "exitCode": 0
+    },
+    "pythonCompile": {
+      "exitCode": 0
+    },
+    "workflowYaml": {
+      "exitCode": 0
+    },
+    "npmCi": {
+      "exitCode": 0
+    },
+    "rendererBuild": {
+      "exitCode": 0
+    },
+    "typecheckAll": {
+      "exitCode": 0
+    },
+    "gitDiffCheck": {
+      "exitCode": 0
+    }
+  },
+  "independentRouteCount": {
+    "decoratorDeclarations": 215,
+    "dbFactoryDeclarations": 2,
+    "dbFactoryCalls": 2,
+    "expandedApplicationMethods": 217,
+    "perFile": {
+      "apps/api/main.py": 2,
+      "apps/api/knowledge/router.py": 3,
+      "apps/api/routers/upload_db.py": 2,
+      "apps/api/routers/diagnostics_internal.py": 1,
+      "apps/api/routers/tasks_session.py": 1,
+      "apps/api/routers/models.py": 4,
+      "apps/api/routers/documentation.py": 18,
+      "apps/api/routers/diagnostics.py": 1,
+      "apps/api/routers/internal.py": 9,
+      "apps/api/routers/public.py": 7,
+      "apps/api/routers/logs.py": 8,
+      "apps/api/routers/session.py": 92,
+      "apps/api/routers/progress.py": 17,
+      "apps/api/routers/doc_profiles.py": 5,
+      "apps/api/routers/forecasting_session.py": 8,
+      "apps/api/routers/modeling_session.py": 30,
+      "apps/api/routers/monitoring.py": 7
+    },
+    "limitation": "Independent arithmetic cross-check for this baseline, not a live ASGI app import."
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "productionChanges": false,
+  "remoteCiExecuted": false,
+  "nativeWindowsExecuted": false,
+  "limitations": [
+    "Static source discovery/review, not a pentest or AuthN safety certificate.",
+    "FastAPI/scientific dependency stack unavailable; no live ASGI import/serving or PostgreSQL/Redis/browser/SSO tests.",
+    "Framework defaults inferred explicitly; Streamlit-managed transport grouped rather than invented version-specific paths.",
+    "Existing full scientific pytest/Jest were not rerun; new stdlib inventory tests and compilation/build/typecheck were run.",
+    "New runtime enforcement, sessions/MFA, Account/grant/budget and payments remain future AUTH tasks."
+  ],
+  "preAuthLegacyFormEntries": [
+    "legacy:app.py:353:text_input",
+    "legacy:app.py:354:button"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "baseline": "962ccda96c15aed5d1a6661364d8c50d8a301cbe",
+  "scan": "Source text scan under apps and packages, excluding tests/node_modules/dist/.next",
+  "useServerDirectivesFound": 0,
+  "explicitWebSocketOrEventSourceClientsFound": 0,
+  "limitation": "Negative baseline sanity check, not generic framework runtime discovery."
+}

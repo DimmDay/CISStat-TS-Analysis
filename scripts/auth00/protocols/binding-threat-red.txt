@@ -1,0 +1,15 @@
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... FAIL
+
+======================================================================
+FAIL: test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 94, in test_binding_threat_reference_must_exist
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.008s
+
+FAILED (failures=1)

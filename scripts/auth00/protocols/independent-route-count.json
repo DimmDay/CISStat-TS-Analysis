@@ -1,0 +1,26 @@
+{
+  "decoratorDeclarations": 215,
+  "dbFactoryDeclarations": 2,
+  "dbFactoryCalls": 2,
+  "expandedApplicationMethods": 217,
+  "perFile": {
+    "apps/api/main.py": 2,
+    "apps/api/knowledge/router.py": 3,
+    "apps/api/routers/upload_db.py": 2,
+    "apps/api/routers/diagnostics_internal.py": 1,
+    "apps/api/routers/tasks_session.py": 1,
+    "apps/api/routers/models.py": 4,
+    "apps/api/routers/documentation.py": 18,
+    "apps/api/routers/diagnostics.py": 1,
+    "apps/api/routers/internal.py": 9,
+    "apps/api/routers/public.py": 7,
+    "apps/api/routers/logs.py": 8,
+    "apps/api/routers/session.py": 92,
+    "apps/api/routers/progress.py": 17,
+    "apps/api/routers/doc_profiles.py": 5,
+    "apps/api/routers/forecasting_session.py": 8,
+    "apps/api/routers/modeling_session.py": 30,
+    "apps/api/routers/monitoring.py": 7
+  },
+  "limitation": "Independent arithmetic cross-check for this baseline, not a live ASGI app import."
+}

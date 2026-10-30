@@ -1,0 +1,15 @@
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... FAIL
+
+======================================================================
+FAIL: test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 211, in test_invalid_methods_cannot_be_split_into_characters
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (failures=1)

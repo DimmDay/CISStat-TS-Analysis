@@ -1,0 +1,149 @@
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ERROR
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ERROR
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ERROR
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ERROR
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ERROR
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ERROR
+
+======================================================================
+ERROR: test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 110, in test_named_bypass_surfaces_are_present
+    report = self.mod.build(ROOT)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 273, in build
+    raw = discovery(root)
+          ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 240, in discovery
+    for n in ast.walk(tree(root, 'app.py')):
+                      ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 24, in tree
+    return ast.parse((root / path).read_text(encoding='utf-8'), filename=str(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "app.py", line 1
+    ﻿import streamlit as st
+    ^
+SyntaxError: invalid non-printable character U+FEFF
+
+======================================================================
+ERROR: test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 95, in test_new_route_cannot_inherit_a_generic_allow_classification
+    report = self.mod.build(ROOT)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 273, in build
+    raw = discovery(root)
+          ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 240, in discovery
+    for n in ast.walk(tree(root, 'app.py')):
+                      ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 24, in tree
+    return ast.parse((root / path).read_text(encoding='utf-8'), filename=str(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "app.py", line 1
+    ﻿import streamlit as st
+    ^
+SyntaxError: invalid non-printable character U+FEFF
+
+======================================================================
+ERROR: test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 102, in test_policy_drift_and_unclassified_entry_are_rejected
+    report = self.mod.build(ROOT)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 273, in build
+    raw = discovery(root)
+          ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 240, in discovery
+    for n in ast.walk(tree(root, 'app.py')):
+                      ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 24, in tree
+    return ast.parse((root / path).read_text(encoding='utf-8'), filename=str(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "app.py", line 1
+    ﻿import streamlit as st
+    ^
+SyntaxError: invalid non-printable character U+FEFF
+
+======================================================================
+ERROR: test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 86, in test_repository_snapshot_and_all_entries_classified
+    report = self.mod.build(ROOT)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 273, in build
+    raw = discovery(root)
+          ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 240, in discovery
+    for n in ast.walk(tree(root, 'app.py')):
+                      ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 24, in tree
+    return ast.parse((root / path).read_text(encoding='utf-8'), filename=str(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "app.py", line 1
+    ﻿import streamlit as st
+    ^
+SyntaxError: invalid non-printable character U+FEFF
+
+======================================================================
+ERROR: test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 60, in test_trailing_slash_is_a_distinct_route
+    routes = self.mod.api_routes(self.root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 205, in api_routes
+    return unique(output)
+           ^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 67, in unique
+    raise ValueError(f'Duplicate entry points: {duplicates}')
+ValueError: Duplicate entry points: ['api:GET:/v1/a/x']
+
+======================================================================
+ERROR: test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 68, in test_utf8_bom_is_supported
+    self.assertTrue(any(r['path'] == '/v1/a/x' for r in self.mod.api_routes(self.root)))
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 80, in api_routes
+    t = tree(root, rel)
+        ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/scripts/auth00/inventory.py", line 24, in tree
+    return ast.parse((root / path).read_text(encoding='utf-8'), filename=str(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "apps/api/routers/demo.py", line 1
+    ﻿from fastapi import APIRouter, Depends
+    ^
+SyntaxError: invalid non-printable character U+FEFF
+
+----------------------------------------------------------------------
+Ran 13 tests in 3.615s
+
+FAILED (errors=6)

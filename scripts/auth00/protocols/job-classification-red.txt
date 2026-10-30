@@ -1,0 +1,14 @@
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... FAIL
+
+======================================================================
+FAIL: test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 218, in test_generic_model_jobs_are_classified_as_tuning
+    self.assertTrue(by_id[key]['canonical_operation'].startswith('modeling.tune.'), key)
+AssertionError: False is not true : api:POST:/v1/session/modeling/jobs/start
+
+----------------------------------------------------------------------
+Ran 1 test in 3.898s
+
+FAILED (failures=1)

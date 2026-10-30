@@ -1,0 +1,15 @@
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... FAIL
+
+======================================================================
+FAIL: test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 182, in test_disabled_docs_do_not_invent_framework_routes
+    self.assertEqual(paths, {'/openapi.json', '/redoc'})
+AssertionError: Items in the first set but not the second:
+'/docs/oauth2-redirect'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+FAILED (failures=1)

@@ -1,0 +1,104 @@
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... FAIL
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... FAIL
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... FAIL
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... FAIL
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... FAIL
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... FAIL
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... FAIL
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... FAIL
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... FAIL
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... FAIL
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... FAIL
+
+======================================================================
+FAIL: test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+======================================================================
+FAIL: test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 14, in setUp
+    self.assertTrue(MODULE.is_file(), "AUTH-00 inventory collector is missing")
+AssertionError: False is not true : AUTH-00 inventory collector is missing
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.001s
+
+FAILED (failures=11)

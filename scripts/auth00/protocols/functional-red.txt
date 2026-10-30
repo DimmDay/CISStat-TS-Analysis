@@ -1,0 +1,15 @@
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... FAIL
+
+======================================================================
+FAIL: test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth00/tests/unit/test_auth00_inventory.py", line 88, in test_functional_route_registration_is_not_silently_skipped
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+FAILED (failures=1)
