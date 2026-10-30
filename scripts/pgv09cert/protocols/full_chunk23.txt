@@ -1,0 +1,865 @@
+============================= test session starts ==============================
+collected 1503 items
+
+tests/api/test_distribution.py ..........                                [  0%]
+tests/api/test_docker_image_layout.py ....                               [  0%]
+tests/api/test_doclog0_identity.py ..................................... [  3%]
+.....                                                                    [  3%]
+tests/api/test_doclog1_artifacts.py .................................... [  6%]
+.......................                                                  [  7%]
+tests/api/test_doclog2_snapshots.py .................................... [ 10%]
+......................................                                   [ 12%]
+tests/api/test_doclog3_telemetry_audit.py .............................. [ 14%]
+..................................................................       [ 18%]
+tests/api/test_doclog4_document_delivery.py ............................ [ 20%]
+......................                                                   [ 22%]
+tests/api/test_doclog5_formats_worker.py ............................... [ 24%]
+..............................                                           [ 26%]
+tests/api/test_doclog6_approvals_archive.py ............................ [ 28%]
+.....................                                                    [ 29%]
+tests/api/test_doclog7_logs_support.py ................................. [ 31%]
+.....                                                                    [ 32%]
+tests/api/test_doclog8_monitoring.py ................................... [ 34%]
+............................                                             [ 36%]
+tests/api/test_doclog9_profiles.py ....F................................ [ 38%]
+................                                                         [ 39%]
+tests/api/test_doclog_pdf_font_deploy.py ....                            [ 40%]
+tests/api/test_doclog_pdf_full_upload_e2e.py ..                          [ 40%]
+tests/api/test_doclog_pdf_render_env_classification.py ...               [ 40%]
+tests/api/test_doclog_pdf_render_env_deploy.py ............              [ 41%]
+tests/api/test_doclog_recheck_fix.py ..................                  [ 42%]
+tests/api/test_egarch_session.py FFFF                                    [ 42%]
+tests/api/test_feature_regressors_api.py .......F...                     [ 43%]
+tests/api/test_forecasting_session.py .....FFFF.FFFFFFFFFFFF             [ 44%]
+tests/api/test_garch_session.py FFFF.                                    [ 45%]
+tests/api/test_h29_documents_durable.py .............                    [ 46%]
+tests/api/test_internal_backtest.py ............                         [ 46%]
+tests/api/test_internal_candidates.py .......                            [ 47%]
+tests/api/test_knowledge_api.py ........................................ [ 50%]
+.                                                                        [ 50%]
+tests/api/test_mentor_rules.py ......................................... [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 62%]
+................                                                         [ 63%]
+tests/api/test_missing_manual_editor.py ..............                   [ 64%]
+tests/api/test_modeling_comparison_spec.py ..                            [ 64%]
+tests/api/test_modeling_diagnostics_spec.py .....                        [ 64%]
+tests/api/test_modeling_selection_spec.py ..                             [ 65%]
+tests/api/test_modeling_workflow.py ...F..FF............................ [ 67%]
+....F.....                                                               [ 68%]
+tests/api/test_models_backtest_neural_capacity.py F.                     [ 68%]
+tests/api/test_models_backtest_real.py ...............F.....F.           [ 69%]
+tests/api/test_models_candidates.py ...........................F........ [ 72%]
+..                                                                       [ 72%]
+tests/api/test_node_status_engine.py ................................... [ 74%]
+.................................                                        [ 76%]
+tests/api/test_outlier_manual_editor.py .................                [ 77%]
+tests/api/test_p9cert_oracles.py ..............                          [ 78%]
+tests/api/test_panel_contract.py .............                           [ 79%]
+tests/api/test_panel_execution.py ..............................         [ 81%]
+tests/api/test_panel_transforms.py ................                      [ 82%]
+tests/api/test_param_space.py ..............                             [ 83%]
+tests/api/test_passport_session_state.py ............                    [ 84%]
+tests/api/test_pgv01_print_schema.py ................................... [ 86%]
+                                                                         [ 86%]
+tests/api/test_pgv02_durable_inputs.py ................................. [ 89%]
+....................................                                     [ 91%]
+tests/api/test_pgv03_producer_adapters.py .............................. [ 93%]
+.........................................                                [ 96%]
+tests/api/test_pgv04_cert_findings.py ........                           [ 96%]
+tests/api/test_pgv04_cert_oracles.py ......................              [ 98%]
+tests/api/test_pgv04_passport_checkpoints.py ..........................  [ 99%]
+tests/api/test_pgv05_cert_findings.py F.                                 [100%]
+
+=================================== FAILURES ===================================
+______ TestProfileFormatCatalog.test_pdfa_render_markers_and_determinism _______
+tests/api/test_doclog9_profiles.py:353: in test_pdfa_render_markers_and_determinism
+    assert first == second
+E   AssertionError: assert b'%PDF-1.4\n%...9272\n%%EOF\n' == b'%PDF-1.4\n%...9272\n%%EOF\n'
+E     
+E     At index 27282 diff: b'.' != b'/'
+E     Use -v to get more diff
+____________ test_egarch_backtest_requires_explicit_returns_method _____________
+tests/api/test_egarch_session.py:80: in test_egarch_backtest_requires_explicit_returns_method
+    _prepare(client)
+tests/api/test_egarch_session.py:74: in _prepare
+    assert "egarch" in body["runnable_shortlist"]
+E   AssertionError: assert 'egarch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-DEA3D636 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-DEA3D636 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_________________ test_egarch_runs_volatility_session_backtest _________________
+tests/api/test_egarch_session.py:93: in test_egarch_runs_volatility_session_backtest
+    _prepare(client)
+tests/api/test_egarch_session.py:74: in _prepare
+    assert "egarch" in body["runnable_shortlist"]
+E   AssertionError: assert 'egarch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-20C1EB43 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-20C1EB43 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+__________________ test_egarch_tuning_executes_grid_on_qlike ___________________
+tests/api/test_egarch_session.py:145: in test_egarch_tuning_executes_grid_on_qlike
+    _prepare(client)
+tests/api/test_egarch_session.py:74: in _prepare
+    assert "egarch" in body["runnable_shortlist"]
+E   AssertionError: assert 'egarch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-E8D00686 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-E8D00686 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+______________ test_egarch_level_metric_tuning_mape_fails_honest _______________
+tests/api/test_egarch_session.py:172: in test_egarch_level_metric_tuning_mape_fails_honest
+    _prepare(client)
+tests/api/test_egarch_session.py:74: in _prepare
+    assert "egarch" in body["runnable_shortlist"]
+E   AssertionError: assert 'egarch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-D0C96E50 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-D0C96E50 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestRegressorSessionE2E.test_declared_regressor_enters_cohort_and_prophet_receives_it _
+tests/api/test_feature_regressors_api.py:196: in test_declared_regressor_enters_cohort_and_prophet_receives_it
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-CE9E23E7 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+________________ test_forecast_naive_full_run_shape_and_storage ________________
+tests/api/test_forecasting_session.py:195: in test_forecast_naive_full_run_shape_and_storage
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Параметрическая симуляция требует statsmodels>=0.15.0 (API simulate(rng=...)), установлена 0.14.5: HoltWintersResults.simulate() got an unexpected keyword argument 'rng'. Поднимите пол зависимости в requirements.txt"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9615F18F operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9615F18F operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9615F18F operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+___________ test_forecast_horizon_defaults_to_card_training_horizon ____________
+tests/api/test_forecasting_session.py:237: in test_forecast_horizon_defaults_to_card_training_horizon
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Параметрическая симуляция требует statsmodels>=0.15.0 (API simulate(rng=...)), установлена 0.14.5: HoltWintersResults.simulate() got an unexpected keyword argument 'rng'. Поднимите пол зависимости в requirements.txt"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9A12E1DF operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9A12E1DF operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9A12E1DF operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+______________ test_forecast_custom_horizon_and_alpha_are_honored ______________
+tests/api/test_forecasting_session.py:249: in test_forecast_custom_horizon_and_alpha_are_honored
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Параметрическая симуляция требует statsmodels>=0.15.0 (API simulate(rng=...)), установлена 0.14.5: HoltWintersResults.simulate() got an unexpected keyword argument 'rng'. Поднимите пол зависимости в requirements.txt"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AC16DA41 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AC16DA41 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AC16DA41 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+___________ test_forecast_ets_runs_parametric_simulation_end_to_end ____________
+tests/api/test_forecasting_session.py:266: in test_forecast_ets_runs_parametric_simulation_end_to_end
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Параметрическая симуляция требует statsmodels>=0.15.0 (API simulate(rng=...)), установлена 0.14.5: HoltWintersResults.simulate() got an unexpected keyword argument 'rng'. Поднимите пол зависимости в requirements.txt"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-11397608 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-11397608 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-11397608 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+____________________ test_forecast_history_returns_all_runs ____________________
+tests/api/test_forecasting_session.py:295: in test_forecast_history_returns_all_runs
+    assert first.status_code == 200
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B9608E89 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B9608E89 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B9608E89 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+___________________________ test_forecast_get_by_id ____________________________
+tests/api/test_forecasting_session.py:319: in test_forecast_get_by_id
+    response = client.get(f"/v1/session/modeling/forecast/{created['forecast_id']}")
+                                                           ^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4193FB57 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4193FB57 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4193FB57 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+________ test_forecast_export_csv_contains_history_and_forecast_columns ________
+tests/api/test_forecasting_session.py:338: in test_forecast_export_csv_contains_history_and_forecast_columns
+    response = client.get(f"/v1/session/modeling/forecast/{run['forecast_id']}/export.csv")
+                                                           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-62DDB679 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-62DDB679 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-62DDB679 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+__________ test_forecast_export_json_is_self_contained_and_logs_event __________
+tests/api/test_forecasting_session.py:367: in test_forecast_export_json_is_self_contained_and_logs_event
+    response = client.get(f"/v1/session/modeling/forecast/{run['forecast_id']}/export.json")
+                                                           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-149D6C63 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-149D6C63 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-149D6C63 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+________ test_forecast_png_export_event_is_recorded_via_trace_endpoint _________
+tests/api/test_forecasting_session.py:392: in test_forecast_png_export_event_is_recorded_via_trace_endpoint
+    f"/v1/session/modeling/forecast/{run['forecast_id']}/trace",
+                                     ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9943CA83 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9943CA83 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9943CA83 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+_________ test_forecast_compare_returns_referenced_runs_and_logs_event _________
+tests/api/test_forecasting_session.py:421: in test_forecast_compare_returns_referenced_runs_and_logs_event
+    json={"forecast_ids": [first["forecast_id"], second["forecast_id"]]},
+                           ^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-63B8EB82 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-63B8EB82 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-63B8EB82 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+________ test_forecast_compare_requires_two_distinct_existing_forecasts ________
+tests/api/test_forecasting_session.py:450: in test_forecast_compare_requires_two_distinct_existing_forecasts
+    json={"forecast_ids": [single["forecast_id"], single["forecast_id"]]},
+                           ^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4069FD33 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4069FD33 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4069FD33 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+____________ test_forecast_sensitivity_fan_uses_param_space_corners ____________
+tests/api/test_forecasting_session.py:470: in test_forecast_sensitivity_fan_uses_param_space_corners
+    model_id = run["model_id"]
+               ^^^^^^^^^^^^^^^
+E   KeyError: 'model_id'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-630B46D2 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-630B46D2 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-630B46D2 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+________ test_forecast_sensitivity_fan_covers_exact_param_space_corners ________
+tests/api/test_forecasting_session.py:504: in test_forecast_sensitivity_fan_covers_exact_param_space_corners
+    model_id = run["model_id"]
+               ^^^^^^^^^^^^^^^
+E   KeyError: 'model_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8F6260B5 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8F6260B5 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8F6260B5 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+_____________ test_forecast_sensitivity_rejects_empty_param_space ______________
+tests/api/test_forecasting_session.py:556: in test_forecast_sensitivity_rejects_empty_param_space
+    session.modeling_artifacts["forecasts"][run["forecast_id"]]["model_id"] = "naive"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecasts'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-40E925A4 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-40E925A4 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-40E925A4 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+___________ test_forecasts_are_invalidated_together_with_model_cards ___________
+tests/api/test_forecasting_session.py:576: in test_forecasts_are_invalidated_together_with_model_cards
+    assert run["forecast_id"]
+           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AF345681 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AF345681 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AF345681 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+_________________ test_forecast_run_survives_session_roundtrip _________________
+tests/api/test_forecasting_session.py:611: in test_forecast_run_survives_session_roundtrip
+    assert run["forecast_id"] in restored.modeling_artifacts.get("forecasts", {})
+           ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'forecast_id'
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B6145381 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B6145381 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B6145381 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+_____________ test_garch_backtest_requires_explicit_returns_method _____________
+tests/api/test_garch_session.py:83: in test_garch_backtest_requires_explicit_returns_method
+    _prepare(client)
+tests/api/test_garch_session.py:75: in _prepare
+    assert "garch" in body["runnable_shortlist"]
+E   AssertionError: assert 'garch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-1F3B166D action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-1F3B166D operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_________________ test_garch_runs_volatility_session_backtest __________________
+tests/api/test_garch_session.py:96: in test_garch_runs_volatility_session_backtest
+    _prepare(client)
+tests/api/test_garch_session.py:75: in _prepare
+    assert "garch" in body["runnable_shortlist"]
+E   AssertionError: assert 'garch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-85F832FB action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-85F832FB operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+___________________ test_garch_tuning_executes_grid_on_qlike ___________________
+tests/api/test_garch_session.py:148: in test_garch_tuning_executes_grid_on_qlike
+    _prepare(client)
+tests/api/test_garch_session.py:75: in _prepare
+    assert "garch" in body["runnable_shortlist"]
+E   AssertionError: assert 'garch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-3B9302E7 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-3B9302E7 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_______________ test_garch_level_metric_tuning_mape_fails_honest _______________
+tests/api/test_garch_session.py:175: in test_garch_level_metric_tuning_mape_fails_honest
+    _prepare(client)
+tests/api/test_garch_session.py:75: in _prepare
+    assert "garch" in body["runnable_shortlist"]
+E   AssertionError: assert 'garch' in ['naive', 'drift', 'mean', 'ets', 'ets_damped', 'theta', ...]
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.identity:identity.py:407 Run access: DENY run=RUN-A4F687DF action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-A4F687DF operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+___ test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics ____
+tests/api/test_modeling_workflow.py:151: in test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+    assert "заблокирована матрицей применимости" in response.json()["detail"]
+E   assert 'заблокирована матрицей применимости' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие structure_confirmed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-2E74ABC5 operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-2d890b14-bd64-4bd1-b903-62cc62c8e5cf error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+__ test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates __
+tests/api/test_modeling_workflow.py:203: in test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие structure_confirmed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-102D06CA operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-d45a9e68-d872-457e-bb3a-728131da1fe9 error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+__ test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff ___
+tests/api/test_modeling_workflow.py:240: in test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'tbats' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие structure_confirmed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-EF3D7EFC operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-b9686e7a-e06a-43a1-aa96-84a0926eff7e error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие candidates_generated не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+_________ test_feature_plan_enters_session_cohort_and_gates_regressors _________
+tests/api/test_modeling_workflow.py:1593: in test_feature_plan_enters_session_cohort_and_gates_regressors
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие structure_confirmed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_passport:start producer_key=passport:start error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-7ac0d528-b6d8-434a-a2de-2794c0d8ae6f error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие passport_captured не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=promote_oof_backtest producer_key=oof_backtest:naive error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-16972DA7 operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие backtest_run не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+______ test_backtest_lstm_503_with_honest_message_on_insufficient_memory _______
+tests/api/test_models_backtest_neural_capacity.py:73: in test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+    assert "512 MB" in detail and "1024 MB" in detail
+E   assert ('512 MB' in "Реестр готовности моделей расходится с production backtest dispatch (missing=[], unexpected=['lstm']); исполнение заблокировано (fail-closed, AUDIT-6C)")
+_________ TestRealModelsHandleEdgeCases.test_short_series_does_not_500 _________
+tests/api/test_models_backtest_real.py:373: in test_short_series_does_not_500
+    assert resp.status_code == 200, (
+E   AssertionError: prophet on short series: expected 200, got 422 ({"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"})
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-254F4594 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-254F4594 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+___ TestBacktestImplementationsRegistry.test_registry_has_23_implementations ___
+tests/api/test_models_backtest_real.py:487: in test_registry_has_23_implementations
+    assert set(impls.keys()) == expected, (
+E   AssertionError: Expected 23 implementations: {'random_forest', 'vecm', 'catboost', 'tbats', 'arima', 'xgboost', 'prophet', 'seasonal_naive', 'naive', 'arima_auto', 'lightgbm', 'var', 'panel_var', 'panel_re', 'drift', 'ets', 'egarch', 'panel_gmm', 'ets_damped', 'theta', 'panel_fe', 'garch', 'mean'}, got: {'seasonal_naive', 'naive', 'lightgbm', 'panel_var', 'panel_gmm', 'panel_fe', 'random_forest', 'vecm', 'catboost', 'arima', 'xgboost', 'arima_auto', 'var', 'panel_re', 'drift', 'ets', 'ets_damped', 'theta', 'mean'}
+E   assert {'arima', 'ar..._damped', ...} == {'arima', 'ar...', 'ets', ...}
+E     
+E     Extra items in the right set:
+E     'garch'
+E     'egarch'
+E     'tbats'
+E     'prophet'
+E     Use -v to get more diff
+____ TestBacktestNaive.test_unsupported_model_never_returns_penalty_metrics ____
+tests/api/test_models_candidates.py:461: in test_unsupported_model_never_returns_penalty_metrics
+    assert "панель" in response.json()["detail"]
+E   assert 'панель' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+_ TestFP5C1SmokeDocstring.test_b1_smoke_docstring_does_not_understate_group_count _
+tests/api/test_pgv05_cert_findings.py:27: in test_b1_smoke_docstring_does_not_understate_group_count
+    assert "13 метрик" not in source, (
+E   AssertionError: F-P5C1: докстринг smoke-скрипта заявляет «13 метрик», фактический паспорт платформы несёт 15 групп (собственный вывод скрипта печатает groups=15) -- документная честность
+E   assert '13 метрик' not in '"""PGV-05 s...it(main())\n'
+E     
+E     '13 метрик' is contained here:
+E       паспорта (13 метрик),
+E       content_status=present, schema/calculation version = legacy_unknown.
+E       """
+E       from __future__ import annotations
+E       ...
+E     
+E     ...Full output truncated (119 lines hidden), use '-vv' to show
+=============================== warnings summary ===============================
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+tests/api/test_doclog1_artifacts.py::TestCheckpointRoutePinIntegration::test_route_prune_respects_pins
+  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_doclog_pdf_full_upload_e2e.py::TestFullUploadStageToPdf::test_upload_stage_plan_document_pdf_ready
+  /home/z/my-project/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 211 warnings
+tests/api/test_modeling_workflow.py: 189 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:730: RuntimeWarning: invalid value encountered in log
+    tmp = np.log(iota - a)[i:]
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 211 warnings
+tests/api/test_modeling_workflow.py: 189 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:732: RuntimeWarning: invalid value encountered in log
+    lr2[i] = -t * np.log(1 - a[i])
+
+tests/api/test_forecasting_session.py: 84 warnings
+tests/api/test_modeling_workflow.py: 45 warnings
+  /home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In future, it will be an error for 'np.bool' scalars to be interpreted as an index
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/api/test_modeling_workflow.py: 1 warning
+tests/api/test_models_backtest_real.py: 9 warnings
+tests/api/test_models_candidates.py: 1 warning
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:978: UserWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    warn('Non-invertible starting MA parameters found.'
+
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:966: UserWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    warn('Non-stationary starting autoregressive parameters'
+
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_constant_series_does_not_500
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/base/model.py:607: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    warnings.warn("Maximum Likelihood optimization failed to "
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog9_profiles.py::TestProfileFormatCatalog::test_pdfa_render_markers_and_determinism
+FAILED tests/api/test_egarch_session.py::test_egarch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_egarch_session.py::test_egarch_runs_volatility_session_backtest
+FAILED tests/api/test_egarch_session.py::test_egarch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_egarch_session.py::test_egarch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_feature_regressors_api.py::TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it
+FAILED tests/api/test_forecasting_session.py::test_forecast_naive_full_run_shape_and_storage
+FAILED tests/api/test_forecasting_session.py::test_forecast_horizon_defaults_to_card_training_horizon
+FAILED tests/api/test_forecasting_session.py::test_forecast_custom_horizon_and_alpha_are_honored
+FAILED tests/api/test_forecasting_session.py::test_forecast_ets_runs_parametric_simulation_end_to_end
+FAILED tests/api/test_forecasting_session.py::test_forecast_history_returns_all_runs
+FAILED tests/api/test_forecasting_session.py::test_forecast_get_by_id - KeyEr...
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_csv_contains_history_and_forecast_columns
+FAILED tests/api/test_forecasting_session.py::test_forecast_export_json_is_self_contained_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_png_export_event_is_recorded_via_trace_endpoint
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_returns_referenced_runs_and_logs_event
+FAILED tests/api/test_forecasting_session.py::test_forecast_compare_requires_two_distinct_existing_forecasts
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_uses_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_fan_covers_exact_param_space_corners
+FAILED tests/api/test_forecasting_session.py::test_forecast_sensitivity_rejects_empty_param_space
+FAILED tests/api/test_forecasting_session.py::test_forecasts_are_invalidated_together_with_model_cards
+FAILED tests/api/test_forecasting_session.py::test_forecast_run_survives_session_roundtrip
+FAILED tests/api/test_garch_session.py::test_garch_backtest_requires_explicit_returns_method
+FAILED tests/api/test_garch_session.py::test_garch_runs_volatility_session_backtest
+FAILED tests/api/test_garch_session.py::test_garch_tuning_executes_grid_on_qlike
+FAILED tests/api/test_garch_session.py::test_garch_level_metric_tuning_mape_fails_honest
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_modeling_workflow.py::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+FAILED tests/api/test_modeling_workflow.py::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+FAILED tests/api/test_modeling_workflow.py::test_feature_plan_enters_session_cohort_and_gates_regressors
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+FAILED tests/api/test_models_backtest_real.py::TestBacktestImplementationsRegistry::test_registry_has_23_implementations
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+========== 35 failed, 1468 passed, 965 warnings in 134.28s (0:02:14) ===========

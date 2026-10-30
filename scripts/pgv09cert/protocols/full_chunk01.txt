@@ -1,0 +1,296 @@
+============================= test session starts ==============================
+collected 387 items
+
+tests/api/test_admin_analytics.py ............................           [  7%]
+tests/api/test_admin_logs_audit_reasons.py .....                         [  8%]
+tests/api/test_admin_progress_api.py .......................             [ 14%]
+tests/api/test_cv.py ...................................                 [ 23%]
+tests/api/test_dataset_consistency_correction.py ....                    [ 24%]
+tests/api/test_dataset_derived_columns.py ..........                     [ 27%]
+tests/api/test_dataset_derived_columns_delete.py .................       [ 31%]
+tests/api/test_dataset_eda_correlation.py ....                           [ 32%]
+tests/api/test_dataset_eda_descriptive.py ....                           [ 33%]
+tests/api/test_dataset_eda_distribution.py ...                           [ 34%]
+tests/api/test_dataset_eda_feature_selection.py ..                       [ 34%]
+tests/api/test_dataset_eda_model_matrix.py ..                            [ 35%]
+tests/api/test_dataset_eda_seasonality.py ....                           [ 36%]
+tests/api/test_dataset_eda_stationarity.py F...                          [ 37%]
+tests/api/test_dataset_eda_structural_breaks.py F.                       [ 37%]
+tests/api/test_dataset_eda_validation_strategy.py ..                     [ 38%]
+tests/api/test_dataset_format_correction.py ...                          [ 39%]
+tests/api/test_dataset_inclusion_correction.py ....                      [ 40%]
+tests/api/test_dataset_missing_correction.py .................           [ 44%]
+tests/api/test_dataset_outlier_correction.py ........................    [ 50%]
+tests/api/test_dataset_passport.py ............................          [ 58%]
+tests/api/test_dataset_preprocessing_decomposition.py ....               [ 59%]
+tests/api/test_dataset_preprocessing_feature_engineering.py ...          [ 59%]
+tests/api/test_dataset_preprocessing_regularity.py .........             [ 62%]
+tests/api/test_dataset_preprocessing_scaling.py ...                      [ 63%]
+tests/api/test_dataset_preprocessing_smoothing.py .....                  [ 64%]
+tests/api/test_dataset_preprocessing_spectral.py ...                     [ 65%]
+tests/api/test_dataset_preprocessing_stationarity.py .....               [ 66%]
+tests/api/test_dataset_preprocessing_variance.py ....                    [ 67%]
+tests/api/test_dataset_profile_detail_level.py FF........                [ 70%]
+tests/api/test_dataset_range_correction.py ....                          [ 71%]
+tests/api/test_dataset_referential_correction.py ...                     [ 71%]
+tests/api/test_dataset_regularity_correction.py ...                      [ 72%]
+tests/api/test_dataset_rows.py ...........                               [ 75%]
+tests/api/test_dataset_sufficiency_plan.py ...                           [ 76%]
+tests/api/test_dataset_text_quality_correction.py ....                   [ 77%]
+tests/api/test_dataset_type_conversion.py ....                           [ 78%]
+tests/api/test_dataset_type_schema.py ....                               [ 79%]
+tests/api/test_dataset_uniqueness_correction.py ...                      [ 80%]
+tests/api/test_dataset_validate.py ...............                       [ 83%]
+tests/api/test_dataset_validation_rules.py ............                  [ 87%]
+tests/api/test_deepar_panel_pivot.py ............................s...... [ 96%]
+......                                                                   [ 97%]
+tests/api/test_diagnostics.py ......                                     [ 99%]
+tests/api/test_diagnostics_internal.py ...                               [100%]
+
+=================================== FAILURES ===================================
+________ test_eda_stationarity_returns_tests_rolling_views_and_real_pp _________
+tests/api/test_dataset_eda_stationarity.py:56: in test_eda_stationarity_returns_tests_rolling_views_and_real_pp
+    assert pp["available"] is True
+E   assert False is True
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8288E3D4 operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8288E3D4 operation=freeze_visual:eda.stationarity.tests producer_key=pgv.visual_result:eda.stationarity.tests error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие profile_requested не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+____ test_eda_structural_breaks_returns_complementary_diagnostics_and_views ____
+tests/api/test_dataset_eda_structural_breaks.py:52: in test_eda_structural_breaks_returns_complementary_diagnostics_and_views
+    assert body["applicable"] is True
+E   assert False is True
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B341DBDC operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-B341DBDC operation=freeze_visual:eda.structural.breakpoints producer_key=pgv.visual_result:eda.structural.breakpoints error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие profile_requested не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+_______ test_structural_breaks_compact_default_matches_current_contract ________
+tests/api/test_dataset_profile_detail_level.py:113: in test_structural_breaks_compact_default_matches_current_contract
+    assert len(compact["series"]) == TARGET_SAMPLED_POINTS
+E   assert 0 == 1500
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-26BD8C4C operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-26BD8C4C operation=freeze_visual:eda.structural.breakpoints producer_key=pgv.visual_result:eda.structural.breakpoints error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие profile_requested не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-26BD8C4C operation=freeze_visual:eda.structural.breakpoints producer_key=pgv.visual_result:eda.structural.breakpoints error=No module named 'psycopg'
+________ test_structural_breaks_expanded_raises_density_within_ceiling _________
+tests/api/test_dataset_profile_detail_level.py:130: in test_structural_breaks_expanded_raises_density_within_ceiling
+    assert len(expanded["series"]) > len(compact["series"])
+E   assert 0 > 0
+E    +  where 0 = len([])
+E    +  and   0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9F3B6B5D operation=promote_data_version:upload producer_key=data_version:upload error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9F3B6B5D operation=freeze_visual:eda.structural.breakpoints producer_key=pgv.visual_result:eda.structural.breakpoints error=No module named 'psycopg'
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие profile_requested не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-9F3B6B5D operation=freeze_visual:eda.structural.breakpoints producer_key=pgv.visual_result:eda.structural.breakpoints error=No module named 'psycopg'
+=============================== warnings summary ===============================
+tests/api/test_dataset_consistency_correction.py::test_apply_persists_sort_updates_metadata_and_revalidation_passes
+  /home/z/my-project/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_format_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_text_quality_correction.py: 3 warnings
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_diagnostics.py::test_arima_diagnostics_use_real_statsmodels_residuals
+tests/api/test_diagnostics.py::test_diagnostic_statuses_are_bounded_to_ui_contract
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:978: UserWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    warn('Non-invertible starting MA parameters found.'
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_dataset_eda_stationarity.py::test_eda_stationarity_returns_tests_rolling_views_and_real_pp
+FAILED tests/api/test_dataset_eda_structural_breaks.py::test_eda_structural_breaks_returns_complementary_diagnostics_and_views
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_compact_default_matches_current_contract
+FAILED tests/api/test_dataset_profile_detail_level.py::test_structural_breaks_expanded_raises_density_within_ceiling
+============ 4 failed, 382 passed, 1 skipped, 97 warnings in 20.00s ============

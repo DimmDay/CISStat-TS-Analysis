@@ -1,0 +1,112 @@
+{
+ "task": "PGV-09-CERT mutation campaign",
+ "base": "09c79aa",
+ "oracle": "tests/api/test_pgv09_jobs_renderer_integration.py (38)",
+ "total": 12,
+ "killed": 7,
+ "alive": [
+  "M4-print-quota-check-removed",
+  "M6-nan-cell-stringified",
+  "M7-schema-version-check-removed",
+  "M11-print-idempotency-removed",
+  "M12-payload-contract-emptied"
+ ],
+ "results": [
+  {
+   "id": "M1-client-png-gate-removed",
+   "class": "client-gate",
+   "file": "apps/api/png_renderer_client.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_non_png_200_is_bad_output\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 12 passed in 6.88s ========================="
+  },
+  {
+   "id": "M2-dependency-becomes-transient",
+   "class": "taxonomy",
+   "file": "apps/api/document_render_worker.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_missing_dependency_terminal_no_ready\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 21 passed in 6.94s ========================="
+  },
+  {
+   "id": "M3-requeue-no-attempt-increment",
+   "class": "retry",
+   "file": "apps/api/document_render_worker.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_timeout_requeues_then_fails\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 22 passed in 6.92s ========================="
+  },
+  {
+   "id": "M4-print-quota-check-removed",
+   "class": "quota",
+   "file": "apps/api/document_jobs.py",
+   "status": "ALIVE",
+   "restored": true,
+   "pytest_tail": "................                                                         [100%]\n\n============================== 38 passed in 7.88s =============================="
+  },
+  {
+   "id": "M5-print-format-catalog-removed",
+   "class": "catalog",
+   "file": "apps/api/document_jobs.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_non_png_format_rejected\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 18 passed in 6.59s ========================="
+  },
+  {
+   "id": "M6-nan-cell-stringified",
+   "class": "canon",
+   "file": "apps/api/print_render_payload.py",
+   "status": "ALIVE",
+   "restored": true,
+   "pytest_tail": "................                                                         [100%]\n\n============================== 38 passed in 7.98s =============================="
+  },
+  {
+   "id": "M7-schema-version-check-removed",
+   "class": "preflight",
+   "file": "apps/api/print_render_payload.py",
+   "status": "ALIVE",
+   "restored": true,
+   "pytest_tail": "................                                                         [100%]\n\n============================== 38 passed in 7.94s =============================="
+  },
+  {
+   "id": "M8-error-code-parse-blinded",
+   "class": "taxonomy",
+   "file": "apps/api/png_renderer_client.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_dependency_unavailable_mapped\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 6 passed in 4.34s =========================="
+  },
+  {
+   "id": "M9-worker-png-gate-removed",
+   "class": "worker-gate",
+   "file": "apps/api/document_render_worker.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_bad_renderer_output_terminal\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 31 passed in 6.95s ========================="
+  },
+  {
+   "id": "M10-busy-mapped-unavailable",
+   "class": "taxonomy",
+   "file": "apps/api/png_renderer_client.py",
+   "status": "KILLED",
+   "restored": true,
+   "pytest_tail": "FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_busy_mapped\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n========================= 1 failed, 8 passed in 5.40s =========================="
+  },
+  {
+   "id": "M11-print-idempotency-removed",
+   "class": "idempotency",
+   "file": "apps/api/document_jobs.py",
+   "status": "ALIVE",
+   "restored": true,
+   "pytest_tail": "................                                                         [100%]\n\n============================== 38 passed in 7.84s =============================="
+  },
+  {
+   "id": "M12-payload-contract-emptied",
+   "class": "contract",
+   "file": "apps/api/document_render_worker.py",
+   "status": "ALIVE",
+   "restored": true,
+   "pytest_tail": "................                                                         [100%]\n\n============================== 38 passed in 7.92s =============================="
+  }
+ ]
+}

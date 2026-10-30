@@ -1,0 +1,455 @@
+============================= test session starts ==============================
+collected 1432 items / 1 skipped
+
+tests/api/test_pgv05_cert_oracles.py .......................             [  1%]
+tests/api/test_pgv05_passport_history.py ..................              [  2%]
+tests/api/test_pgv06_cert_findings.py .                                  [  2%]
+tests/api/test_pgv06_cert_oracles.py ............................        [  4%]
+tests/api/test_pgv06_passport_comparison.py ............................ [  6%]
+......                                                                   [  7%]
+tests/api/test_pgv08_render_container.py .......................         [  8%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 10%]
+................                                                         [ 11%]
+tests/api/test_pipeline_graph.py ....................................... [ 14%]
+........................................................................ [ 19%]
+.....................................                                    [ 21%]
+tests/api/test_progress_audit_1a.py .................................... [ 24%]
+                                                                         [ 24%]
+tests/api/test_progress_audit_2a.py ......................               [ 25%]
+tests/api/test_progress_audit_3.py .........................             [ 27%]
+tests/api/test_progress_audit_4.py ..................................... [ 30%]
+...........                                                              [ 31%]
+tests/api/test_progress_audit_5b.py ...........FFFF..FFF                 [ 32%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 34%]
+ss                                                                       [ 35%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 37%]
+.............ss                                                          [ 38%]
+tests/api/test_progress_audit_6c.py .................Fs.s..............F [ 41%]
+....ss                                                                   [ 41%]
+tests/api/test_progress_audit_7a.py ...................                  [ 42%]
+tests/api/test_progress_audit_7b.py .................................    [ 45%]
+tests/api/test_progress_audit_8.py ...............                       [ 46%]
+tests/api/test_progress_audit_c.py ................................      [ 48%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 49%]
+tests/api/test_progress_audit_h1.py ..........................           [ 50%]
+tests/api/test_progress_audit_s.py ..................................... [ 53%]
+....                                                                     [ 53%]
+tests/api/test_progress_defects_progr13.py ........                      [ 54%]
+tests/api/test_progress_panel.py ..F................                     [ 55%]
+tests/api/test_progress_progr13a.py .........................            [ 57%]
+tests/api/test_progress_progr13b.py ...................                  [ 58%]
+tests/api/test_progress_progr13c.py ..................                   [ 59%]
+tests/api/test_progress_progr16.py ...........                           [ 60%]
+tests/api/test_progress_progr17.py .........                             [ 61%]
+tests/api/test_progress_progr18.py .........                             [ 61%]
+tests/api/test_progress_progr23.py .....................                 [ 63%]
+tests/api/test_progress_progr25a.py ................                     [ 64%]
+tests/api/test_progress_progr25c.py ........                             [ 65%]
+tests/api/test_progress_progr25d.py .........                            [ 65%]
+tests/api/test_progress_trace_hook.py .................................. [ 68%]
+..................                                                       [ 69%]
+tests/api/test_research_runs.py ........................................ [ 72%]
+....................                                                     [ 73%]
+tests/api/test_run_report.py ........................................... [ 76%]
+..................                                                       [ 77%]
+tests/api/test_session_date_column.py ..........                         [ 78%]
+tests/api/test_session_store.py ........................................ [ 81%]
+...............................................                          [ 84%]
+tests/api/test_status_original_series.py ............................... [ 86%]
+.                                                                        [ 86%]
+tests/api/test_structure_detection.py .......                            [ 87%]
+tests/api/test_target_column.py ....................                     [ 88%]
+tests/api/test_tasks_causes.py .........                                 [ 89%]
+tests/api/test_timeseries_decomposition.py ...................           [ 90%]
+tests/api/test_trace_events.py ........................                  [ 92%]
+tests/api/test_tune.py ................................................. [ 95%]
+...........                                                              [ 96%]
+tests/api/test_tune_production_dispatch.py ....                          [ 96%]
+tests/api/test_tune_real_models.py ..........                            [ 97%]
+tests/api/test_upload.py .....                                           [ 97%]
+tests/api/test_upload_db.py .........FFF.F.F.FFFFFFFFF...FF              [100%]
+
+=================================== FAILURES ===================================
+_______ TestPanelFullLedger.test_early_status_and_started_at_survive_cap _______
+tests/api/test_progress_audit_5b.py:495: in test_early_status_and_started_at_survive_cap
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+_____________ TestPanelFullLedger.test_nodes_carry_evidence_fields _____________
+tests/api/test_progress_audit_5b.py:529: in test_nodes_carry_evidence_fields
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+________ TestReadAfterWatermark.test_pending_when_position_not_reached _________
+tests/api/test_progress_audit_5b.py:544: in test_pending_when_position_not_reached
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+_____________ TestReadAfterWatermark.test_ok_when_position_reached _____________
+tests/api/test_progress_audit_5b.py:553: in test_ok_when_position_reached
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+_________ TestConsumerConsistency.test_panel_equals_ledger_projection __________
+tests/api/test_progress_audit_5b.py:594: in test_panel_equals_ledger_projection
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+____________ TestConsumerConsistency.test_mentor_reports_watermark _____________
+tests/api/test_progress_audit_5b.py:607: in test_mentor_reports_watermark
+    _seed_session_and_run(
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+__________ TestConsumerConsistency.test_report_canonical_order_not_ts __________
+tests/api/test_progress_audit_5b.py:639: in test_report_canonical_order_not_ts
+    _seed_session_and_run(client, run_id=run_id, events=events)
+tests/api/test_progress_audit_5b.py:147: in _seed_session_and_run
+    store.upsert_run(
+apps/api/research_runs.py:1945: in upsert_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+apps/api/research_runs.py:1841: in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'psycopg'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+____________ TestReadinessProbe.test_postgres_probe_failure_is_safe ____________
+tests/api/test_progress_audit_6c.py:477: in test_postgres_probe_failure_is_safe
+    import psycopg
+E   ModuleNotFoundError: No module named 'psycopg'
+_ TestModelsDispatchDegradation.test_light_env_reload_imports_and_degrades_honestly _
+tests/api/test_progress_audit_6c.py:867: in test_light_env_reload_imports_and_degrades_honestly
+    assert set(state["dropped_by_registry"]) == dropped
+E   AssertionError: assert {'catboost', ... 'tbats', ...} == {'catboost', ...m', 'xgboost'}
+E     
+E     Extra items in the left set:
+E     'prophet'
+E     'tbats'
+E     'egarch'
+E     'garch'
+E     Use -v to get more diff
+_______ TestProgressTraceEndpoint.test_events_returned_after_hook_writes _______
+tests/api/test_progress_panel.py:96: in test_events_returned_after_hook_writes
+    assert data["started_at"] is not None
+E   assert None is not None
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.delivery_worker:delivery_worker.py:169 Delivery worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:327 Document render worker: цикл не выполнен (No module named 'psycopg') -- продолжаю по расписанию
+WARNING  apps.api.research_runs:research_runs.py:2718 Research runs: событие upload_completed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 2649, in record_run_event
+    existing_run = store.get_run(run_id)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+WARNING  apps.api.routers.progress:progress.py:429 Progress: слой 2 недоступен для проекции (RUN-C5D819E7)
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/routers/progress.py", line 427, in get_progress_trace
+    run = store.get_run(run_id)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1950, in get_run
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 1841, in _connect
+    import psycopg  # late import -- см. докстринг класса
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'psycopg'
+_______________ TestDbTestEndpoint.test_ok_engine_version_probe ________________
+tests/api/test_upload_db.py:239: in test_ok_engine_version_probe
+    assert body["server_version"] == "PostgreSQL 16.2 (Debian)"
+E   AssertionError: assert None == 'PostgreSQL 16.2 (Debian)'
+__________ TestDbTestEndpoint.test_ok_clickhouse_native_version_probe __________
+tests/api/test_upload_db.py:260: in test_ok_clickhouse_native_version_probe
+    assert body["server_version"] == "25.3.1.1"
+E   AssertionError: assert None == '25.3.1.1'
+___________ TestDbTestEndpoint.test_ok_sqlite_real_no_version_probe ____________
+tests/api/test_upload_db.py:272: in test_ok_sqlite_real_no_version_probe
+    assert body["ok"] is True
+E   assert False is True
+_______________ TestDbTestEndpoint.test_file_not_found_ok_false ________________
+tests/api/test_upload_db.py:305: in test_file_not_found_ok_false
+    assert "не найден" in body["error"].lower()
+E   assert 'не найден' in 'sqlalchemy не установлен — sqlite (встроенная) недоступна. установите: pip install "sqlalchemy>=2.0"'
+E    +  where 'sqlalchemy не установлен — sqlite (встроенная) недоступна. установите: pip install "sqlalchemy>=2.0"' = <built-in method lower of str object at 0x7ff7c8376340>()
+E    +    where <built-in method lower of str object at 0x7ff7c8376340> = 'sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"'.lower
+__________________ TestDbTestEndpoint.test_bad_extension_422 ___________________
+tests/api/test_upload_db.py:331: in test_bad_extension_422
+    assert response.status_code == 422
+E   assert 200 == 422
+E    +  where 200 = <Response [200 OK]>.status_code
+_____________ TestDbTestEndpoint.test_test_does_not_create_session _____________
+tests/api/test_upload_db.py:351: in test_test_does_not_create_session
+    assert response.json()["ok"] is True
+E   assert False is True
+_________ TestDbLoadEndpoint.test_load_sqlite_returns_upload_contract __________
+tests/api/test_upload_db.py:369: in test_load_sqlite_returns_upload_contract
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install \"sqlalchemy>=2.0\""}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+________ TestDbLoadEndpoint.test_load_registers_session_pipeline_entry _________
+tests/api/test_upload_db.py:393: in test_load_registers_session_pipeline_entry
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+__________ TestDbLoadEndpoint.test_load_writes_upload_completed_trace __________
+tests/api/test_upload_db.py:415: in test_load_writes_upload_completed_trace
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+____________ TestDbLoadEndpoint.test_load_duckdb_csv_direct_select _____________
+tests/api/test_upload_db.py:442: in test_load_duckdb_csv_direct_select
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"sqlalchemy не установлен — DuckDB (встроенная) недоступна. Установите: pip install \"sqlalchemy>=2.0\" duckdb duckdb-engine"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (duckdb): sqlalchemy не установлен — DuckDB (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0" duckdb duckdb-engine
+_________ TestDbLoadEndpoint.test_guard_delete_rejected_422_no_dataset _________
+tests/api/test_upload_db.py:457: in test_guard_delete_rejected_422_no_dataset
+    assert response.status_code == 422
+E   assert 400 == 422
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+__________ TestDbLoadEndpoint.test_guard_multistatement_rejected_422 ___________
+tests/api/test_upload_db.py:471: in test_guard_multistatement_rejected_422
+    assert response.status_code == 422
+E   assert 400 == 422
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+_____________ TestDbLoadEndpoint.test_row_limit_applied_and_warned _____________
+tests/api/test_upload_db.py:485: in test_row_limit_applied_and_warned
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install \"sqlalchemy>=2.0\""}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+____________ TestDbLoadEndpoint.test_env_cap_stronger_than_request _____________
+tests/api/test_upload_db.py:503: in test_env_cap_stronger_than_request
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install \"sqlalchemy>=2.0\""}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+________________ TestFamilies.test_public_test_with_api_key_ok _________________
+tests/api/test_upload_db.py:566: in test_public_test_with_api_key_ok
+    assert response.json()["ok"] is True
+E   assert False is True
+________________ TestFamilies.test_public_load_with_api_key_ok _________________
+tests/api/test_upload_db.py:577: in test_public_load_with_api_key_ok
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install \"sqlalchemy>=2.0\""}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+------------------------------ Captured log call -------------------------------
+ERROR    apps.api.routers.upload_db:upload_db.py:204 DB load failed (sqlite): sqlalchemy не установлен — SQLite (встроенная) недоступна. Установите: pip install "sqlalchemy>=2.0"
+=============================== warnings summary ===============================
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restore_keeps_auto_origin
+tests/api/test_progress_audit_1a.py::TestRestorePair::test_restored_session_origin_visible_in_trace_header
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+tests/api/test_progress_defects_progr13.py::test_mentor_phase_stays_upload_after_upload_page_actions
+tests/api/test_progress_defects_progr13.py::test_passport_start_event_attributed_to_upload_stage
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:955: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2*np.log(2*np.pi) - nobs2*np.log(ssr / nobs) - nobs2
+
+tests/api/test_progress_audit_7a.py::TestModelingProducersE2E::test_candidates_event_carries_pool_facts_and_marks_node_done
+  /home/z/my-project/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+tests/api/test_progress_audit_7a.py: 20 warnings
+tests/api/test_progress_trace_hook.py: 4 warnings
+tests/api/test_tasks_causes.py: 24 warnings
+  /home/z/.venv/lib/python3.12/site-packages/pydantic/main.py:250: DeprecationWarning: In future, it will be an error for 'np.bool' scalars to be interpreted as an index
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/api/test_session_date_column.py: 14 warnings
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_session_date_column.py::test_confirmed_no_date_column_marker_accepted
+tests/api/test_structure_detection.py::test_fao_dataset_selects_year_not_country_or_price
+tests/api/test_structure_detection.py::test_no_plausible_date_column_returns_placeholder
+tests/api/test_structure_detection.py::test_fao_dataset_frequency_is_yearly_not_daily
+tests/api/test_structure_detection.py::test_frequency_none_when_no_date_column_found
+tests/api/test_target_column.py::TestSuggestedColumnHeuristic::test_registered_date_column_restores_unambiguous_case
+tests/api/test_target_column.py::TestSuggestedColumnHeuristic::test_registered_date_column_restores_unambiguous_case
+  /home/z/my-project/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_tasks_causes.py: 56 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:730: RuntimeWarning: invalid value encountered in log
+    tmp = np.log(iota - a)[i:]
+
+tests/api/test_tasks_causes.py: 56 warnings
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:732: RuntimeWarning: invalid value encountered in log
+    lr2[i] = -t * np.log(1 - a[i])
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:866: UserWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    warn('Too few observations to estimate starting parameters%s.'
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:978: UserWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    warn('Non-invertible starting MA parameters found.'
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/base/model.py:607: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    warnings.warn("Maximum Likelihood optimization failed to "
+
+tests/api/test_tune.py::TestExecuteTuneOtherModels::test_arima_grid
+tests/api/test_tune.py::TestExecuteTuneBestSelection::test_best_trial_has_min_weighted_score
+  /home/z/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:966: UserWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    warn('Non-stationary starting autoregressive parameters'
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_early_status_and_started_at_survive_cap
+FAILED tests/api/test_progress_audit_5b.py::TestPanelFullLedger::test_nodes_carry_evidence_fields
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_pending_when_position_not_reached
+FAILED tests/api/test_progress_audit_5b.py::TestReadAfterWatermark::test_ok_when_position_reached
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_panel_equals_ledger_projection
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_mentor_reports_watermark
+FAILED tests/api/test_progress_audit_5b.py::TestConsumerConsistency::test_report_canonical_order_not_ts
+FAILED tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_postgres_probe_failure_is_safe
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+FAILED tests/api/test_progress_panel.py::TestProgressTraceEndpoint::test_events_returned_after_hook_writes
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_engine_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_clickhouse_native_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_ok_sqlite_real_no_version_probe
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_file_not_found_ok_false
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_bad_extension_422
+FAILED tests/api/test_upload_db.py::TestDbTestEndpoint::test_test_does_not_create_session
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_sqlite_returns_upload_contract
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_registers_session_pipeline_entry
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_writes_upload_completed_trace
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_load_duckdb_csv_direct_select
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_delete_rejected_422_no_dataset
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_guard_multistatement_rejected_422
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_row_limit_applied_and_warned
+FAILED tests/api/test_upload_db.py::TestDbLoadEndpoint::test_env_cap_stronger_than_request
+FAILED tests/api/test_upload_db.py::TestFamilies::test_public_test_with_api_key_ok
+FAILED tests/api/test_upload_db.py::TestFamilies::test_public_load_with_api_key_ok
+===== 26 failed, 1366 passed, 41 skipped, 203 warnings in 76.62s (0:01:16) =====
