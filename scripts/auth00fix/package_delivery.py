@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # scripts/auth00fix/package_delivery.py
-"""Упаковка поставки AUTH00-CI-FIX: zip только новых/изменённых файлов
+"""Упаковка поставки AUTH00-CI-WINFIX: zip только новых/изменённых файлов
 текущей задачи. Сверяет точное множество, побайтное содержимое каждого
 файла архива и печатает SHA-256. Без внешней сети; AGENTS.md: без
 commit/push."""
@@ -12,19 +12,14 @@ import zipfile
 from pathlib import Path
 
 REPO = Path("/home/z/my-project/CISStat-TS-Analysis")
-OUT = Path("/home/z/my-project/download/cisstat-auth00-ci-fix-f38500f.zip")
+OUT = Path("/home/z/my-project/download/cisstat-auth00-winfix-a09208a.zip")
 
 # (путь, статус: N=new, M=modified)
 FILES: list[tuple[str, str]] = [
-    ("docs/auth00/policy_review.json", "M"),
-    ("docs/auth00/inventory.json", "M"),
-    ("docs/auth00/inventory.md", "M"),
-    ("docs/auth00/operation_variants.md", "M"),
     ("tests/unit/test_auth00_inventory.py", "M"),
-    ("scripts/fix_auth00_ci.py", "N"),
-    ("scripts/local_gates.py", "N"),
-    ("scripts/auth00fix/package_delivery.py", "N"),
-    ("scripts/auth00fix/preview_server.py", "N"),
+    ("scripts/auth00fix/package_delivery.py", "M"),
+    ("scripts/auth00fix/preview_server.py", "M"),
+    ("scripts/auth00fix/win_emul_suite.py", "N"),
     ("worklog/worklog11.md", "M"),
 ]
 

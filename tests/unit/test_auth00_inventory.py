@@ -23,7 +23,11 @@ class InventoryTests(unittest.TestCase):
     def put(self, path, text):
         target = self.root / path
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
+        # Канонические LF-байты: на Windows write_text с newline=None
+        # переводит '\n' в os.linesep ('\r\n'), из-за чего фикстуры на
+        # разных ОС различались байтами (и номерами строк после конвертаций).
+        with target.open('w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
 
     def api(self, body, router='router = APIRouter()\n'):
         self.put("apps/api/main.py", 'from fastapi import FastAPI\nfrom apps.api.routers import demo\napp = FastAPI()\napp.include_router(demo.router, prefix="/v1/a")\n')
@@ -39,7 +43,7 @@ class InventoryTests(unittest.TestCase):
 
     def test_factory_expands_both_mounts_without_losing_key_gate(self):
         self.api('def register(r):\n @r.post("/probe")\n def probe(): pass\nregister(router)\nregister(public_router)\n', 'router = APIRouter()\npublic_router = APIRouter(dependencies=[Depends(key)])\n')
-        with (self.root / 'apps/api/main.py').open('a') as f:
+        with (self.root / 'apps/api/main.py').open('a', encoding='utf-8', newline='\n') as f:
             f.write('app.include_router(demo.public_router, prefix="/v1/b")\n')
         routes = [x for x in self.mod.api_routes(self.root) if x['path'].endswith('/probe')]
         self.assertEqual([x['path'] for x in routes], ['/v1/a/probe', '/v1/b/probe'])
@@ -139,7 +143,7 @@ class InventoryTests(unittest.TestCase):
 
     def test_real_new_route_has_no_review_binding(self):
         self.snapshot_fixture()
-        with (self.root / 'apps/api/routers/demo.py').open('a') as f:
+        with (self.root / 'apps/api/routers/demo.py').open('a', encoding='utf-8', newline='\n') as f:
             f.write('@router.post("/not-reviewed")\ndef added(): pass\n')
         with self.assertRaises(ValueError):
             self.mod.build(self.root)
@@ -147,21 +151,26 @@ class InventoryTests(unittest.TestCase):
     def test_guard_body_change_invalidates_snapshot(self):
         self.snapshot_fixture()
         p = self.root / 'apps/api/routers/demo.py'
-        p.write_text(p.read_text().replace('return False', 'return True'))
+        # Байтовая правка без newline-переводов записи (Windows-безопасно).
+        p.write_bytes(p.read_bytes().replace(b'return False', b'return True'))
         with self.assertRaises(ValueError):
             self.mod.check(self.root)
 
     def test_crlf_checkout_does_not_change_source_fingerprints(self):
         self.snapshot_fixture()
         for p in (self.root / 'apps/api').rglob('*.py'):
-            p.write_bytes(p.read_bytes().replace(b'\n', b'\r\n'))
+            # Идемпотентно, как checkout git: ровно один '\r' перед каждым '\n'.
+            # Наивный replace(b'\n', b'\r\n') на CRLF-файле (Windows пишет так
+            # по умолчанию) даёт CRCRLF, а universal newlines читает '\r\r\n'
+            # как ДВА перевода строки и сдвигает все номера строк.
+            p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
         self.mod.check(self.root)
 
     def edit_review(self, fn):
         p = self.root / 'docs/auth00/policy_review.json'
-        review = json.loads(p.read_text())
+        review = json.loads(p.read_text(encoding='utf-8'))
         fn(review)
-        p.write_text(json.dumps(review))
+        p.write_text(json.dumps(review), encoding='utf-8')
 
     def test_review_cannot_overwrite_a_discovered_path(self):
         self.snapshot_fixture()
@@ -187,11 +196,11 @@ class InventoryTests(unittest.TestCase):
     def test_disabled_docs_do_not_invent_framework_routes(self):
         self.api('@router.get("/x")\ndef x(): pass\n')
         p = self.root / 'apps/api/main.py'
-        original = p.read_text()
-        p.write_text(original.replace('FastAPI()', 'FastAPI(docs_url=None)'))
+        original = p.read_text(encoding='utf-8')
+        p.write_text(original.replace('FastAPI()', 'FastAPI(docs_url=None)'), encoding='utf-8')
         paths = {r['path'] for r in self.mod.api_routes(self.root) if r['kind'] == 'framework'}
         self.assertEqual(paths, {'/openapi.json', '/redoc'})
-        p.write_text(original.replace('FastAPI()', 'FastAPI(openapi_url=None)'))
+        p.write_text(original.replace('FastAPI()', 'FastAPI(openapi_url=None)'), encoding='utf-8')
         self.assertFalse(any(r['kind'] == 'framework' for r in self.mod.api_routes(self.root)))
 
     def test_foreign_asgi_root_requires_review(self):
