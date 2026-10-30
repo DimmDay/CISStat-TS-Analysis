@@ -211,6 +211,35 @@ class InventoryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.mod.api_routes(self.root)
 
+    def test_pgv09_pgv10_documentation_surfaces_are_honestly_classified(self):
+        report = self.mod.build(ROOT)
+        by_id = {e['id']: e for e in report['entries']}
+        # PGV-09: печатная ревизия -> queued PNG job; семья документа,
+        # command (202 + job), тот же обработчик, что в evidence.
+        renditions = by_id['api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions']
+        self.assertEqual(renditions['policy'], 'document.object')
+        self.assertEqual(renditions['effects'], ['command', 'possible_compute_or_persistence'])
+        self.assertEqual(renditions['canonical_operation'], 'apps.api.routers.documentation:request_print_rendition')
+        # PGV-10: экспорт научных визуализаций; GET -- только frozen
+        # метаданные (read), POST -- 202 command с durable freeze.
+        sources = by_id['api:GET:/v1/documentation/runs/{run_id}/visual-sources']
+        self.assertEqual(sources['policy'], 'document.object')
+        self.assertEqual(sources['effects'], ['read'])
+        self.assertEqual(sources['canonical_operation'], 'apps.api.routers.documentation:list_visual_sources_route')
+        export = by_id['api:POST:/v1/documentation/runs/{run_id}/visuals']
+        self.assertEqual(export['policy'], 'document.object')
+        self.assertEqual(export['effects'], ['command', 'possible_compute_or_persistence'])
+        self.assertEqual(export['canonical_operation'], 'apps.api.routers.documentation:request_visual_export_route')
+        # Реальные daemon-потоки document_render_worker.py: два старта
+        # (render-deadline и фоновый loop) классифицированы как
+        # worker.authority, а не списаны на generic allow.
+        workers = {e['id']: e for e in report['entries'] if e['kind'] == 'worker' and 'document_render_worker' in e['id']}
+        self.assertEqual(len(workers), 2, sorted(workers))
+        for wid, w in sorted(workers.items()):
+            self.assertEqual(w['policy'], 'worker.authority', wid)
+            self.assertEqual(w['effects'], ['thread_dispatch'], wid)
+            self.assertTrue(w['canonical_operation'], wid)
+
     def test_generic_model_jobs_are_classified_as_tuning(self):
         report = self.mod.build(ROOT)
         by_id = {e['id']: e for e in report['entries']}

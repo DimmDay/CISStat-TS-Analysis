@@ -1,5 +1,5 @@
 {
-  "baseline": "962ccda96c15aed5d1a6661364d8c50d8a301cbe",
+  "baseline": "f38500fa4c3c258b4893199302d43d9a0fca4b0b",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -6320,28 +6320,6 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
       "stage_namespace": "service"
     },
-    "worker:apps/api/document_render_worker.py:507": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "resource": "queued operation",
-      "effects": [
-        "thread_dispatch"
-      ],
-      "canonical_operation": "apps/api/document_render_worker.py:_target",
-      "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
-      "stage_namespace": "service"
-    },
-    "worker:apps/api/document_render_worker.py:529": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "resource": "queued operation",
-      "effects": [
-        "thread_dispatch"
-      ],
-      "canonical_operation": "apps/api/document_render_worker.py:self._loop",
-      "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
-      "stage_namespace": "service"
-    },
     "worker:delivery.run_once": {
       "policy": "worker.authority",
       "stage": "platform",
@@ -6377,6 +6355,63 @@
       "canonical_operation": "worker:document.system_snapshot",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
       "stage_namespace": "service"
+    },
+    "api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "command",
+        "possible_compute_or_persistence"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:request_print_rendition",
+      "admission": "authorize-before-operation"
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/visual-sources": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:list_visual_sources_route",
+      "admission": "authorize-before-operation"
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/visuals": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "command",
+        "possible_compute_or_persistence"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:request_visual_export_route",
+      "admission": "authorize-before-operation"
+    },
+    "worker:apps/api/document_render_worker.py:661": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "queued operation",
+      "effects": [
+        "thread_dispatch"
+      ],
+      "canonical_operation": "apps/api/document_render_worker.py:_target via _run_with_deadline",
+      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    "worker:apps/api/document_render_worker.py:683": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "queued operation",
+      "effects": [
+        "thread_dispatch"
+      ],
+      "canonical_operation": "apps/api/document_render_worker.py:self._loop",
+      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
     }
   },
   "extra_surfaces": [
@@ -6600,14 +6635,17 @@
     "apps/api/delivery_outbox.py",
     "apps/api/document_jobs.py",
     "apps/api/document_lifecycle.py",
+    "apps/api/document_render_worker.py",
     "apps/api/document_renditions.py",
     "apps/api/identity.py",
     "apps/api/model_execution.py",
     "apps/api/model_jobs.py",
     "apps/api/plans.py",
     "apps/api/report_snapshot.py",
+    "apps/api/routers/documentation.py",
     "apps/api/security_audit.py",
     "apps/api/session_store.py",
+    "apps/api/visual_exports.py",
     "apps/print-renderer/build/deployment/docker-compose.yml",
     "apps/print-renderer/src/renderWorker.ts",
     "docs/ROLES_AND_PLANS_SPEC.md",
