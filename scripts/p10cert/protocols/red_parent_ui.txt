@@ -1,0 +1,25 @@
+FAIL ../p10cert_parent/packages/ui/components/VisualExportButton.p10cert.test.tsx
+  ● Test suite failed to run
+
+    [96m../p10cert_parent/packages/ui/components/VisualExportButton.p10cert.test.tsx[0m:[93m19[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module './VisualExportButton' or its corresponding type declarations.
+
+    [7m19[0m import { VisualExportButton, VisualExportChartScope } from "./VisualExportButton";
+    [7m  [0m [91m                                                           ~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96m../p10cert_parent/packages/ui/components/VisualExportButton.p10cert.test.tsx[0m:[93m20[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module '../lib/serializeChartSvg' or its corresponding type declarations.
+
+    [7m20[0m import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
+    [7m  [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL ../p10cert_parent/packages/ui/lib/serializeChartSvg.p10cert.test.ts
+  ● Test suite failed to run
+
+    [96m../p10cert_parent/packages/ui/lib/serializeChartSvg.p10cert.test.ts[0m:[93m6[0m:[93m58[0m - [91merror[0m[90m TS2307: [0mCannot find module './serializeChartSvg' or its corresponding type declarations.
+
+    [7m6[0m import { serializeChartSvg, serializeChartSvgSafe } from "./serializeChartSvg";
+    [7m [0m [91m                                                         ~~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 2 failed, 2 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        3.978 s
+Ran all test suites.

@@ -1,0 +1,15 @@
+M1	KILLED	Объектный гейт экспорта снят (чужой run получает экспорт)	killer=tests/api/test_p10cert_oracles.py::TestCertCasAndAccess
+M2	KILLED	svg-член identity снапшота снят (иной SVG -- тот же снапшот)	killer=tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o7_different_screen_svg_is_different_snapshot
+M3	KILLED	Идемпотентность сломана: frozen input всегда строится заново	killer=tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o5_idempotent_repeat_same_snapshot_revision_job
+M4	KILLED	CAS-сверка снята: expected_* клиента не доходят до freeze	killer=tests/api/test_p10cert_oracles.py::TestCertCasAndAccess::test_o8_cas_revision_conflict_409_nothing_registered
+M5	KILLED	screen_svg_required снят: chart-снапшот без геометрии строится	killer=tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10_chart_without_svg_refused_before_job
+M6	KILLED	on*-санитайзер preflight снят (AC19 в глубину)	killer=tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10b_invalid_svg_variants_refused
+M7	KILLED	foreignObject-санитайзер preflight снят (AC19 в глубину)	killer=tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10b_invalid_svg_variants_refused
+M8	KILLED	Домен теплокарты захардкожен [0,1] (не из frozen данных)	killer=tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o12_heatmap_domain_from_frozen_cells
+M9	KILLED	detail_level всегда expanded (sampling-честность снята)	killer=tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o13_sampling_honesty_detail_level
+M10	KILLED	Refs фабрикуются: отсутствующий target_column подменяется 'unknown'	killer=tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o14_refs_honest_no_fabrication
+M11	SURVIVED	Мост: отсутствующие строки таблицы подменяются пустыми (не отказ)	killer=tests/api/test_p10cert_oracles.py::TestCertBridge::test_o16b_missing_form_is_honest_incomplete
+M12	KILLED	«Не первый SVG» снят в сериализаторе (document-скан)	killer=packages/ui/lib/serializeChartSvg.p10cert.test.ts (U1/U5)
+M13	KILLED	Локальный отказ кнопки без геометрии снят (POST без screen_svg)	killer=packages/ui/components/VisualExportButton.p10cert.test.tsx (U7)
+M14	KILLED	Sampling frozen результата не переносится в снапшот	killer=tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o13_sampling_honesty_detail_level
+M15	KILLED	sha256 screen_svg не пишется ни в секцию, ни в identity	killer=tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o11_mixed_sections_from_one_frozen_data

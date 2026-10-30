@@ -1,0 +1,47 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.0.2, pluggy-1.6.0
+rootdir: /tmp/p10cert_parent
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 27 items
+
+tests/api/test_p10cert_oracles.py FFFFFFFFFFFFFFFFFFFFFFFFFFF            [100%]
+
+=============================== warnings summary ===============================
+tests/api/test_p10cert_oracles.py::TestCertCasAndAccess::test_o8b_cas_via_http_flat_body
+tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10d_http_flat_error_codes
+tests/api/test_p10cert_oracles.py::TestCertVisualSources::test_o17_sources_list_and_no_science
+  /home/z/.venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_p10cert_oracles.py::TestCertScope::test_o1_scope_equals_registry_derived_38_sites
+FAILED tests/api/test_p10cert_oracles.py::TestCertScope::test_o2_no_forgotten_pgv03_view_in_three_modules
+FAILED tests/api/test_p10cert_oracles.py::TestCertScope::test_o3_unknown_and_out_of_scope_honest
+FAILED tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o4_export_does_not_run_science
+FAILED tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o5_idempotent_repeat_same_snapshot_revision_job
+FAILED tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o6_different_profile_new_revision_same_document
+FAILED tests/api/test_p10cert_oracles.py::TestCertDurableExport::test_o7_different_screen_svg_is_different_snapshot
+FAILED tests/api/test_p10cert_oracles.py::TestCertCasAndAccess::test_o8_cas_revision_conflict_409_nothing_registered
+FAILED tests/api/test_p10cert_oracles.py::TestCertCasAndAccess::test_o8b_cas_via_http_flat_body
+FAILED tests/api/test_p10cert_oracles.py::TestCertCasAndAccess::test_o9_uniform_404_foreign_and_missing_and_anonymous
+FAILED tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10_chart_without_svg_refused_before_job
+FAILED tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10b_invalid_svg_variants_refused
+FAILED tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10c_invalid_profile_and_oversize_svg
+FAILED tests/api/test_p10cert_oracles.py::TestCertPreflight::test_o10d_http_flat_error_codes
+FAILED tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o11_mixed_sections_from_one_frozen_data
+FAILED tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o12_heatmap_domain_from_frozen_cells
+FAILED tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o12b_empty_cells_honest_default_domain
+FAILED tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o13_sampling_honesty_detail_level
+FAILED tests/api/test_p10cert_oracles.py::TestCertSnapshotContent::test_o14_refs_honest_no_fabrication
+FAILED tests/api/test_p10cert_oracles.py::TestCertWorkerE2E::test_o15_full_job_path_fake_renderer_chart
+FAILED tests/api/test_p10cert_oracles.py::TestCertWorkerE2E::test_o15b_mixed_job_path_renders_two_sections
+FAILED tests/api/test_p10cert_oracles.py::TestCertBridge::test_o16_snapshot_svg_wins_over_result_svg
+FAILED tests/api/test_p10cert_oracles.py::TestCertBridge::test_o16b_missing_form_is_honest_incomplete
+FAILED tests/api/test_p10cert_oracles.py::TestCertVisualSources::test_o17_sources_list_and_no_science
+FAILED tests/api/test_p10cert_oracles.py::TestCertPgWritePath::test_o18_print_job_insert_replays_into_mini_model
+FAILED tests/api/test_p10cert_oracles.py::TestCertStaticCoverage::test_o19_every_scope_view_has_button_mount_and_no_document_scan
+FAILED tests/api/test_p10cert_oracles.py::TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile
+======================== 27 failed, 3 warnings in 4.58s ========================
