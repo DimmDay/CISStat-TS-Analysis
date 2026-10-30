@@ -1381,6 +1381,19 @@ MIGRATION_STATEMENTS_0017: tuple[str, ...] = (
     """,
 )
 
+# PGV-09-FIX (F-P9C1, docs/cert_pgv09_2026-10-30.md §7 recovery-план
+# п.2): печатная rendition не имеет строки в document_revisions -- её
+# цель связана колонкой print_revision_id с FK 0017. DROP NOT NULL
+# снимает запрет; FK revision_id -> document_revisions СОХРАНЯЕТСЯ
+# (NULL проходит проверку; legacy D01-D12 остаётся защищён). Файл-дубль
+# migrations/0018_pgv9fix_print_rendition_keys.sql.
+MIGRATION_STATEMENTS_0018: tuple[str, ...] = (
+    """
+    ALTER TABLE document_renditions
+        ALTER COLUMN revision_id DROP NOT NULL
+    """,
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1390,7 +1403,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
     + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
     + MIGRATION_STATEMENTS_0015 + MIGRATION_STATEMENTS_0016
-    + MIGRATION_STATEMENTS_0017
+    + MIGRATION_STATEMENTS_0017 + MIGRATION_STATEMENTS_0018
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1413,6 +1426,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0015_doclog9_profiles.sql", MIGRATION_STATEMENTS_0015),
     ("0016_pgv2_print_documents.sql", MIGRATION_STATEMENTS_0016),
     ("0017_pgv9_print_renditions.sql", MIGRATION_STATEMENTS_0017),
+    ("0018_pgv9fix_print_rendition_keys.sql", MIGRATION_STATEMENTS_0018),
 )
 
 

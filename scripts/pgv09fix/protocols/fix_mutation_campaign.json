@@ -1,0 +1,84 @@
+{
+ "task": "PGV-09-FIX mutation campaign (mutants of the fix)",
+ "base": "cf520d8 + fix",
+ "oracles": {
+  "fix_corpus": "tests/api/test_pgv09fix_write_path.py (20)",
+  "author_corpus": "author 38 + cert 14"
+ },
+ "total": 8,
+ "fix_killed": 8,
+ "results": [
+  {
+   "id": "FX1-job-snapshotid-null-normalization-removed",
+   "class": "write-normalization",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1MiniModelReplay::test_adapter_normalizes_empty_markers_to_null\n========================= 2 failed, 18 passed in 2.05s ========================="
+  },
+  {
+   "id": "FX2-conflict-target-branch-collapsed",
+   "class": "conflict-target",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1MiniModelReplay::test_print_idempotent_reregister_upserts_print_index\n========================= 1 failed, 19 passed in 1.94s ========================="
+  },
+  {
+   "id": "FX3-rendition-key-normalization-removed",
+   "class": "write-normalization",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1MiniModelReplay::test_adapter_normalizes_empty_markers_to_null\n========================= 4 failed, 16 passed in 2.04s ========================="
+  },
+  {
+   "id": "FX4-read-mapping-reverted",
+   "class": "read-mapping",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1ReadMapping::test_rendition_row_null_keys_read_as_empty_marker\n========================= 1 failed, 19 passed in 2.05s ========================="
+  },
+  {
+   "id": "FX5-print-rendition-revision-branch-reverted",
+   "class": "service-branch",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1ServicePrintBranch::test_print_rendition_revision_id_is_empty_marker\n========================= 1 failed, 19 passed in 1.96s ========================="
+  },
+  {
+   "id": "FX6-serialization-gate-removed",
+   "class": "n-p9c2",
+   "file": "apps/api/png_renderer_client.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestNP9C2SerializationGate::test_worker_nan_payload_is_terminal_invalid_payload\n========================= 4 failed, 16 passed in 2.10s ========================="
+  },
+  {
+   "id": "FX7-update-rendition-normalization-removed",
+   "class": "write-normalization",
+   "file": "apps/api/document_jobs.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestF9C1MiniModelReplay::test_update_rendition_normalizes_print_revision_marker\n========================= 1 failed, 19 passed in 2.05s ========================="
+  },
+  {
+   "id": "FX8-serialization-mis mapped-transient",
+   "class": "n-p9c2-taxonomy",
+   "file": "apps/api/png_renderer_client.py",
+   "fix_corpus": "KILLED",
+   "author_corpus": "ALIVE",
+   "restored": true,
+   "fix_tail": "FAILED tests/api/test_pgv09fix_write_path.py::TestNP9C2SerializationGate::test_worker_nan_payload_is_terminal_invalid_payload\n========================= 4 failed, 16 passed in 2.05s ========================="
+  }
+ ]
+}

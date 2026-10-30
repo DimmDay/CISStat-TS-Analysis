@@ -1,0 +1,3 @@
+FAILED tests/api/test_pgv09fix_write_path.py::TestMigration0018::test_migration_statements_parity
+FAILED tests/api/test_pgv09fix_write_path.py::TestMigration0018::test_full_statements_end_with_0018
+========================= 18 failed, 1 passed in 2.40s =========================

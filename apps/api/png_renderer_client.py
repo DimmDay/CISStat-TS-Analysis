@@ -21,6 +21,12 @@ payload pgv.render_payload/1).
   HTTP 422 invalid_payload            -> RendererPayloadInvalid
                                          (terminal; детерминированный
                                          дефект payload'а);
+  payload непериализуем (NaN/inf/
+         чужой тип; PGV-09-FIX N-P9C2)
+                                      -> RendererPayloadInvalid
+                                         (terminal; сериализация --
+                                         ДО сети, честный отказ без
+                                         transient-цикла);
   HTTP 413 payload_too_large          -> RendererPayloadTooLarge
                                          (terminal; §7 лимиты);
   HTTP 429 renderer_busy              -> RendererBusy (transient;
@@ -189,9 +195,23 @@ class PngRendererClient:
                 "render_dependency_unavailable: renderer_disabled"
             )
         url = f"{self.base_url}/v1/render"
-        body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode(
-            "utf-8"
-        )
+        # PGV-09-FIX (N-P9C2): сериализация payload'а -- ДО сетевого
+        # блока и со своей веткой: непериализуемый payload (NaN/inf
+        # вне канонического freeze, чужие типы) -- детерминированный
+        # дефект payload'а, честный terminal RendererPayloadInvalid
+        # (код invalid_payload вне TRANSIENT_ERROR_CODES), а не
+        # transient-переоткладывание. Сообщение несёт только тип
+        # дефекта (AC21: payload в job-записи не хранится).
+        try:
+            body = json.dumps(
+                payload, ensure_ascii=False, allow_nan=False
+            ).encode("utf-8")
+        except (TypeError, ValueError) as exc:
+            raise RendererPayloadInvalid(
+                "invalid_payload: payload не сериализуем в JSON "
+                f"({type(exc).__name__}; детерминированный дефект "
+                "payload'а -- terminal, §11)"
+            ) from None
         request = urllib.request.Request(
             url,
             data=body,

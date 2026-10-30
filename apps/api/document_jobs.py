@@ -883,6 +883,20 @@ class MemoryDocumentRegistry(DocumentRegistry):
         return {"ok": True, "backend": "memory"}
 
 
+def _pg_nullable_text(value: Any) -> Any:
+    """PGV-09-FIX (F-P9C1): пустая строка в-process -- маркер «нет
+    значения»; durable-слой хранит NULL. Семантика DDL 0010/0017/0018:
+    NULL проходит проверку внешнего ключа (snapshot_id ->
+    report_snapshots; document_renditions.revision_id ->
+    document_revisions) и НЕ участвует в равенстве UNIQUE/ON CONFLICT
+    (NULLS DISTINCT) -- печатные записи (snapshot_id=''/revision_id='')
+    не коллойдут ни с legacy-корпусом, ни между собой, а пустой
+    print_revision_id snapshot-пути не занимает частичный индекс 0017
+    (WHERE print_revision_id IS NOT NULL). Обратное отображение (NULL ->
+    '') -- в _job_from_row/_rendition_from_row."""
+    return value if value else None
+
+
 class PostgresDocumentRegistry(DocumentRegistry):
     """Durable-реестр (миграция 0010; ленивый psycopg -- паритет
     фабрик DOCLOG-1/2). Байты rendition -- в object store."""
@@ -1172,8 +1186,11 @@ class PostgresDocumentRegistry(DocumentRegistry):
     def _rendition_from_row(row: tuple) -> DocumentRenditionRecord:
         return DocumentRenditionRecord(
             rendition_id=str(row[0]),
-            revision_id=str(row[1]),
-            snapshot_id=str(row[2]),
+            # PGV-09-FIX (F-P9C1): durable NULL печатной rendition (0018:
+            # DROP NOT NULL, FK сохранён) читается как пустой маркер --
+            # прежний str(None) давал строку "None" и ломал find_*.
+            revision_id=str(row[1] or ""),
+            snapshot_id=str(row[2] or ""),
             run_id=str(row[3]),
             format=str(row[4]),
             redaction_profile=str(row[5]),
@@ -1193,6 +1210,19 @@ class PostgresDocumentRegistry(DocumentRegistry):
     def register_rendition(
         self, rendition: DocumentRenditionRecord
     ) -> DocumentRenditionRecord:
+        # PGV-09-FIX (F-P9C1): цель конфликта -- по роду записи.
+        # Печатная rendition (print_revision_id непуст) апsert'ится по
+        # частичному индексу 0017 -- идемпотентность печатной цели
+        # без пересечения с snapshot-ключом 0010 (NULL snapshot_id не
+        # коллодит, перехват чужой строки исключён). Snapshot-путь --
+        # прежний UNIQUE 0010 (AC09 без регрессии).
+        if rendition.print_revision_id:
+            conflict_clause = (
+                "ON CONFLICT (print_revision_id, format, redaction_profile) "
+                "WHERE print_revision_id IS NOT NULL "
+            )
+        else:
+            conflict_clause = "ON CONFLICT (snapshot_id, format, redaction_profile) "
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO document_renditions (rendition_id, revision_id, "
@@ -1201,8 +1231,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "created_by, created_at, snapshot_payload_sha256, "
                 "org_profile_id, print_revision_id) VALUES "
                 "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-                "ON CONFLICT (snapshot_id, format, redaction_profile) "
-                "DO UPDATE SET state = EXCLUDED.state, media_type = "
+                + conflict_clause
+                + "DO UPDATE SET state = EXCLUDED.state, media_type = "
                 "EXCLUDED.media_type, size_bytes = EXCLUDED.size_bytes, "
                 "content_sha256 = EXCLUDED.content_sha256, storage_key = "
                 "EXCLUDED.storage_key, job_id = EXCLUDED.job_id, "
@@ -1211,8 +1241,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "print_revision_id = EXCLUDED.print_revision_id",
                 (
                     rendition.rendition_id,
-                    rendition.revision_id,
-                    rendition.snapshot_id,
+                    _pg_nullable_text(rendition.revision_id),
+                    _pg_nullable_text(rendition.snapshot_id),
                     rendition.run_id,
                     rendition.format,
                     rendition.redaction_profile,
@@ -1226,7 +1256,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.created_at,
                     rendition.snapshot_payload_sha256,
                     rendition.org_profile_id,
-                    rendition.print_revision_id,
+                    _pg_nullable_text(rendition.print_revision_id),
                 ),
             )
         return rendition
@@ -1248,7 +1278,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.storage_key,
                     rendition.job_id,
                     rendition.snapshot_payload_sha256,
-                    rendition.print_revision_id,
+                    # PGV-09-FIX: пустой маркер snapshot-пути не занимает
+                    # частичный индекс 0017 (NULL исключён WHERE-предикатом).
+                    _pg_nullable_text(rendition.print_revision_id),
                     rendition.rendition_id,
                 ),
             )
@@ -1315,7 +1347,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
         return DocumentJobRecord(
             job_id=str(row[0]),
             run_id=str(row[1]),
-            snapshot_id=str(row[2]),
+            # PGV-09-FIX (F-P9C1): durable NULL печатной job'а (0017:
+            # DROP NOT NULL, FK сохранён) читается как пустой маркер.
+            snapshot_id=str(row[2] or ""),
             format=str(row[3]),
             redaction_profile=str(row[4]),
             revision_id=row[5],
@@ -1346,10 +1380,13 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 (
                     job.job_id,
                     job.run_id,
-                    job.snapshot_id,
+                    # PGV-09-FIX (F-P9C1): печатная job (snapshot_id='')
+                    # пишется NULL'ом -- пустая строка нарушала FK
+                    # document_jobs.snapshot_id -> report_snapshots.
+                    _pg_nullable_text(job.snapshot_id),
                     job.format,
                     job.redaction_profile,
-                    job.revision_id,
+                    _pg_nullable_text(job.revision_id),
                     job.rendition_id,
                     job.state,
                     job.error_code,
@@ -1361,8 +1398,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     job.claimed_at,
                     job.lease_expires_at,
                     job.org_profile_id,
-                    job.print_revision_id,
-                    job.basis_artifact_id,
+                    _pg_nullable_text(job.print_revision_id),
+                    _pg_nullable_text(job.basis_artifact_id),
                 ),
             )
         return job
@@ -2365,6 +2402,20 @@ class DocumentDeliveryService:
         rendition_id = (
             existing.rendition_id if existing is not None else new_rendition_id()
         )
+        # PGV-09-FIX (F-P9C1): печатная rendition НЕ переносит
+        # job.revision_id (print_revision_id, dprint-...) в
+        # rendition.revision_id -- FK document_renditions.revision_id ->
+        # document_revisions нарушался (dprint-... вне document_revisions;
+        # NOT NULL снят миграцией 0018, FK сохранён: durable NULL, связь
+        # цели -- print_revision_id с FK 0017).
+        if job.print_revision_id:
+            target_revision_id = ""
+        else:
+            target_revision_id = (
+                existing.revision_id
+                if existing is not None
+                else (job.revision_id or "")
+            )
         staged = self.objects.stage_bytes(content, spec.media_type)
         storage_key = self.objects.commit_staged(staged)
         # Единый hash (§19): snapshot-путь -- payload_sha256 снимка;
@@ -2376,11 +2427,7 @@ class DocumentDeliveryService:
         )
         rendition = DocumentRenditionRecord(
             rendition_id=rendition_id,
-            revision_id=(
-                existing.revision_id
-                if existing is not None
-                else (job.revision_id or "")
-            ),
+            revision_id=target_revision_id,
             snapshot_id=job.snapshot_id,
             run_id=job.run_id,
             format=job.format,

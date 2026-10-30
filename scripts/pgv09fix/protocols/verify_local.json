@@ -1,0 +1,42 @@
+[
+ {
+  "step": "state",
+  "exit_code": 0,
+  "missing_files": [],
+  "git_head": "cf520d8",
+  "dirty_product_files": [
+   "M apps/api/document_jobs.py",
+   "M apps/api/png_renderer_client.py",
+   "M apps/api/research_runs.py",
+   "M tests/api/test_doclog3_telemetry_audit.py",
+   "M tests/api/test_doclog4_document_delivery.py",
+   "M tests/api/test_doclog5_formats_worker.py",
+   "M tests/api/test_doclog6_approvals_archive.py",
+   "M tests/api/test_doclog7_logs_support.py",
+   "M tests/api/test_doclog8_monitoring.py",
+   "M tests/api/test_doclog9_profiles.py",
+   "?? apps/api/migrations/0018_pgv9fix_print_rendition_keys.sql",
+   "?? scripts/pgv09fix/",
+   "?? tests/api/test_pgv09fix_write_path.py"
+  ]
+ },
+ {
+  "step": "fix_suite",
+  "cmd": "/home/z/.venv/bin/python3 -m pytest tests/api/test_pgv09fix_write_path.py -q",
+  "exit_code": 0,
+  "seconds": 4.6,
+  "tail": "\ntests/api/test_pgv09fix_write_path.py ....................               [100%]\n\n============================== 20 passed in 1.88s =============================="
+ },
+ {
+  "step": "affected_regression",
+  "cmd": "/home/z/.venv/bin/python3 -m pytest tests/api/test_pgv09_jobs_renderer_integration.py tests/api/test_p9cert_oracles.py tests/api/test_doclog3_telemetry_audit.py tests/api/test_doclog4_document_delivery.py tests/api/test_doclog5_formats_worker.py tests/api/test_doclog6_approvals_archive.py tests/api/test_doclog7_logs_support.py tests/api/test_doclog8_monitoring.py tests/api/test_doclog9_profiles.py tests/api/test_pgv02_durable_inputs.py tests/api/test_pgv03_producer_adapters.py tests/api/test_research_runs.py tests/api/test_doclog_recheck_fix.py -q",
+  "exit_code": 0,
+  "seconds": 22.9,
+  "tail": "    return DataFrameSchema(columns, strict=False, coerce=True)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 680 passed, 1 warning in 19.40s ========================"
+ },
+ {
+  "step": "migration_0018_parity",
+  "exit_code": 0,
+  "statements": 1
+ }
+]

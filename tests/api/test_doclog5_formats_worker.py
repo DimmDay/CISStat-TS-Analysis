@@ -1506,7 +1506,8 @@ class TestMigration0011:
         assert "0015_doclog9_profiles.sql" in names  # DOCLOG-9
         assert "0016_pgv2_print_documents.sql" in names  # PGV-02
         assert "0017_pgv9_print_renditions.sql" in names  # PGV-09
-        assert len(names) == 17
+        assert "0018_pgv9fix_print_rendition_keys.sql" in names  # PGV-09-FIX
+        assert len(names) == 18
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

@@ -855,10 +855,11 @@ class TestStaticCatalogs:
         # PGV-02 (честное обновление пина, прецедент DOCLOG-9):
         # каталог 16 файлов (последний -- 0016_pgv2_print_documents.sql);
         # 93 (0015) + 3 statement 0016 (2 таблицы + 2 индекса) = 96.
-        assert len(MIGRATION_FILES) == 17
+        assert "0018_pgv9fix_print_rendition_keys.sql" in [n for n, _ in MIGRATION_FILES]  # PGV-09-FIX
+        assert len(MIGRATION_FILES) == 18
         # DOCLOG-9 (честное обновление пина): 0013 пинуется по имени.
         assert "0013_doclog7_logs_support.sql" in [n for n, _ in MIGRATION_FILES]
-        assert len(MIGRATION_STATEMENTS) == 106
+        assert len(MIGRATION_STATEMENTS) == 107  # PGV-09-FIX: +1 (0018)
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

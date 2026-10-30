@@ -113,3 +113,91 @@ gateway) — контейнерная E2E не пересертифицируе�
 клиента проверяется реальным TCP-раундтрипом на локальном
 http.server (класс B), жизненный цикл — инъекцией fake-renderer'а
 (класс D). Пиксельная корректность PNG — зона PGV-08/CERT.
+
+## 5. PGV-09-FIX (2026-10-30): исправления находок сертификации F-P9C1/N-P9C2
+
+Независимая сертификация (docs/cert_pgv09_2026-10-30.md, вердикт
+FAILED/recovery required) выявила блокер write-пути печатных jobs/
+renditions на Postgres-бэкенде (F-P9C1) и неверную таксономию отказа
+непериализуемого payload'а (N-P9C2). Исправление — задача
+PGV-09-FIX; строки §2/§3 выше сохранены как история поставки 09c79aa,
+этот раздел описывает фактическое поведение после исправления.
+
+### 5.1 F-P9C1: durable-ключи печатных записей (NULL-семантика)
+
+Корень дефекта: in-process записи используют `''` как маркер «нет
+значения», а Postgres-адаптер передавал их в колонки как есть. Для
+FK/UNIQUE-контуров 0010 пустая строка — обычное значение: FK
+`document_jobs/document_renditions.snapshot_id → report_snapshots`
+нарушался первой же печатной записью (0017 снял NOT NULL в расчёте на
+NULL), FK `document_renditions.revision_id → document_revisions`
+нарушался переносом `dprint-…` из `job.revision_id`, а общий ключ
+`UNIQUE('', format, profile)` с `ON CONFLICT DO UPDATE` молча
+перехватывал чужую строку rendition.
+
+Исправление (по recovery-плану акта §7):
+
+1. **Адаптер пишет NULL** (`_pg_nullable_text` в
+   `apps/api/document_jobs.py`): пустые маркеры `snapshot_id`,
+   `revision_id`, `print_revision_id`, `basis_artifact_id` печатаются
+   NULL'ом; NULL проходит проверку FK и не участвует в равенстве
+   UNIQUE (NULLS DISTINCT). In-process `''`-маркер и Memory-паритет
+   сохранены (авторский корпус не изменён).
+2. **Цель конфликта — по роду записи** (`register_rendition`):
+   печатная rendition апсертится по частичному индексу 0017
+   `ON CONFLICT (print_revision_id, format, redaction_profile) WHERE
+   print_revision_id IS NOT NULL` (идемпотентность печатной цели без
+   пересечения с snapshot-ключом); snapshot-путь — прежний
+   `ON CONFLICT (snapshot_id, format, redaction_profile)` (AC09).
+   Побочный дефект того же семейства устранён: пустой
+   `print_revision_id` snapshot-пути пишется NULL'ом и не занимает
+   частичный индекс (иначе две PNG-rendition разных снимков одного
+   профиля коллодили на живом PG).
+3. **complete_render**: печатная rendition несёт `revision_id=''`
+   (durable NULL); связь цели — `print_revision_id` с FK 0017.
+   `job.revision_id` (авторская конвенция: несёт print_revision_id)
+   сохранён — у `document_jobs.revision_id` нет FK.
+4. **Чтение**: `_job_from_row`/`_rendition_from_row` отображают
+   durable NULL обратно в `''` (прежний `str(None)` давал строку
+   `"None"` и ломал `find_*`-идемпотентность).
+5. **Миграция 0018** (`migrations/0018_pgv9fix_print_rendition_keys.sql`
+   = `MIGRATION_STATEMENTS_0018`, каталог 18 файлов/107 statements):
+   `ALTER TABLE document_renditions ALTER COLUMN revision_id DROP NOT
+   NULL` — FK сохранён (NULL проходит проверку), legacy D01–D12
+   защищён по-прежнему.
+
+Доказательство: `tests/api/test_pgv09fix_write_path.py` — мини-модель
+ограничений 0010+0016+0017+0018 (SQLite) с replay РЕАЛЬНЫХ форм INSERT
+адаптера (перехват через fake-соединение): печатные job/rendition
+проходят FK; две печатные ревизии сосуществуют (перехват строки
+исключён); snapshot-путь сохраняет идемпотентность; update-ветка не
+занимает частичный индекс. Граница честности: живой Postgres в среде
+отсутствует (унаследовано от CERT) — живой прогон миграций
+0001…0018 + write-пути остаётся обязательным шагом приёмки.
+
+### 5.2 N-P9C2: сериализация payload'а — terminal invalid_payload
+
+`PngRendererClient.render_page` сериализует payload ДО сетевого блока
+в собственной ветке: `TypeError/ValueError` (`allow_nan=False` — NaN/
+inf вне канонического freeze, чужие типы) → `RendererPayloadInvalid`
+(terminal `invalid_payload`, вне `TRANSIENT_ERROR_CODES`), а не
+transient-переоткладывание до исчерпания попыток. Сетевой вызов не
+выполняется вовсе; сообщение несёт только тип дефекта (AC21).
+
+### 5.3 Верификация исправления
+
+- RED→GREEN: 19/20 оракулов RED на базе cf520d8 (реальные формы:
+  FK-нарушения ×6, `str(None)`, перенос `dprint-…`, сырой
+  ValueError/TypeError, отсутствие 0018), после исправления 20/20
+  GREEN (протоколы `scripts/pgv09fix/protocols/`).
+- Мутанты на своих мутантах (кампания `scripts/pgv09fix/
+  mutation_campaign.py`, протокол `fix_mutation_campaign.json`):
+  8 откатов элементов исправления FX1–FX8 — **8/8 KILLED** моим
+  корпусом; авторский корпус (38+14) — 0/8 (ALIVE) — подтверждение,
+  что закрываемые пробелы именно эти.
+- Регресс: полный `pytest tests/api` — 3237P/64F/42S против
+  сертифицированной базы 3216P/65F/42S: +20 оракулов FIX, 0 новых
+  отказов; единственное расхождение — предсуществующий флаковый
+  doclog9-pdfa determinism (в этом прогоне GREEN).
+- `verify_local.py` — VERDICT PASS (адресная suite, затронутый
+  регресс 680P, паритет 0018, состояние дерева).
