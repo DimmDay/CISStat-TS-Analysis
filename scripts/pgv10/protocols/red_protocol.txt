@@ -1,0 +1,2 @@
+FAILED tests/api/test_pgv10_visual_exports.py::TestRenderPayloadBridge::test_screen_svg_from_snapshot_wins_over_data
+================== 43 failed, 3 passed, 11 warnings in 5.78s ===================

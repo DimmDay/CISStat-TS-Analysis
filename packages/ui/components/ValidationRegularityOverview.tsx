@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface RegularityGroup {
   group: string; observations: number; inferred_frequency: string | null; modal_interval: string | null;
   gap_count: number; missing_period_count: number; duplicate_count: number; sort_violations: number;
@@ -61,6 +62,7 @@ export function ValidationRegularityOverview({ refreshKey = 0 }: { refreshKey?: 
   const profile = data.profile;
   return (
     <section className="space-y-3">
+          <VisualExportButton viewId="validation.regularity.overview" label="Скачать PNG: регулярность" compact />
       <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
         <div className="rounded bg-neutral-50 p-2"><span className="text-neutral-500">Временная ось</span><strong className="block font-mono">{profile.date_column}</strong></div>
         <div className="rounded bg-neutral-50 p-2"><span className="text-neutral-500">Группировка</span><strong className="block font-mono">{profile.entity_column || "Нет"}</strong></div>

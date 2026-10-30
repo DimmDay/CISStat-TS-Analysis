@@ -5,6 +5,7 @@
 // матрица полезна и в честном status="pending": backend уже построил
 // фактический type_profile, но ожидаемая схема ещё не выбрана.
 
+import { VisualExportButton } from "./VisualExportButton";
 export type ValidationSemanticType = "numeric" | "datetime" | "categorical" | "text";
 export type TypeValidationMode = "profile" | "schema";
 
@@ -93,6 +94,7 @@ export function ValidationTypeMatrix({
       <div className="border-b border-neutral-100 px-4 py-3">
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Распределение классов</h4>
+          <VisualExportButton viewId="validation.data_types.matrix" label="Скачать PNG: типы данных" compact />
           <span className="text-[11px] text-neutral-400 tabular-nums">{profile.length} колонок</span>
         </div>
 

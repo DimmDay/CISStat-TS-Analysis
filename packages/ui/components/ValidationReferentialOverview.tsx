@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface ReferentialProfileItem {
   rule_index: number;
   rule_name: string;
@@ -83,6 +84,7 @@ export function ValidationReferentialOverview({ refreshKey = 0 }: { refreshKey?:
   return (
     <section className="space-y-3">
       <div>
+          <VisualExportButton viewId="validation.referential.overview" label="Скачать PNG: ссылки и связи" compact />
         <div className="mb-1 flex justify-between text-xs text-neutral-500">
           <span>Связность дочерних ключей</span><span>{profile.rules.length} правил</span>
         </div>

@@ -25,6 +25,7 @@ import { Check } from "lucide-react";
 import type { StructuralClass } from "../lib/structuralClass";
 import { RU_DEFINITION, RU_TASKS } from "../lib/structuralClass";
 
+import { VisualExportButton } from "./VisualExportButton";
 interface Rule {
   ids: StructuralClass[]; // строка подсвечивается, если activeClassId входит в этот список
   condition: string;
@@ -138,6 +139,7 @@ export function StructuralClassSchema({ activeClassId }: { activeClassId: Struct
   return (
     <div className="border border-neutral-200 rounded-lg p-4 bg-white">
       <h4 className="text-sm font-semibold text-neutral-800 mb-1">Определение структуры данных</h4>
+      <VisualExportButton viewId="upload.structure.schema" label="Скачать PNG: структура данных" compact />
       <p className="text-xs text-neutral-500 mb-3">
         Справочная схема — как платформа относит датасет к одному из классов. Совпадение с вашим датасетом подсвечено.
       </p>

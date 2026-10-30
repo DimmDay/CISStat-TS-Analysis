@@ -88,7 +88,9 @@ def _table_content(data: Mapping[str, Any]) -> dict[str, Any] | None:
     адаптеров PGV-03) -> строки контента html_table. Заголовки -- зона
     метаданных снапшота (authority состава печати): resolver несёт
     headings только для контент-формы, чтобы build_render_payload мог
-    предпочесть метаданные PGV-01."""
+    предпочесть метаданные PGV-01. PGV-10: форма {columns, matrix}
+    корреляционных срезов (строки == колонки) разворачивается в таблицу
+    с row-headers из имён колонок (§7 «row headers»)."""
     headings = data.get("headings")
     rows = data.get("rows")
     if isinstance(headings, dict) and isinstance(rows, list):
@@ -113,6 +115,16 @@ def _table_content(data: Mapping[str, Any]) -> dict[str, Any] | None:
             if isinstance(row, Mapping):
                 normalized.append([_cell(row.get(name)) for name in names])
             elif isinstance(row, (list, tuple)):
+                normalized.append([_cell(cell) for cell in row])
+            else:
+                normalized.append([_cell(row)])
+        return {"rows": normalized}
+    matrix = data.get("matrix")
+    if isinstance(columns, list) and isinstance(matrix, list):
+        names = [str(c) for c in columns]
+        normalized = []
+        for row in matrix:
+            if isinstance(row, (list, tuple)):
                 normalized.append([_cell(cell) for cell in row])
             else:
                 normalized.append([_cell(row)])
@@ -205,16 +217,32 @@ _CONTENT_BUILDERS = {
 }
 
 
+def _snapshot_section_svg(section: Mapping[str, Any]) -> dict[str, Any] | None:
+    """PGV-10: frozen экранный SVG из СЕКЦИИ снапшота (клиент
+    сериализует узел конкретного view -- не первый SVG документа;
+    identity снапшота включает sha256 геометрии)."""
+    svg = section.get("screen_svg")
+    if isinstance(svg, str) and svg.strip():
+        content: dict[str, Any] = {"svg_xml": svg}
+        height = section.get("height_px")
+        if isinstance(height, (int, float)) and height > 0:
+            content["height_px"] = height
+        return content
+    return None
+
+
 def section_content_from_visual_result(
     snapshot_payload: Mapping[str, Any],
     visual_result_payload: Mapping[str, Any],
 ) -> dict[str, dict[str, Any]]:
     """Контент секций из frozen visual_result (payload.data).
 
-    Ключ -- section_id секции snapshot'а; renderer_kind берётся из
-    МЕТАДАННЫХ секции (снапшот -- authority состава печати). Несовпадение
-    kind'а секции и базового kind'а результата -- честный пропуск
-    (контент не перекладывается в чужую форму)."""
+    Ключ -- section_id секции snapshot'а. PGV-10: каждая секция строится
+    СВОИМ строителем по renderer_kind СЕКЦИИ (mixed-сайт -- несколько
+    секций из ОДНОГО frozen data, §6); recharts_svg предпочитает
+    screen_svg СЕКЦИИ снапшота, fallback -- {svg_xml} в frozen data.
+    Отсутствие канонической формы для ЛЮБОЙ секции -- честный отказ
+    (§3.6 «неполнота не подменяется нулями»)."""
     result_payload = _rec(visual_result_payload.get("payload"))
     data = result_payload.get("data")
     if not isinstance(data, dict):
@@ -222,7 +250,6 @@ def section_content_from_visual_result(
             "missing_section_content: visual_result без frozen data "
             "(§3.6: контент не фабрикуется)"
         )
-    result_kind = result_payload.get("kind")
     sections = _rec(snapshot_payload.get("display")).get("sections") or []
     out: dict[str, dict[str, Any]] = {}
     for section in sections:
@@ -231,16 +258,17 @@ def section_content_from_visual_result(
         kind = section_rec.get("renderer_kind")
         if not isinstance(section_id, str) or not section_id:
             continue
-        if kind != result_kind:
-            # Срез результата -- от другого renderer_kind: честный
-            # пропуск (без перекладывания в чужую форму).
-            continue
         builder = _CONTENT_BUILDERS.get(kind)
         if builder is None:  # pragma: no cover -- каталог фиксирован
             raise PrintRenderPayloadIncomplete(
                 f"missing_section_content: неизвестный renderer_kind {kind!r}"
             )
-        content = builder(data)
+        if kind == "recharts_svg":
+            # Frozen экранный SVG: секция снапшота (PGV-10) -- первичный
+            # источник; {svg_xml} в data -- совместимость (§4.1 passthrough).
+            content = _snapshot_section_svg(section_rec) or builder(data)
+        else:
+            content = builder(data)
         if content is None:
             raise PrintRenderPayloadIncomplete(
                 f"missing_section_content: срез результата {section_id!r} "

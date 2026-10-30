@@ -220,19 +220,6 @@ def resolve_producer_view(view_id: str) -> dict[str, Any]:
 
 UNWIRED_PGV03_VIEWS: frozenset[str] = frozenset(
     {
-        # ── Предобработка -> PGV-10 ──
-        "preprocessing.regularity.overview",
-        "preprocessing.regularity.gap_map",
-        "preprocessing.decomposition.overview",
-        "preprocessing.variance_stab.series",
-        "preprocessing.variance_stab.rolling",
-        "preprocessing.variance_stab.methods",
-        "preprocessing.variance_stab.distribution",
-        "preprocessing.variance_stab.diagnostics",
-        "preprocessing.stationarity.overview",
-        "preprocessing.spectral.periodogram",
-        "preprocessing.feature_eng.overview",
-        "preprocessing.scaling.overview",
         # ── Моделирование -> PGV-12 ──
         "modeling.workflow.overview",
         "modeling.traceability.cards",
@@ -245,6 +232,9 @@ UNWIRED_PGV03_VIEWS: frozenset[str] = frozenset(
         "forecasting.monitoring.d12",
     }
 )
+# PGV-10: 12 недобранных view «Предобработки» добраны адаптерами ниже
+# (честный недобор PGV-03 сужен; EDA/tasks -- PGV-11, modeling/forecast
+# -- PGV-12, паспорта -- PGV-04/13).
 
 
 def unwired_view_ids() -> tuple[str, ...]:
@@ -481,6 +471,332 @@ def _smoothing_profile(response: Mapping[str, Any]) -> dict[str, Any]:
         "diagnostics_after": profile.get("diagnostics_after"),
         "points": profile.get("points") or [],
     }
+
+
+# ── Экстракторы добора PGV-10 (обёрнутые ответы {mode,status,profile}) ─
+
+
+def _profile_of(response: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Обёртка остановок Предобработки {mode, status, profile}: срез
+    берётся из фактического profile; плоский ответ (без обёртки) --
+    как есть (честные формы обоих видов)."""
+    profile = response.get("profile")
+    return profile if isinstance(profile, dict) else response
+
+
+def _preprocessing_regularity_table(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Регулярность»: профиль временной оси -> таблица
+    поле/значение (зеркало RegularityProfileOut, apps/api/schemas.py)."""
+    profile = _profile_of(response)
+    rows = [
+        {"field": "date_column", "selected": profile.get("date_column")},
+        {"field": "entity_column", "selected": profile.get("entity_column")},
+        {
+            "field": "frequency",
+            "selected": profile.get("detected_frequency")
+            or profile.get("target_frequency"),
+        },
+        {"field": "is_sorted", "selected": profile.get("is_sorted")},
+        {"field": "sort_violations", "selected": profile.get("sort_violations")},
+        {"field": "invalid_date_count", "selected": profile.get("invalid_date_count")},
+        {"field": "duplicate_count", "selected": profile.get("duplicate_count")},
+        {"field": "gap_count", "selected": profile.get("gap_count")},
+        {
+            "field": "missing_period_count",
+            "selected": profile.get("missing_period_count"),
+        },
+        {"field": "total_violations", "selected": profile.get("total_violations")},
+    ]
+    return {
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("applicability_message"),
+        "columns": ["field", "selected"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _regularity_gap_map(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Таймлайн событий (validation/regularity.py::regularity_timeline):
+    события разрывов/дублей/сортировки -- chart-форма (events) И табличная
+    (columns/rows) для второй секции mixed-сайта."""
+    events = response.get("events") or []
+    rows = [
+        {
+            "date": event.get("date"),
+            "kind": event.get("kind"),
+            "group": event.get("group"),
+        }
+        for event in events
+        if isinstance(event, dict)
+    ]
+    return {
+        "events": events,
+        "truncated": response.get("truncated"),
+        "date_column": response.get("date_column"),
+        "entity_column": response.get("entity_column"),
+        "min_date": response.get("min_date"),
+        "max_date": response.get("max_date"),
+        "columns": ["date", "kind", "group"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _preprocessing_decomposition_series(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Декомпозиция ряда» (build_preprocessing_decomposition):
+    STL-компоненты вдоль временной оси."""
+    profile = _profile_of(response)
+    return {
+        "series": profile.get("points") or [],
+        "method": profile.get("method"),
+        "period": profile.get("period"),
+        "n_points": profile.get("n_points"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _variance_series(response: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _profile_of(response)
+    return {
+        "series": profile.get("points") or [],
+        "selected_method": profile.get("selected_method"),
+        "lambda_value": profile.get("lambda_value"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _variance_rolling(response: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _profile_of(response)
+    return {
+        "series": profile.get("points") or [],
+        "selected_method": profile.get("selected_method"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _variance_methods(response: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _profile_of(response)
+    return {
+        "candidates": profile.get("candidates") or [],
+        "selected_method": profile.get("selected_method"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _variance_distribution(response: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _profile_of(response)
+    return {
+        "bins": profile.get("histogram") or [],
+        "selected_method": profile.get("selected_method"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _variance_diagnostics(response: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _profile_of(response)
+    before = profile.get("diagnostics_before") or {}
+    after = profile.get("diagnostics_after") or {}
+    return {
+        "cards": [
+            {"label": "corr(mean, σ)", "value": after.get("mean_std_correlation")},
+            {"label": "Brown–Forsythe p", "value": after.get("levene_pvalue")},
+            {
+                "label": "block_variance_ratio",
+                "value": after.get("block_variance_ratio"),
+            },
+            {"label": "ARCH-LM p", "value": after.get("arch_lm_pvalue")},
+        ],
+        "diagnostics_before": before,
+        "diagnostics_after": after,
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+    }
+
+
+def _stationarity_overview(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Стационарность»: ряд до/после (chart) И сравнение
+    тестов (таблица) из ОДНОГО фактического ответа (mixed-сайт)."""
+    profile = _profile_of(response)
+    tests = profile.get("tests") or []
+    rows = [
+        {
+            "test": test.get("test") or test.get("label"),
+            "p_before": test.get("before_p_value"),
+            "p_after": test.get("after_p_value"),
+        }
+        for test in tests
+        if isinstance(test, dict)
+    ]
+    return {
+        "series": profile.get("points") or [],
+        "tests": tests,
+        "selected_method": profile.get("selected_method"),
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+        "columns": ["test", "p_before", "p_after"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _spectral_periodogram(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Спектральный анализ»: Welch-PSD (chart) И частотные
+    диапазоны (таблица) из ОДНОГО ответа."""
+    profile = _profile_of(response)
+    bands = profile.get("bands") or []
+    rows = [
+        {
+            "band": band.get("label"),
+            "power_share": band.get("power_share"),
+        }
+        for band in bands
+        if isinstance(band, dict)
+    ]
+    return {
+        "series": profile.get("welch") or [],
+        "bands": bands,
+        "candidates": profile.get("candidates") or [],
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+        "columns": ["band", "power_share"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _feature_eng_overview(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Генерация признаков»: превью (chart) И каталог
+    признаков (таблица) из ОДНОГО ответа."""
+    profile = _profile_of(response)
+    catalog = profile.get("catalog") or []
+    rows = [
+        {
+            "name": item.get("name"),
+            "family": item.get("family"),
+            "coverage": item.get("coverage"),
+        }
+        for item in catalog
+        if isinstance(item, dict)
+    ]
+    return {
+        "series": profile.get("preview_points") or [],
+        "catalog": catalog,
+        "lag_correlations": profile.get("lag_correlations") or [],
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+        "columns": ["name", "family", "coverage"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _scaling_overview(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Остановка «Масштабирование»: превью (chart) И сравнение
+    масштабов (таблица) из ОДНОГО ответа."""
+    profile = _profile_of(response)
+    ranges = profile.get("range_points") or []
+    rows = [
+        {
+            "column": item.get("column"),
+            "log_scale_before": item.get("log_scale_before"),
+            "log_scale_after": item.get("log_scale_after"),
+        }
+        for item in ranges
+        if isinstance(item, dict)
+    ]
+    return {
+        "series": profile.get("preview_points") or [],
+        "recommended_method": profile.get("recommended_method"),
+        "range_points": ranges,
+        "applicable": profile.get("applicable"),
+        "reason": profile.get("reason"),
+        "columns": ["column", "log_scale_before", "log_scale_after"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _missing_coverage_heatmap(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Теплокарта покрытия (PGV-03: {columns, bins,...}) -- PGV-10
+    аддитивно разворачивает фактические bins (MissingMatrixBinOut:
+    missing_share по колонкам) в каноническую форму html_heatmap
+    {row_headings, column_headings, cells}: печатная секция строится из
+    ТЕХ ЖЕ замороженных данных, без пересчёта (§6)."""
+    columns = [str(c) for c in response.get("columns") or []]
+    bins = response.get("bins") or []
+    row_headings: list[str] = []
+    cells: list[list[Any]] = []
+    for bin_record in bins:
+        if not isinstance(bin_record, dict):
+            continue
+        row_headings.append(
+            f"Строки {bin_record.get('row_start')}–{bin_record.get('row_end')}"
+        )
+        share = bin_record.get("missing_share") or {}
+        cells.append([share.get(column) for column in columns])
+    return {
+        "columns": columns,
+        "bins": bins,
+        "rows_per_bin": response.get("rows_per_bin"),
+        "total_rows": response.get("total_rows"),
+        "row_headings": row_headings,
+        "column_headings": columns,
+        "cells": cells,
+    }
+
+
+def _outlier_series_profile_mixed(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Ряд с границами метода (PGV-03 chart-форма) + PGV-10 аддитивно:
+    границы колонок -- табличная форма второй секции mixed-сайта
+    (ОДИН фактический ответ, без пересчёта, §6)."""
+    bounds = response.get("bounds") or {}
+    rows = []
+    if isinstance(bounds, dict):
+        for column, bound in bounds.items():
+            bound_rec = bound if isinstance(bound, dict) else {}
+            rows.append(
+                {
+                    "column": column,
+                    "lower": bound_rec.get("lower"),
+                    "upper": bound_rec.get("upper"),
+                }
+            )
+    return {
+        "series": response.get("points") or [],
+        "bounds": bounds,
+        "columns": ["column", "lower", "upper"],
+        "rows": rows,
+        "row_count": len(rows),
+    }
+
+
+def _detail_level_sampling(
+    response: Mapping[str, Any], params: Optional[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """detail_level=compact -- потолок ТОЧЕК ОТОБРАЖЕНИЯ при полном
+    расчёте (Task 97.3): честный truncated с фактическим cap (AC08:
+    скрытого detail upgrade нет); иначе full."""
+    profile = _profile_of(response)
+    points = profile.get("points") or []
+    total = profile.get("n_points") or profile.get("n_observations")
+    if (
+        (params or {}).get("detail_level") == "compact"
+        and isinstance(total, int)
+        and len(points) < total
+    ):
+        return {
+            "applicable": True,
+            "mode": "truncated",
+            "point_cap": len(points),
+            "reason": None,
+        }
+    return {"applicable": True, "mode": "full", "point_cap": None, "reason": None}
 
 
 def _forecast_chart(response: Mapping[str, Any]) -> dict[str, Any]:
@@ -867,13 +1183,7 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     "preprocessing.missing.coverage_matrix": _spec(
         "preprocessing.missing.coverage_matrix", "html_heatmap",
         "missing_coverage_matrix",
-        lambda r: {
-            "columns": r.get("columns") or [],
-            "bins": r.get("bins") or [],
-            "rows_per_bin": r.get("rows_per_bin"),
-            "total_rows": r.get("total_rows"),
-        },
-        _PERCENT, dict(_FULL),
+        _missing_coverage_heatmap, _PERCENT, dict(_FULL),
         selection_keys=("bins", "row_window"),
     ),
     "preprocessing.missing.correlation": _spec(
@@ -894,10 +1204,7 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     "preprocessing.outliers.series_profile": _spec(
         "preprocessing.outliers.series_profile", "recharts_svg",
         "outlier_series_profile",
-        lambda r: {
-            "series": r.get("points") or [],
-            "bounds": r.get("bounds") or {},
-        },
+        _outlier_series_profile_mixed,
         _units_unknown, lambda r, p: _series_sampling(
             r, sampled_key="sampled", count_of=_points_count, params=p
         ),
@@ -910,6 +1217,80 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
             r, zoom_cap_of=_smoothing_points_count, params=p
         ),
         selection_keys=("method", "window", "selected_column"),
+    ),
+    # ── Preprocessing добор PGV-10 (12 view; недобор PGV-03 сужен) ────
+    "preprocessing.regularity.overview": _spec(
+        "preprocessing.regularity.overview", "html_table",
+        "preprocessing_regularity_profile",
+        _preprocessing_regularity_table, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("selected_column",),
+    ),
+    "preprocessing.regularity.gap_map": _spec(
+        "preprocessing.regularity.gap_map", "recharts_svg",
+        "preprocessing_regularity_timeline",
+        _regularity_gap_map, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("group",),
+    ),
+    "preprocessing.decomposition.overview": _spec(
+        "preprocessing.decomposition.overview", "recharts_svg",
+        "preprocessing_decomposition",
+        _preprocessing_decomposition_series, _units_unknown,
+        _detail_level_sampling,
+        selection_keys=("selected_column", "period", "robust", "detail_level"),
+    ),
+    "preprocessing.variance_stab.series": _spec(
+        "preprocessing.variance_stab.series", "recharts_svg",
+        "variance_series",
+        _variance_series, _units_unknown, dict(_FULL),
+        selection_keys=("selected_column", "selected_method", "lambda_value"),
+    ),
+    "preprocessing.variance_stab.rolling": _spec(
+        "preprocessing.variance_stab.rolling", "recharts_svg",
+        "variance_rolling",
+        _variance_rolling, _units_unknown, dict(_FULL),
+        selection_keys=("selected_column", "selected_method"),
+    ),
+    "preprocessing.variance_stab.methods": _spec(
+        "preprocessing.variance_stab.methods", "recharts_svg",
+        "variance_methods",
+        _variance_methods, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("selected_column",),
+    ),
+    "preprocessing.variance_stab.distribution": _spec(
+        "preprocessing.variance_stab.distribution", "recharts_svg",
+        "variance_distribution",
+        _variance_distribution, _units_unknown, dict(_FULL),
+        selection_keys=("selected_column", "selected_method", "bins"),
+    ),
+    "preprocessing.variance_stab.diagnostics": _spec(
+        "preprocessing.variance_stab.diagnostics", "html_cards",
+        "variance_diagnostics",
+        _variance_diagnostics, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("selected_column",),
+    ),
+    "preprocessing.stationarity.overview": _spec(
+        "preprocessing.stationarity.overview", "recharts_svg",
+        "stationarity_profile",
+        _stationarity_overview, _units_table, dict(_FULL),
+        selection_keys=("selected_column", "alpha"),
+    ),
+    "preprocessing.spectral.periodogram": _spec(
+        "preprocessing.spectral.periodogram", "recharts_svg",
+        "spectral_periodogram",
+        _spectral_periodogram, _units_table, dict(_FULL),
+        selection_keys=("selected_column", "detail_level"),
+    ),
+    "preprocessing.feature_eng.overview": _spec(
+        "preprocessing.feature_eng.overview", "recharts_svg",
+        "feature_engineering_overview",
+        _feature_eng_overview, _units_table, dict(_FULL),
+        selection_keys=("selected_column",),
+    ),
+    "preprocessing.scaling.overview": _spec(
+        "preprocessing.scaling.overview", "recharts_svg",
+        "scaling_overview",
+        _scaling_overview, _units_table, dict(_FULL),
+        selection_keys=("selected_column",),
     ),
     # ── EDA (16) ─────────────────────────────────────────────────────
     "eda.descriptive.stats": _spec(

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface InclusionProfileItem {
   column: string;
   allowed_values: Array<string | number | boolean>;
@@ -79,6 +80,7 @@ export function ValidationInclusionOverview({ refreshKey = 0 }: { refreshKey?: n
   return (
     <section className="space-y-3">
       <div>
+          <VisualExportButton viewId="validation.inclusion.overview" label="Скачать PNG: включённость" compact />
         <div className="mb-1 flex justify-between text-xs text-neutral-500">
           <span>Соответствие допустимым наборам</span><span>{profile.columns.length} правил</span>
         </div>

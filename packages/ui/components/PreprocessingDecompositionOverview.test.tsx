@@ -148,7 +148,7 @@ describe("PreprocessingDecompositionOverview: дозагрузка detail_level 
     fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(document.querySelector("section > .absolute")).not.toBeNull();
+    expect(document.querySelector("section .absolute")).not.toBeNull();
 
     // возврат на «Компоненты»: сброс происходит по клику на видимую часть?
     // Нет — expandedChartId сохраняется; схлопываем и проверяем ACF

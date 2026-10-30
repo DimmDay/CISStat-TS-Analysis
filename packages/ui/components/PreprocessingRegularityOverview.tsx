@@ -13,6 +13,7 @@ import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface RegularityGapExample {
   previous_date: string;
   current_date: string;
@@ -143,6 +144,7 @@ function PreprocessingRegularityOverviewInner({ refreshKey = 0 }: { refreshKey?:
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Временная ось: {profile.date_column}{profile.entity_column ? ` · сущность: ${profile.entity_column}` : ""}</h4>
+          <VisualExportButton viewId="preprocessing.regularity.overview" label="Скачать PNG: регулярность оси" compact />
           <span className="text-xs text-neutral-400">
             Частота: {profile.target_frequency ?? "не определена"} {profile.detected_frequency && profile.detected_frequency !== profile.target_frequency ? `(обнаружена: ${profile.detected_frequency})` : ""}
           </span>

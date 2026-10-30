@@ -21,7 +21,9 @@
 // был бы смонтирован со старым рядом навсегда (счётчик при этом показывает
 // уже 0). Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart,
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -103,6 +105,7 @@ interface LineResponse {
 }
 
 export function OutlierLineChart({ column, method = "iqr", refreshKey = 0 }: { column: string | null; method?: string; refreshKey?: number }) {
+  const exportSectionRef = useRef<HTMLDivElement>(null);
   const { data, loading, error } = useOutlierChartFetch<LineResponse>(
     column ? `/dataset/outlier-line?column=${encodeURIComponent(column)}&method=${method}&revision=${refreshKey}` : null
   );
@@ -111,7 +114,9 @@ export function OutlierLineChart({ column, method = "iqr", refreshKey = 0 }: { c
   if (!data || data.points.length === 0) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div ref={exportSectionRef} data-testid="export-chart-container" className="flex min-h-0 flex-1 flex-col">
+      <VisualExportButton viewId="preprocessing.outliers.series_profile" label="Скачать PNG: ряд с границами метода" compact getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)} />
+
       <ChartFrame>
         <LineChart data={data.points} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
           <CartesianGrid stroke="var(--chart-grid)" />

@@ -20,7 +20,9 @@
 // `revision=` по всей кодовой базе (эталон OUTL-1). Неизвестный query-параметр
 // FastAPI игнорирует -- бэкенд не меняется.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 import {
   Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer,
   Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
@@ -156,6 +158,7 @@ interface TimelineResponse {
 }
 
 export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: number }) {
+  const exportSectionRef = useRef<HTMLDivElement>(null);
   const { data, loading, error } = useRegularityChartFetch<TimelineResponse>(
     `/dataset/preprocessing/regularity-timeline?revision=${refreshKey}`
   );
@@ -173,7 +176,8 @@ export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: numbe
   }));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-3">
+    <div ref={exportSectionRef} data-testid="export-chart-container" className="flex min-h-0 flex-1 flex-col p-3">
+      <VisualExportButton viewId="preprocessing.regularity.gap_map" label="Скачать PNG: таймлайн событий" compact getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)} />
       <p className="mb-2 shrink-0 text-xs text-neutral-500">
         Расположение нарушений во времени{data.entity_column ? " (все сущности на одной оси)" : ""}. Кластер в одном периоде — разовый сбой источника; разброс по всему ряду — системная проблема.
       </p>

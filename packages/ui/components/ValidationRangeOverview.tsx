@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface RangeProfileItem {
   column: string;
   rule_name: string;
@@ -85,6 +86,7 @@ export function ValidationRangeOverview({ refreshKey = 0 }: { refreshKey?: numbe
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Соответствие допустимым границам</h4>
+          <VisualExportButton viewId="validation.ranges.overview" label="Скачать PNG: диапазоны" compact />
           <span className="text-xs text-neutral-400">{profile.columns.length} колонок</span>
         </div>
         <div

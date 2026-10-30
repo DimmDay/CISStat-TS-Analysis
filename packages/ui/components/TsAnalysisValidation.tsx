@@ -55,6 +55,7 @@ import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { RulesManagementPanel } from "./RulesManagementPanel";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { ValidationCheckChart, type ValidationCheckData } from "./ValidationCheckChart";
+import { VisualExportChartScope } from "./VisualExportButton";
 import {
   ValidationTypeMatrix,
   type TypeValidationMode,
@@ -1104,12 +1105,14 @@ export function TsAnalysisValidation() {
               </div>
             )
           ) : (
-            <ValidationCheckChart
-              checkLabel={activeCheck.label}
-              data={checksData?.[activeCheckId] ?? null}
-              loading={checksLoading}
-              selectedColumn={activeFeature}
-            />
+            <VisualExportChartScope viewId="validation.formats.chart" label="график проверки форматов">
+              <ValidationCheckChart
+                checkLabel={activeCheck.label}
+                data={checksData?.[activeCheckId] ?? null}
+                loading={checksLoading}
+                selectedColumn={activeFeature}
+              />
+            </VisualExportChartScope>
           )}
 
           <div className="grid grid-cols-4 gap-3 mt-4">

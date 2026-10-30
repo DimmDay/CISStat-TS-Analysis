@@ -13,6 +13,7 @@ import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface OutlierBounds {
   lower: number;
   upper: number;
@@ -189,6 +190,7 @@ function PreprocessingOutliersOverviewInner({
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Выбросы по числовым колонкам</h4>
+          <VisualExportButton viewId="preprocessing.outliers.overview" label="Скачать PNG: выбросы" compact />
           <span className="text-xs text-neutral-400">{profile.columns.length} числовых колонок · метод: {METHOD_LABEL[profile.method]}</span>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-neutral-600">

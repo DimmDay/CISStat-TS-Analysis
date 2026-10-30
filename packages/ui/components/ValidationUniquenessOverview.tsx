@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface UniquenessGroup {
   key_values: Record<string, string>;
   occurrences: number;
@@ -83,6 +84,7 @@ export function ValidationUniquenessOverview({ refreshKey = 0 }: { refreshKey?: 
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Распределение строк</h4>
+          <VisualExportButton viewId="validation.uniqueness.overview" label="Скачать PNG: уникальность" compact />
           <span className="text-xs text-neutral-500">{uniquenessKeyLabel(profile)}</span>
         </div>
         <div role="img" aria-label={`Уникальных строк: ${profile.valid_rows}; строк в группах дублей: ${duplicates}`} className="mt-3 flex h-3 overflow-hidden rounded-full bg-neutral-100">

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 // Task 97.2 (Этап 2, spec_max_graf_fix.md §4.4): интеграция раскрытия графиков.
 // Корень Обзора: relative всегда (правка A), overflow переключается по
 // expandedChartId (правка C); три графика STL обёрнуты в ExpandableChartPanel
@@ -154,6 +156,7 @@ export function PreprocessingDecompositionOverview(props: Props) {
 }
 
 function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDataset, refreshKey = 0 }: Props) {
+  const exportChartRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>("components");
   const { expandedChartId } = useExpandableChartState();
   // Task 97.3 (§6.3): дозагрузка expanded только для панели «Компоненты» —
@@ -187,6 +190,7 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
     <div className="shrink-0 border-b border-neutral-100 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><h4 className="text-sm font-semibold text-neutral-800">{profile.column}: {profile.method} · период {profile.period}</h4><p className="mt-1 text-[10px] text-neutral-500">{profile.date_column} · частота {profile.frequency} · {profile.n_points} наблюдений · robust={profile.robust ? "да" : "нет"}</p></div>
+          <VisualExportButton viewId="preprocessing.decomposition.overview" label="Скачать PNG: декомпозиция STL" compact getScreenSvg={() => serializeChartSvgSafe(() => exportChartRef.current)} />
         <p className="text-[10px] text-neutral-500">Метод: <a className="text-brand underline" href="https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.STL.html" target="_blank" rel="noreferrer">statsmodels STL</a> · тест: <a className="text-brand underline" href="https://www.statsmodels.org/stable/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html" target="_blank" rel="noreferrer">Ljung–Box</a></p>
       </div>
       <p className="mt-2 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>
@@ -199,10 +203,12 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
         {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
       </div>
     </div>
+    <div ref={exportChartRef} data-testid="export-chart-container" className="flex min-h-0 flex-1 flex-col">
     {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL">{componentsDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<ComponentsChart profile={componentsDetail.data?.profile ?? profile} /></ExpandableChartPanel>}
     {view === "seasonal" && <ExpandableChartPanel chartId="decomposition-seasonal" title="Сезонный профиль STL"><SeasonalChart profile={profile} /></ExpandableChartPanel>}
     {view === "acf" && <ExpandableChartPanel chartId="decomposition-acf" title="ACF остатка STL"><ResidualAcfChart profile={profile} /></ExpandableChartPanel>}
     {view === "diagnostics" && <Diagnostics profile={profile} />}
+    </div>
     <p className="shrink-0 px-4 pb-3 text-[9px] text-neutral-400">{profile.methodology_note}</p>
   </section>;
 }

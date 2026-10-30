@@ -22,6 +22,7 @@ import type { MissingProfileItem } from "./PreprocessingMissingOverview";
 
 // ── Общее: загрузка + состояния ──
 
+import { VisualExportButton } from "./VisualExportButton";
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -105,6 +106,7 @@ export function MissingMatrixChart({ refreshKey = 0 }: { refreshKey?: number }) 
       <p className="mb-2 text-xs text-neutral-500">
         Каждый столбец матрицы — блок из ~{data.rows_per_bin} строк ({data.total_rows} всего); цвет — доля пропусков в блоке (синий → нет пропусков, красный → пропуски).
       </p>
+      <VisualExportButton viewId="preprocessing.missing.coverage_matrix" label="Скачать PNG: тепловая карта покрытия" compact />
       <div className="overflow-x-auto">
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.bins.length}, minmax(3px, 1fr))` }}>
           {data.columns.map((column) => (
@@ -166,6 +168,7 @@ export function MissingCorrelationChart({ refreshKey = 0 }: { refreshKey?: numbe
       <p className="mb-2 text-xs text-neutral-500">
         Корреляция индикаторов пропуска между колонками. Значение близкое к +1 — пропуски в этих колонках почти всегда происходят одновременно (одно совместное событие, а не два независимых).
       </p>
+      <VisualExportButton viewId="preprocessing.missing.correlation" label="Скачать PNG: корреляция индикаторов" compact />
       <div className="overflow-x-auto">
         <table aria-label="Корреляция пропусков между колонками" className="border-collapse text-xs">
           <thead>

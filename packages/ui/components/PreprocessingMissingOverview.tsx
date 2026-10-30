@@ -13,6 +13,7 @@ import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface MissingProfileItem {
   column: string;
   dtype: string;
@@ -154,6 +155,7 @@ function PreprocessingMissingOverviewInner({ refreshKey = 0 }: { refreshKey?: nu
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Полнота данных</h4>
+          <VisualExportButton viewId="preprocessing.missing.overview" label="Скачать PNG: пропуски" compact />
           <span className="text-xs text-neutral-400">{profile.columns.length} колонок · {profile.total_rows} строк</span>
         </div>
         <div

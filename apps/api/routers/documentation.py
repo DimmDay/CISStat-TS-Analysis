@@ -31,7 +31,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from apps.api.document_jobs import (
     DocumentAccessDenied,
@@ -233,6 +233,12 @@ def _map_service_errors(exc: Exception) -> HTTPException:
         # DOCLOG-6: LifecycleAccessDenied -- тот же uniform-404 контракт
         # (R09/T15): «нет» и «чужой» неразличимы.
         return HTTPException(status_code=404, detail=_DOCUMENT_NOT_FOUND_DETAIL)
+    from apps.api.visual_exports import VisualExportAccessDenied
+
+    if isinstance(exc, VisualExportAccessDenied):
+        # PGV-10: чужой/несуществующий run визуального экспорта -- тот же
+        # uniform-404 контракт (R09/AC18: существование не дисклоужается).
+        return HTTPException(status_code=404, detail=_RUN_NOT_FOUND_DETAIL)
     if isinstance(exc, DocumentIntegrityError):
         return HTTPException(
             status_code=500,
@@ -1097,3 +1103,155 @@ def archive_verify(request: Request, run_id: str, payload: dict[str, Any]) -> di
     except (LifecycleAccessDenied, InsufficientScopeError) as exc:
         raise _map_service_errors(exc) from None
     return report
+
+
+# ── PGV-10: экспорт научных визуализаций (spec_passport_graphics_
+#    visual.md §10.1/§11/§13, строка PGV-10) ────────────────────────────
+
+
+@router.get("/runs/{run_id}/visual-sources")
+def list_visual_sources_route(request: Request, run_id: str) -> dict[str, Any]:
+    """GET visual-sources (§11): доступные frozen inputs/views трёх
+    остановок (upload/validation/preprocessing) -- метаданные + frozen
+    факты реестров БЕЗ запуска науки (AC06). Чужой run -- uniform 404
+    (AC18); знание run_id НЕ право."""
+    from apps.api.visual_exports import (
+        VisualExportAccessDenied,
+        VisualExportError,
+        list_visual_sources,
+    )
+
+    subject, session_id = _subject_and_session(request)
+    try:
+        return list_visual_sources(run_id, subject, session_id=session_id)
+    except VisualExportAccessDenied as exc:
+        return _export_flat_error(404, "not_found", "Визуальные источники недоступны")
+    except VisualExportError as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        return _export_flat_error(422, "invalid_selection", str(exc))
+
+
+@router.post("/runs/{run_id}/visuals", status_code=202)
+def request_visual_export_route(
+    request: Request, run_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """POST /visuals (§10.1/§11): «Скачать PNG» конкретного view
+    остановки -> freeze durable visual_result -> VisualPrintSnapshot/1
+    (screen_svg -- frozen геометрия СВОЕГО chart-узла, не первый SVG
+    документа) -> V01 revision -> PNG job (PGV-09) -> 202 + status_url.
+    Наука не запускается (AC06); CAS expected_context -- 409
+    context_changed (AC07); идемпотентность -- §11/AC09."""
+    from apps.api.visual_artifacts import PrintContextConflict
+    from apps.api.visual_exports import (
+        InvalidScreenSvg,
+        PrintScreenSvgRequired,
+        UnknownExportView,
+        VisualExportAccessDenied,
+        VisualExportError,
+        VisualExportOutOfScope,
+        VisualSourceUnavailable,
+        request_visual_export,
+    )
+
+    view_id = str(payload.get("view_id", "") or "").strip()
+    if not view_id:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_view", "message": "view_id обязателен"},
+        )
+    raw_revision = payload.get("expected_data_revision")
+    expected_data_revision: Optional[int] = None
+    if isinstance(raw_revision, int) and not isinstance(raw_revision, bool):
+        expected_data_revision = raw_revision
+    elif isinstance(raw_revision, str) and raw_revision.strip().isdigit():
+        expected_data_revision = int(raw_revision.strip())
+    elif raw_revision not in (None, ""):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid_selection",
+                "message": "expected_data_revision обязан быть целым числом",
+            },
+        )
+    subject, session_id = _subject_and_session(request)
+    try:
+        outcome = request_visual_export(
+            run_id,
+            subject,
+            view_id=view_id,
+            session_id=session_id,
+            result_ref=str(payload.get("result_ref") or "").strip() or None,
+            profile_id=str(payload.get("profile_id") or "figure-landscape"),
+            screen_svg=(payload.get("screen_svg") or None) if isinstance(payload.get("screen_svg"), str) else None,
+            expected_context_id=(
+                str(payload.get("expected_context_id") or "").strip() or None
+            ),
+            expected_data_revision=expected_data_revision,
+            date_column=str(payload.get("date_column") or "").strip() or None,
+            render_requested_at=_now_iso_for_export(),
+        )
+    except UnknownExportView as exc:
+        return _export_flat_error(422, "unknown_view", str(exc))
+    except VisualExportOutOfScope as exc:
+        return _export_flat_error(422, "view_out_of_scope", str(exc))
+    except PrintScreenSvgRequired as exc:
+        return _export_flat_error(422, "screen_svg_required", str(exc))
+    except InvalidScreenSvg as exc:
+        return _export_flat_error(422, "invalid_screen_svg", str(exc))
+    except VisualSourceUnavailable as exc:
+        return _export_flat_error(409, "source_unavailable", str(exc))
+    except PrintContextConflict as exc:
+        return _export_flat_error(409, "context_changed", str(exc))
+    except VisualExportAccessDenied as exc:
+        return _export_flat_error(404, "not_found", "Экспорт недоступен")
+    except VisualExportError as exc:
+        message = str(exc)
+        if message.startswith("invalid_profile"):
+            return _export_flat_error(422, "invalid_profile", message)
+        if message.startswith("export_too_large"):
+            return _export_flat_error(413, "export_too_large", message)
+        return _export_flat_error(422, "invalid_selection", message)
+    except DocumentAccessDenied as exc:
+        return _export_flat_error(404, "not_found", "Экспорт недоступен")
+    except DocumentQuotaExceeded as exc:
+        return _export_flat_error(429, "quota_exceeded", str(exc))
+    except DocumentRetryLimitExceeded as exc:
+        return _export_flat_error(429, "retry_limit_exceeded", str(exc))
+    except UnsupportedFormatError as exc:
+        return _export_flat_error(400, "unsupported_format", str(exc))
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        from apps.api.telemetry import emit
+
+        emit(
+            "visual_export_unexpected_error",
+            "WARN",
+            message_template="visual export failed with unexpected error",
+            error_code=type(exc).__name__,
+        )
+        return _export_flat_error(
+            503, "visual_export_unavailable", "Экспорт временно недоступен"
+        )
+    return {
+        **outcome,
+        "status_url": outcome.get("status_url", ""),
+    }
+
+
+def _export_flat_error(status_code: int, code: str, message: str) -> JSONResponse:
+    """Плоское тело ошибки {code, message, request_id} -- паритет
+    routers/logs.py и routers/monitoring.py (§17)."""
+    from apps.api.telemetry import current_request_id
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "code": code,
+            "message": message,
+            "request_id": current_request_id(),
+        },
+    )
+
+
+def _now_iso_for_export() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()

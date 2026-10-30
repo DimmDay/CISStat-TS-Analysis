@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface TextQualityIssueCounts {
   garbage: number;
   empty: number;
@@ -81,6 +82,7 @@ export function ValidationTextQualityOverview({ refreshKey = 0 }: { refreshKey?:
   return (
     <section className="space-y-3">
       <div>
+          <VisualExportButton viewId="validation.text_quality.overview" label="Скачать PNG: качество текста" compact />
         <div className="mb-1 flex justify-between text-xs text-neutral-500"><span>Чистота текстовых значений</span><span>{profile.columns.length} колонок</span></div>
         <div role="img" aria-label={`Чистых значений: ${totals.valid}; нарушений: ${totals.invalid}`} className="flex h-3 overflow-hidden rounded-full bg-neutral-100">
           <div className="bg-green-500" style={{ width: `${total ? totals.valid / total * 100 : 0}%` }} />

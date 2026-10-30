@@ -132,6 +132,7 @@ import {
   ScatterDistributionChart,
 } from "./DistributionCharts";
 import { TimeSeriesLineChart, type TimeSeriesChartData } from "./TimeSeriesLineChart";
+import { VisualExportButton, VisualExportChartScope } from "./VisualExportButton";
 import { DecompositionBadges, type DecompositionData } from "./DecompositionBadges";
 import { DecompositionSeriesChart, type DecompositionSeriesData } from "./DecompositionSeriesChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
@@ -1938,6 +1939,15 @@ export function TsAnalysisUpload() {
                     </button>
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    {overviewTab === "preview" && (
+                      <VisualExportButton viewId="upload.overview.preview" label="Скачать PNG: превью датасета" compact />
+                    )}
+                    {overviewTab === "columns" && (
+                      <VisualExportButton viewId="upload.overview.tech_table" label="Скачать PNG: типы колонок" compact />
+                    )}
+                  </div>
+
                   {overviewTab === "preview" ? (
                     <div className="overflow-x-auto border border-neutral-200 rounded-lg">
                       <table className="w-full text-xs">
@@ -2139,9 +2149,14 @@ export function TsAnalysisUpload() {
                     </p>
                   ) : (
                     <>
-                      <TimeSeriesLineChart data={timeseries} loading={timeseriesLoading} />
+                      <VisualExportChartScope viewId="upload.chart.series" label="линейный график признака">
+                        <TimeSeriesLineChart data={timeseries} loading={timeseriesLoading} />
+                      </VisualExportChartScope>
                       <div className="mt-4">
-                        <h4 className="text-xs font-semibold mb-1 text-neutral-600">Декомпозиция</h4>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="text-xs font-semibold text-neutral-600">Декомпозиция</h4>
+                          <VisualExportButton viewId="upload.chart.decomposition_shares" label="Скачать PNG: доли компонент" compact />
+                        </div>
                         <p className="text-[11px] text-neutral-500 mb-2">
                           Доля дисперсии ряда, объяснимая каждой компонентой (Тренд/Сезонность/Цикличность/Остаток) — не абсолютные величины, а вклад в % от общей изменчивости.
                         </p>
@@ -2153,7 +2168,9 @@ export function TsAnalysisUpload() {
                         />
                         {decompositionRequested && (
                           <div className="mt-3">
-                            <DecompositionSeriesChart data={decompositionSeries} loading={decompositionLoading} />
+                            <VisualExportChartScope viewId="upload.chart.decomposition_series" label="компоненты декомпозиции">
+                              <DecompositionSeriesChart data={decompositionSeries} loading={decompositionLoading} />
+                            </VisualExportChartScope>
                           </div>
                         )}
                       </div>
@@ -2180,7 +2197,9 @@ export function TsAnalysisUpload() {
                             </div>
                           ) : (
                             <>
-                              <ScatterDistributionChart data={distribution} />
+                              <VisualExportChartScope viewId="upload.distribution.scatter" label="точечный график">
+                                <ScatterDistributionChart data={distribution} />
+                              </VisualExportChartScope>
                               <SamplingBadge data={distribution} />
                             </>
                           )}
@@ -2194,7 +2213,9 @@ export function TsAnalysisUpload() {
                               <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                             </div>
                           ) : (
-                            <HistogramDistributionChart data={distribution} />
+                            <VisualExportChartScope viewId="upload.distribution.histogram" label="гистограмма">
+                              <HistogramDistributionChart data={distribution} />
+                            </VisualExportChartScope>
                           )}
                         </div>
                         <div>
@@ -2206,7 +2227,9 @@ export function TsAnalysisUpload() {
                               <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                             </div>
                           ) : (
-                            <KdeDistributionChart data={distribution} />
+                            <VisualExportChartScope viewId="upload.distribution.kde" label="KDE">
+                              <KdeDistributionChart data={distribution} />
+                            </VisualExportChartScope>
                           )}
                         </div>
                       </div>
@@ -2479,6 +2502,9 @@ export function TsAnalysisUpload() {
                     <Metric label="Колонок с выбросами" value={String(uploadData!.quality.cols_with_outliers)} />
                     <Metric label="Всего строк" value={formatNum(uploadData!.quality.rows_total)} />
                     <Metric label="Дубликатов" value={String(uploadData!.quality.duplicates)} />
+                    <div className="col-span-2 md:col-span-4">
+                      <VisualExportButton viewId="upload.quality.teaser" label="Скачать PNG: показатели качества" compact />
+                    </div>
                   </div>
                   {(uploadData!.quality.cols_with_missing > 0 || uploadData!.quality.cols_with_outliers > 0 || uploadData!.quality.duplicates > 0) && (
                     <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">

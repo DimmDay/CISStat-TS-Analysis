@@ -3820,12 +3820,20 @@ def get_dataset_preprocessing_regularity_profile(request: Request, response: Res
     status, status_reason = _preprocessing_regularity_status(
         mode, profile["applicable"], profile["total_violations"]
     )
-    return DatasetPreprocessingRegularityProfileResponse(
+    payload = DatasetPreprocessingRegularityProfileResponse(
         mode=mode,
         status=status,
         status_reason=status_reason,
         profile=RegularityProfileOut(**profile),
     )
+    # PGV-10: freeze профиля регулярности (best-effort, «наука первична»)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.regularity.overview",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.get(
@@ -3859,7 +3867,15 @@ def get_dataset_preprocessing_regularity_timeline(request: Request, response: Re
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
     result = regularity_timeline(session.dataframe, rules=None)
-    return DatasetRegularityTimelineResponse(**result)
+    payload = DatasetRegularityTimelineResponse(**result)
+    # PGV-10: freeze таймлайна событий (mixed-сайт gap_map)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.regularity.gap_map",),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -3963,9 +3979,21 @@ def get_dataset_preprocessing_decomposition_profile(
     status, status_reason = _preprocessing_decomposition_status(
         mode, profile["applicable"], len(profile["warnings"]),
     )
-    return DatasetPreprocessingDecompositionProfileResponse(
+    payload = DatasetPreprocessingDecompositionProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze STL-диагностики (detail_level -- honest truncated)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.decomposition.overview",),
+        response=payload.model_dump(mode="json"),
+        params={
+            "selected_column": column, "period": period,
+            "robust": robust, "detail_level": detail_level,
+        },
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -4065,9 +4093,27 @@ def get_dataset_preprocessing_variance_profile(
     status, status_reason = _preprocessing_variance_status(
         mode, profile["applicable"], profile["needs_stabilization"],
     )
-    return DatasetPreprocessingVarianceProfileResponse(
+    payload = DatasetPreprocessingVarianceProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze пяти субвидов Обзора стабилизации дисперсии
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "preprocessing.variance_stab.series",
+            "preprocessing.variance_stab.rolling",
+            "preprocessing.variance_stab.methods",
+            "preprocessing.variance_stab.distribution",
+            "preprocessing.variance_stab.diagnostics",
+        ),
+        response=payload.model_dump(mode="json"),
+        params={
+            "selected_column": column, "selected_method": method,
+            "lambda_value": lambda_value,
+        },
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -4296,9 +4342,22 @@ def get_dataset_preprocessing_stationarity_profile(
     status, status_reason = _preprocessing_stationarity_status(
         mode, profile["applicable"], profile["needs_transformation"],
     )
-    return DatasetPreprocessingStationarityProfileResponse(
+    payload = DatasetPreprocessingStationarityProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze стационарности (mixed: ряд + сравнение тестов)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.stationarity.overview",),
+        response=payload.model_dump(mode="json"),
+        params={
+            "selected_column": column, "alpha": alpha,
+            "seasonal_period": seasonal_period,
+            "rolling_window": rolling_window,
+        },
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -4408,9 +4467,21 @@ def get_dataset_preprocessing_spectral_profile(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     mode = _effective_preprocessing_check_modes(session)["spectral"]
     status, status_reason = _preprocessing_spectral_status(mode, profile["applicable"])
-    return DatasetPreprocessingSpectralProfileResponse(
+    payload = DatasetPreprocessingSpectralProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze спектрального профиля (mixed: PSD + диапазоны)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.spectral.periodogram",),
+        response=payload.model_dump(mode="json"),
+        params={
+            "selected_column": column, "detail_level": detail_level,
+            "min_cycles": min_cycles, "max_candidates": max_candidates,
+        },
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -4482,9 +4553,18 @@ def get_dataset_preprocessing_feature_generation_profile(
     status, status_reason = _preprocessing_feature_generation_status(
         mode, profile["applicable"], profile["generated"],
     )
-    return DatasetPreprocessingFeatureGenerationProfileResponse(
+    payload = DatasetPreprocessingFeatureGenerationProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze генерации признаков (mixed: превью + каталог)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.feature_eng.overview",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(
@@ -4597,9 +4677,18 @@ def get_dataset_preprocessing_scaling_profile(
     status, status_reason = _preprocessing_scaling_status(
         mode, profile["applicable"], profile["configured"],
     )
-    return DatasetPreprocessingScalingProfileResponse(
+    payload = DatasetPreprocessingScalingProfileResponse(
         mode=mode, status=status, status_reason=status_reason, profile=profile,
     )
+    # PGV-10: freeze масштабирования (mixed: превью + сравнение масштабов)
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("preprocessing.scaling.overview",),
+        response=payload.model_dump(mode="json"),
+        params={"selected_column": column},
+        http_response=response,
+    )
+    return payload
 
 
 @router.post(

@@ -14,6 +14,9 @@ import {
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
+import { useRef } from "react";
 
 
 export type VarianceMethod = "box_cox" | "yeo_johnson" | "log" | "log1p" | "sqrt";
@@ -148,6 +151,7 @@ export function PreprocessingVarianceOverview(props: Props) {
 function PreprocessingVarianceOverviewInner({ profile, loading, error, noDataset }: Props) {
   const [view, setView] = useState<View>("series");
   const { expandedChartId } = useExpandableChartState();
+  const exportChartRef = useRef<HTMLDivElement>(null);
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Оценивается стабильность дисперсии…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
   if (noDataset) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для диагностики дисперсии.</div>;
@@ -160,13 +164,18 @@ function PreprocessingVarianceOverviewInner({ profile, loading, error, noDataset
       <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-semibold text-neutral-800">{profile.column}: {methodName(profile.selected_method)}{lambda}</h4><p className="mt-1 text-[10px] text-neutral-500">{profile.order_source === "time_column" ? `ось ${profile.order_column}` : "порядок строк"} · {profile.n_observations} наблюдений · score {profile.diagnostics_before.stability_score.toFixed(1)} → {profile.diagnostics_after.stability_score.toFixed(1)}</p></div><p className="text-[10px] text-neutral-500">Методы: <a aria-label="SciPy Box–Cox" className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html" target="_blank" rel="noreferrer">SciPy Box–Cox</a> · <a className="text-brand underline" href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html" target="_blank" rel="noreferrer">PowerTransformer</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.levene.html" target="_blank" rel="noreferrer">Brown–Forsythe</a></p></div>
       <p className="mt-2 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>
       {profile.warnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <VisualExportButton viewId={`preprocessing.variance_stab.${view}`} label="Скачать PNG: стабилизация дисперсии" compact getScreenSvg={() => (view === "diagnostics" ? null : serializeChartSvgSafe(() => exportChartRef.current))} />
+      </div>
       {/* Task w/n-3: переключатели представлений — эталонный бейдж-паттерн
           «Генерации признаков» (серые pill-бейджи с рамкой, усиление фона при
           наведении), единый во всей «Предобработке»: tablist внутри шапки
           Обзора (mt-3 flex flex-wrap gap-2), геометрия px-3 py-1 text-xs. */}
       <div role="tablist" aria-label="Графики стабилизации дисперсии" className="mt-3 flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}</div>
     </div>
+    <div ref={exportChartRef} data-testid="export-chart-container" className="flex min-h-0 flex-1 flex-col">
     {view === "series" && <ExpandableChartPanel chartId="variance-series" title="Ряд до и после стабилизации"><SeriesChart profile={profile} /></ExpandableChartPanel>}{view === "rolling" && <ExpandableChartPanel chartId="variance-rolling" title="Скользящая σ до/после"><RollingChart profile={profile} /></ExpandableChartPanel>}{view === "methods" && <ExpandableChartPanel chartId="variance-methods" title="Сравнение методов"><MethodsChart profile={profile} /></ExpandableChartPanel>}{view === "distribution" && <ExpandableChartPanel chartId="variance-distribution" title="Распределения до и после"><DistributionCharts profile={profile} /></ExpandableChartPanel>}{view === "diagnostics" && <Diagnostics profile={profile} />}
+    </div>
     <p className="shrink-0 px-4 pb-3 text-[9px] text-neutral-400">{profile.methodology_note}</p>
   </section>;
 }

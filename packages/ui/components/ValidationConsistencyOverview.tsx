@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface ConsistencyProfileItem {
   rule_index: number;
   rule_name: string;
@@ -101,6 +102,7 @@ export function ValidationConsistencyOverview({ refreshKey = 0 }: { refreshKey?:
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Соблюдение правил</h4>
+          <VisualExportButton viewId="validation.consistency.overview" label="Скачать PNG: логика и хронология" compact />
           <span className="text-xs text-neutral-400">{applicable.length} применимых правил</span>
         </div>
         <div

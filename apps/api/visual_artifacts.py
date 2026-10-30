@@ -400,12 +400,21 @@ def visual_result_producer_key(payload: dict[str, Any]) -> str:
 def print_snapshot_producer_key(payload: dict[str, Any]) -> str:
     """pgv.print_snapshot:{view_id}:{digest|reason} -- снапшот
     идентичен frozen результату; подмена контента при том же ключе --
-    конфликт (честная 409-семантика)."""
+    конфликт (честная 409-семантика).
+
+    PGV-10 (аддитивно): снапшот с frozen экранным SVG несёт его sha256
+    в identity (pgv.print_snapshot:{view_id}:{digest}:{svg16}) -- иной
+    frozen print input (другая геометрия того же результата) является
+    ДРУГИМ immutable снапшотом (§8 «старые snapshots не переписываются»;
+    AC08: скрытой подмены отображения нет), а не конфликтом ключа."""
     view_id = _str(payload.get("view_id")) or "unknown"
     result = _rec(payload.get("result"))
     identity = _str(result.get("result_digest")) or _str(
         result.get("result_digest_reason")
     ) or "unknown"
+    svg_digest = _str(result.get("screen_svg_sha256"))
+    if svg_digest:
+        return f"pgv.print_snapshot:{view_id}:{identity}:{svg_digest[:16]}"
     return f"pgv.print_snapshot:{view_id}:{identity}"
 
 

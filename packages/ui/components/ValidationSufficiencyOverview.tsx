@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 
+import { VisualExportButton } from "./VisualExportButton";
 export interface SufficiencyCheck { id: string; label: string; actual: number; threshold: number; unit: string; passed: boolean; deficit: number; models: string }
 export interface SufficiencyGroup {
   group: string; rows_total: number; valid_observations: number; invalid_target_count: number; invalid_date_count: number;
@@ -38,6 +39,7 @@ export function ValidationSufficiencyOverview({ refreshKey = 0 }: { refreshKey?:
   const profile = data.profile;
   const planStrategy = typeof data.plan?.strategy === "string" ? data.plan.strategy : null;
   return <section className="space-y-3">
+          <VisualExportButton viewId="validation.sufficiency.overview" label="Скачать PNG: достаточность" compact />
     {planStrategy && <p className="rounded bg-blue-50 px-3 py-2 text-xs text-blue-700">Решение принято: {planStrategy === "restrict_models" ? "аналитик принял ограничения доступных методов" : planStrategy === "flag_groups" ? "группы отмечены диагностическим флагом" : "недостаточные группы исключены"}.</p>}
     <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
       <div className="rounded bg-neutral-50 p-2"><span className="text-neutral-500">Целевой ряд</span><strong className="block font-mono">{profile.target_column}</strong></div>
