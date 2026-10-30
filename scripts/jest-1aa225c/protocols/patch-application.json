@@ -1,0 +1,35 @@
+[
+  {
+    "command": [
+      "git",
+      "apply",
+      "--check",
+      "scripts/jest-1aa225c/pgv07-count.patch"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "apply",
+      "scripts/jest-1aa225c/pgv07-count.patch"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "apply",
+      "--reverse",
+      "--check",
+      "scripts/jest-1aa225c/pgv07-count.patch"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

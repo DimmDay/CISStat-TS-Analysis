@@ -1,0 +1,36 @@
+GitHub Actions run 41015019014, job 123929278652
+Source: https://github.com/DimmDay/CISStat-TS-Analysis/actions/runs/41015019014/job/123929278652
+Fetched with GitHub plugin, 2026-10-30. Excerpt; ANSI coloring removed.
+
+﻿2026-10-30T06:36:03.7714133Z Current runner version: '2.338.0'
+2026-10-30T06:36:03.7770724Z Image: ubuntu-24.04
+2026-10-30T06:36:05.1419651Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +1aa225ce22d162d837711e5e3d72bbe51817278e:refs/remotes/origin/main
+
+Summary of all failing tests
+2026-10-30T06:38:45.7830751Z FAIL scripts/pgv07cert/test_p7cert_findings.test.tsx
+2026-10-30T06:38:45.7837287Z   ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом
+2026-10-30T06:38:45.7838387Z 
+2026-10-30T06:38:45.7839684Z     expect(received).toBe(expected) // Object.is equality
+2026-10-30T06:38:45.7840520Z 
+2026-10-30T06:38:45.7840695Z     Expected: 62
+2026-10-30T06:38:45.7841427Z     Received: 41
+2026-10-30T06:38:45.7841742Z 
+2026-10-30T06:38:45.7847274Z       48 |     const actualCount = Number(actual![2]);
+2026-10-30T06:38:45.7851533Z       49 |     // Требование (RED сейчас): заявление в журнале == фактическому корпусу.
+2026-10-30T06:38:45.7855413Z     > 50 |     expect(actualCount).toBe(declaredCount);
+2026-10-30T06:38:45.7857847Z          |                         ^
+2026-10-30T06:38:45.7859594Z       51 |   });
+2026-10-30T06:38:45.7860962Z       52 | });
+2026-10-30T06:38:45.7861996Z       53 |
+2026-10-30T06:38:45.7862300Z 
+2026-10-30T06:38:45.7865566Z       at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)
+2026-10-30T06:38:45.7865935Z 
+2026-10-30T06:38:45.7865943Z 
+2026-10-30T06:38:45.7868978Z Test Suites: 1 failed, 236 passed, 237 total
+2026-10-30T06:38:45.7869389Z Tests:       1 failed, 2739 passed, 2740 total
+2026-10-30T06:38:45.7869699Z Snapshots:   0 total
+2026-10-30T06:38:45.7869940Z Time:        143.654 s
+2026-10-30T06:38:45.7870379Z Ran all test suites.
+2026-10-30T06:38:45.8041882Z Test results written to: jest-results.json
+2026-10-30T06:38:45.8326429Z
+

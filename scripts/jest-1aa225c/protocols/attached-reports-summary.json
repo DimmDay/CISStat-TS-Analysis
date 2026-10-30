@@ -1,0 +1,46 @@
+[
+  {
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 236,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 2740,
+    "numPassedTests": 2739,
+    "numFailedTests": 1,
+    "numRuntimeErrorTestSuites": 0,
+    "numPendingTests": 0,
+    "success": false,
+    "attachment": "jest-results-ubuntu-24.04.zip",
+    "jobId": 123929278652,
+    "failures": [
+      {
+        "name": "/home/runner/work/CISStat-TS-Analysis/CISStat-TS-Analysis/scripts/pgv07cert/test_p7cert_findings.test.tsx",
+        "message": "  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом\n\n    expect(received).toBe(expected) // Object.is equality\n\n    Expected: 62\n    Received: 41\n\n    \u001b[0m \u001b[90m 48 |\u001b[39m     \u001b[36mconst\u001b[39m actualCount \u001b[33m=\u001b[39m \u001b[33mNumber\u001b[39m(actual\u001b[33m!\u001b[39m[\u001b[35m2\u001b[39m])\u001b[33m;\u001b[39m\n     \u001b[90m 49 |\u001b[39m     \u001b[90m// Требование (RED сейчас): заявление в журнале == фактическому корпусу.\u001b[39m\n    \u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m     expect(actualCount)\u001b[33m.\u001b[39mtoBe(declaredCount)\u001b[33m;\u001b[39m\n     \u001b[90m    |\u001b[39m                         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n     \u001b[90m 51 |\u001b[39m   })\u001b[33m;\u001b[39m\n     \u001b[90m 52 |\u001b[39m })\u001b[33m;\u001b[39m\n     \u001b[90m 53 |\u001b[39m\u001b[0m\n\n      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)\n",
+        "failedAssertions": [
+          "p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом"
+        ]
+      }
+    ]
+  },
+  {
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 236,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 2740,
+    "numPassedTests": 2739,
+    "numFailedTests": 1,
+    "numRuntimeErrorTestSuites": 0,
+    "numPendingTests": 0,
+    "success": false,
+    "attachment": "jest-results-windows-2025.zip",
+    "jobId": 123929278327,
+    "failures": [
+      {
+        "name": "D:\\a\\CISStat-TS-Analysis\\CISStat-TS-Analysis\\scripts\\pgv07cert\\test_p7cert_findings.test.tsx",
+        "message": "  ● p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале › B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом\n\n    expect(received).toBe(expected) // Object.is equality\n\n    Expected: 62\n    Received: 41\n\n    \u001b[0m \u001b[90m 48 |\u001b[39m     \u001b[36mconst\u001b[39m actualCount \u001b[33m=\u001b[39m \u001b[33mNumber\u001b[39m(actual\u001b[33m!\u001b[39m[\u001b[35m2\u001b[39m])\u001b[33m;\u001b[39m\n     \u001b[90m 49 |\u001b[39m     \u001b[90m// Требование (RED сейчас): заявление в журнале == фактическому корпусу.\u001b[39m\n    \u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m     expect(actualCount)\u001b[33m.\u001b[39mtoBe(declaredCount)\u001b[33m;\u001b[39m\n     \u001b[90m    |\u001b[39m                         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n     \u001b[90m 51 |\u001b[39m   })\u001b[33m;\u001b[39m\n     \u001b[90m 52 |\u001b[39m })\u001b[33m;\u001b[39m\n     \u001b[90m 53 |\u001b[39m\u001b[0m\n\n      at Object.<anonymous> (scripts/pgv07cert/test_p7cert_findings.test.tsx:50:25)\n",
+        "failedAssertions": [
+          "p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом"
+        ]
+      }
+    ]
+  }
+]

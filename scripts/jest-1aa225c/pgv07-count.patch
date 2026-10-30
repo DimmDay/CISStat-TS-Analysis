@@ -1,0 +1,11 @@
+--- a/worklog/worklog11.md
++++ b/worklog/worklog11.md
+@@ -959,7 +959,7 @@
+ 
+ ### Верификация
+ 
+-Jest полный корпус: 226/226 сюит, 2523/2523 теста (2475 до поставки + ровно 48 новых PGV-07; printSchema 43/43, coverage-оракул PGV-00, chartVars-зеркала ForecastExportMenu.vars/dkt3, DistributionCharts/DatasetPassportPanel — без регрессий). typecheck:all ✓ (embedded+standalone). next build embedded ✓ (print-бандл в графе модулей, статические страницы). Границы: renderer-контейнер/fonts/Chromium — PGV-08 (docker/браузерная приёмка не применимы), jobs/CAS — PGV-09, Python-runtime не менялся (pytest-корпус не затронут, паттерн PGV-00/01). Doc-contract гвард scripts/pgv07/check_documents.py — 62/62.
++Jest полный корпус: 226/226 сюит, 2523/2523 теста (2475 до поставки + ровно 48 новых PGV-07; printSchema 43/43, coverage-оракул PGV-00, chartVars-зеркала ForecastExportMenu.vars/dkt3, DistributionCharts/DatasetPassportPanel — без регрессий). typecheck:all ✓ (embedded+standalone). next build embedded ✓ (print-бандл в графе модулей, статические страницы). Границы: renderer-контейнер/fonts/Chromium — PGV-08 (docker/браузерная приёмка не применимы), jobs/CAS — PGV-09, Python-runtime не менялся (pytest-корпус не затронут, паттерн PGV-00/01). Doc-contract гвард scripts/pgv07/check_documents.py — 41/41.
+ 
+ Deliverable: ZIP cisstat-pgv07-print-layout.zip → открытый контейнер сессии (download/) и веб-приложение :3000 (страница поставки с кнопкой скачивания). Состав — 13 файлов поставки + worklog11.md. Без commit/push (AGENTS.md). Манифест sha256 не ведётся (указание тимлида, прецедент серии).
+ 

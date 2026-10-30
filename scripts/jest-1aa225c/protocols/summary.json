@@ -1,0 +1,99 @@
+{
+  "base": "1aa225ce22d162d837711e5e3d72bbe51817278e",
+  "date": "2026-10-30",
+  "npmCi": {
+    "exitCode": 0
+  },
+  "b1Red": {
+    "exitCode": 1,
+    "success": false,
+    "numTotalTestSuites": 1,
+    "numPassedTestSuites": 0,
+    "numFailedTestSuites": 1,
+    "numTotalTests": 5,
+    "numPassedTests": 4,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0
+  },
+  "fullFinal": {
+    "exitCode": 0,
+    "success": true,
+    "numTotalTestSuites": 237,
+    "numPassedTestSuites": 237,
+    "numFailedTestSuites": 0,
+    "numTotalTests": 2740,
+    "numPassedTests": 2740,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numRuntimeErrorTestSuites": 0,
+    "durationSeconds": 103.769
+  },
+  "b1GreenInFullSuite": {
+    "passed": 5
+  },
+  "rendererBuild": {
+    "exitCode": 0
+  },
+  "typecheckAll": {
+    "exitCode": 0
+  },
+  "remoteBaseline": {
+    "runId": 41015019014,
+    "jobs": {
+      "ubuntu": 123929278652,
+      "windows": 123929278327
+    },
+    "failedTests": 1,
+    "passedTests": 2739,
+    "rendererBuild": "success on both",
+    "typecheckAll": "success on both"
+  },
+  "sourceChange": "One original PGV-07 count claim 62/62 -> 41/41; task record appended. Tests, guard, product and workflow unchanged.",
+  "fixedRemoteWorkflowExecuted": false,
+  "patchApplication": [
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "scripts/jest-1aa225c/pgv07-count.patch"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "scripts/jest-1aa225c/pgv07-count.patch"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--reverse",
+        "--check",
+        "scripts/jest-1aa225c/pgv07-count.patch"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "previousDeliveryAudit": {
+    "base": "1aa225ce22d162d837711e5e3d72bbe51817278e",
+    "previousDelivery": "cisstat-jest-b613120-fix.zip",
+    "comparedFiles": 35,
+    "normalization": "CRLF -> LF only",
+    "differentFiles": [
+      "worklog/worklog11.md"
+    ],
+    "singleOriginalClaimCorrectionMakesWorklogsEqual": true
+  }
+}

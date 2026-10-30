@@ -1,0 +1,10 @@
+{
+  "base": "1aa225ce22d162d837711e5e3d72bbe51817278e",
+  "previousDelivery": "cisstat-jest-b613120-fix.zip",
+  "comparedFiles": 35,
+  "normalization": "CRLF -> LF only",
+  "differentFiles": [
+    "worklog/worklog11.md"
+  ],
+  "singleOriginalClaimCorrectionMakesWorklogsEqual": true
+}
