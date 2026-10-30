@@ -22,6 +22,7 @@ FILES: list[tuple[str, str]] = [
     ("docs/auth00/operation_variants.md", "M"),
     ("tests/unit/test_auth00_inventory.py", "M"),
     ("scripts/fix_auth00_ci.py", "N"),
+    ("scripts/local_gates.py", "N"),
     ("scripts/auth00fix/package_delivery.py", "N"),
     ("scripts/auth00fix/preview_server.py", "N"),
     ("worklog/worklog11.md", "M"),
