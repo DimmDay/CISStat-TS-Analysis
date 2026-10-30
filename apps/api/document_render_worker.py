@@ -76,6 +76,7 @@ from apps.api.document_jobs import (
     DocumentJobRecord,
     replace_dataclass,
 )
+from apps.api.png_renderer_client import PNG_SIGNATURE
 from apps.api.storage_diagnostics import safe_error
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,9 @@ ENV_WORKER_INTERVAL = "CISSTAT_DOCUMENT_RENDER_WORKER_INTERVAL"
 ENV_WORKER_BATCH = "CISSTAT_DOCUMENT_RENDER_WORKER_BATCH"
 ENV_WORKER_PER_TENANT = "CISSTAT_DOCUMENT_RENDER_WORKER_PER_TENANT"
 ENV_WORKER_RENDER_TIMEOUT = "CISSTAT_DOCUMENT_RENDER_WORKER_RENDER_TIMEOUT"
+ENV_PNG_RENDERER_URL = "CISSTAT_PNG_RENDERER_URL"
+ENV_PNG_RENDERER_TIMEOUT_S = "CISSTAT_PNG_RENDERER_TIMEOUT_S"
+ENV_PNG_RENDERER_ENABLED = "CISSTAT_PNG_RENDERER_ENABLED"
 
 DEFAULT_INTERVAL_SECONDS = 10
 MIN_INTERVAL_SECONDS = 5
@@ -100,7 +104,11 @@ DEFAULT_MAX_ATTEMPTS = 5
 
 # Переоткладываемые (transient) ошибки рендера; остальные --
 # детерминированные и терминальны (очередь не крутится впустую).
-TRANSIENT_ERROR_CODES = frozenset({"render_failed", "render_timeout"})
+# PGV-09: renderer_busy/renderer_unavailable -- transient (§17 429/503;
+# контейнер может перезапуститься -- AC24); render_timeout -- прежний.
+TRANSIENT_ERROR_CODES = frozenset(
+    {"render_failed", "render_timeout", "renderer_busy", "renderer_unavailable"}
+)
 
 # DOCLOG-9 (§19): профильные отказы -- детерминированные (policy-решение
 # или валидатор): terminal failed сразу, очередь не крутится впустую.
@@ -227,9 +235,15 @@ class DocumentRenderWorker:
         render_timeout: Optional[float] = None,
         lease_seconds: Optional[int] = None,
         max_attempts: Optional[int] = None,
+        png_renderer: Optional[Any] = None,
+        print_input_loader: Optional[Callable[[str], Any]] = None,
     ) -> None:
         self._service = service
         self._snapshot_loader = snapshot_loader or load_snapshot_system
+        # PGV-09: клиент контейнера PGV-08 и загрузчик печатного входа
+        # (инъекция для оракулов; дефолты -- реальные адаптеры).
+        self._png_renderer = png_renderer
+        self._print_input_loader = print_input_loader
         self._interval = (
             interval
             if interval is not None
@@ -383,7 +397,10 @@ class DocumentRenderWorker:
 
     def _process(self, job: DocumentJobRecord) -> str:
         """Захват -> рендер (timeout) -> stage+commit+rendition -> ready.
-        Возвращает 'ready' | 'failed' | 'requeued'."""
+        Возвращает 'ready' | 'failed' | 'requeued'. PGV-09: печатные
+        jobs (print_revision_id) идут через контейнер PGV-08."""
+        if job.print_revision_id:
+            return self._process_print_job(job)
         service = self._delivery_service()
         now = datetime.now(timezone.utc)
         claimed = service.registry.update_job(
@@ -447,6 +464,20 @@ class DocumentRenderWorker:
     def _error_code(exc: BaseException) -> str:
         from apps.api.document_renditions import RenderDependencyError
         from apps.api.document_jobs import UnsupportedFormatError
+        from apps.api.png_renderer_client import (
+            RendererBadOutput,
+            RendererBusy,
+            RendererDependencyUnavailable,
+            RendererPayloadInvalid,
+            RendererPayloadTooLarge,
+            RendererTimeout,
+            RendererUnavailable,
+        )
+        from apps.api.print_render_payload import (
+            PrintRenderBasisUnavailable,
+            PrintRenderPayloadIncomplete,
+            PrintRenderPayloadInvalid,
+        )
 
         if isinstance(exc, RenderTimeoutError):
             return "render_timeout"
@@ -454,6 +485,27 @@ class DocumentRenderWorker:
             return "unsupported_format"
         if isinstance(exc, RenderDependencyError):
             return "render_dependency_unavailable"
+        # ── PGV-09: таксономия контейнера/моста (§11/AC17) ──────────
+        if isinstance(exc, RendererDependencyUnavailable):
+            return "render_dependency_unavailable"
+        if isinstance(exc, RendererTimeout):
+            return "render_timeout"
+        if isinstance(exc, RendererBusy):
+            return "renderer_busy"
+        if isinstance(exc, RendererUnavailable):
+            return "renderer_unavailable"
+        if isinstance(exc, RendererPayloadInvalid):
+            return "invalid_payload"
+        if isinstance(exc, RendererPayloadTooLarge):
+            return "payload_too_large"
+        if isinstance(exc, RendererBadOutput):
+            return "renderer_bad_output"
+        if isinstance(exc, PrintRenderBasisUnavailable):
+            return "render_basis_unavailable"
+        if isinstance(exc, PrintRenderPayloadIncomplete):
+            return "missing_section_content"
+        if isinstance(exc, PrintRenderPayloadInvalid):
+            return "invalid_payload"
         return "render_failed"
 
     def _fail_or_requeue(self, job: DocumentJobRecord, error_code: str) -> str:
@@ -494,9 +546,7 @@ class DocumentRenderWorker:
         профиль) для docx/pdfa)."""
         from apps.api import document_jobs
 
-        box: dict[str, Any] = {}
-
-        def _target() -> None:
+        def _target(box: dict[str, Any]) -> None:
             try:
                 box["result"] = document_jobs._render_snapshot_by_format(
                     snapshot, fmt, profile
@@ -504,8 +554,112 @@ class DocumentRenderWorker:
             except BaseException as exc:  # noqa: BLE001 -- передаём наверх
                 box["error"] = exc
 
+        return self._run_with_deadline(
+            _target, f"cisstat-docrender-{fmt}", fmt
+        )
+
+    # -- PGV-09: печатные jobs через контейнер PGV-08 (§4/§13) --
+
+    def _png_renderer_client(self) -> Any:
+        """Клиент контейнера (инъекция оракула либо реальный адаптер
+        env-конфигурации; §4: «Новый worker получает разрешённую PNG job
+        через service interface/lease»)."""
+        if self._png_renderer is None:
+            from apps.api.png_renderer_client import PngRendererClient
+
+            self._png_renderer = PngRendererClient()
+        return self._png_renderer
+
+    def _process_print_job(self, job: DocumentJobRecord) -> str:
+        """Печатный job (PNG ревизии V01): захват -> durable basis ->
+        сборка payload (preflight) -> POST /v1/render контейнера ->
+        complete_render с CAS-гейтами (только backend завершает
+        staged object/CAS→ready, §4). Возвращает
+        'ready' | 'failed' | 'requeued'."""
+        service = self._delivery_service()
+        now = datetime.now(timezone.utc)
+        claimed = service.registry.update_job(
+            replace_dataclass(
+                job,
+                state=JOB_RENDERING,
+                claimed_at=now.isoformat(),
+                lease_expires_at=(
+                    now + timedelta(seconds=self._lease_seconds)
+                ).isoformat(),
+            )
+        )
+        # 1. Durable basis (§6 frozen вход; T8-дух integrity).
+        loader = self._print_input_loader or _load_print_render_input_default
+        try:
+            basis = loader(job.basis_artifact_id)
+        except Exception:
+            logger.warning(
+                "Document render worker: печатный вход %s недоступен для "
+                "job %s",
+                job.basis_artifact_id, job.job_id,
+            )
+            return self._fail_or_requeue(claimed, "render_basis_unavailable")
+        # 2. Сборка pgv.render_payload/1 + preflight (§7: «preflight либо
+        #    явный отказ»); честные пропуски -- terminal (§3.6).
+        try:
+            payload = _build_print_payload(basis, job)
+        except Exception as exc:
+            return self._fail_or_requeue(claimed, self._error_code(exc))
+        # 3. Рендер контейнером с soft-timeout (§11: hard timeout --
+        #    зона контейнера; здесь -- бюджет HTTP-вызова).
+        try:
+            content = self._render_print_with_timeout(payload)
+        except Exception as exc:
+            return self._fail_or_requeue(claimed, self._error_code(exc))
+        # 3.5. PNG-гейт ДО staging (§11: битые байты не выдаются за
+        #    валидные; защита в глубину -- клиент гейтит тоже, но worker
+        #    не доверяет транспорту: broken ready невозможен по
+        #    построению, AC20).
+        if not content.startswith(PNG_SIGNATURE):
+            return self._fail_or_requeue(claimed, "renderer_bad_output")
+        # 4. Готовность ТОЛЬКО после stage+commit+register (AC08;
+        #    CAS-гейты complete_render -- cancel не переписывается, AC20).
+        from apps.api.document_renditions import RENDITION_FORMATS
+
+        spec = RENDITION_FORMATS.get(claimed.format)
+        if spec is None:  # pragma: no cover - каталог проверен на постановке
+            return self._fail_or_requeue(claimed, "unsupported_format")
+        service.complete_render(
+            claimed, spec, content, None,
+            source_sha256=str(basis.get("basis_sha256") or ""),
+        )
+        logger.info(
+            "Document render worker: печатный job %s ready "
+            "(format=%s, bytes=%d, revision=%s)",
+            claimed.job_id, claimed.format, len(content),
+            claimed.print_revision_id,
+        )
+        return "ready"
+
+    def _render_print_with_timeout(self, payload: dict) -> bytes:
+        """POST /v1/render в daemon-потоке + join(timeout): зависший
+        HTTP-вызов не держит worker'а дольше бюджета (§18; AC20)."""
+        client = self._png_renderer_client()
+
+        def _target(box: dict[str, Any]) -> None:
+            try:
+                box["result"] = client.render_page(payload)
+            except BaseException as exc:  # noqa: BLE001 -- передаём наверх
+                box["error"] = exc
+
+        return self._run_with_deadline(
+            _target, "cisstat-pgv09-printrender", "print-png"
+        )
+
+    def _run_with_deadline(
+        self, target: Callable[[dict], None], thread_name: str, fmt: str
+    ) -> bytes:
+        """Общий daemon-поток + join(timeout) (паритет прежнего
+        _render_with_timeout: поток не убивается -- ограничение
+        платформы задокументировано; объём ограничен max_attempts)."""
+        box: dict[str, Any] = {}
         thread = threading.Thread(
-            target=_target, name=f"cisstat-docrender-{fmt}", daemon=True
+            target=target, args=(box,), name=thread_name, daemon=True
         )
         thread.start()
         thread.join(timeout=self._render_timeout)
@@ -643,3 +797,25 @@ def document_render_worker_status() -> dict[str, Any]:
 def reset_document_render_worker_for_testing() -> None:
     """Сброс singleton. ТОЛЬКО для тестов."""
     stop_document_render_worker(timeout=2.0)
+
+
+# ── PGV-09: дефолтные адаптеры печатного пути (модуль-уровень, чтобы
+#    оракулы могли подменять точки входа инъекцией) ────────────────────
+
+
+def _load_print_render_input_default(basis_artifact_id: str) -> dict[str, Any]:
+    """Системное чтение frozen печатного входа (durable-слой с
+    проверкой integrity; никакой науки -- AC05)."""
+    from apps.api.print_render_payload import load_print_render_input
+
+    return load_print_render_input(basis_artifact_id)
+
+
+def _build_print_payload(basis: dict[str, Any], job: DocumentJobRecord) -> dict[str, Any]:
+    """Сборка pgv.render_payload/1 из durable basis (preflight §7;
+    request_id -- от job'а: трассировка рендера связана с job, §13.1)."""
+    from apps.api.print_render_payload import build_print_render_payload_from_basis
+
+    return build_print_render_payload_from_basis(
+        basis, request_id=f"pgv:{job.job_id}"
+    )

@@ -1062,10 +1062,12 @@ class TestStaticCatalogs:
 
         # Честное обновление пина (прецедент DOCLOG-9): PGV-02 добавил
         # 0016_pgv2_print_documents.sql (2 таблицы + 2 индекса) -- каталог
-        # 16 файлов / 96 statements (93 + 3 новой миграции).
-        assert len(MIGRATION_FILES) == 16
-        assert MIGRATION_FILES[-1][0] == "0016_pgv2_print_documents.sql"
-        assert len(MIGRATION_STATEMENTS) == 96
+        # 16 файлов / 96 statements (93 + 3 новой миграции). PGV-09
+        # добавил 0017_pgv9_print_renditions.sql (6 ALTER/INDEX + 2 DO) --
+        # каталог 17 файлов / 106 statements (96 + 10).
+        assert len(MIGRATION_FILES) == 17
+        assert MIGRATION_FILES[-1][0] == "0017_pgv9_print_renditions.sql"
+        assert len(MIGRATION_STATEMENTS) == 106
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

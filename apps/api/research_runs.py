@@ -1310,6 +1310,77 @@ MIGRATION_STATEMENTS_0016: tuple[str, ...] = (
     "ON document_print_revisions (document_id, version_no)",
 )
 
+# PGV-09 (spec_passport_graphics_visual.md §4/§10.2/§11/§13, строка
+# PGV-09): печатные jobs/renditions в том же store (§10.2 «один job
+# store»). АДДИТИВНАЯ миграция: ADD COLUMN IF NOT EXISTS / DROP NOT
+# NULL / частичный UNIQUE / FK через DO $$ IF NOT EXISTS; legacy
+# D01-D12 (snapshot-путь) не переписывается (AC22).
+MIGRATION_STATEMENTS_0017: tuple[str, ...] = (
+    """
+    ALTER TABLE document_jobs
+        ADD COLUMN IF NOT EXISTS print_revision_id TEXT
+    """,
+    """
+    ALTER TABLE document_jobs
+        ADD COLUMN IF NOT EXISTS basis_artifact_id TEXT
+    """,
+    """
+    ALTER TABLE document_renditions
+        ADD COLUMN IF NOT EXISTS print_revision_id TEXT
+    """,
+    """
+    ALTER TABLE document_jobs
+        ALTER COLUMN snapshot_id DROP NOT NULL
+    """,
+    """
+    ALTER TABLE document_renditions
+        ALTER COLUMN snapshot_id DROP NOT NULL
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_document_renditions_print
+    ON document_renditions (print_revision_id, format, redaction_profile)
+    WHERE print_revision_id IS NOT NULL
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_document_jobs_print_revision
+    ON document_jobs (print_revision_id)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_document_renditions_print_revision
+    ON document_renditions (print_revision_id)
+    """,
+    """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_document_jobs_print_revision'
+        ) THEN
+            ALTER TABLE document_jobs
+                ADD CONSTRAINT fk_document_jobs_print_revision
+                FOREIGN KEY (print_revision_id)
+                REFERENCES document_print_revisions(print_revision_id)
+                ON DELETE CASCADE;
+        END IF;
+    END $$
+    """,
+    """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_document_renditions_print_revision'
+        ) THEN
+            ALTER TABLE document_renditions
+                ADD CONSTRAINT fk_document_renditions_print_revision
+                FOREIGN KEY (print_revision_id)
+                REFERENCES document_print_revisions(print_revision_id)
+                ON DELETE CASCADE;
+        END IF;
+    END $$
+    """,
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1319,6 +1390,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0011 + MIGRATION_STATEMENTS_0012
     + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
     + MIGRATION_STATEMENTS_0015 + MIGRATION_STATEMENTS_0016
+    + MIGRATION_STATEMENTS_0017
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1340,6 +1412,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0014_doclog8_monitoring.sql", MIGRATION_STATEMENTS_0014),
     ("0015_doclog9_profiles.sql", MIGRATION_STATEMENTS_0015),
     ("0016_pgv2_print_documents.sql", MIGRATION_STATEMENTS_0016),
+    ("0017_pgv9_print_renditions.sql", MIGRATION_STATEMENTS_0017),
 )
 
 

@@ -1,0 +1,50 @@
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'apps/api/migrations/0017_pgv9_print_renditions.sql'
+______________ TestMigration0017.test_migration_statements_parity ______________
+tests/api/test_pgv09_jobs_renderer_integration.py:1076: in test_migration_statements_parity
+    from apps.api.research_runs import (
+E   ImportError: cannot import name 'MIGRATION_STATEMENTS_0017' from 'apps.api.research_runs' (/home/z/my-project/repo/apps/api/research_runs.py)
+____ TestMigration0017.test_job_and_rendition_records_carry_print_revision _____
+tests/api/test_pgv09_jobs_renderer_integration.py:1099: in test_job_and_rendition_records_carry_print_revision
+    job = DocumentJobRecord(
+E   TypeError: DocumentJobRecord.__init__() got an unexpected keyword argument 'print_revision_id'
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestPayloadBridge::test_build_render_payload_from_durable_pair
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestPayloadBridge::test_missing_section_content_is_honest
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestPayloadBridge::test_recharts_without_svg_is_honest_missing
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestPayloadBridge::test_section_content_from_visual_result_cards
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestPayloadBridge::test_section_content_missing_data_is_honest
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_render_page_returns_png
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_dependency_unavailable_mapped
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_timeout_mapped
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_busy_mapped
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_invalid_payload_mapped
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_too_large_mapped
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_connection_refused_is_unavailable
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_non_png_200_is_bad_output
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestRendererClient::test_disabled_client_is_dependency_unavailable
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_request_creates_queued_print_job
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_idempotent_repeat_returns_same_job
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_unknown_print_revision_uniform_404
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_foreign_subject_denied
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_non_png_format_rejected
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestServicePrintRendition::test_retry_limit_exceeded
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_end_to_end_ready_with_staged_bytes
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_missing_dependency_terminal_no_ready
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_timeout_requeues_then_fails
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_busy_requeues
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_unavailable_requeues_then_recovers
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_invalid_payload_terminal
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_missing_section_content_terminal
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_cancelled_queued_job_not_rendered
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_late_completion_after_cancel_not_published
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_expired_lease_reclaimed_for_print_job
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_rendition_content_integrity_and_access
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestWorkerPrintIntegration::test_bad_renderer_output_terminal
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestHttpPrintRenditions::test_post_print_rendition_202
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestHttpPrintRenditions::test_foreign_print_revision_404
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestHttpPrintRenditions::test_unsupported_format_400
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestMigration0017::test_migration_file_exists_and_additive
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestMigration0017::test_migration_statements_parity
+FAILED tests/api/test_pgv09_jobs_renderer_integration.py::TestMigration0017::test_job_and_rendition_records_carry_print_revision
+============================== 38 failed in 8.55s ==============================

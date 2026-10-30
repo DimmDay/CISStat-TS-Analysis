@@ -1234,5 +1234,5 @@ class TestMigrations:
         # PGV-02 (честное обновление пина, прецедент DOCLOG-9):
         # каталог пополнен 0016_pgv2_print_documents (аддитивная:
         # 2 таблицы + 2 индекса = 3 statement; 93 + 3 = 96).
-        assert len(MIGRATION_FILES) == 16
-        assert len(MIGRATION_STATEMENTS) == 96
+        assert len(MIGRATION_FILES) == 17
+        assert len(MIGRATION_STATEMENTS) == 106

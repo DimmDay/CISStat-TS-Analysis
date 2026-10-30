@@ -184,6 +184,17 @@ def is_valid_job_id(value: Any) -> bool:
     return isinstance(value, str) and bool(re.fullmatch(r"djob-[0-9a-f]{32}", value))
 
 
+def is_valid_print_revision_id(value: Any) -> bool:
+    """PGV-09: формат id печатной ревизии (dprint-, миграция 0016)."""
+    return isinstance(value, str) and bool(re.fullmatch(r"dprint-[0-9a-f]{32}", value))
+
+
+# PGV-09 (§1 «PNG-only»): каталог форматов печатных renditions этой
+# поставки. D01–D12 (snapshot-поток) не тронуты; P01/P02-комплекты --
+# PGV-13/14.
+PRINT_RENDITION_FORMATS = frozenset({"png"})
+
+
 # ── Ошибки контура ───────────────────────────────────────────────────
 
 
@@ -223,6 +234,12 @@ class PrintBasisInvalid(ValueError):
     принадлежит другому run -- ревизия не создаётся (§10.2 «revision с
     frozen refs/pins»: refs обязаны быть допустимыми; §5/§11 object
     authorization: артефакт чужого run -- недопустимый basis)."""
+
+
+class PrintRenderBasisUnsupported(RuntimeError):
+    """PGV-09: basis печатной ревизии не входит в каталог рендера
+    поставки (PGV-09 -- только V01/visual_print_snapshot; P01/P02 --
+    PGV-13) -- честный 422, не тихий рендер чужого basis."""
 
 
 class PrintRevisionConflictError(RuntimeError):
@@ -360,6 +377,12 @@ class DocumentRenditionRecord:
     # DOCLOG-9 (§19 строка DOCLOG-9): организационный профиль выпуска
     # (фиксируется в metadata; '' -- безпрофильный legacy-выпуск).
     org_profile_id: str = ""
+    # PGV-09: печатная rendition (basis visual_print_snapshot, V01).
+    # snapshot_id пуст (""), ЕДИНЫЙ hash -- digest basis-артефакта
+    # (snapshot_payload_sha256). Печатный слой живёт в том же store
+    # renditions (§10.2: «lifecycle/API -- существующие document
+    # jobs/renditions, один job store»).
+    print_revision_id: str = ""
     # Байты -- только в Memory-реестре (dev/тесты); durable-слой хранит
     # их в object store (content-addressed), как DOCLOG-1/2.
     content_bytes: Optional[bytes] = field(default=None, repr=False)
@@ -382,6 +405,7 @@ class DocumentRenditionRecord:
             "created_at": self.created_at,
             "snapshot_payload_sha256": self.snapshot_payload_sha256,
             "org_profile_id": self.org_profile_id,
+            "print_revision_id": self.print_revision_id,
         }
 
 
@@ -410,6 +434,12 @@ class DocumentJobRecord:
     # постановке И повторная policy-проверка на момент исполнения
     # (retire между постановкой и рендером -- честный failed).
     org_profile_id: str = ""
+    # PGV-09: печатная job (PNG ревизии V01, basis
+    # visual_print_snapshot). snapshot_id пуст (""); basis_artifact_id --
+    # замороженный вход renderer-контейнера (самодостаточный work order
+    # + audit). Идемпотентность -- (print_revision_id, format, profile).
+    print_revision_id: str = ""
+    basis_artifact_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -430,6 +460,8 @@ class DocumentJobRecord:
             "claimed_at": self.claimed_at,
             "lease_expires_at": self.lease_expires_at,
             "org_profile_id": self.org_profile_id,
+            "print_revision_id": self.print_revision_id,
+            "basis_artifact_id": self.basis_artifact_id,
         }
 
 
@@ -508,6 +540,13 @@ class DocumentRegistry(ABC):
     def find_rendition(
         self, snapshot_id: str, fmt: str, redaction_profile: str
     ) -> Optional[DocumentRenditionRecord]:  # pragma: no cover
+        raise NotImplementedError
+
+    def find_print_rendition(
+        self, print_revision_id: str, fmt: str, redaction_profile: str
+    ) -> Optional[DocumentRenditionRecord]:  # pragma: no cover
+        """PGV-09: идемпотентность печатных renditions --
+        (print_revision_id, format, redaction_profile)."""
         raise NotImplementedError
 
     def list_renditions(self, snapshot_id: str) -> list[DocumentRenditionRecord]:  # pragma: no cover
@@ -703,6 +742,22 @@ class MemoryDocumentRegistry(DocumentRegistry):
             for rendition in self._renditions.values():
                 if (
                     rendition.snapshot_id == snapshot_id
+                    and rendition.format == fmt
+                    and rendition.redaction_profile == redaction_profile
+                ):
+                    return rendition
+            return None
+
+    def find_print_rendition(
+        self, print_revision_id: str, fmt: str, redaction_profile: str
+    ) -> Optional[DocumentRenditionRecord]:
+        """PGV-09: печатная идемпотентность -- печатные renditions
+        изолированы от snapshot-ключа (snapshot_id печатных записей
+        пуст)."""
+        with self._lock:
+            for rendition in self._renditions.values():
+                if (
+                    rendition.print_revision_id == print_revision_id
                     and rendition.format == fmt
                     and rendition.redaction_profile == redaction_profile
                 ):
@@ -1109,7 +1164,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
         "SELECT rendition_id, revision_id, snapshot_id, run_id, format, "
         "redaction_profile, state, media_type, size_bytes, content_sha256, "
         "storage_key, job_id, created_by, created_at, "
-        "snapshot_payload_sha256, org_profile_id FROM document_renditions"
+        "snapshot_payload_sha256, org_profile_id, print_revision_id "
+        "FROM document_renditions"
     )
 
     @staticmethod
@@ -1131,6 +1187,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
             created_at=row[13].isoformat() if row[13] else _now_iso(),
             snapshot_payload_sha256=str(row[14] or ""),
             org_profile_id=str(row[15] or ""),
+            print_revision_id=str(row[16] or ""),
         )
 
     def register_rendition(
@@ -1141,15 +1198,17 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "INSERT INTO document_renditions (rendition_id, revision_id, "
                 "snapshot_id, run_id, format, redaction_profile, state, "
                 "media_type, size_bytes, content_sha256, storage_key, job_id, "
-                "created_by, created_at, snapshot_payload_sha256, org_profile_id) VALUES "
-                "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "created_by, created_at, snapshot_payload_sha256, "
+                "org_profile_id, print_revision_id) VALUES "
+                "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 "ON CONFLICT (snapshot_id, format, redaction_profile) "
                 "DO UPDATE SET state = EXCLUDED.state, media_type = "
                 "EXCLUDED.media_type, size_bytes = EXCLUDED.size_bytes, "
                 "content_sha256 = EXCLUDED.content_sha256, storage_key = "
                 "EXCLUDED.storage_key, job_id = EXCLUDED.job_id, "
                 "snapshot_payload_sha256 = EXCLUDED.snapshot_payload_sha256, "
-                "org_profile_id = EXCLUDED.org_profile_id",
+                "org_profile_id = EXCLUDED.org_profile_id, "
+                "print_revision_id = EXCLUDED.print_revision_id",
                 (
                     rendition.rendition_id,
                     rendition.revision_id,
@@ -1167,6 +1226,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.created_at,
                     rendition.snapshot_payload_sha256,
                     rendition.org_profile_id,
+                    rendition.print_revision_id,
                 ),
             )
         return rendition
@@ -1178,8 +1238,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
             cur.execute(
                 "UPDATE document_renditions SET state = %s, media_type = %s, "
                 "size_bytes = %s, content_sha256 = %s, storage_key = %s, "
-                "job_id = %s, snapshot_payload_sha256 = %s "
-                "WHERE rendition_id = %s",
+                "job_id = %s, snapshot_payload_sha256 = %s, "
+                "print_revision_id = %s WHERE rendition_id = %s",
                 (
                     rendition.state,
                     rendition.media_type,
@@ -1188,6 +1248,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     rendition.storage_key,
                     rendition.job_id,
                     rendition.snapshot_payload_sha256,
+                    rendition.print_revision_id,
                     rendition.rendition_id,
                 ),
             )
@@ -1215,6 +1276,21 @@ class PostgresDocumentRegistry(DocumentRegistry):
             row = cur.fetchone()
         return self._rendition_from_row(row) if row is not None else None
 
+    def find_print_rendition(
+        self, print_revision_id: str, fmt: str, redaction_profile: str
+    ) -> Optional[DocumentRenditionRecord]:
+        """PGV-09: печатная идемпотентность (миграция 0017, частичный
+        UNIQUE print_revision_id/format/redaction_profile)."""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._RENDITION_SELECT
+                + " WHERE print_revision_id = %s AND format = %s "
+                "AND redaction_profile = %s",
+                (print_revision_id, fmt, redaction_profile),
+            )
+            row = cur.fetchone()
+        return self._rendition_from_row(row) if row is not None else None
+
     def list_renditions(self, snapshot_id: str) -> list[DocumentRenditionRecord]:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
@@ -1231,7 +1307,7 @@ class PostgresDocumentRegistry(DocumentRegistry):
         "SELECT job_id, run_id, snapshot_id, format, redaction_profile, "
         "revision_id, rendition_id, state, error_code, attempt, created_by, "
         "created_at, updated_at, tenant_id, claimed_at, lease_expires_at, "
-        "org_profile_id FROM document_jobs"
+        "org_profile_id, print_revision_id, basis_artifact_id FROM document_jobs"
     )
 
     @staticmethod
@@ -1254,6 +1330,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
             claimed_at=row[14].isoformat() if row[14] else None,
             lease_expires_at=row[15].isoformat() if row[15] else None,
             org_profile_id=str(row[16] or ""),
+            print_revision_id=str(row[17] or ""),
+            basis_artifact_id=str(row[18] or ""),
         )
 
     def register_job(self, job: DocumentJobRecord) -> DocumentJobRecord:
@@ -1262,8 +1340,9 @@ class PostgresDocumentRegistry(DocumentRegistry):
                 "INSERT INTO document_jobs (job_id, run_id, snapshot_id, "
                 "format, redaction_profile, revision_id, rendition_id, state, "
                 "error_code, attempt, created_by, created_at, updated_at, "
-                "tenant_id, claimed_at, lease_expires_at, org_profile_id) VALUES (%s, %s, "
-                "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "tenant_id, claimed_at, lease_expires_at, org_profile_id, "
+                "print_revision_id, basis_artifact_id) VALUES (%s, %s, %s, "
+                "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     job.job_id,
                     job.run_id,
@@ -1282,6 +1361,8 @@ class PostgresDocumentRegistry(DocumentRegistry):
                     job.claimed_at,
                     job.lease_expires_at,
                     job.org_profile_id,
+                    job.print_revision_id,
+                    job.basis_artifact_id,
                 ),
             )
         return job
@@ -2064,6 +2145,125 @@ class DocumentDeliveryService:
         job, rendition = self.complete_render(job, spec, content, snapshot)
         return job, rendition
 
+    # -- PGV-09: печатные renditions (PNG ревизий V01 через контейнер) --
+
+    def request_print_rendition(
+        self,
+        print_revision_id: str,
+        *,
+        format: str,
+        subject: Any,
+        session_id: str = "",
+        redaction_profile: str = DEFAULT_REDACTION_PROFILE,
+    ) -> tuple[DocumentJobRecord, Optional[DocumentRenditionRecord]]:
+        """PNG печатной ревизии (V01, basis visual_print_snapshot) через
+        renderer-контейнер PGV-08 (§10.2/§13 строка PGV-09; §4: «Python
+        jobs остаются authority... только backend завершает staged
+        object/CAS→ready»). Печатный рендер -- ТОЛЬКО асинхронный:
+        job queued, рендер выполняет document_render_worker (§18 «тяжёлое
+        не создаётся синхронно»); байты -- в общий жизненный цикл
+        renditions (один job store, §10.2).
+
+        Авторизация (R09/AC18): uniform DocumentAccessDenied для
+        несуществующей/чужой ревизии (существование не дисклоужается);
+        знание print_revision_id НЕ право. Идемпотентность (AC09):
+        готовая цель -- прежний job/rendition; активная -- тот же job;
+        исчерпанные попытки -- DocumentRetryLimitExceeded; переполненная
+        tenant-очередь -- DocumentQuotaExceeded (§18)."""
+        if not is_valid_print_revision_id(print_revision_id):
+            raise DocumentAccessDenied("Печатная ревизия недоступна")
+        revision = self.registry.get_print_revision(print_revision_id)
+        if revision is None:
+            raise DocumentAccessDenied("Печатная ревизия недоступна")
+        self._authorized_run(
+            revision.run_id, subject, session_id=session_id, action="write"
+        )
+        if format not in PRINT_RENDITION_FORMATS:
+            raise UnsupportedFormatError(
+                f"Формат {format!r} не входит в каталог печатных renditions "
+                f"{sorted(PRINT_RENDITION_FORMATS)} (§1 PNG-only; PGV-09)"
+            )
+        spec = RENDITION_FORMATS.get(format)
+        if spec is None:  # pragma: no cover -- каталог согласован
+            raise UnsupportedFormatError(f"Формат {format!r} отсутствует в каталоге")
+        # Basis-каталог поставки: V01 (visual_print_snapshot) -- substrate
+        # PGV-09; P01/P02 -- PGV-13 (честный 422, не тихий рендер).
+        if revision.basis_kind != "visual_print_snapshot" or not revision.basis_artifact_ids:
+            raise PrintRenderBasisUnsupported(
+                "print_basis_unsupported: печатная ревизия с basis_kind "
+                f"{revision.basis_kind!r} не входит в каталог рендера "
+                "PGV-09 (только visual_print_snapshot; P01/P02 -- PGV-13)"
+            )
+        basis_artifact_id = revision.basis_artifact_ids[0]
+        # Идемпотентность (AC09): печатная цель --
+        # (print_revision_id, format, redaction_profile).
+        existing = self.registry.find_print_rendition(
+            print_revision_id, format, redaction_profile
+        )
+        if (
+            existing is not None
+            and existing.state == RENDITION_READY
+            and existing.job_id
+            and self.registry.get_job(existing.job_id) is not None
+        ):
+            job = self.registry.get_job(existing.job_id)
+            return job, existing
+        prior_jobs = [
+            job
+            for job in self.registry.list_jobs(revision.run_id)
+            if job.print_revision_id == print_revision_id
+            and job.format == format
+            and job.redaction_profile == redaction_profile
+        ]
+        active = next(
+            (
+                job
+                for job in prior_jobs
+                if job.state in (JOB_QUEUED, JOB_RENDERING)
+            ),
+            None,
+        )
+        if active is not None:
+            return active, None
+        if len(prior_jobs) >= MAX_JOB_ATTEMPTS:
+            raise DocumentRetryLimitExceeded(
+                "retry_limit_exceeded: исчерпаны попытки рендера "
+                f"({len(prior_jobs)}/{MAX_JOB_ATTEMPTS}) для печатной "
+                f"ревизии ({format!r}); обратитесь в поддержку"
+            )
+        tenant_id = getattr(subject, "tenant_id", None) or None
+        open_jobs = self.registry.list_open_jobs()
+        tenant_open = [
+            job for job in open_jobs if (job.tenant_id or None) == tenant_id
+        ]
+        if len(tenant_open) >= MAX_OPEN_JOBS_PER_TENANT:
+            raise DocumentQuotaExceeded(
+                "quota_exceeded: очередь открытых заданий tenant "
+                f"{tenant_id or 'default'} переполнена "
+                f"({len(tenant_open)}/{MAX_OPEN_JOBS_PER_TENANT}); "
+                "повторите позднее"
+            )
+        attempt = len(prior_jobs) + 1
+        job = self.registry.register_job(
+            DocumentJobRecord(
+                job_id=new_job_id(),
+                run_id=revision.run_id,
+                snapshot_id="",
+                format=format,
+                redaction_profile=redaction_profile,
+                revision_id=revision.print_revision_id,
+                state=JOB_QUEUED,
+                attempt=attempt,
+                created_by=getattr(subject, "subject_id", None),
+                tenant_id=tenant_id,
+                print_revision_id=print_revision_id,
+                basis_artifact_id=basis_artifact_id,
+            )
+        )
+        # Печатный рендер -- тяжёлый (§18): ТОЛЬКО очередь, rendition
+        # появится после stage+commit worker'ом (AC08 по построению).
+        return job, None
+
     # -- финализация рендера (общий код AC08 для sync-пути и worker'а) --
 
     def complete_render(
@@ -2071,7 +2271,9 @@ class DocumentDeliveryService:
         job: DocumentJobRecord,
         spec: Any,
         content: bytes,
-        snapshot: ReportSnapshot,
+        snapshot: Optional[ReportSnapshot],
+        *,
+        source_sha256: Optional[str] = None,
     ) -> tuple[DocumentJobRecord, Optional[DocumentRenditionRecord]]:
         """Готовность ТОЛЬКО в порядке AC08: (DOCLOG-9: resolve профиля
         и ВАЛИДАТОР ДО stage -- failed-валидация не даёт ни байтов в
@@ -2081,7 +2283,12 @@ class DocumentDeliveryService:
         в явном состоянии без broken ready refs. DOCLOG-9 (§19):
         профиль подтверждается ВАЛИДАТОРОМ, не названием файла --
         passed/failed записи пишутся ДОЛЖНЫ (доказательство); подпись/
-        якорь/WORM применяются только к passed-выпуску."""
+        якорь/WORM применяются только к passed-выпуску.
+
+        PGV-09: печатные jobs (print_revision_id) не имеют ReportSnapshot:
+        ЕДИНЫЙ hash rendition -- digest basis-артефакта (source_sha256;
+        §10.2 frozen refs), snapshot_id печатной rendition пуст.
+        Snapshot-путь (D01–D12) прежний -- AC22."""
         from apps.api.artifact_store import artifact_content_sha256
 
         # F-D5C1 CAS-гейт (DOCLOG-E2E-RECHECK-1-FIX, акт §9.5 «проверить
@@ -2138,7 +2345,9 @@ class DocumentDeliveryService:
                 try:
                     signature_manifest = _dp.sign_content(
                         content,
-                        snapshot_sha256=snapshot.payload_sha256 or "",
+                        snapshot_sha256=(snapshot.payload_sha256 or "")
+                        if snapshot is not None
+                        else (source_sha256 or ""),
                         profile_id=profile.profile_id,
                         profile_version_no=profile.version_no,
                         media_type=spec.media_type,
@@ -2152,14 +2361,19 @@ class DocumentDeliveryService:
                         None,
                     )
 
-        existing = self.registry.find_rendition(
-            job.snapshot_id, job.format, job.redaction_profile
-        )
+        existing = self._find_rendition_for_job(job)
         rendition_id = (
             existing.rendition_id if existing is not None else new_rendition_id()
         )
         staged = self.objects.stage_bytes(content, spec.media_type)
         storage_key = self.objects.commit_staged(staged)
+        # Единый hash (§19): snapshot-путь -- payload_sha256 снимка;
+        # печатный путь (PGV-09) -- digest basis-артефакта.
+        unified_source_sha256 = (
+            snapshot.payload_sha256 or ""
+            if snapshot is not None
+            else (source_sha256 or "")
+        )
         rendition = DocumentRenditionRecord(
             rendition_id=rendition_id,
             revision_id=(
@@ -2178,8 +2392,9 @@ class DocumentDeliveryService:
             storage_key=storage_key,
             job_id=job.job_id,
             created_by=job.created_by,
-            snapshot_payload_sha256=snapshot.payload_sha256 or "",
+            snapshot_payload_sha256=unified_source_sha256,
             org_profile_id=job.org_profile_id,
+            print_revision_id=job.print_revision_id,
             content_bytes=(
                 content
                 if isinstance(self.registry, MemoryDocumentRegistry)
@@ -2259,6 +2474,19 @@ class DocumentDeliveryService:
         )
         return job, rendition
 
+    def _find_rendition_for_job(
+        self, job: DocumentJobRecord
+    ) -> Optional[DocumentRenditionRecord]:
+        """PGV-09: поиск цели job'а -- печатные jobs по
+        print_revision_id, snapshot-путь прежний."""
+        if job.print_revision_id:
+            return self.registry.find_print_rendition(
+                job.print_revision_id, job.format, job.redaction_profile
+            )
+        return self.registry.find_rendition(
+            job.snapshot_id, job.format, job.redaction_profile
+        )
+
     def fail_render(
         self, job: DocumentJobRecord, error_code: str
     ) -> DocumentJobRecord:
@@ -2268,9 +2496,7 @@ class DocumentDeliveryService:
         job = self.registry.update_job(
             replace_dataclass(job, state=JOB_FAILED, error_code=error_code)
         )
-        existing = self.registry.find_rendition(
-            job.snapshot_id, job.format, job.redaction_profile
-        )
+        existing = self._find_rendition_for_job(job)
         if existing is not None:
             self.registry.update_rendition(
                 replace_dataclass(

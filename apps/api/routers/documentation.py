@@ -39,6 +39,7 @@ from apps.api.document_jobs import (
     DocumentQuotaExceeded,
     DocumentRetryLimitExceeded,
     DocumentDeliveryService,
+    PrintRenderBasisUnsupported,
     RenditionPurgedError,
     UnsupportedFormatError,
 )
@@ -61,6 +62,7 @@ from apps.api.document_renditions import (
 )
 from apps.api.identity import resolve_request_subject
 from apps.api.report_snapshot import (
+    DEFAULT_REDACTION_PROFILE,
     DOCUMENT_KINDS,
     resolve_kinds,
 )
@@ -219,6 +221,13 @@ def _map_service_errors(exc: Exception) -> HTTPException:
         return HTTPException(
             status_code=422,
             detail={"code": "org_profile_invalid", "message": str(exc)},
+        )
+    if isinstance(exc, PrintRenderBasisUnsupported):
+        # PGV-09: basis печатной ревизии вне каталога рендера поставки
+        # (P01/P02 -- PGV-13) -- честный 422, не тихий рендер.
+        return HTTPException(
+            status_code=422,
+            detail={"code": "print_basis_unsupported", "message": str(exc)},
         )
     if isinstance(exc, (DocumentAccessDenied, LifecycleAccessDenied)):
         # DOCLOG-6: LifecycleAccessDenied -- тот же uniform-404 контракт
@@ -671,6 +680,60 @@ def request_rendition(
         "status_url": f"/v1/documentation/jobs/{job.job_id}",
     }
 
+
+
+
+@router.post("/print-revisions/{print_revision_id}/renditions", status_code=202)
+def request_print_rendition(
+    request: Request, print_revision_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """PGV-09 (spec_passport_graphics_visual.md §10.2/§11/§13, строка
+    PGV-09): заказать PNG печатной ревизии (V01, basis
+    visual_print_snapshot) -- 202 + job/status_url; рендер выполняет
+    document_render_worker через изолированный renderer-контейнер PGV-08
+    (§4: «Python jobs остаются authority... только backend завершает
+    staged object/CAS→ready»). Идемпотентность (AC09): повтор той же
+    цели -- прежний job. Чужая/несуществующая ревизия -- uniform 404
+    (AC18). Форматы печатных renditions PGV-09 -- PNG-only (§1);
+    D01-D12/snapshot-поток не задействуется (AC22)."""
+    fmt = str(payload.get("format", "")).strip().lower()
+    if not fmt:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unsupported_format",
+                "message": "Формат не указан",
+            },
+        )
+    subject, session_id = _subject_and_session(request)
+    service = _delivery_service()
+    try:
+        job, rendition = service.request_print_rendition(
+            print_revision_id,
+            format=fmt,
+            subject=subject,
+            session_id=session_id,
+            redaction_profile=str(
+                payload.get("redaction_profile")
+                or DEFAULT_REDACTION_PROFILE
+            ),
+        )
+    except DocumentAccessDenied as exc:
+        raise _map_service_errors(exc) from None
+    except UnsupportedFormatError as exc:
+        raise _map_service_errors(exc) from None
+    except PrintRenderBasisUnsupported as exc:
+        raise _map_service_errors(exc) from None
+    except DocumentRetryLimitExceeded as exc:
+        raise _map_service_errors(exc) from None
+    except DocumentQuotaExceeded as exc:
+        raise _map_service_errors(exc) from None
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        raise _map_service_errors(exc) from None
+    return {
+        "job": _job_json(job, rendition),
+        "status_url": f"/v1/documentation/jobs/{job.job_id}",
+    }
 
 @router.get("/jobs/{job_id}")
 def get_job(request: Request, job_id: str) -> dict[str, Any]:

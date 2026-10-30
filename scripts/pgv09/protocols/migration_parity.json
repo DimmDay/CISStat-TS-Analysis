@@ -1,0 +1,10 @@
+{
+ "file_lines_in_catalog": true,
+ "missing": [],
+ "catalog_files": 17,
+ "catalog_statements": 106,
+ "last_file": "0017_pgv9_print_renditions.sql",
+ "additive_only": true,
+ "partial_unique_index": true,
+ "fk_do_blocks": true
+}

@@ -1,0 +1,60 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/z/my-project/repo
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 610 items
+
+tests/api/test_doclog4_document_delivery.py ............................ [  4%]
+......................                                                   [  8%]
+tests/api/test_doclog5_formats_worker.py ............................... [ 13%]
+..............................                                           [ 18%]
+tests/api/test_doclog9_profiles.py ..................................... [ 24%]
+................                                                         [ 26%]
+tests/api/test_doclog3_telemetry_audit.py .............................. [ 31%]
+..................................................................       [ 42%]
+tests/api/test_doclog6_approvals_archive.py ............................ [ 47%]
+.....................                                                    [ 50%]
+tests/api/test_doclog7_logs_support.py ................................. [ 56%]
+.....                                                                    [ 56%]
+tests/api/test_doclog8_monitoring.py ................................... [ 62%]
+............................                                             [ 67%]
+tests/api/test_pgv02_durable_inputs.py ................................. [ 72%]
+....................................                                     [ 78%]
+tests/api/test_pgv03_producer_adapters.py .............................. [ 83%]
+.........................................                                [ 90%]
+tests/api/test_research_runs.py ........................................ [ 96%]
+....................                                                     [100%]
+
+=============================== warnings summary ===============================
+tests/api/test_pgv03_producer_adapters.py::TestHandlerWiring::test_validate_freezes_ten_check_views
+  /home/z/my-project/repo/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 610 passed, 1 warning in 13.85s ========================

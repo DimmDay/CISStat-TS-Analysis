@@ -1,0 +1,71 @@
+{
+ "task": "PGV-09",
+ "base": "962ccda",
+ "steps": [
+  {
+   "name": "compile",
+   "argv": [
+    "/home/z/.venv/bin/python3",
+    "-m",
+    "py_compile",
+    "/home/z/my-project/repo/apps/api/png_renderer_client.py",
+    "/home/z/my-project/repo/apps/api/print_render_payload.py",
+    "/home/z/my-project/repo/apps/api/document_jobs.py",
+    "/home/z/my-project/repo/apps/api/document_render_worker.py",
+    "/home/z/my-project/repo/apps/api/research_runs.py",
+    "/home/z/my-project/repo/apps/api/routers/documentation.py",
+    "/home/z/my-project/repo/tests/api/test_pgv09_jobs_renderer_integration.py"
+   ],
+   "exit_code": 0,
+   "duration_s": 0.074
+  },
+  {
+   "name": "pgv09_suite",
+   "argv": [
+    "/home/z/.venv/bin/python3",
+    "-m",
+    "pytest",
+    "tests/api/test_pgv09_jobs_renderer_integration.py",
+    "-q"
+   ],
+   "exit_code": 0,
+   "duration_s": 9.717
+  },
+  {
+   "name": "affected_suites",
+   "argv": [
+    "/home/z/.venv/bin/python3",
+    "-m",
+    "pytest",
+    "tests/api/test_doclog4_document_delivery.py",
+    "tests/api/test_doclog5_formats_worker.py",
+    "tests/api/test_doclog9_profiles.py",
+    "tests/api/test_doclog3_telemetry_audit.py",
+    "tests/api/test_doclog6_approvals_archive.py",
+    "tests/api/test_doclog7_logs_support.py",
+    "tests/api/test_doclog8_monitoring.py",
+    "tests/api/test_pgv02_durable_inputs.py",
+    "tests/api/test_pgv03_producer_adapters.py",
+    "tests/api/test_research_runs.py",
+    "-q"
+   ],
+   "exit_code": 0,
+   "duration_s": 17.349
+  }
+ ],
+ "migration_parity": {
+  "file_lines_in_catalog": true,
+  "missing": [],
+  "catalog_files": 17,
+  "catalog_statements": 106,
+  "last_file": "0017_pgv9_print_renditions.sql",
+  "additive_only": true,
+  "partial_unique_index": true,
+  "fk_do_blocks": true
+ },
+ "git_state": {
+  "head": "962ccda Task ID: JEST-LOCAL-8014038 (2026-10-30) - Portable PNG CRC-32 and robust budget local FIFO/Validation tests",
+  "is_base_962ccda": true
+ },
+ "verdict": "PASS"
+}
