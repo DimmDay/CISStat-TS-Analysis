@@ -1,0 +1,17 @@
+=== PGV10CERT-GATEFIX RED-протокол (2026-10-31, песочница, база 5e0920e + файлы поставки PGV-10-RECERT) ===
+
+[1] Discovery: npx jest --listTests | wc -l
+245
+[1a] pgv10cert-файлы в discovery:
+/home/z/my-project/CISStat-TS-Analysis/scripts/pgv10cert/test_p10cert_red_evidence.test.ts
+/home/z/my-project/CISStat-TS-Analysis/scripts/pgv10cert/test_p10cert_oracles.test.tsx
+
+[2] npx jest scripts/pgv10cert --maxWorkers=2 (до фикса):
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       2 failed, 7 passed, 9 total
+Snapshots:   0 total
+Time:        4.059 s
+Ran all test suites matching scripts/pgv10cert.
+
+[3] npm run test:ci (полный гейт, до фикса): 2 failed, 2784 passed, 2786 total; suites: 2 failed, 243 passed (см. протокол полного прогона); упавшие: test_p10cert_red_evidence.test.ts (2, по замыслу F-P10C2) + doclogrecheckfixcert/documentation-client-cert.test.tsx (воркер SIGKILL, OOM-класс песочницы 4 ГБ, вне машин CI/тимлида)

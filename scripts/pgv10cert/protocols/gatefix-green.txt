@@ -1,0 +1,43 @@
+=== PGV10CERT-GATEFIX GREEN-протокол (2026-10-31, песочница, база 5e0920e + файлы поставки PGV-10-RECERT) ===
+Фикс: scripts/pgv10cert/test_p10cert_red_evidence.test.ts — describe.skip по
+умолчанию, явный режим свидетельства P10CERT_RED_EVIDENCE=1. Гейт не изменён.
+
+[G1] npx jest scripts/pgv10cert --maxWorkers=2 (режим по умолчанию):
+Test Suites: 1 skipped, 1 passed, 1 of 2 total
+Tests:       2 skipped, 7 passed, 9 total
+Snapshots:   0 total
+Time:        5.028 s
+=> гейт-нейтрально: 0 failed; RED-свидетельство на паузе, оракулы 7/7 исполняются.
+
+[G2] P10CERT_RED_EVIDENCE=1 npx jest scripts/pgv10cert/test_p10cert_red_evidence.test.ts:
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Time:        1.89 s
+=> режим свидетельства сохранён: R1b RED на цели (F-P10C2 не исправлена);
+   после FIX-задачи тесты GREEN (свидетельство становится регрессионным пином).
+
+[G3] npm run test:ci (полный гейт):
+Test Suites: 1 skipped, 244 passed, 244 of 245 total
+Tests:       2 skipped, 2788 passed, 2790 total
+Snapshots:   0 total
+Time:        83.942 s
+=> 0 failed. Контроль OOM-класса: doclogrecheckfixcert/documentation-client-cert.test.tsx
+   в этом прогоне ЗЕЛЁНАЯ (SIGKILL в прогоне до фикса — стохастический OOM
+   4-ГБ песочницы, вне CI 16 ГБ и машины тимлида).
+
+[G4] npm run build --workspace=@cisstat/print-renderer  => OK (tsc -p tsconfig.build.json)
+[G5] npm run typecheck:all                              => OK (exit 0)
+
+[G6] Полный прогон точной команды тимлида: python3 scripts/local_gates.py
+(npm ci включительно, без --skip-install):
+=== СВОДКА ===
+  PASS  auth00     40.9 c
+  PASS  rules       2.0 c
+  PASS  jest      104.2 c
+ИТОГ: ПУШ РАЗРЕШЁН — все гейты зелёные
+
+Побочная находка фикса: последовательность "**/*" внутри блок-комментария
+содержит "*/" и досрочно закрывает комментарий — ts-jest парсил шапку файла
+как код (TS2304/TS2695 на строках шапки, «suite failed to run», 0 тестов).
+Устранено переформулировкой glob в комментарии (без литерала "*/" внутри
+блок-комментария).
