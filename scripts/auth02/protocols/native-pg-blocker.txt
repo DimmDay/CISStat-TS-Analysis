@@ -1,0 +1,13 @@
+/workspace/scratch/baee966ab828/auth02-venv/lib/python3.12/site-packages/platformdirs/api.py:467: RuntimeDirWarning: XDG_RUNTIME_DIR is not set, falling back to /workspace/scratch/baee966ab828/CISStat-auth02/runtime-0
+  return Path(self.user_runtime_dir)
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/../auth02_pg_start.py", line 9, in <module>
+    subprocess.run(['mkdir', str(base)], user=65534, group=65534, check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 1957, in _execute_child
+    raise child_exception_type(errno_num, err_msg)
+OSError: [Errno 22] Invalid argument

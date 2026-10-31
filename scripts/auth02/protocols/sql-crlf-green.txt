@@ -1,0 +1,6 @@
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.020s
+
+OK

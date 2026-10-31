@@ -1,0 +1,32 @@
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ERROR
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ERROR
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ERROR
+
+======================================================================
+ERROR: test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/unit/test_auth02_storage.py", line 12, in test_factory_without_dsn_fails_closed
+    from apps.api.authentication.storage import PostgresAccessStore
+ModuleNotFoundError: No module named 'apps.api.authentication'
+
+======================================================================
+ERROR: test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/unit/test_auth02_storage.py", line 18, in test_no_dsn_in_repr_or_connection_errors
+    from apps.api.authentication.storage import PostgresAccessStore
+ModuleNotFoundError: No module named 'apps.api.authentication'
+
+======================================================================
+ERROR: test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/unit/test_auth02_storage.py", line 28, in test_schema_identifier_and_empty_dsn_rejected
+    from apps.api.authentication.storage import PostgresAccessStore
+ModuleNotFoundError: No module named 'apps.api.authentication'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (errors=3)

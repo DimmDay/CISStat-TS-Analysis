@@ -1,0 +1,9 @@
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ok
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.063s
+
+OK

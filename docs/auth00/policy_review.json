@@ -1,5 +1,5 @@
 {
-  "baseline": "dfe1941405bae6fc5f370c354cdfcc709741242f",
+  "baseline": "649027ee3e97c46bb64cb0e7319790c022a0c3bc",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -294,6 +294,22 @@
       "threats": [
         "T05",
         "T18"
+      ]
+    },
+    "auth.storage": {
+      "observed": "AUTH-02 PostgreSQL-only repositories + shared transaction; unique/FK/deferred membership guards; explicit schema migration. No HTTP/AuthN integration.",
+      "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
+      "follow_up": [
+        "AUTH-03",
+        "AUTH-08",
+        "AUTH-10",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T02",
+        "T04",
+        "T11",
+        "T15"
       ]
     }
   },
@@ -6412,6 +6428,41 @@
       ],
       "canonical_operation": "apps/api/document_render_worker.py:self._loop",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    "storage:auth.identities": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Identity/external issuer-sub mapping",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.identity",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "storage:auth.accounts": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account/tenant/membership/versions",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.account",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "auth.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "DDL + schema checksum ledger",
+      "effects": [
+        "schema_write"
+      ],
+      "canonical_operation": "auth.schema.apply",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
     }
   },
   "extra_surfaces": [
@@ -6624,6 +6675,48 @@
           "symbol": "Streamlit runtime import; application gate lines 343-361"
         }
       ]
+    },
+    {
+      "id": "storage:auth.identities",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "IdentityRepository",
+      "operation": "auth.repository.identity",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/repository.py",
+          "line": 8,
+          "symbol": "IdentityRepository"
+        }
+      ]
+    },
+    {
+      "id": "storage:auth.accounts",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "AccountRepository",
+      "operation": "auth.repository.account",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/repository.py",
+          "line": 6,
+          "symbol": "AccountRepository"
+        }
+      ]
+    },
+    {
+      "id": "auth.schema.apply",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "apply_migration",
+      "operation": "auth.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/migrations.py",
+          "line": 13,
+          "symbol": "apply_migration"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -6639,6 +6732,7 @@
     "apps/api/document_render_worker.py",
     "apps/api/document_renditions.py",
     "apps/api/identity.py",
+    "apps/api/migrations/0019_auth02_identity_accounts.sql",
     "apps/api/model_execution.py",
     "apps/api/model_jobs.py",
     "apps/api/plans.py",
@@ -6656,11 +6750,14 @@
     "docs/auth00/threat_model.md",
     "docs/auth01/design.md",
     "docs/auth01/openapi.json",
+    "docs/auth02/design.md",
     "packages/ui/lib/access-contract.generated.ts",
     "packages/ui/lib/admin.ts",
     "packages/ui/lib/apiClient.ts",
     "packages/ui/lib/plans.ts",
     "scripts/auth01/generate.py",
+    "scripts/auth02/migrate.py",
+    "scripts/auth02/rollback_0019.sql",
     "spec_auth.md",
     "spec_auth_architecture.md",
     "spec_billing_accounts.md",

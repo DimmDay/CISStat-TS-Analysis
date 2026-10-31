@@ -1,0 +1,47 @@
+WASM SQL rehearsal; transaction multiplexer is NOT native PostgreSQL lock scheduling
+PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_checksum_mismatch_fails_without_silent_reapply (test_auth02_postgres.PostgresTests.test_checksum_mismatch_fails_without_silent_reapply) ... ok
+test_closed_status_cannot_bypass_last_owner_invariant (test_auth02_postgres.PostgresTests.test_closed_status_cannot_bypass_last_owner_invariant) ... FAIL
+test_concurrent_last_owners_cannot_both_demote (test_auth02_postgres.PostgresTests.test_concurrent_last_owners_cannot_both_demote) ... ok
+test_concurrent_last_seat_cannot_overbook (test_auth02_postgres.PostgresTests.test_concurrent_last_seat_cannot_overbook) ... ok
+test_cross_repository_rollback_and_no_inner_commit (test_auth02_postgres.PostgresTests.test_cross_repository_rollback_and_no_inner_commit) ... ok
+test_downgrade_empty_only_and_reapply (test_auth02_postgres.PostgresTests.test_downgrade_empty_only_and_reapply) ... ok
+test_existing_scientific_migrations_remain_usable_and_untouched (test_auth02_postgres.PostgresTests.test_existing_scientific_migrations_remain_usable_and_untouched) ... ok
+test_external_binding_cannot_be_reassigned (test_auth02_postgres.PostgresTests.test_external_binding_cannot_be_reassigned) ... ok
+test_identity_revoke_version_and_account_suspend_survive_new_repository (test_auth02_postgres.PostgresTests.test_identity_revoke_version_and_account_suspend_survive_new_repository) ... ok
+test_immutable_ids_and_tenant_binding (test_auth02_postgres.PostgresTests.test_immutable_ids_and_tenant_binding) ... ok
+test_issuer_sub_unique_and_conflict_rolls_back_whole_transaction (test_auth02_postgres.PostgresTests.test_issuer_sub_unique_and_conflict_rolls_back_whole_transaction) ... ok
+test_member_and_owner_not_platform_admin (test_auth02_postgres.PostgresTests.test_member_and_owner_not_platform_admin) ... ok
+test_migration_idempotence_checksum_and_transactional_ddl_rollback (test_auth02_postgres.PostgresTests.test_migration_idempotence_checksum_and_transactional_ddl_rollback) ... ok
+test_mono_exactly_one_owner_and_no_empty_account_commit (test_auth02_postgres.PostgresTests.test_mono_exactly_one_owner_and_no_empty_account_commit) ... ok
+test_mono_multi_keeps_ids_and_cas_rejects_stale_writer (test_auth02_postgres.PostgresTests.test_mono_multi_keeps_ids_and_cas_rejects_stale_writer) ... ok
+test_new_python_process_observes_committed_records (test_auth02_postgres.PostgresTests.test_new_python_process_observes_committed_records) ... ok
+test_roundtrip_same_email_not_identity_merge (test_auth02_postgres.PostgresTests.test_roundtrip_same_email_not_identity_merge) ... ok
+test_unique_subject_membership_and_foreign_keys_on_server (test_auth02_postgres.PostgresTests.test_unique_subject_membership_and_foreign_keys_on_server) ... ok
+
+======================================================================
+FAIL: test_closed_status_cannot_bypass_last_owner_invariant (test_auth02_postgres.PostgresTests.test_closed_status_cannot_bypass_last_owner_invariant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/integration/test_auth02_postgres.py", line 170, in test_closed_status_cannot_bypass_last_owner_invariant
+    with self.assertRaises(RepositoryConflict):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RepositoryConflict not raised
+
+----------------------------------------------------------------------
+Ran 18 tests in 1.739s
+
+FAILED (failures=1)
+[{"version":"PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit"}]
+AUTH02_PGLITE_READY
+
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/scripts/auth02/pglite_check.py", line 119, in <module>
+    main()
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/scripts/auth02/pglite_check.py", line 93, in main
+    run("scripts/auth02/verify_postgres.py")
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/scripts/auth02/pglite_check.py", line 82, in run
+    subprocess.run(
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/workspace/scratch/baee966ab828/CISStat-auth02/../auth02-venv/bin/python', 'scripts/auth02/verify_postgres.py']' returned non-zero exit status 1.

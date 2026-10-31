@@ -1,0 +1,16 @@
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ERROR
+
+======================================================================
+ERROR: test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/unit/test_auth00_inventory.py", line 178, in test_reviewed_sql_fingerprint_is_checkout_portable
+    self.mod.check(self.root)
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/scripts/auth00/inventory.py", line 403, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json
+
+----------------------------------------------------------------------
+Ran 1 test in 0.019s
+
+FAILED (errors=1)

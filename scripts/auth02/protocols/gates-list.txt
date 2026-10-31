@@ -1,0 +1,9 @@
+ * auth02  <- auth02.yml contracts             AUTH-02 storage unit contracts (no DB)
+   auth02-postgres <- auth02.yml postgres              AUTH-02 LIVE PostgreSQL (CISSTAT_AUTH_TEST_DSN required)
+ * auth01  <- auth01.yml                       AUTH-01 registry / OpenAPI / generated TS parity
+ * auth00  <- auth00.yml                       AUTH-00 inventory (unittest + drift check)
+ * rules   <- test_rules.yml                   Validation rules sanity check
+   pytest  <- test.yml (develop/refactor only) pip install + полный python -m pytest tests/
+ * jest    <- jest.yml                         All Jest tests + renderer build + typecheck:all
+
+* = входит в прогон по умолчанию (push в main); pytest добавляется --with-pytest; live PG — --with-auth02-postgres

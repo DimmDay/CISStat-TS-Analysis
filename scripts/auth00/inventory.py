@@ -355,7 +355,7 @@ def build(root=ROOT):
     source_files.update(p.relative_to(root).as_posix() for p in (root / 'apps/api').rglob('*.py') if not p.name.startswith('test_'))
     def source_digest(path):
         data = (root / path).read_bytes()
-        if Path(path).suffix in {'.py', '.ts', '.tsx', '.js', '.mjs', '.md', '.json', '.yml', '.yaml'}:
+        if Path(path).suffix in {'.py', '.ts', '.tsx', '.js', '.mjs', '.md', '.json', '.yml', '.yaml', '.sql'}:
             data = data.replace(b'\r\n', b'\n')
         return hashlib.sha256(data).hexdigest()
     fingerprints = {p: source_digest(p) for p in sorted(source_files)}

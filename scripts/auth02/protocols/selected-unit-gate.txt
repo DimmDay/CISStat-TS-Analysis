@@ -1,0 +1,20 @@
+Локальные гейты (база 649027e): auth02
+
+=== ГЕЙТ auth02 (auth02.yml contracts) — AUTH-02 storage unit contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/baee966ab828/CISStat-auth02/../auth02-venv/bin/python -m unittest discover -s tests/unit -p test_auth02_storage.py -v
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ok
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.063s
+
+OK
+--- auth02: PASS (0.2 c)
+
+=== СВОДКА ===
+  PASS  auth02      0.2 c
+
+ИТОГ: выбранные гейты зелёные; AUTH-02 live PostgreSQL не проверен (нужен --with-auth02-postgres и отдельная проверка restart/CI)

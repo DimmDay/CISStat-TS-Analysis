@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `dfe1941405bae6fc5f370c354cdfcc709741242f`. Автоматически собранные входы + явная policy review.
+База: `649027ee3e97c46bb64cb0e7319790c022a0c3bc`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -13,14 +13,14 @@
 |---|---:|
 | api | 220 |
 | framework | 8 |
-| internal_operation | 3 |
+| internal_operation | 4 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 27 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 6 |
+| storage | 8 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 6 |
@@ -32,6 +32,7 @@
 | admin.key | Depends(require_admin_role), ENV API-key ADMIN; MFA browser session отсутствует. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | api.key | Router Depends(require_api_key); ENV key registry, без общего can_use_api/CU gate. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
 | api.model_key | get_current_principal + legacy can_train_models; candidates/backtest/diagnostics также под этим флагом. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
+| auth.storage | AUTH-02 PostgreSQL-only repositories + shared transaction; unique/FK/deferred membership guards; explicit schema migration. No HTTP/AuthN integration. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | browser.internal | Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-11, AUTH-12 |
 | browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
 | cors.transport | CORS permits configured/dev origins and regex *.vercel.app with credentials; not access control. | Approved origins + CSRF/Origin/Fetch Metadata; direct API remains subject to AuthN/object gates. | AUTH-06, AUTH-11 |
@@ -293,6 +294,7 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
+| auth.schema.apply | auth.schema.apply / service:platform | auth.storage / DDL + schema checksum ledger | apps/api/authentication/migrations.py:13 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
@@ -617,6 +619,8 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | storage:artifacts | storage:artifacts / service:storage | storage.internal / snapshot/artifact/rendition bytes | apps/api/artifact_store.py:321 |
+| storage:auth.accounts | auth.repository.account / service:platform | auth.storage / Account/tenant/membership/versions | apps/api/accounts/repository.py:6 |
+| storage:auth.identities | auth.repository.identity / service:platform | auth.storage / Identity/external issuer-sub mapping | apps/api/authentication/repository.py:8 |
 | storage:datasets | storage:datasets / service:storage | storage.internal / uploads + checkpoints | apps/api/research_runs.py:2785 |
 | storage:db.load | storage:db.load / scientific:upload | storage.internal / SQL and remote/local DB data | app/data/db_guard.py:352 |
 | storage:db.probe | storage:db.probe / scientific:upload | storage.internal / user-supplied DB host/port/path/credentials | app/data/file_loader.py:60 |

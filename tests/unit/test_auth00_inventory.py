@@ -166,6 +166,17 @@ class InventoryTests(unittest.TestCase):
             p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
         self.mod.check(self.root)
 
+    def test_reviewed_sql_fingerprint_is_checkout_portable(self):
+        self.snapshot_fixture()
+        self.put('apps/api/migrations/fixture.sql', 'CREATE TABLE fixture (id INTEGER);\n')
+        self.edit_review(lambda r:r['reviewed_sources'].append('apps/api/migrations/fixture.sql'))
+        report=self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json', self.mod.json_text(report))
+        self.put('docs/auth00/inventory.md', self.mod.markdown(report))
+        path=self.root/'apps/api/migrations/fixture.sql'
+        path.write_bytes(path.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
+        self.mod.check(self.root)
+
     def edit_review(self, fn):
         p = self.root / 'docs/auth00/policy_review.json'
         review = json.loads(p.read_text(encoding='utf-8'))

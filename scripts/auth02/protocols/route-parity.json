@@ -1,0 +1,13 @@
+{
+  "baseline": "649027ee3e97c46bb64cb0e7319790c022a0c3bc",
+  "api_count": 220,
+  "api_entries_identical": true,
+  "added_api": [],
+  "removed_api": [],
+  "new_non_http_boundaries": [
+    "auth.schema.apply",
+    "storage:auth.accounts",
+    "storage:auth.identities"
+  ],
+  "total_entries": 537
+}

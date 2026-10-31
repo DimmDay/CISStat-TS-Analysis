@@ -1,18 +1,18 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "dfe1941405bae6fc5f370c354cdfcc709741242f",
+  "baseline": "649027ee3e97c46bb64cb0e7319790c022a0c3bc",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
     "api": 220,
     "framework": 8,
-    "internal_operation": 3,
+    "internal_operation": 4,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 27,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 6,
+    "storage": 8,
     "task_alias": 4,
     "transport": 2,
     "worker": 6
@@ -311,6 +311,22 @@
         "T05",
         "T18"
       ]
+    },
+    "auth.storage": {
+      "observed": "AUTH-02 PostgreSQL-only repositories + shared transaction; unique/FK/deferred membership guards; explicit schema migration. No HTTP/AuthN integration.",
+      "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
+      "follow_up": [
+        "AUTH-03",
+        "AUTH-08",
+        "AUTH-10",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T02",
+        "T04",
+        "T11",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -322,10 +338,19 @@
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "49905ab38bac799527d19ee70d4504467e393e0242954ef06daece9ee4c03528",
     "apps/api/access_registry.v1.json": "a26c1682767cc7cb33a5fa5fccafe42566ae44df699ad1bd4829db7aa50ac26e",
+    "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
+    "apps/api/accounts/models.py": "4a3dfb8fdd135bd2b8bff0259a0baff396a262c2485d655c3be310a354587b4a",
+    "apps/api/accounts/repository.py": "53010414c2ee5f2aa73a944785928e924a724316cf461135c3d6a38732633de4",
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
     "apps/api/auth.py": "539d7d0e7d26f8f2732a0ed82869de2365fba89f9ae50afb015c6a960a165a10",
+    "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
+    "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
+    "apps/api/authentication/migrations.py": "80886b95e42417e5a259ea9989d709cc66e9159010562af24d45385c5e5c86ae",
+    "apps/api/authentication/models.py": "418c577bcc6a790b2c662453b64a656a5c9dd3a18f3af0e8adc87b3371f61b0f",
+    "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
+    "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
     "apps/api/backtesting.py": "d6199c4b7f88220dd13c54e0df5341961ccf14035eebc160c09c2e9f6315c841",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
@@ -362,6 +387,7 @@
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
     "apps/api/main.py": "f5064f8f549a3aa2e30a65fb17d259ef9d8620ff3b3d8f3d5be054fee575ff8b",
+    "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -490,16 +516,19 @@
     "apps/standalone/next.config.mjs": "b8c5a8ec17ae6427f224b402a5eca1a0673e52c05d81ae11bce19e703b7fa569",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
-    "docs/auth00/operation_variants.md": "0507c3dbf4019334040a060510032f8b335daa8dbd9c2db2b5483d1713a5b914",
+    "docs/auth00/operation_variants.md": "93c4aeb8ebeebbac38e3b3c4fc26c378af7e7ae16998986998f7cd9d26d80283",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
     "docs/auth01/openapi.json": "7b2de0f845f6e9a2d78cfbba2b1aee1bcca3a55ed6fe2b4d7a74cf63b18d7e00",
+    "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "packages/ui/lib/access-contract.generated.ts": "8fbc3ab97a5e872ea31a74ca60f5964e9897c3fd86347ff6b60740eeca4fa101",
     "packages/ui/lib/admin.ts": "13d1cdaa557b6c88e67dab6aeb96671ccbcb194a7e9a101cd00c08cb7efefd51",
     "packages/ui/lib/apiClient.ts": "022b665d96d3a28e6c2ad60127925cdabcb580c7825b310ad30703ffe3e9795c",
     "packages/ui/lib/plans.ts": "732fd6cff623d91b53d784d78c33e0b46cc53b8381c223b438d7e937c93acd94",
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
+    "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
+    "scripts/auth02/rollback_0019.sql": "3bd9ec18f1fdea3e28c7d5b12437b9d0aeb2d7bf7a9f271dc6593bb4fbdecdcd",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -8604,6 +8633,30 @@
       "admission": "explicit public asset allowlist"
     },
     {
+      "id": "auth.schema.apply",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "apply_migration",
+      "operation": "auth.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/migrations.py",
+          "line": 13,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "DDL + schema checksum ledger",
+      "effects": [
+        "schema_write"
+      ],
+      "canonical_operation": "auth.schema.apply",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
       "id": "execution:model.job_step",
       "kind": "internal_operation",
       "method": "CALL",
@@ -15803,6 +15856,56 @@
       "canonical_operation": "storage:artifacts",
       "admission": "not a standalone authorization boundary; caller must authorize",
       "stage_namespace": "service"
+    },
+    {
+      "id": "storage:auth.accounts",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "AccountRepository",
+      "operation": "auth.repository.account",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/repository.py",
+          "line": 6,
+          "symbol": "AccountRepository"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account/tenant/membership/versions",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.account",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
+      "id": "storage:auth.identities",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "IdentityRepository",
+      "operation": "auth.repository.identity",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/repository.py",
+          "line": 8,
+          "symbol": "IdentityRepository"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Identity/external issuer-sub mapping",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.identity",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
     },
     {
       "id": "storage:datasets",

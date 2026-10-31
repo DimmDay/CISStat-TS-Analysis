@@ -1,0 +1,11 @@
+Локальные гейты (база 649027e): rules
+
+=== ГЕЙТ rules (test_rules.yml) — Validation rules sanity check
+    $ /workspace/scratch/baee966ab828/CISStat-auth02/../auth02-venv/bin/python -c from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']
+is_valid = False
+--- rules: PASS (0.6 c)
+
+=== СВОДКА ===
+  PASS  rules       0.6 c
+
+ИТОГ: ПУШ РАЗРЕШЁН — все гейты зелёные

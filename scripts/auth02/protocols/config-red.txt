@@ -1,0 +1,42 @@
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ERROR
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+======================================================================
+ERROR: test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/tests/unit/test_auth02_storage.py", line 15, in test_malformed_config_is_a_safe_domain_error
+    with PostgresAccessStore('malformed secret_password').transaction():pass
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/apps/api/authentication/storage.py", line 58, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth02/apps/api/authentication/storage.py", line 36, in _connection
+    with psycopg.connect(self._dsn,connect_timeout=3,row_factory=dict_row) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/auth02-venv/lib/python3.12/site-packages/psycopg/connection.py", line 97, in connect
+    params = cls._get_connection_params(conninfo, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/auth02-venv/lib/python3.12/site-packages/psycopg/connection.py", line 185, in _get_connection_params
+    return conninfo_to_dict(conninfo, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/auth02-venv/lib/python3.12/site-packages/psycopg/conninfo.py", line 82, in conninfo_to_dict
+    opts = _parse_conninfo(conninfo)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/auth02-venv/lib/python3.12/site-packages/psycopg/conninfo.py", line 103, in _parse_conninfo
+    raise e.ProgrammingError(str(ex)) from None
+psycopg.ProgrammingError: missing "=" after "malformed" in connection info string
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.071s
+
+FAILED (errors=1)

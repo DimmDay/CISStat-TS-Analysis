@@ -49,3 +49,12 @@ saved forecast/card/compare/select требуют фактический model c
 Роутеры ещё не подключены к новому функциональному фильтру (AUTH-11), старые
 can_train_models dependencies сохранены. OpenAPI metadata не является enforcement.
 AUTH-00 fingerprints обновлены после review; полный состав 534 входа сохранён.
+
+## AUTH-02 review на 649027e (31 октября 2026)
+
+HTTP маршруты/методы и task aliases не изменены (API 220, AUTH-01 bindings 224).
+Добавлены три non-HTTP boundary: storage:auth.identities, storage:auth.accounts,
+auth.schema.apply. Они используют policy auth.storage: PostgreSQL-only trusted
+repositories/явный DDL; не означают самостоятельную авторизацию вызывающего.
+Общий состав карты 537; источники и SQL fingerprints обновлены после review.
+AUTH-03/08 подключат новый authority context; старые resolver/guards пока сохранены.
