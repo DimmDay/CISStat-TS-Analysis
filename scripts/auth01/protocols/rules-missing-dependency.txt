@@ -1,0 +1,17 @@
+Локальные гейты (база dfe1941): rules
+
+=== ГЕЙТ rules (test_rules.yml) — Validation rules sanity check
+    $ /workspace/scratch/baee966ab828/CISStat-auth01/../auth01-venv/bin/python -c from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/validation/__init__.py", line 3, in <module>
+    from .engine import validate_dataframe, build_pandera_schema
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/validation/engine.py", line 11, in <module>
+    import pandera as pa
+ModuleNotFoundError: No module named 'pandera'
+--- rules: FAIL (0.4 c)
+
+=== СВОДКА ===
+  FAIL  rules       0.4 c
+
+ИТОГ: НЕ ПУШАЙТЕ — есть красные гейты

@@ -1,0 +1,13 @@
+Collecting pydantic==2.14.1 (from -r scripts/auth01/requirements.txt (line 2))
+  Downloading pydantic-2.14.1-py3-none-any.whl.metadata (133 kB)
+Collecting fastapi==0.162.0 (from -r scripts/auth01/requirements.txt (line 3))
+  Downloading fastapi-0.162.0-py3-none-any.whl.metadata (26 kB)
+Collecting starlette==0.52.1 (from -r scripts/auth01/requirements.txt (line 4))
+  Downloading starlette-0.52.1-py3-none-any.whl.metadata (6.3 kB)
+Collecting httpx==0.28.1 (from -r scripts/auth01/requirements.txt (line 5))
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Downloading pydantic-2.14.1-py3-none-any.whl (488 kB)
+Downloading fastapi-0.162.0-py3-none-any.whl (148 kB)
+Downloading starlette-0.52.1-py3-none-any.whl (74 kB)
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Would install fastapi-0.162.0 httpx-0.28.1 pydantic-2.14.1 starlette-0.52.1

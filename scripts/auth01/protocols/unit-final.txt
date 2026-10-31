@@ -1,0 +1,35 @@
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... /workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... /workspace/scratch/baee966ab828/auth01-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+  _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.435s
+
+OK

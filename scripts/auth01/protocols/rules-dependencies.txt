@@ -1,0 +1,22 @@
+Collecting pandera>=0.18.0
+  Downloading pandera-0.35.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: PyYAML>=6.0 in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (6.0.3)
+Requirement already satisfied: packaging>=20.0 in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pandera>=0.18.0) (26.3)
+Requirement already satisfied: pydantic in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pandera>=0.18.0) (2.14.1)
+Collecting typeguard (from pandera>=0.18.0)
+  Downloading typeguard-4.6.0-py3-none-any.whl.metadata (3.7 kB)
+Requirement already satisfied: typing_extensions in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pandera>=0.18.0) (4.16.0)
+Collecting typing_inspect>=0.6.0 (from pandera>=0.18.0)
+  Downloading typing_inspect-0.9.0-py3-none-any.whl.metadata (1.5 kB)
+Collecting mypy-extensions>=0.3.0 (from typing_inspect>=0.6.0->pandera>=0.18.0)
+  Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pydantic->pandera>=0.18.0) (0.8.0)
+Requirement already satisfied: pydantic-core==2.50.1 in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pydantic->pandera>=0.18.0) (2.50.1)
+Requirement already satisfied: typing-inspection>=0.4.4 in /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages (from pydantic->pandera>=0.18.0) (0.4.4)
+Downloading pandera-0.35.0-py3-none-any.whl (557 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 557.1/557.1 kB 6.6 MB/s eta 0:00:00
+Downloading typing_inspect-0.9.0-py3-none-any.whl (8.8 kB)
+Downloading typeguard-4.6.0-py3-none-any.whl (36 kB)
+Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+Installing collected packages: typeguard, mypy-extensions, typing_inspect, pandera
+Successfully installed mypy-extensions-1.1.0 pandera-0.35.0 typeguard-4.6.0 typing_inspect-0.9.0

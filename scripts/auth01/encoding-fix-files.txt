@@ -1,0 +1,15 @@
+.github/workflows/auth01.yml
+docs/auth01/encoding_fix.md
+scripts/auth01/encoding-fix-files.txt
+scripts/auth01/encoding-fix-protocols/auth00-green.txt
+scripts/auth01/encoding-fix-protocols/auth01-green.txt
+scripts/auth01/encoding-fix-protocols/clean-env-before.txt
+scripts/auth01/encoding-fix-protocols/clean-env-green.txt
+scripts/auth01/encoding-fix-protocols/cp1251-red.txt
+scripts/auth01/encoding-fix-protocols/renderer-build.txt
+scripts/auth01/encoding-fix-protocols/runner-red.txt
+scripts/auth01/package_encoding_fix.py
+scripts/auth01/windows_locale_check.py
+scripts/local_gates.py
+tests/unit/test_auth01_registry.py
+worklog/worklog11.md

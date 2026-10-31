@@ -6,12 +6,13 @@
 затронутым областям), а CI на каждый push гоняет ВСЕ workflows. Этот
 скрипт запускает те же команды тем же порядком, что и CI, до пуша:
 
+  auth01  (auth01.yml,   push/PR)   dependencies + registry tests + generated parity
   auth00  (auth00.yml,   push/PR)   unittest auth00 + inventory --check
   rules   (test_rules.yml, push/PR) sanity-проверка валидационных правил
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -38,6 +39,13 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth01", "auth01.yml", "AUTH-01 registry / OpenAPI / generated TS parity", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth01/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
+         "-p", "test_auth01_registry.py", "-v"],
+        [sys.executable, "scripts/auth01/windows_locale_check.py"],
+        [sys.executable, "scripts/auth01/generate.py", "--check"],
+    ]),
     ("auth00", "auth00.yml", "AUTH-00 inventory (unittest + drift check)", [
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
          "-p", "test_auth00_inventory.py", "-v"],
@@ -89,9 +97,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth00,rules,pytest,jest)")
+                        help="запустить только выбранные гейты (auth01,auth00,rules,pytest,jest)")
     parser.add_argument("--skip-install", action="store_true",
-                        help="пропустить npm ci (повторные локальные прогоны)")
+                        help="пропустить npm ci / pip install (повторные локальные прогоны)")
     parser.add_argument("--with-pytest", action="store_true",
                         help="добавить полный pytest-гейт (нужен для push в develop/refactor/*)")
     parser.add_argument("--fail-fast", action="store_true",
@@ -125,7 +133,7 @@ def main() -> int:
               "pytest добавляется --with-pytest (develop/refactor)")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth00,rules,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth01,auth00,rules,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
@@ -147,7 +155,7 @@ def main() -> int:
         print(f"  {'PASS' if ok else 'FAIL'}  {name:7s} {seconds:7.1f} c")
     failed = any(not ok for _, ok, _ in results)
     print("\nИТОГ: " + ("ПУШ РАЗРЕШЁН — все гейты зелёные" if not failed
-                        else "НЕ ПУШАЙТЕ — есть красные гейты"))
+                        else "НЕ ПУШТЕ — есть красные гейты"))
     return 1 if failed else 0
 
 

@@ -1,98 +1,26 @@
-// packages/ui/lib/plans.ts
-//
-// TypeScript-зеркало контракта из apps/api/plans.py.
-//
-// ⚠️ ЭТО ТОЛЬКО ДЛЯ UX (скрыть кнопку "Обучить модель" для плана без этой
-// возможности). РЕАЛЬНАЯ защита -- всегда на бэкенде через
-// Depends(require_capability(...)) в apps/api. Скрытие кнопки в интерфейсе
-// не заменяет проверку на сервере -- это ровно то предостережение, которое
-// уже зафиксировано в предыдущем обсуждении ролей/тарифов.
-//
-// Поддерживайте это в синхронизации с apps/api/plans.py вручную, либо
-// (лучше) сгенерируйте оба файла из единой OpenAPI-схемы FastAPI, когда
-// дойдёте до автоматизации контракта.
+// AUTH-01: generated Pydantic/OpenAPI contract. UX only, server authorizes.
+import {
+  ACCESS_REGISTRY, INTERNAL_CAPABILITIES, PLAN_DEFINITIONS, REGISTRY_VERSION,
+  type CapabilitiesUX, type PlanName, type Role,
+} from "./access-contract.generated";
 
-export type Role = "admin" | "internal_analyst" | "external_user";
+export { ACCESS_REGISTRY, PLAN_DEFINITIONS, REGISTRY_VERSION, capabilitiesFromDTO } from "./access-contract.generated";
+export type { PlanName, Role, CapabilitiesDTO, OperationId } from "./access-contract.generated";
+export type Capabilities = CapabilitiesUX;
 
-export type PlanName = "demo" | "starter" | "professional" | "enterprise";
-
-export interface Capabilities {
-  canTrainModels: boolean;
-  canUseApi: boolean;
-  canSaveHistory: boolean;
-  canUploadOwnData: boolean;
-  maxDatasetRows: number | null;
-  maxApiCallsPerMonth: number | null;
-  maxAnalysesTotal: number | null;
-  trialDays: number | null;
-  watermarkExports: boolean;
+/** Legacy UX adapter. Account-effective capabilities come from AUTH-08/me.
+ * Never use the role argument to authorize admin, object or billing access.
+ */
+export function getCapabilities(role: Role, plan: PlanName | null): Capabilities {
+  const value = role === "admin" || role === "internal_analyst"
+    ? INTERNAL_CAPABILITIES : plan ? PLAN_DEFINITIONS[plan] : undefined;
+  if (!value) throw new Error(`У роли ${role} нет плана, но getCapabilities вызван без него`);
+  return { ...value, restrictedStageIds: [...value.restrictedStageIds], baselineLimits: { ...value.baselineLimits } };
 }
 
-export const PLAN_DEFINITIONS: Record<PlanName, Capabilities> = {
-  demo: {
-    canTrainModels: false,
-    canUseApi: false,
-    canSaveHistory: false,
-    canUploadOwnData: true,
-    maxDatasetRows: 5_000,
-    maxApiCallsPerMonth: 0,
-    maxAnalysesTotal: 10,
-    trialDays: 14,
-    watermarkExports: true,
-  },
-  starter: {
-    canTrainModels: false,
-    canUseApi: true,
-    canSaveHistory: true,
-    canUploadOwnData: true,
-    maxDatasetRows: 50_000,
-    maxApiCallsPerMonth: 1_000,
-    maxAnalysesTotal: null,
-    trialDays: null,
-    watermarkExports: false,
-  },
-  professional: {
-    canTrainModels: true,
-    canUseApi: true,
-    canSaveHistory: true,
-    canUploadOwnData: true,
-    maxDatasetRows: null,
-    maxApiCallsPerMonth: 50_000,
-    maxAnalysesTotal: null,
-    trialDays: null,
-    watermarkExports: false,
-  },
-  enterprise: {
-    canTrainModels: true,
-    canUseApi: true,
-    canSaveHistory: true,
-    canUploadOwnData: true,
-    maxDatasetRows: null,
-    maxApiCallsPerMonth: null,
-    maxAnalysesTotal: null,
-    trialDays: null,
-    watermarkExports: false,
-  },
-};
-
-const INTERNAL_CAPABILITIES: Capabilities = {
-  canTrainModels: true,
-  canUseApi: true,
-  canSaveHistory: true,
-  canUploadOwnData: true,
-  maxDatasetRows: null,
-  maxApiCallsPerMonth: null,
-  maxAnalysesTotal: null,
-  trialDays: null,
-  watermarkExports: false,
-};
-
-export function getCapabilities(role: Role, plan: PlanName | null): Capabilities {
-  if (role === "admin" || role === "internal_analyst") {
-    return INTERNAL_CAPABILITIES;
-  }
-  if (!plan) {
-    throw new Error(`У роли ${role} нет плана, но getCapabilities вызван без него`);
-  }
-  return PLAN_DEFINITIONS[plan];
+/** Stage visibility only; soon/readiness and entitlement are separate concerns. */
+export function hasStageAccess(caps: Capabilities, namespace: string, stageId: string): boolean {
+  if (caps.registryVersion !== REGISTRY_VERSION) return false;
+  if (!ACCESS_REGISTRY.stages.some(s => s.namespace === namespace && s.stage_id === stageId)) return false;
+  return namespace !== "application" || !caps.restrictedStageIds.some(id => id === stageId);
 }

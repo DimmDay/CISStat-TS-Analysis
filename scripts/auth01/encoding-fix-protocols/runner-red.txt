@@ -1,0 +1,68 @@
+AUTH-01 Path.read_text default encoding=cp1251
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ERROR
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ERROR
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+======================================================================
+ERROR: test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 129, in test_bindings_cover_all_api_and_task_aliases_of_auth00
+    report = json.loads((ROOT / "docs/auth00/inventory.json").read_text())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/scripts/auth01/windows_locale_check.py", line 22, in locale_read_text
+    return original(self, encoding=selected, errors=errors, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1251.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x98 in position 285733: character maps to <undefined>
+
+======================================================================
+ERROR: test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 185, in test_inventory_gate_rejects_new_or_removed_entry
+    report=json.loads((ROOT/"docs/auth00/inventory.json").read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/scripts/auth01/windows_locale_check.py", line 22, in locale_read_text
+    return original(self, encoding=selected, errors=errors, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1251.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x98 in position 285733: character maps to <undefined>
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.421s
+
+FAILED (errors=2)

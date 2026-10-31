@@ -1,0 +1,38 @@
+{
+  "baseline": "dfe1941405bae6fc5f370c354cdfcc709741242f",
+  "registry_version": "authz-registry/1",
+  "capabilities_version": 2,
+  "canonical_operations": 203,
+  "entry_bindings": 224,
+  "api_routes": 220,
+  "auth00_entries": 534,
+  "auth01_tests": 26,
+  "auth00_tests": 27,
+  "ts_contract_tests": 6,
+  "jest": {
+    "success": true,
+    "numTotalTestSuites": 245,
+    "numPassedTests": 2791,
+    "numFailedTests": 0
+  },
+  "generator_hash_seeds": [
+    1,
+    12,
+    777
+  ],
+  "npm_ci": "PASS",
+  "renderer_build": "PASS",
+  "typecheck_both_shells": "PASS",
+  "rules_gate": "PASS",
+  "next_production_build": "BLOCKED ENOENT uv_resident_set_memory",
+  "runtime": {
+    "python": "3.12.14",
+    "node": "24.22.1",
+    "pydantic": "2.14.1",
+    "fastapi": "0.162.0"
+  },
+  "remote_ci_run": false,
+  "real_scientific_api_startup": false,
+  "real_db_browser_worker_tests": false,
+  "commit_push": false
+}

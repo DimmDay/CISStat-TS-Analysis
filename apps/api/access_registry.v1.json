@@ -1,0 +1,2590 @@
+{
+  "registry_version": "authz-registry/1",
+  "stages": [
+    {
+      "namespace": "scientific",
+      "stage_id": "upload"
+    },
+    {
+      "namespace": "scientific",
+      "stage_id": "validation"
+    },
+    {
+      "namespace": "scientific",
+      "stage_id": "preprocessing"
+    },
+    {
+      "namespace": "scientific",
+      "stage_id": "eda"
+    },
+    {
+      "namespace": "scientific",
+      "stage_id": "modeling"
+    },
+    {
+      "namespace": "scientific",
+      "stage_id": "forecasting"
+    },
+    {
+      "namespace": "application",
+      "stage_id": "scenario"
+    },
+    {
+      "namespace": "application",
+      "stage_id": "causal"
+    },
+    {
+      "namespace": "application",
+      "stage_id": "decision"
+    },
+    {
+      "namespace": "application",
+      "stage_id": "monitoring"
+    },
+    {
+      "namespace": "service",
+      "stage_id": "platform"
+    },
+    {
+      "namespace": "service",
+      "stage_id": "documentation"
+    },
+    {
+      "namespace": "service",
+      "stage_id": "observability"
+    },
+    {
+      "namespace": "service",
+      "stage_id": "education"
+    }
+  ],
+  "baseline_model_ids": [
+    "naive",
+    "seasonal_naive",
+    "drift"
+  ],
+  "operations": {
+    "application.causes.inspect": {
+      "operation_id": "application.causes.inspect",
+      "stage_namespace": "application",
+      "stage": "causal",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "application.decisions.inspect": {
+      "operation_id": "application.decisions.inspect",
+      "stage_namespace": "application",
+      "stage": "decision",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "application.monitoring.inspect": {
+      "operation_id": "application.monitoring.inspect",
+      "stage_namespace": "application",
+      "stage": "monitoring",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "application.scenarios.inspect": {
+      "operation_id": "application.scenarios.inspect",
+      "stage_namespace": "application",
+      "stage": "scenario",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.archive_run": {
+      "operation_id": "documentation.archive_run",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.archive_verify": {
+      "operation_id": "documentation.archive_verify",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.cancel_job": {
+      "operation_id": "documentation.cancel_job",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.create_document_draft": {
+      "operation_id": "documentation.create_document_draft",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.create_org_profile": {
+      "operation_id": "documentation.create_org_profile",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "documentation.document_retention": {
+      "operation_id": "documentation.document_retention",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.get_job": {
+      "operation_id": "documentation.get_job",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.get_rendition_content": {
+      "operation_id": "documentation.get_rendition_content",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.get_revision": {
+      "operation_id": "documentation.get_revision",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.get_revision_preview": {
+      "operation_id": "documentation.get_revision_preview",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.list_document_revisions": {
+      "operation_id": "documentation.list_document_revisions",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.list_documents": {
+      "operation_id": "documentation.list_documents",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.list_org_profiles": {
+      "operation_id": "documentation.list_org_profiles",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.list_rendition_validations": {
+      "operation_id": "documentation.list_rendition_validations",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.list_visual_sources_route": {
+      "operation_id": "documentation.list_visual_sources_route",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.monitoring.create_comparison": {
+      "operation_id": "documentation.monitoring.create_comparison",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.monitoring.create_decision": {
+      "operation_id": "documentation.monitoring.create_decision",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.monitoring.read": {
+      "operation_id": "documentation.monitoring.read",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.monitoring.register_actuals": {
+      "operation_id": "documentation.monitoring.register_actuals",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.request_print_rendition": {
+      "operation_id": "documentation.request_print_rendition",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.request_rendition": {
+      "operation_id": "documentation.request_rendition",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.request_visual_export_route": {
+      "operation_id": "documentation.request_visual_export_route",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.retention_sweep": {
+      "operation_id": "documentation.retention_sweep",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.retire_org_profile": {
+      "operation_id": "documentation.retire_org_profile",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "documentation.revision_approvals": {
+      "operation_id": "documentation.revision_approvals",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.revision_diff": {
+      "operation_id": "documentation.revision_diff",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.revision_lifecycle": {
+      "operation_id": "documentation.revision_lifecycle",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.revision_publish": {
+      "operation_id": "documentation.revision_publish",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.revision_retract": {
+      "operation_id": "documentation.revision_retract",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "documentation.verify_rendition_signature": {
+      "operation_id": "documentation.verify_rendition_signature",
+      "stage_namespace": "service",
+      "stage": "documentation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.correlation": {
+      "operation_id": "eda.correlation",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_distribution": {
+      "operation_id": "eda.get_dataset_eda_distribution",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_feature_selection": {
+      "operation_id": "eda.get_dataset_eda_feature_selection",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_ih": {
+      "operation_id": "eda.get_dataset_eda_ih",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_model_matrix": {
+      "operation_id": "eda.get_dataset_eda_model_matrix",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_seasonality": {
+      "operation_id": "eda.get_dataset_eda_seasonality",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_stationarity": {
+      "operation_id": "eda.get_dataset_eda_stationarity",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_structural_breaks": {
+      "operation_id": "eda.get_dataset_eda_structural_breaks",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "eda.get_dataset_eda_validation_strategy": {
+      "operation_id": "eda.get_dataset_eda_validation_strategy",
+      "stage_namespace": "scientific",
+      "stage": "eda",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "education.build_learning_track": {
+      "operation_id": "education.build_learning_track",
+      "stage_namespace": "service",
+      "stage": "education",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "education.get_articles": {
+      "operation_id": "education.get_articles",
+      "stage_namespace": "service",
+      "stage": "education",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "education.get_glossary": {
+      "operation_id": "education.get_glossary",
+      "stage_namespace": "service",
+      "stage": "education",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "forecasting.compare_forecasts": {
+      "operation_id": "forecasting.compare_forecasts",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.create_forecast": {
+      "operation_id": "forecasting.create_forecast",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.export_forecast_csv": {
+      "operation_id": "forecasting.export_forecast_csv",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.export_forecast_json": {
+      "operation_id": "forecasting.export_forecast_json",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.forecast_sensitivity": {
+      "operation_id": "forecasting.forecast_sensitivity",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.get_forecast": {
+      "operation_id": "forecasting.get_forecast",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.list_forecasts": {
+      "operation_id": "forecasting.list_forecasts",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.panel_forecast": {
+      "operation_id": "forecasting.panel_forecast",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "forecasting.record_client_export_event": {
+      "operation_id": "forecasting.record_client_export_event",
+      "stage_namespace": "scientific",
+      "stage": "forecasting",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.backtest": {
+      "operation_id": "modeling.backtest",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.bootstrap_modeling_baselines": {
+      "operation_id": "modeling.bootstrap_modeling_baselines",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.build_panel_passport_for_session": {
+      "operation_id": "modeling.build_panel_passport_for_session",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.candidates": {
+      "operation_id": "modeling.candidates",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.compare_modeling_candidates": {
+      "operation_id": "modeling.compare_modeling_candidates",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.confirm_panel_entry_checkpoint": {
+      "operation_id": "modeling.confirm_panel_entry_checkpoint",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.create_model_card": {
+      "operation_id": "modeling.create_model_card",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.custom.train": {
+      "operation_id": "modeling.custom.train",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_train_custom_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.decide_modeling_backtest_scope": {
+      "operation_id": "modeling.decide_modeling_backtest_scope",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.diagnostics": {
+      "operation_id": "modeling.diagnostics",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.ensure_modeling_diagnostics": {
+      "operation_id": "modeling.ensure_modeling_diagnostics",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.evaluate_modeling_selection": {
+      "operation_id": "modeling.evaluate_modeling_selection",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.get_model_card": {
+      "operation_id": "modeling.get_model_card",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.get_modeling_context": {
+      "operation_id": "modeling.get_modeling_context",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.get_modeling_feature_regressors": {
+      "operation_id": "modeling.get_modeling_feature_regressors",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.get_modeling_state": {
+      "operation_id": "modeling.get_modeling_state",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.list_model_cards": {
+      "operation_id": "modeling.list_model_cards",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.panel_backtest": {
+      "operation_id": "modeling.panel_backtest",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.panel_candidates": {
+      "operation_id": "modeling.panel_candidates",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.select_modeling_candidate": {
+      "operation_id": "modeling.select_modeling_candidate",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "model",
+      "authority": "functional"
+    },
+    "modeling.set_modeling_feature_regressors": {
+      "operation_id": "modeling.set_modeling_feature_regressors",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.skip_all_pending_modeling_tuning": {
+      "operation_id": "modeling.skip_all_pending_modeling_tuning",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.skip_modeling_tuning": {
+      "operation_id": "modeling.skip_modeling_tuning",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.train.placeholder": {
+      "operation_id": "modeling.train.placeholder",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": null,
+      "selector": "none",
+      "authority": "unavailable"
+    },
+    "modeling.tune": {
+      "operation_id": "modeling.tune",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_tune_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.tune.cancel": {
+      "operation_id": "modeling.tune.cancel",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_tune_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.tune.start": {
+      "operation_id": "modeling.tune.start",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_tune_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.tune.status": {
+      "operation_id": "modeling.tune.status",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_tune_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "modeling.tune.step": {
+      "operation_id": "modeling.tune.step",
+      "stage_namespace": "scientific",
+      "stage": "modeling",
+      "capability": "can_tune_models",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "observability.create_grant": {
+      "operation_id": "observability.create_grant",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.export_logs_bundle": {
+      "operation_id": "observability.export_logs_bundle",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_admin_overview": {
+      "operation_id": "observability.get_admin_overview",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_audit_logs": {
+      "operation_id": "observability.get_audit_logs",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_case_bank_candidates": {
+      "operation_id": "observability.get_case_bank_candidates",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_delivery_logs": {
+      "operation_id": "observability.get_delivery_logs",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_log_access": {
+      "operation_id": "observability.get_log_access",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.get_telemetry_logs": {
+      "operation_id": "observability.get_telemetry_logs",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.list_grants": {
+      "operation_id": "observability.list_grants",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "observability.revoke_grant": {
+      "operation_id": "observability.revoke_grant",
+      "stage_namespace": "service",
+      "stage": "observability",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "platform.create_checkpoint": {
+      "operation_id": "platform.create_checkpoint",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_current_session": {
+      "operation_id": "platform.get_current_session",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_date_column": {
+      "operation_id": "platform.get_date_column",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_mentor_next_step": {
+      "operation_id": "platform.get_mentor_next_step",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_operation_delivery": {
+      "operation_id": "platform.get_operation_delivery",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_progress_trace": {
+      "operation_id": "platform.get_progress_trace",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_run_detail": {
+      "operation_id": "platform.get_run_detail",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_run_report": {
+      "operation_id": "platform.get_run_report",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_session_dataset": {
+      "operation_id": "platform.get_session_dataset",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.get_target_column": {
+      "operation_id": "platform.get_target_column",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.health": {
+      "operation_id": "platform.health",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.health_ops": {
+      "operation_id": "platform.health_ops",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "platform.list_run_delivery": {
+      "operation_id": "platform.list_run_delivery",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.pause_run": {
+      "operation_id": "platform.pause_run",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.report_eda_checks": {
+      "operation_id": "platform.report_eda_checks",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.report_preprocessing_checks": {
+      "operation_id": "platform.report_preprocessing_checks",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.report_upload_stops": {
+      "operation_id": "platform.report_upload_stops",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.report_validation_checks": {
+      "operation_id": "platform.report_validation_checks",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.restore_run": {
+      "operation_id": "platform.restore_run",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.resume_run": {
+      "operation_id": "platform.resume_run",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.run_mentor_sanity_check": {
+      "operation_id": "platform.run_mentor_sanity_check",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.set_date_column": {
+      "operation_id": "platform.set_date_column",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "platform.set_target_column": {
+      "operation_id": "platform.set_target_column",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.correct_dataset_preprocessing_regularity": {
+      "operation_id": "preprocessing.correct_dataset_preprocessing_regularity",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_decomposition_outputs": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_decomposition_outputs",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_feature_generation": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_feature_generation",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_scaling_recipe": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_scaling_recipe",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_smoothing_transformation": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_smoothing_transformation",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_stationarity_transformation": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_stationarity_transformation",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.create_dataset_preprocessing_variance_transformation": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_variance_transformation",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_check_modes": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_check_modes",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_decomposition_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_decomposition_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_feature_generation_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_feature_generation_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_regularity_intervals": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_intervals",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_regularity_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_regularity_timeline": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_timeline",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_scaling_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_scaling_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_smoothing_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_smoothing_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_spectral_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_spectral_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_stationarity_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_stationarity_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.get_dataset_preprocessing_variance_profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_variance_profile",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.save_dataset_preprocessing_check_modes": {
+      "operation_id": "preprocessing.save_dataset_preprocessing_check_modes",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "preprocessing.save_dataset_preprocessing_spectral_selection": {
+      "operation_id": "preprocessing.save_dataset_preprocessing_spectral_selection",
+      "stage_namespace": "scientific",
+      "stage": "preprocessing",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "session.stage.select": {
+      "operation_id": "session.stage.select",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "scientific_stage",
+      "authority": "functional"
+    },
+    "upload.aggregate_dataset_by_date": {
+      "operation_id": "upload.aggregate_dataset_by_date",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.capture_dataset_passport": {
+      "operation_id": "upload.capture_dataset_passport",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "scientific_stage",
+      "authority": "functional"
+    },
+    "upload.compare_dataset_passports": {
+      "operation_id": "upload.compare_dataset_passports",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.db.load": {
+      "operation_id": "upload.db.load",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": "can_upload_own_data",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.db.probe": {
+      "operation_id": "upload.db.probe",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.delete_dataset_derived_columns": {
+      "operation_id": "upload.delete_dataset_derived_columns",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.demo_dataset.load": {
+      "operation_id": "upload.demo_dataset.load",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.file.load": {
+      "operation_id": "upload.file.load",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": "can_upload_own_data",
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.filter_dataset_by_entity": {
+      "operation_id": "upload.filter_dataset_by_entity",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_decomposition": {
+      "operation_id": "upload.get_dataset_decomposition",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_decomposition_series": {
+      "operation_id": "upload.get_dataset_decomposition_series",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_derived_columns": {
+      "operation_id": "upload.get_dataset_derived_columns",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_distribution": {
+      "operation_id": "upload.get_dataset_distribution",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_missing_correlation": {
+      "operation_id": "upload.get_dataset_missing_correlation",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_missing_distribution": {
+      "operation_id": "upload.get_dataset_missing_distribution",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_missing_editor_rows": {
+      "operation_id": "upload.get_dataset_missing_editor_rows",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_missing_matrix": {
+      "operation_id": "upload.get_dataset_missing_matrix",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_outlier_boxplot": {
+      "operation_id": "upload.get_dataset_outlier_boxplot",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_outlier_density": {
+      "operation_id": "upload.get_dataset_outlier_density",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_outlier_editor_rows": {
+      "operation_id": "upload.get_dataset_outlier_editor_rows",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_outlier_histogram": {
+      "operation_id": "upload.get_dataset_outlier_histogram",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_outlier_line": {
+      "operation_id": "upload.get_dataset_outlier_line",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_passport_status": {
+      "operation_id": "upload.get_dataset_passport_status",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_rows": {
+      "operation_id": "upload.get_dataset_rows",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_stats": {
+      "operation_id": "upload.get_dataset_stats",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_timeseries": {
+      "operation_id": "upload.get_dataset_timeseries",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_dataset_validate": {
+      "operation_id": "upload.get_dataset_validate",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_panel_balance": {
+      "operation_id": "upload.get_panel_balance",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "upload.get_structure_detection": {
+      "operation_id": "upload.get_structure_detection",
+      "stage_namespace": "scientific",
+      "stage": "upload",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.apply_dataset_missing_manual_corrections": {
+      "operation_id": "validation.apply_dataset_missing_manual_corrections",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.apply_dataset_outlier_manual_corrections": {
+      "operation_id": "validation.apply_dataset_outlier_manual_corrections",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.convert_dataset_types": {
+      "operation_id": "validation.convert_dataset_types",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_consistency": {
+      "operation_id": "validation.correct_dataset_consistency",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_formats": {
+      "operation_id": "validation.correct_dataset_formats",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_inclusion": {
+      "operation_id": "validation.correct_dataset_inclusion",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_missing": {
+      "operation_id": "validation.correct_dataset_missing",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_outliers": {
+      "operation_id": "validation.correct_dataset_outliers",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_ranges": {
+      "operation_id": "validation.correct_dataset_ranges",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_referential": {
+      "operation_id": "validation.correct_dataset_referential",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_regularity": {
+      "operation_id": "validation.correct_dataset_regularity",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_text_quality": {
+      "operation_id": "validation.correct_dataset_text_quality",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.correct_dataset_uniqueness": {
+      "operation_id": "validation.correct_dataset_uniqueness",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_consistency_profile": {
+      "operation_id": "validation.get_dataset_consistency_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_format_profile": {
+      "operation_id": "validation.get_dataset_format_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_inclusion_profile": {
+      "operation_id": "validation.get_dataset_inclusion_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_missing_profile": {
+      "operation_id": "validation.get_dataset_missing_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_outlier_profile": {
+      "operation_id": "validation.get_dataset_outlier_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_range_profile": {
+      "operation_id": "validation.get_dataset_range_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_referential_profile": {
+      "operation_id": "validation.get_dataset_referential_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_regularity_profile": {
+      "operation_id": "validation.get_dataset_regularity_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_sufficiency_profile": {
+      "operation_id": "validation.get_dataset_sufficiency_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_text_quality_profile": {
+      "operation_id": "validation.get_dataset_text_quality_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_uniqueness_profile": {
+      "operation_id": "validation.get_dataset_uniqueness_profile",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_validation_check_modes": {
+      "operation_id": "validation.get_dataset_validation_check_modes",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.get_dataset_validation_rules": {
+      "operation_id": "validation.get_dataset_validation_rules",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.passport": {
+      "operation_id": "validation.passport",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.regularity": {
+      "operation_id": "validation.regularity",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.rules.get_rules_templates": {
+      "operation_id": "validation.rules.get_rules_templates",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.rules.load_rules_template": {
+      "operation_id": "validation.rules.load_rules_template",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.rules.update_rules": {
+      "operation_id": "validation.rules.update_rules",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.rules.validate_with_rules": {
+      "operation_id": "validation.rules.validate_with_rules",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.save_dataset_sufficiency_plan": {
+      "operation_id": "validation.save_dataset_sufficiency_plan",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.save_dataset_type_schema": {
+      "operation_id": "validation.save_dataset_type_schema",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.save_dataset_validation_check_modes": {
+      "operation_id": "validation.save_dataset_validation_check_modes",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    },
+    "validation.save_dataset_validation_rules": {
+      "operation_id": "validation.save_dataset_validation_rules",
+      "stage_namespace": "scientific",
+      "stage": "validation",
+      "capability": null,
+      "selector": "none",
+      "authority": "functional"
+    }
+  },
+  "bindings": {
+    "api:GET:/health": {
+      "operation_id": "platform.health",
+      "programmatic_api": false
+    },
+    "api:GET:/health/ops": {
+      "operation_id": "platform.health_ops",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/documents/{document_id}/revisions": {
+      "operation_id": "documentation.list_document_revisions",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/jobs/{job_id}": {
+      "operation_id": "documentation.get_job",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/org-profiles": {
+      "operation_id": "documentation.list_org_profiles",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/renditions/{rendition_id}/content": {
+      "operation_id": "documentation.get_rendition_content",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/renditions/{rendition_id}/validations": {
+      "operation_id": "documentation.list_rendition_validations",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/revisions/{revision_id}": {
+      "operation_id": "documentation.get_revision",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/revisions/{revision_id}/diff": {
+      "operation_id": "documentation.revision_diff",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/revisions/{revision_id}/lifecycle": {
+      "operation_id": "documentation.revision_lifecycle",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/revisions/{revision_id}/preview": {
+      "operation_id": "documentation.get_revision_preview",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/documents": {
+      "operation_id": "documentation.list_documents",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/monitoring/actuals": {
+      "operation_id": "documentation.monitoring.read",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons": {
+      "operation_id": "documentation.monitoring.read",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}": {
+      "operation_id": "documentation.monitoring.read",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions": {
+      "operation_id": "documentation.monitoring.read",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/visual-sources": {
+      "operation_id": "documentation.list_visual_sources_route",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/internal/rules/load/{template_id}": {
+      "operation_id": "validation.rules.load_rules_template",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/internal/rules/templates": {
+      "operation_id": "validation.rules.get_rules_templates",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/knowledge/articles": {
+      "operation_id": "education.get_articles",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/knowledge/glossary": {
+      "operation_id": "education.get_glossary",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/logs/access": {
+      "operation_id": "observability.get_log_access",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/logs/audit": {
+      "operation_id": "observability.get_audit_logs",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/logs/delivery": {
+      "operation_id": "observability.get_delivery_logs",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/logs/grants": {
+      "operation_id": "observability.list_grants",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/logs/telemetry": {
+      "operation_id": "observability.get_telemetry_logs",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/admin/case-bank/candidates": {
+      "operation_id": "observability.get_case_bank_candidates",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/admin/overview": {
+      "operation_id": "observability.get_admin_overview",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}": {
+      "operation_id": "platform.get_run_detail",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}/delivery": {
+      "operation_id": "platform.list_run_delivery",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id}": {
+      "operation_id": "platform.get_operation_delivery",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}/mentor/next-step": {
+      "operation_id": "platform.get_mentor_next_step",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}/report": {
+      "operation_id": "platform.get_run_report",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/runs/{run_id}/restore": {
+      "operation_id": "platform.restore_run",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/progress/trace": {
+      "operation_id": "platform.get_progress_trace",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/public/rules/load/{template_id}": {
+      "operation_id": "validation.rules.load_rules_template",
+      "programmatic_api": true
+    },
+    "api:GET:/v1/public/rules/templates": {
+      "operation_id": "validation.rules.get_rules_templates",
+      "programmatic_api": true
+    },
+    "api:GET:/v1/session/current": {
+      "operation_id": "platform.get_current_session",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset": {
+      "operation_id": "platform.get_session_dataset",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/consistency-profile": {
+      "operation_id": "validation.get_dataset_consistency_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/decomposition": {
+      "operation_id": "upload.get_dataset_decomposition",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/decomposition-series": {
+      "operation_id": "upload.get_dataset_decomposition_series",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/derived-columns": {
+      "operation_id": "upload.get_dataset_derived_columns",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/distribution": {
+      "operation_id": "upload.get_dataset_distribution",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-correlation": {
+      "operation_id": "eda.correlation",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-distribution": {
+      "operation_id": "eda.get_dataset_eda_distribution",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-feature-selection": {
+      "operation_id": "eda.get_dataset_eda_feature_selection",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-ih": {
+      "operation_id": "eda.get_dataset_eda_ih",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-model-matrix": {
+      "operation_id": "eda.get_dataset_eda_model_matrix",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-seasonality": {
+      "operation_id": "eda.get_dataset_eda_seasonality",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-stationarity": {
+      "operation_id": "eda.get_dataset_eda_stationarity",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-structural-breaks": {
+      "operation_id": "eda.get_dataset_eda_structural_breaks",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/eda-validation-strategy": {
+      "operation_id": "eda.get_dataset_eda_validation_strategy",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/format-profile": {
+      "operation_id": "validation.get_dataset_format_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/inclusion-profile": {
+      "operation_id": "validation.get_dataset_inclusion_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/missing-correlation": {
+      "operation_id": "upload.get_dataset_missing_correlation",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/missing-distribution": {
+      "operation_id": "upload.get_dataset_missing_distribution",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/missing-editor-rows": {
+      "operation_id": "upload.get_dataset_missing_editor_rows",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/missing-matrix": {
+      "operation_id": "upload.get_dataset_missing_matrix",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/missing-profile": {
+      "operation_id": "validation.get_dataset_missing_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-boxplot": {
+      "operation_id": "upload.get_dataset_outlier_boxplot",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-density": {
+      "operation_id": "upload.get_dataset_outlier_density",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-editor-rows": {
+      "operation_id": "upload.get_dataset_outlier_editor_rows",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-histogram": {
+      "operation_id": "upload.get_dataset_outlier_histogram",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-line": {
+      "operation_id": "upload.get_dataset_outlier_line",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/outlier-profile": {
+      "operation_id": "validation.get_dataset_outlier_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/panel-balance": {
+      "operation_id": "upload.get_panel_balance",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/passport/compare": {
+      "operation_id": "upload.compare_dataset_passports",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/passport/status": {
+      "operation_id": "upload.get_dataset_passport_status",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing-check-modes": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_check_modes",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/decomposition-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_decomposition_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/feature-generation-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_feature_generation_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/regularity-intervals": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_intervals",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/regularity-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/regularity-timeline": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_regularity_timeline",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/scaling-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_scaling_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/smoothing-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_smoothing_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/spectral-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_spectral_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/stationarity-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_stationarity_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/preprocessing/variance-profile": {
+      "operation_id": "preprocessing.get_dataset_preprocessing_variance_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/range-profile": {
+      "operation_id": "validation.get_dataset_range_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/referential-profile": {
+      "operation_id": "validation.get_dataset_referential_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/regularity-profile": {
+      "operation_id": "validation.get_dataset_regularity_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/rows": {
+      "operation_id": "upload.get_dataset_rows",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/stats": {
+      "operation_id": "upload.get_dataset_stats",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/structure-detection": {
+      "operation_id": "upload.get_structure_detection",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/sufficiency-profile": {
+      "operation_id": "validation.get_dataset_sufficiency_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/text-quality-profile": {
+      "operation_id": "validation.get_dataset_text_quality_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/timeseries": {
+      "operation_id": "upload.get_dataset_timeseries",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/uniqueness-profile": {
+      "operation_id": "validation.get_dataset_uniqueness_profile",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/validate": {
+      "operation_id": "upload.get_dataset_validate",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/validation-check-modes": {
+      "operation_id": "validation.get_dataset_validation_check_modes",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/dataset/validation-rules": {
+      "operation_id": "validation.get_dataset_validation_rules",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/date-column": {
+      "operation_id": "platform.get_date_column",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/card": {
+      "operation_id": "modeling.list_model_cards",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/card/{card_id}": {
+      "operation_id": "modeling.get_model_card",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/context": {
+      "operation_id": "modeling.get_modeling_context",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/feature-regressors": {
+      "operation_id": "modeling.get_modeling_feature_regressors",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/forecast": {
+      "operation_id": "forecasting.list_forecasts",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/forecast/{forecast_id}": {
+      "operation_id": "forecasting.get_forecast",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/forecast/{forecast_id}/export.csv": {
+      "operation_id": "forecasting.export_forecast_csv",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/forecast/{forecast_id}/export.json": {
+      "operation_id": "forecasting.export_forecast_json",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/jobs/{job_id}": {
+      "operation_id": "modeling.tune.status",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/panel/candidates": {
+      "operation_id": "modeling.panel_candidates",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/modeling/state": {
+      "operation_id": "modeling.get_modeling_state",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/target-column": {
+      "operation_id": "platform.get_target_column",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/session/tasks/causes": {
+      "operation_id": "application.causes.inspect",
+      "programmatic_api": false
+    },
+    "api:PATCH:/v1/internal/rules/update": {
+      "operation_id": "validation.rules.update_rules",
+      "programmatic_api": false
+    },
+    "api:PATCH:/v1/public/rules/update": {
+      "operation_id": "validation.rules.update_rules",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/documentation/documents/{document_id}/retention": {
+      "operation_id": "documentation.document_retention",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/jobs/{job_id}/cancel": {
+      "operation_id": "documentation.cancel_job",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/org-profiles": {
+      "operation_id": "documentation.create_org_profile",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/org-profiles/{profile_id}/retire": {
+      "operation_id": "documentation.retire_org_profile",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions": {
+      "operation_id": "documentation.request_print_rendition",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/renditions/{rendition_id}/verify-signature": {
+      "operation_id": "documentation.verify_rendition_signature",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/revisions/{revision_id}/approvals": {
+      "operation_id": "documentation.revision_approvals",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/revisions/{revision_id}/publish": {
+      "operation_id": "documentation.revision_publish",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/revisions/{revision_id}/renditions": {
+      "operation_id": "documentation.request_rendition",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/revisions/{revision_id}/retract": {
+      "operation_id": "documentation.revision_retract",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/archive": {
+      "operation_id": "documentation.archive_run",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/archive/verify": {
+      "operation_id": "documentation.archive_verify",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/documents": {
+      "operation_id": "documentation.create_document_draft",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/monitoring/actuals": {
+      "operation_id": "documentation.monitoring.register_actuals",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons": {
+      "operation_id": "documentation.monitoring.create_comparison",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions": {
+      "operation_id": "documentation.monitoring.create_decision",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/retention/sweep": {
+      "operation_id": "documentation.retention_sweep",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/visuals": {
+      "operation_id": "documentation.request_visual_export_route",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/models/backtest": {
+      "operation_id": "modeling.backtest",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/models/candidates": {
+      "operation_id": "modeling.candidates",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/models/diagnostics": {
+      "operation_id": "modeling.diagnostics",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/passport": {
+      "operation_id": "validation.passport",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/regularity": {
+      "operation_id": "validation.regularity",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/rules/validate": {
+      "operation_id": "validation.rules.validate_with_rules",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/upload": {
+      "operation_id": "upload.file.load",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/upload/db/load": {
+      "operation_id": "upload.db.load",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/internal/upload/db/test": {
+      "operation_id": "upload.db.probe",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/learning/track": {
+      "operation_id": "education.build_learning_track",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/logs/export": {
+      "operation_id": "observability.export_logs_bundle",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/logs/grants": {
+      "operation_id": "observability.create_grant",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/logs/grants/{grant_id}/revoke": {
+      "operation_id": "observability.revoke_grant",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/models/backtest": {
+      "operation_id": "modeling.backtest",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/models/candidates": {
+      "operation_id": "modeling.candidates",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/models/diagnostics": {
+      "operation_id": "modeling.diagnostics",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/models/train": {
+      "operation_id": "modeling.train.placeholder",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/models/tune": {
+      "operation_id": "modeling.tune",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/progress/eda-checks": {
+      "operation_id": "platform.report_eda_checks",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/mentor/sanity-check": {
+      "operation_id": "platform.run_mentor_sanity_check",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/preprocessing-checks": {
+      "operation_id": "platform.report_preprocessing_checks",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/runs/{run_id}/checkpoints": {
+      "operation_id": "platform.create_checkpoint",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/runs/{run_id}/pause": {
+      "operation_id": "platform.pause_run",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/runs/{run_id}/resume": {
+      "operation_id": "platform.resume_run",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/upload-stops": {
+      "operation_id": "platform.report_upload_stops",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/progress/validation-checks": {
+      "operation_id": "platform.report_validation_checks",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/public/passport": {
+      "operation_id": "validation.passport",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/public/regularity": {
+      "operation_id": "validation.regularity",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/public/rules/validate": {
+      "operation_id": "validation.rules.validate_with_rules",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/public/upload": {
+      "operation_id": "upload.file.load",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/public/upload/db/load": {
+      "operation_id": "upload.db.load",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/public/upload/db/test": {
+      "operation_id": "upload.db.probe",
+      "programmatic_api": true
+    },
+    "api:POST:/v1/session/dataset/consistency-corrections": {
+      "operation_id": "validation.correct_dataset_consistency",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/convert-types": {
+      "operation_id": "validation.convert_dataset_types",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/derived-columns/delete": {
+      "operation_id": "upload.delete_dataset_derived_columns",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/entity-filter": {
+      "operation_id": "upload.filter_dataset_by_entity",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/format-corrections": {
+      "operation_id": "validation.correct_dataset_formats",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/inclusion-corrections": {
+      "operation_id": "validation.correct_dataset_inclusion",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/missing-corrections": {
+      "operation_id": "validation.correct_dataset_missing",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/missing-manual-corrections": {
+      "operation_id": "validation.apply_dataset_missing_manual_corrections",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/outlier-corrections": {
+      "operation_id": "validation.correct_dataset_outliers",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/outlier-manual-corrections": {
+      "operation_id": "validation.apply_dataset_outlier_manual_corrections",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/panel-aggregate": {
+      "operation_id": "upload.aggregate_dataset_by_date",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/passport/{stage}": {
+      "operation_id": "upload.capture_dataset_passport",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/decomposition-outputs": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_decomposition_outputs",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/feature-generations": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_feature_generation",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/regularity-corrections": {
+      "operation_id": "preprocessing.correct_dataset_preprocessing_regularity",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/scaling-recipes": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_scaling_recipe",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/smoothing-transformations": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_smoothing_transformation",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/spectral-selections": {
+      "operation_id": "preprocessing.save_dataset_preprocessing_spectral_selection",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/stationarity-transformations": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_stationarity_transformation",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/preprocessing/variance-transformations": {
+      "operation_id": "preprocessing.create_dataset_preprocessing_variance_transformation",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/range-corrections": {
+      "operation_id": "validation.correct_dataset_ranges",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/referential-corrections": {
+      "operation_id": "validation.correct_dataset_referential",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/regularity-corrections": {
+      "operation_id": "validation.correct_dataset_regularity",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/sufficiency-plan": {
+      "operation_id": "validation.save_dataset_sufficiency_plan",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/text-quality-corrections": {
+      "operation_id": "validation.correct_dataset_text_quality",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/dataset/uniqueness-corrections": {
+      "operation_id": "validation.correct_dataset_uniqueness",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/date-column": {
+      "operation_id": "platform.set_date_column",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/demo": {
+      "operation_id": "upload.demo_dataset.load",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/backtest": {
+      "operation_id": "modeling.backtest",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/backtest/exclude": {
+      "operation_id": "modeling.decide_modeling_backtest_scope",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/baselines": {
+      "operation_id": "modeling.bootstrap_modeling_baselines",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/candidates": {
+      "operation_id": "modeling.candidates",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/card": {
+      "operation_id": "modeling.create_model_card",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/compare": {
+      "operation_id": "modeling.compare_modeling_candidates",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/diagnostics": {
+      "operation_id": "modeling.diagnostics",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/diagnostics/ensure": {
+      "operation_id": "modeling.ensure_modeling_diagnostics",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/forecast": {
+      "operation_id": "forecasting.create_forecast",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/forecast/compare": {
+      "operation_id": "forecasting.compare_forecasts",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/forecast/{forecast_id}/sensitivity": {
+      "operation_id": "forecasting.forecast_sensitivity",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/forecast/{forecast_id}/trace": {
+      "operation_id": "forecasting.record_client_export_event",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/jobs/start": {
+      "operation_id": "modeling.tune.start",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/jobs/{job_id}/cancel": {
+      "operation_id": "modeling.tune.cancel",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/jobs/{job_id}/step": {
+      "operation_id": "modeling.tune.step",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/panel/backtest": {
+      "operation_id": "modeling.panel_backtest",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/panel/forecast": {
+      "operation_id": "forecasting.panel_forecast",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/panel/passport": {
+      "operation_id": "modeling.build_panel_passport_for_session",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/panel/passport/confirm": {
+      "operation_id": "modeling.confirm_panel_entry_checkpoint",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/select": {
+      "operation_id": "modeling.select_modeling_candidate",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/selection/evaluate": {
+      "operation_id": "modeling.evaluate_modeling_selection",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/tune": {
+      "operation_id": "modeling.tune",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/tuning/skip": {
+      "operation_id": "modeling.skip_modeling_tuning",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/tuning/skip-pending": {
+      "operation_id": "modeling.skip_all_pending_modeling_tuning",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/tuning/start": {
+      "operation_id": "modeling.tune.start",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/modeling/tuning/step": {
+      "operation_id": "modeling.tune.step",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/stage/{stage}": {
+      "operation_id": "session.stage.select",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/session/target-column": {
+      "operation_id": "platform.set_target_column",
+      "programmatic_api": false
+    },
+    "api:PUT:/v1/session/dataset/preprocessing-check-modes": {
+      "operation_id": "preprocessing.save_dataset_preprocessing_check_modes",
+      "programmatic_api": false
+    },
+    "api:PUT:/v1/session/dataset/type-schema": {
+      "operation_id": "validation.save_dataset_type_schema",
+      "programmatic_api": false
+    },
+    "api:PUT:/v1/session/dataset/validation-check-modes": {
+      "operation_id": "validation.save_dataset_validation_check_modes",
+      "programmatic_api": false
+    },
+    "api:PUT:/v1/session/dataset/validation-rules": {
+      "operation_id": "validation.save_dataset_validation_rules",
+      "programmatic_api": false
+    },
+    "api:PUT:/v1/session/modeling/feature-regressors": {
+      "operation_id": "modeling.set_modeling_feature_regressors",
+      "programmatic_api": false
+    },
+    "task_alias:/tasks/causes": {
+      "operation_id": "application.causes.inspect",
+      "programmatic_api": false
+    },
+    "task_alias:/tasks/decisions": {
+      "operation_id": "application.decisions.inspect",
+      "programmatic_api": false
+    },
+    "task_alias:/tasks/monitoring": {
+      "operation_id": "application.monitoring.inspect",
+      "programmatic_api": false
+    },
+    "task_alias:/tasks/scenarios": {
+      "operation_id": "application.scenarios.inspect",
+      "programmatic_api": false
+    }
+  }
+}

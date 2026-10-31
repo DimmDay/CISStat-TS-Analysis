@@ -1,0 +1,176 @@
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ERROR
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ERROR
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ERROR
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ERROR
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ERROR
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ERROR
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ERROR
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ERROR
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ERROR
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ERROR
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ERROR
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ERROR
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ERROR
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ERROR
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ERROR
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ERROR
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ERROR
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ERROR
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ERROR
+
+======================================================================
+ERROR: test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+======================================================================
+ERROR: test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/baee966ab828/CISStat-auth01/tests/unit/test_auth01_registry.py", line 17, in setUp
+    from apps.api import access_registry as registry
+ImportError: cannot import name 'access_registry' from 'apps.api' (/workspace/scratch/baee966ab828/CISStat-auth01/apps/api/__init__.py)
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.003s
+
+FAILED (errors=19)

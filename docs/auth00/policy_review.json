@@ -1,5 +1,5 @@
 {
-  "baseline": "5e0920eefe593c5a88f495e75a34a79e9de762fa",
+  "baseline": "dfe1941405bae6fc5f370c354cdfcc709741242f",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -6630,6 +6630,7 @@
     "app/core/auth.py",
     "app/data/db_connectors.py",
     "app/data/db_guard.py",
+    "apps/api/access_registry.v1.json",
     "apps/api/admin_logs.py",
     "apps/api/auth.py",
     "apps/api/delivery_outbox.py",
@@ -6653,9 +6654,13 @@
     "docs/ROLES_AND_PLANS_SPEC.md",
     "docs/auth00/operation_variants.md",
     "docs/auth00/threat_model.md",
+    "docs/auth01/design.md",
+    "docs/auth01/openapi.json",
+    "packages/ui/lib/access-contract.generated.ts",
     "packages/ui/lib/admin.ts",
     "packages/ui/lib/apiClient.ts",
     "packages/ui/lib/plans.ts",
+    "scripts/auth01/generate.py",
     "spec_auth.md",
     "spec_auth_architecture.md",
     "spec_billing_accounts.md",

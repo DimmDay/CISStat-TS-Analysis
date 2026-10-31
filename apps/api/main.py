@@ -171,6 +171,10 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# AUTH-01: generated DTOs and versioned operation metadata; no new route.
+from apps.api.access_registry import install_openapi_contract
+install_openapi_contract(app)
+
 # CORS origins -- через переменную окружения ALLOWED_ORIGINS (список через
 # запятую), задаётся на хостинге бэкенда (Render/Railway/...). Localhost
 # для локальной разработки добавлен всегда, чтобы не сломать её при

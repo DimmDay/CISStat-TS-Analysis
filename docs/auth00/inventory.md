@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `5e0920eefe593c5a88f495e75a34a79e9de762fa`. Автоматически собранные входы + явная policy review.
+База: `dfe1941405bae6fc5f370c354cdfcc709741242f`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -55,8 +55,8 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:262 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:267 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:266 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:271 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:555 |
 | api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:744 |
 | api:GET:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:list_org_profiles / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:60 |

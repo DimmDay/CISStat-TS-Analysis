@@ -1,0 +1,8 @@
+PYTHONHASHSEED=1 exit=0
+AUTH-01 generated OpenAPI/TS parity OK
+
+PYTHONHASHSEED=12 exit=0
+AUTH-01 generated OpenAPI/TS parity OK
+
+PYTHONHASHSEED=777 exit=0
+AUTH-01 generated OpenAPI/TS parity OK
