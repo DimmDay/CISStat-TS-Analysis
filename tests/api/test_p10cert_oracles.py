@@ -389,21 +389,27 @@ class TestCertScope:
         with pytest.raises(UnknownExportView):
             resolve_export_view("p10cert.does.not.exist")
         hints: dict[str, str] = {}
+        from apps.api.visual_exports import pgv11_export_view_ids
+
+        pgv11_scope = set(pgv11_export_view_ids())
         for site in load_visual_registry()["sites"]:
             view_id = str(site["view_id"])
             adapter = str(site.get("source_adapter", ""))
             if adapter.startswith("pgv-03/") and site["module_id"] in (
                 "upload", "validation", "preprocessing",
             ):
-                continue  # скоуп -- проверен выше
+                continue  # скоуп PGV-10 -- проверен выше
+            if view_id in pgv11_scope:
+                continue  # скоуп PGV-11 (EDA/tasks) -- пин корпуса test_pgv11
             with pytest.raises(VisualExportOutOfScope) as exc:
                 resolve_export_view(view_id)
             hints.setdefault(
                 "pgv-04" if adapter.startswith("pgv-04/") else "other",
                 str(exc.value),
             )
-        # В реестре есть иные view (EDA/паспорта/static_demo) -- каждый
-        # отказывается честно с упоминанием задачи.
+        # Вне скоупов остались паспорта (pgv-04/13), demo и modeling/
+        # forecasting (PGV-12) -- каждый отказывается честно с
+        # упоминанием задачи.
         assert hints, "реестр без вне-скоуповых view -- проверка вырождена"
         assert any("PGV-" in h for h in hints.values()) or any(
             "static" in h for h in hints.values()
@@ -718,7 +724,7 @@ class TestCertPreflight:
         )
         cases = [
             ({"view_id": "p10cert.no.such.view"}, 422, "unknown_view"),
-            ({"view_id": "eda.descriptive.stats"}, 422, None),  # вне скоупа/unknown
+            ({"view_id": "eda.passport.panel"}, 422, None),  # вне скоупа (PGV-04; EDA/tasks вошли в скоуп PGV-11)
             ({"view_id": "validation.formats.chart"}, 422, "screen_svg_required"),
         ]
         for payload, status, code in cases:
@@ -1104,7 +1110,7 @@ class TestCertVisualSources:
         )
         assert resp.status_code == 200
         sources = resp.json()["sources"]
-        assert len(sources) == 38
+        assert len(sources) == 55  # 38 PGV-10 + 17 PGV-11 (EDA/tasks)
         by_view = {s["view_id"]: s for s in sources}
         assert by_view["validation.regularity.overview"]["export_ready"] is False
         assert "result_not_frozen" in by_view["validation.regularity.overview"]["unavailable_reason"]

@@ -1,9 +1,10 @@
 # AUTH-00 — семантика aliases и параметризованных операций
 
-База `f38500fa4c3c`. Этот реестр уточняет HTTP-карту; он не является capability
-allowlist AUTH-01 и не разрешает операции пользователям. Полные пути и evidence
-даны в [inventory.json](inventory.json). В HTTP-методе и имени path недостаточно
-сведений о вычислительной стоимости, виде данных или требуемом праве.
+База `5e0920eefe` (поставка PGV-11; ранее `f38500fa4c3c`). Этот реестр уточняет
+HTTP-карту; он не является capability allowlist AUTH-01 и не разрешает операции
+пользователям. Полные пути и evidence даны в [inventory.json](inventory.json).
+В HTTP-методе и имени path недостаточно сведений о вычислительной стоимости,
+виде данных или требуемом праве.
 
 | Входы / selector | Canonical operation / существенная семантика | Требование будущего admission |
 |---|---|---|
@@ -23,7 +24,7 @@ allowlist AUTH-01 и не разрешает операции пользоват
 | GET session/dataset/eda-* и preprocessing/*profile | Наука/ресурсные операции могут выполняться в GET и создавать frozen visual result | Не трактовать GET как бесплатную read-only операцию; учитывать method/algorithm/params и существующие bounds |
 | GET progress/runs/{id}/restore | Новая session, cookie, чтение сохранённого файла и наследование доказанного owner | Mutating command + CSRF; не auto-claim по ID; отдельно сохранять uniform object deny |
 | POST documentation/revisions/{id}/renditions с format/org_profile_id | Один HTTP endpoint: P0 sync и heavy queued rendering, org profile/signature variants | Format/profile permission, snapshot/object gate и atomic admission до queue; повторный guard worker/output |
-| POST documentation/print-revisions/{id}/renditions; GET documentation/runs/{id}/visual-sources; POST documentation/runs/{id}/visuals | PGV-09/PGV-10: печатная PNG-ревизия (202 queued job через document_render_worker) и экспорт научной визуализации: freeze visual_result -> VisualPrintSnapshot/1 -> V01 revision -> PNG job; GET отдаёт frozen метаданные без запуска науки | Та же run/document object authority: uniform 404 для чужих ревизий/run; CAS expected_data_revision (409 context_changed); идемпотентность повторной цели; PNG-only формат печатных renditions |
+| POST documentation/print-revisions/{id}/renditions; GET documentation/runs/{id}/visual-sources; POST documentation/runs/{id}/visuals | PGV-09/PGV-10/PGV-11: печатная PNG-ревизия (202 queued job через document_render_worker) и экспорт научной визуализации: freeze visual_result -> VisualPrintSnapshot/1 -> V01 revision -> PNG job; GET отдаёт frozen метаданные без запуска науки. PGV-11 расширяет СКОУП тех же двух маршрутов на 17 view EDA/tasks (маршруты/семантика не менялись; сверка скриптом scripts/pgv11/check_routes_auth00.py -- новых api:* нет) | Та же run/document object authority: uniform 404 для чужих ревизий/run; CAS expected_data_revision (409 context_changed); идемпотентность повторной цели; PNG-only формат печатных renditions |
 | GET/POST documentation monitoring | Служебные actuals/comparisons/decisions в документировании | Не application `monitoring` из restricted_stage_ids; сохранить run policy |
 | GET session/tasks/causes и UI /tasks/causes | application.causes.inspect, stage_namespace=application, stage=causal; fold importance available, SHAP/PDP/Granger могут быть not_computed | Application entitlement по canonical stage; EDA Granger остаётся scientific `eda` |
 | UI /tasks/scenarios, /tasks/decisions, /tasks/monitoring | Canonical restricted stages scenario/decision/monitoring; сейчас placeholder pages | Навигационный href не доказывает доступность вычисления; future API получает тот же stage gate |

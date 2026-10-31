@@ -337,8 +337,10 @@ class TestExportScope:
             assert spec.module_id == site["module_id"]
 
     def test_out_of_scope_views_refuse_export_with_hint(self):
-        """passport/comparison (PGV-13/04), demo, EDA/modeling/forecast/
-        tasks -- честный отказ экспорта с именем добирающей задачи."""
+        """passport/comparison (PGV-13/04), demo, modeling/forecast --
+        честный отказ экспорта с именем добирающей задачи. (EDA/tasks
+        вошли в скоуп поставкой PGV-11 -- их отказ убран честным
+        сужением списка, скоуп пинится корпусом test_pgv11.)"""
         import pytest
 
         from apps.api.visual_exports import (
@@ -350,10 +352,8 @@ class TestExportScope:
             ("upload.passport.panel", "PGV-04"),
             ("upload.passport.comparison", "PGV-13"),
             ("navigator.upload.chart.series", "static demo"),
-            ("eda.descriptive.stats", "PGV-11"),
             ("modeling.backtest.comparison", "PGV-12"),
             ("forecasting.forecast.chart", "PGV-12"),
-            ("tasks.causes.fold_importance", "PGV-11"),
         ):
             with pytest.raises(VisualExportOutOfScope) as excinfo:
                 resolve_export_view(view_id)
@@ -1072,8 +1072,9 @@ class TestRequestVisualExport:
 
 class TestVisualExportHttp:
     def test_visual_sources_lists_scope_without_science(self):
-        """GET visual-sources: 38 view скоупа, frozen-факты, БЕЗ запуска
-        науки (§11 «без запуска науки»)."""
+        """GET visual-sources: объединённый скоуп 38 PGV-10 + 17 PGV-11
+        = 55 view, frozen-факты, БЕЗ запуска науки (§11 «без запуска
+        науки»; расширение списка -- поставка PGV-11)."""
         _seed_run()
         _freeze_visual_result()
         from tests.api.test_pgv10_visual_exports import _client_get_json
@@ -1085,7 +1086,7 @@ class TestVisualExportHttp:
         data = body["data"]
         assert data["run_id"] == RUN_ID
         ids = [source["view_id"] for source in data["sources"]]
-        assert len(ids) == 38
+        assert len(ids) == 55, "38 PGV-10 + 17 PGV-11 (EDA/tasks)"
         assert "upload.overview.tech_table" in ids
         source = next(s for s in data["sources"]
                       if s["view_id"] == "upload.overview.tech_table")

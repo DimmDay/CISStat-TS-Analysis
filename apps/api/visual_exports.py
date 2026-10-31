@@ -124,10 +124,33 @@ def pgv10_export_view_ids() -> tuple[str, ...]:
     )
 
 
+def pgv11_export_view_ids() -> tuple[str, ...]:
+    """Скоуп PGV-11 (spec §13 «Export EDA/IH/tasks»): pgv-03 research
+    view остановок EDA (16) и задач (tasks.causes.fold_importance);
+    паспорта pgv-04/13 и static_demo -- вне (честный отказ)."""
+    from apps.api.print_schema import load_visual_registry
+
+    return tuple(
+        sorted(
+            str(site["view_id"])
+            for site in load_visual_registry()["sites"]
+            if site["module_id"] in ("eda", "tasks")
+            and str(site.get("source_adapter", "")).startswith("pgv-03/")
+            and site.get("applicability") != "static_demo"
+        )
+    )
+
+
+def export_view_ids() -> tuple[str, ...]:
+    """Объединённый скоуп экспорта визуализаций (PGV-10 ∪ PGV-11 --
+    55 view): список visual-sources и валидация view_id."""
+    return tuple(sorted(set(pgv10_export_view_ids()) | set(pgv11_export_view_ids())))
+
+
 def resolve_export_view(view_id: str) -> dict[str, Any]:
     """Сайт реестра для экспорта: unknown -- UnknownExportView; вне
     скоупа -- VisualExportOutOfScope с добирающей задачей (§5: unknown
-    site блокирует CERT; честные границы скоупа)."""
+    site блокирует CERT; честные границы скоупа; PGV-11 -- EDA/tasks)."""
     site = _site_for(view_id)
     if site is None:
         raise UnknownExportView(
@@ -135,27 +158,37 @@ def resolve_export_view(view_id: str) -> dict[str, Any]:
         )
     adapter = str(site.get("source_adapter", "") or "unknown")
     module_id = str(site.get("module_id", ""))
-    if module_id in ("upload", "validation", "preprocessing") and adapter.startswith(
-        "pgv-03/"
-    ):
-        if site.get("applicability") == "static_demo":
-            raise VisualExportOutOfScope(
-                f"view {view_id!r} -- статическое демо Навигатора, не "
-                "результат исследования (spec §1)"
-            )
-        return site
+    if adapter.startswith("pgv-03/"):
+        if module_id in ("upload", "validation", "preprocessing"):
+            if site.get("applicability") == "static_demo":
+                raise VisualExportOutOfScope(
+                    f"view {view_id!r} -- статическое демо Навигатора, не "
+                    "результат исследования (spec §1)"
+                )
+            return site
+        if module_id in ("eda", "tasks"):
+            # PGV-11: Export EDA/IH/tasks (spec §13)
+            return site
+        if module_id == "navigator":
+            task = "static demo -- не результат исследования (spec §1)"
+        elif module_id in ("modeling", "forecasting"):
+            task = "PGV-12 (modeling/forecasting)"
+        else:
+            task = "PGV-11 (EDA/tasks)"
+        raise VisualExportOutOfScope(
+            f"view {view_id!r} вне скоупа экспорта "
+            f"(source_adapter={adapter!r}; добирающая задача: {task})"
+        )
     if adapter.startswith("pgv-04/"):
         task = "PGV-04 (паспорта)"
     elif adapter.startswith("pgv-13/"):
         task = "PGV-13 (P01/P02)"
-    elif module_id in ("modeling", "forecasting"):
-        task = "PGV-12 (modeling/forecasting)"
     elif module_id == "navigator":
         task = "static demo -- не результат исследования (spec §1)"
     else:
-        task = "PGV-11 (EDA/tasks)"
+        task = "PGV-00"
     raise VisualExportOutOfScope(
-        f"view {view_id!r} вне скоупа экспорта PGV-10 "
+        f"view {view_id!r} вне скоупа экспорта "
         f"(source_adapter={adapter!r}; добирающая задача: {task})"
     )
 
@@ -203,6 +236,48 @@ CHART_AXES: dict[str, list[dict[str, Any]]] = {
     ),
     "preprocessing.feature_eng.overview": _axes(_X_TIME, _Y_VALUE),
     "preprocessing.scaling.overview": _axes(_X_TIME, _Y_VALUE),
+    # ── PGV-11: оси chart-секций EDA/tasks (AC01: свой график, не
+    # другой subplot; units честны: value XOR reason) ──
+    "eda.descriptive.distribution.scatter": _axes(_Y_VALUE, _Y_VALUE),
+    "eda.descriptive.distribution.histogram": _axes(_Y_VALUE, _Y_COUNT),
+    "eda.descriptive.distribution.kde": _axes(_Y_VALUE, _Y_DENSITY),
+    "eda.correlation.acf_pacf": _axes(
+        {"name": "Лаг", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Коэффициент корреляции", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.ih.results": _axes(
+        {"name": "Фактор", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "R(Y|X)", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.seasonality.spectrum": _axes(
+        {"name": "Частота", "units": {"value": None, "reason": "legacy_unknown"}},
+        {"name": "Спектральная мощность", "units": {"value": None, "reason": "legacy_unknown"}},
+    ),
+    "eda.stationarity.tests": _axes(
+        {"name": "Тест", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "p-значение", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.distribution.tests": _axes(
+        {"name": "Тест", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "p-значение", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.structural.breakpoints": _axes(_X_TIME, _Y_VALUE),
+    "eda.feature_select.scores": _axes(
+        {"name": "Признак", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Коэффициент связи", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.validation_strategy.windows": _axes(
+        {"name": "Fold", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Число наблюдений", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "eda.model_matrix.applicability": _axes(
+        {"name": "Модель / семейство", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Число моделей", "units": {"value": "dimensionless", "reason": None}},
+    ),
+    "tasks.causes.fold_importance": _axes(
+        {"name": "Признак", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Средняя доля важности (fold)", "units": {"value": "dimensionless", "reason": None}},
+    ),
 }
 
 # Заголовки таблиц печати (row -- ярлыки колонок сетки, column --
@@ -268,6 +343,12 @@ TABLE_HEADINGS: dict[str, dict[str, list[str]]] = {
     },
     "eda.descriptive.stats": {
         "row": ["Показатель"], "column": ["Значение"],
+    },
+    # ── PGV-11: заголовки печатных таблиц EDA (конвенция PGV-09/10:
+    # row -- ярлыки колонок данных, column -- ярлык значений) ──
+    "eda.ih.metrics_table": {
+        "row": ["Фактор", "Тип", "N", "I(X;Y)", "H(X)", "R(Y|X)", "R adj.", "p", "q (FDR)"],
+        "column": ["Значение"],
     },
 }
 
@@ -339,6 +420,98 @@ MIXED_SECTIONS: dict[str, list[dict[str, Any]]] = {
          "table_headings": {"row": ["Колонка", "До", "После"],
                             "column": ["Значение"]}},
     ],
+    # ── PGV-11: композиции mixed-сайтов EDA/tasks (>=2 секции разных
+    # kinds из ОДНОГО frozen data, §6; chart -- frozen screen_svg) ──
+    "eda.correlation.acf_pacf": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "ACF/PACF с доверительными интервалами"},
+        {"section_id": "values", "renderer_kind": "html_table",
+         "title": "Значения коэффициентов по лагам",
+         "table_headings": {"row": ["Лаг", "ACF", "PACF"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.ih.results": [
+        {"section_id": "ranking", "renderer_kind": "recharts_svg",
+         "title": "Рейтинг IH-информативности"},
+        {"section_id": "table", "renderer_kind": "html_table",
+         "title": "Результаты IH-анализа",
+         "table_headings": {
+             "row": ["Фактор", "Тип", "N", "I(X;Y)", "H(X)", "R(Y|X)", "R adj.", "p", "q (FDR)"],
+             "column": ["Значение"]}},
+    ],
+    "eda.seasonality.spectrum": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Периодограмма (FFT)"},
+        {"section_id": "candidates", "renderer_kind": "html_table",
+         "title": "Доминантные частоты и сезонности",
+         "table_headings": {"row": ["Ранг", "Период", "Доля мощности"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.stationarity.tests": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "P-значения тестов"},
+        {"section_id": "tests", "renderer_kind": "html_table",
+         "title": "Тесты стационарности",
+         "table_headings": {"row": ["Тест", "Статистика", "p", "Вывод"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.distribution.tests": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Гистограмма и QQ-plot"},
+        {"section_id": "tests", "renderer_kind": "html_table",
+         "title": "Тесты нормальности",
+         "table_headings": {"row": ["Тест", "Статистика", "p", "Отклонение от нормальности"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.structural.breakpoints": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Ряд с точками перелома (CUSUM/PELT)"},
+        {"section_id": "segments", "renderer_kind": "html_table",
+         "title": "Сегменты режима",
+         "table_headings": {"row": ["Сегмент", "Период", "N", "Среднее", "σ", "Наклон"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.validation_strategy.windows": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Окна валидации по fold"},
+        {"section_id": "folds", "renderer_kind": "html_table",
+         "title": "Параметры окон стратегии",
+         "table_headings": {"row": ["Fold", "Train", "N train", "Gap", "Test", "N test"],
+                            "column": ["Значение"]}},
+    ],
+    "eda.model_matrix.applicability": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Применимость моделей по семьям"},
+        {"section_id": "models", "renderer_kind": "html_table",
+         "title": "Модель → статус ряда → вывод",
+         "table_headings": {"row": ["Модель", "Семейство", "Применимость", "Платформа", "Мин. N"],
+                            "column": ["Значение"]}},
+    ],
+    "tasks.causes.fold_importance": [
+        {"section_id": "chart", "renderer_kind": "recharts_svg",
+         "title": "Fold-важность факторов"},
+        {"section_id": "factors", "renderer_kind": "html_table",
+         "title": "Средняя доля важности по признакам",
+         "table_headings": {"row": ["Признак", "Средняя доля", "Fold'ов"],
+                            "column": ["Значение"]}},
+    ],
+}
+
+# PGV-11: печатные композиции НЕ-mixed сайтов, отличные от одной секции
+# своего kind. Пока единственный случай -- AC02: IH-матрица печатается
+# html_table ПОЛНОСТЬЮ; заголовки колонок -- динамические bins frozen
+# результата (build_visual_print_snapshot строит их из ih_input, ключ
+# «table_headings_from_frozen»); статические TABLE_HEADINGS не годятся:
+# bins зависят от данных и параметров (§6: refs/заголовки не фабрикуются).
+PRINT_COMPOSITIONS: dict[str, list[dict[str, Any]]] = {
+    "eda.ih.conditional_map": [
+        {
+            "section_id": "main",
+            "renderer_kind": "html_table",
+            "title": "Условное распределение цели по интервалам фактора",
+            "table_headings_from_frozen": "ih_conditional_map",
+        },
+    ],
 }
 
 # Заголовки печати (§7 верх страницы): view -> title.
@@ -381,13 +554,35 @@ VIEW_TITLES: dict[str, str] = {
     "preprocessing.spectral.periodogram": "Спектральный анализ: периодограмма",
     "preprocessing.feature_eng.overview": "Генерация признаков: превью",
     "preprocessing.scaling.overview": "Масштабирование: превью",
+    # ── PGV-11: титулы печати EDA/tasks (§7: заголовок/источник) ──
+    "eda.descriptive.stats": "Описательная статистика",
+    "eda.descriptive.distribution.scatter": "EDA: диаграмма рассеяния",
+    "eda.descriptive.distribution.histogram": "EDA: гистограмма распределения",
+    "eda.descriptive.distribution.kde": "EDA: ядерная оценка плотности",
+    "eda.correlation.acf_pacf": "Корреляции: ACF/PACF",
+    "eda.ih.metrics_table": "Информационная эвристика: карта метрик",
+    "eda.ih.conditional_map": "Информационная эвристика: условное распределение",
+    "eda.ih.results": "Информационная эвристика: результаты",
+    "eda.seasonality.spectrum": "Сезонность: спектр и периодограмма",
+    "eda.stationarity.tests": "Стационарность: тесты",
+    "eda.distribution.tests": "Распределение: тесты нормальности",
+    "eda.structural.breakpoints": "Структурные сдвиги: режимы ряда",
+    "eda.feature_select.scores": "Отбор признаков: оценки связи",
+    "eda.feature_select.matrix": "Отбор признаков: корреляционная матрица",
+    "eda.validation_strategy.windows": "Стратегия валидации: окна",
+    "eda.model_matrix.applicability": "Матрица применимости моделей",
+    "tasks.causes.fold_importance": "Причины: fold-важность факторов",
 }
 
 
 def mixed_sections_for(view_id: str, renderer_kind: str) -> list[dict[str, Any]]:
-    """Печатная композиция снапшота: mixed-сайт -- декларация MIXED_
-    SECTIONS (>=2 секций, правила PGV-01); не-mixed -- одна секция
-    своего kind (состав печати -- по реестру PGV-00)."""
+    """Печатная композиция снапшота: явная композиция (MIXED_SECTIONS
+    для mixed-сайтов; PRINT_COMPOSITIONS -- не-mixed исключения вроде
+    AC02) либо одна секция своего kind (состав печати -- по реестру
+    PGV-00)."""
+    composition = PRINT_COMPOSITIONS.get(view_id)
+    if composition:
+        return [dict(section) for section in composition]
     if renderer_kind == "mixed":
         sections = MIXED_SECTIONS.get(view_id)
         if not sections:
@@ -406,6 +601,26 @@ def mixed_sections_for(view_id: str, renderer_kind: str) -> list[dict[str, Any]]
             )
         section["table_headings"] = dict(headings)
     return [section]
+
+
+def _ih_conditional_frozen_headings(
+    data: Mapping[str, Any],
+) -> Optional[dict[str, Any]]:
+    """AC02: динамические заголовки печати IH-матрицы -- из ТЕХ ЖЕ
+    frozen bins (feature/target/y_bins из ih_input). Отсутствие bins --
+    None (честный gap, заголовки не фабрикуются)."""
+    ih_input = data.get("ih_input")
+    if not isinstance(ih_input, dict):
+        return None
+    y_bins = [str(b) for b in ih_input.get("y_bins") or []]
+    if not y_bins:
+        return None
+    feature = str(ih_input.get("feature_label") or "фактор")
+    target = str(ih_input.get("target_label") or "цель")
+    return {
+        "row": [f"Интервал «{feature}» \\ «{target}»"],
+        "column": y_bins + ["Сумма строки, %"],
+    }
 
 
 # ── screen_svg: honest preflight (защита в глубину до AC19) ───────────
@@ -625,11 +840,31 @@ def build_visual_print_snapshot(
             section["screen_svg"] = screen_svg
             section["screen_svg_sha256"] = _screen_svg_digest(screen_svg)
         elif kind == "html_table":
-            headings = section_spec.get("table_headings") or TABLE_HEADINGS.get(site_view_id)
-            if not headings:
-                raise VisualExportError(
-                    f"табличная секция {site_view_id!r} без заголовков печати"
+            # PGV-11: композиция может нести динамические заголовки из
+            # frozen данных (AC02: bins зависят от данных -- заголовки
+            # замораживаются В СНАПШОТЕ из тех же bins, не фабрикуются).
+            frozen_builder = section_spec.get("table_headings_from_frozen")
+            headings: Optional[dict[str, Any]]
+            if frozen_builder:
+                if frozen_builder != "ih_conditional_map":  # pragma: no cover -- каталог фиксирован
+                    raise VisualExportError(
+                        f"неизвестный строитель заголовков {frozen_builder!r}"
+                    )
+                headings = _ih_conditional_frozen_headings(data)
+                if not headings:
+                    raise VisualExportError(
+                        f"табличная секция {site_view_id!r}: заголовки печати "
+                        "не выводятся из frozen данных (bins отсутствуют) -- "
+                        "честный отказ, заголовки не фабрикуются"
+                    )
+            else:
+                headings = section_spec.get("table_headings") or TABLE_HEADINGS.get(
+                    site_view_id
                 )
+                if not headings:
+                    raise VisualExportError(
+                        f"табличная секция {site_view_id!r} без заголовков печати"
+                    )
             section["table_headings"] = dict(headings)
         elif kind == "html_heatmap":
             cells = data.get("cells") or []
@@ -805,6 +1040,14 @@ def _snapshot_refs(
         refs["frequency_hint"] = str(
             data.get("frequency") or "(не определена)"
         )
+    if "modeling_artifact_ref" in set(site.get("required_refs", [])):
+        # PGV-11 (tasks): карта моделей, для которой вычислена важность
+        # -- из frozen card (без фабрикации: нет id -- честный отказ).
+        data = (result_payload.get("payload") or {}).get("data") or {}
+        artifact_ref = str(data.get("modeling_artifact_ref") or "")
+        if not artifact_ref:
+            return {}, "modeling_artifact_ref"
+        refs["modeling_artifact_ref"] = artifact_ref
     return refs, None
 
 
@@ -839,7 +1082,7 @@ def list_visual_sources(run_id: str, subject: Any, *, session_id: str = "") -> d
         raise VisualExportAccessDenied("visual-sources недоступны") from exc
 
     sources: list[dict[str, Any]] = []
-    for view_id in pgv10_export_view_ids():
+    for view_id in export_view_ids():
         site = _site_for(view_id) or {}
         results = list_visual_results(run_id, view_id=view_id)
         snapshots = _list_snapshots(run_id, view_id=view_id)

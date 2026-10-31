@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `f38500fa4c3c258b4893199302d43d9a0fca4b0b`. Автоматически собранные входы + явная policy review.
+База: `5e0920eefe593c5a88f495e75a34a79e9de762fa`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 

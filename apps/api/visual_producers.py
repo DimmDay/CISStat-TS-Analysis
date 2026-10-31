@@ -241,6 +241,229 @@ def unwired_view_ids() -> tuple[str, ...]:
     return tuple(sorted(UNWIRED_PGV03_VIEWS))
 
 
+# ── Печатные формы PGV-11 (Export EDA/IH/tasks) ──────────────────────
+# Канонические формы моста ({columns, rows}, {row_headings,
+# column_headings, cells}) достраиваются АДДИТИВНО из ТЕХ ЖЕ frozen
+# данных: экранная форма среза сохраняется байт-в-байт (паритет
+# добора PGV-10), таблицы печати -- человекочитаемые метки из
+# TABLE_HEADINGS снапшота (§6 «producer несёт print input»; никакой
+# науки -- только срез уже вычисленного).
+
+
+def _print_table(
+    columns: list[str],
+    rows: list[dict[str, Any]],
+    *,
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    """Аддитивно добавить в срез каноническую форму {columns, rows}."""
+    target["columns"] = list(columns)
+    target["rows"] = rows
+    target["row_count"] = len(rows)
+    return target
+
+
+def _ih_metrics_rows(results: list) -> list[dict[str, Any]]:
+    rows = []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                "feature": item.get("feature"),
+                "kind": item.get("kind"),
+                "n_observations": item.get("n_observations"),
+                "mi": item.get("mi"),
+                "h_x": item.get("h_x"),
+                "r": item.get("r"),
+                "r_adjusted": item.get("r_adjusted"),
+                "p_value": item.get("p_value"),
+                "q_value": item.get("q_value"),
+            }
+        )
+    return rows
+
+
+def _ih_conditional_print(
+    response: Mapping[str, Any],
+    matrix: list,
+    x_bins: list,
+    y_bins: list,
+    feature: Any,
+) -> dict[str, Any]:
+    """Полная печатная форма IH-матрицы (AC02): bins строк/колонок,
+    проценты, знаменатель долей строки (сумма строки -- арифметика
+    frozen ячеек), честная пометка об абсолютном n строки и цветовой
+    шкале. Печатается html_table-секцией (SVG-only сериализация не
+    подходит -- spec §2); заголовки колонок замораживаются В СНАПШОТЕ
+    из тех же bins (динамические bins -- не статическая декларация)."""
+    y_labels = [str(b) for b in y_bins]
+    rows: list[dict[str, Any]] = []
+    ih_rows: list[dict[str, Any]] = []
+    for row in matrix:
+        if not isinstance(row, dict):
+            continue
+        values = [
+            float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+            for v in (row.get("values") or [])
+        ]
+        known = [v for v in values if v is not None]
+        row_sum = sum(known) if known else None
+        print_row: dict[str, Any] = {"x_bin": str(row.get("x_bin") or "")}
+        for index in range(len(y_labels)):
+            print_row[f"y{index}"] = values[index] if index < len(values) else None
+        print_row["row_sum"] = row_sum
+        rows.append(print_row)
+        ih_rows.append(
+            {
+                "x_bin": str(row.get("x_bin") or ""),
+                "values": values,
+                "row_sum": row_sum,
+            }
+        )
+    ih_input = {
+        "feature_label": str(feature or "фактор"),
+        "target_label": str(response.get("column") or "цель"),
+        "x_bins": [str(b) for b in x_bins],
+        "y_bins": y_labels,
+        "rows": ih_rows,
+        "n_observations": response.get("n_observations"),
+        # Абсолютный знаменатель строки не сохраняется в frozen
+        # результате -- честная причина вместо выдуманного числа (§6).
+        "row_totals": None,
+        "denominator_note": (
+            "абсолютный n строки не сохранён в frozen результате; "
+            "знаменатель долей строки -- сумма долей (печатается как "
+            "«Сумма строки, %»)"
+        ),
+        "scale_note": (
+            "цветовая шкала экрана -- доля интервала цели в интервале "
+            "фактора, 0–100 %; в печати каждая ячейка несёт полное число"
+        ),
+    }
+    return {
+        "ih_input": ih_input,
+        "columns": ["x_bin"] + [f"y{i}" for i in range(len(y_labels))] + ["row_sum"],
+        "rows": rows,
+        "row_count": len(rows),
+        "caption": (
+            "Доля интервала цели внутри интервала фактора, % "
+            "(dimensionless); каждая строка суммируется к 100 %; "
+            f"{ih_input['denominator_note']}. {ih_input['scale_note']}."
+        ),
+    }
+
+
+def _correlation_pairs_matrix(
+    pairs: list,
+    *,
+    method_key: str = "pearson",
+) -> Optional[dict[str, Any]]:
+    """Пары {row, column, <method_key>} -> каноническая форма
+    html_heatmap {row_headings, column_headings, cells, cell_texts}
+    (одна color scale, row headers -- spec §7). Значения пары без
+    известной ячейки -- None (честный пропуск, не ноль)."""
+    if not isinstance(pairs, list) or not pairs:
+        return None
+    names: list[str] = []
+    for pair in pairs:
+        if not isinstance(pair, dict):
+            continue
+        for key in ("row", "column"):
+            name = str(pair.get(key) or "")
+            if name and name not in names:
+                names.append(name)
+    if not names:
+        return None
+    index_of = {name: i for i, name in enumerate(names)}
+    cells: list[list[Optional[float]]] = [
+        [None for _ in names] for _ in names
+    ]
+    texts: list[list[Optional[str]]] = [
+        [None for _ in names] for _ in names
+    ]
+    for pair in pairs:
+        if not isinstance(pair, dict):
+            continue
+        row = index_of.get(str(pair.get("row") or ""))
+        column = index_of.get(str(pair.get("column") or ""))
+        if row is None or column is None:
+            continue
+        value = pair.get(method_key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            cells[row][column] = float(value)
+            texts[row][column] = repr(float(value))
+    return {
+        "row_headings": names,
+        "column_headings": names,
+        "cells": cells,
+        "cell_texts": texts,
+    }
+
+
+def _folds_rows(folds: list) -> list[dict[str, Any]]:
+    rows = []
+    for fold in folds:
+        if not isinstance(fold, dict):
+            continue
+        train = (
+            f"{fold.get('train_start_label') or fold.get('train_start')}"
+            " — "
+            f"{fold.get('train_end_label') or fold.get('train_end')}"
+        )
+        test = (
+            f"{fold.get('test_start_label') or fold.get('test_start')}"
+            " — "
+            f"{fold.get('test_end_label') or fold.get('test_end')}"
+        )
+        rows.append(
+            {
+                "fold": fold.get("fold"),
+                "train": train,
+                "train_size": fold.get("train_size"),
+                "gap_size": fold.get("gap_size"),
+                "test": test,
+                "test_size": fold.get("test_size"),
+            }
+        )
+    return rows
+
+
+def _acf_pacf_data(r: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез ACF/PACF: экранная форма (списки точек) + печатная таблица
+    {columns, rows} по лагам (пропущенная сторона лага -- None, не
+    ноль; честные значения обоих списков без выравнивания выдумкой)."""
+    acf = r.get("acf") or []
+    pacf = r.get("pacf") or []
+    rows: list[dict[str, Any]] = []
+    for index in range(max(len(acf), len(pacf))):
+        acf_point = acf[index] if index < len(acf) and isinstance(acf[index], dict) else None
+        pacf_point = pacf[index] if index < len(pacf) and isinstance(pacf[index], dict) else None
+        rows.append(
+            {
+                "lag": (
+                    acf_point.get("lag")
+                    if acf_point is not None
+                    else (pacf_point.get("lag") if pacf_point is not None else index)
+                ),
+                "acf": acf_point.get("value") if acf_point is not None else None,
+                "pacf": pacf_point.get("value") if pacf_point is not None else None,
+            }
+        )
+    return _print_table(
+        ["lag", "acf", "pacf"],
+        rows,
+        target={
+            "acf": acf,
+            "pacf": pacf,
+            "max_lag": r.get("max_lag"),
+            "order_source": r.get("order_source"),
+            "applicable": r.get("applicable"),
+            "reason": r.get("reason"),
+        },
+    )
+
+
 # ── Units-политики (value XOR явная причина; spec §6) ────────────────
 
 
@@ -1323,14 +1546,7 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     ),
     "eda.correlation.acf_pacf": _spec(
         "eda.correlation.acf_pacf", "recharts_svg", "acf_pacf",
-        lambda r: {
-            "acf": r.get("acf") or [],
-            "pacf": r.get("pacf") or [],
-            "max_lag": r.get("max_lag"),
-            "order_source": r.get("order_source"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        _acf_pacf_data,
         # ось лагов -- время в единицах ряда (units неизвестны);
         # коэффициенты корреляции -- dimensionless. Две честные
         # декларации вместо одной выдуманной.
@@ -1339,18 +1555,31 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     ),
     "eda.ih.metrics_table": _spec(
         "eda.ih.metrics_table", "html_table", "ih_metrics",
-        lambda r: {
-            "results": r.get("results") or [],
-            "target_entropy": r.get("target_entropy"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["feature", "kind", "n_observations", "mi", "h_x", "r",
+             "r_adjusted", "p_value", "q_value"],
+            _ih_metrics_rows(r.get("results") or []),
+            target={
+                "results": r.get("results") or [],
+                "target_entropy": r.get("target_entropy"),
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("factor_column", "bins"),
     ),
     "eda.ih.conditional_map": _spec(
         "eda.ih.conditional_map", "html_table", "ih_conditional_map",
         lambda r: {
+            **_ih_conditional_print(
+                r,
+                r.get("conditional_matrix") or [],
+                r.get("conditional_x_bins") or [],
+                r.get("conditional_y_bins") or [],
+                r.get("conditional_feature"),
+            ),
+            # экранная форма сохранена (аддитивность PGV-11)
             "matrix": r.get("conditional_matrix") or [],
             "x_bins": r.get("conditional_x_bins"),
             "y_bins": r.get("conditional_y_bins"),
@@ -1361,60 +1590,124 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
         selection_keys=("factor_column", "bins"),
     ),
     "eda.ih.results": _spec(
-        "eda.ih.results", "html_table", "ih_results", _ih_results_data,
+        "eda.ih.results", "html_table", "ih_results",
+        lambda r: _print_table(
+            ["feature", "kind", "n_observations", "mi", "h_x", "r",
+             "r_adjusted", "p_value", "q_value"],
+            _ih_metrics_rows(r.get("results") or []),
+            target=_ih_results_data(r),
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("factor_column",),
     ),
     "eda.seasonality.spectrum": _spec(
         "eda.seasonality.spectrum", "recharts_svg", "seasonality_spectrum",
-        lambda r: {
-            "fft": r.get("fft") or [],
-            "periodogram": r.get("periodogram") or [],
-            "dominant_period": r.get("dominant_period"),
-            "dominant_strength": r.get("dominant_strength"),
-            "spectral_entropy": r.get("spectral_entropy"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["rank", "period", "power_share"],
+            [
+                {
+                    "rank": item.get("rank"),
+                    "period": item.get("period"),
+                    "power_share": item.get("power_share"),
+                }
+                for item in (r.get("candidates") or [])
+                if isinstance(item, dict)
+            ],
+            target={
+                "fft": r.get("fft") or [],
+                "periodogram": r.get("periodogram") or [],
+                "candidates": r.get("candidates") or [],
+                "dominant_period": r.get("dominant_period"),
+                "dominant_strength": r.get("dominant_strength"),
+                "spectral_entropy": r.get("spectral_entropy"),
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("window", "selected_column"),
     ),
     "eda.stationarity.tests": _spec(
         "eda.stationarity.tests", "html_table", "stationarity_tests",
-        lambda r: {
-            "tests": r.get("tests") or [],
-            "consensus": r.get("consensus"),
-            "recommendation": r.get("recommendation"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["test", "statistic", "p_value", "reject_null"],
+            [
+                {
+                    "test": item.get("label") or item.get("id"),
+                    "statistic": item.get("statistic"),
+                    "p_value": item.get("p_value"),
+                    "reject_null": item.get("reject_null"),
+                }
+                for item in (r.get("tests") or [])
+                if isinstance(item, dict)
+            ],
+            target={
+                "tests": r.get("tests") or [],
+                "consensus": r.get("consensus"),
+                "recommendation": r.get("recommendation"),
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("test", "selected_column"),
     ),
     "eda.distribution.tests": _spec(
         "eda.distribution.tests", "html_table", "distribution_tests",
-        lambda r: {
-            "tests": r.get("tests") or [],
-            "summary": {
-                key: r.get(key)
-                for key in ("mean", "median", "std", "skewness", "excess_kurtosis")
+        lambda r: _print_table(
+            ["test", "statistic", "p_value", "reject_normality"],
+            [
+                {
+                    "test": item.get("label") or item.get("id"),
+                    "statistic": item.get("statistic"),
+                    "p_value": item.get("p_value"),
+                    "reject_normality": item.get("reject_normality"),
+                }
+                for item in (r.get("tests") or [])
+                if isinstance(item, dict)
+            ],
+            target={
+                "tests": r.get("tests") or [],
+                "summary": {
+                    key: r.get(key)
+                    for key in ("mean", "median", "std", "skewness", "excess_kurtosis")
+                },
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
             },
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("selected_column", "bins"),
     ),
     "eda.structural.breakpoints": _spec(
         "eda.structural.breakpoints", "recharts_svg", "structural_breaks",
-        lambda r: {
-            "series": r.get("series") or [],
-            "cusum": r.get("cusum") or [],
-            "segments": r.get("segments") or [],
-            "break_count": r.get("break_count"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["segment", "period", "n_observations", "mean", "std", "slope"],
+            [
+                {
+                    "segment": item.get("id"),
+                    "period": (
+                        f"{item.get('start_label') or item.get('start_index')}"
+                        " — "
+                        f"{item.get('end_label') or item.get('end_index')}"
+                    ),
+                    "n_observations": item.get("n_observations"),
+                    "mean": item.get("mean"),
+                    "std": item.get("std"),
+                    "slope": item.get("slope"),
+                }
+                for item in (r.get("segments") or [])
+                if isinstance(item, dict)
+            ],
+            target={
+                "series": r.get("series") or [],
+                "cusum": r.get("cusum") or [],
+                "segments": r.get("segments") or [],
+                "break_count": r.get("break_count"),
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _units_unknown, lambda r, p: _series_sampling(
             r, sampled_key="series_sampled", count_of=_breaks_series_count, params=p
         ),
@@ -1433,7 +1726,13 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     "eda.feature_select.matrix": _spec(
         "eda.feature_select.matrix", "html_heatmap", "feature_matrix",
         lambda r: {
-            "matrix": r.get("correlation_matrix") or [],
+            # PGV-11: пары {row, column, pearson} развёрнуты в каноничную
+            # форму html_heatmap {row_headings, column_headings, cells}
+            # (одна color scale, row headers -- spec §7); домен шкалы
+            # -- из фактических ячеек frozen данных (стабильная scale).
+            **(_correlation_pairs_matrix(r.get("correlation_matrix") or [])
+               or {"row_headings": [], "column_headings": [], "cells": [],
+                   "cell_texts": []}),
             "applicable": r.get("applicable"),
             "reason": r.get("reason"),
         },
@@ -1443,26 +1742,45 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     "eda.validation_strategy.windows": _spec(
         "eda.validation_strategy.windows", "recharts_svg",
         "validation_strategy_windows",
-        lambda r: {
-            "folds": r.get("folds") or [],
-            "strategy": r.get("strategy"),
-            "horizon": r.get("horizon"),
-            "gap": r.get("gap"),
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["fold", "train", "train_size", "gap_size", "test", "test_size"],
+            _folds_rows(r.get("folds") or []),
+            target={
+                "folds": r.get("folds") or [],
+                "strategy": r.get("strategy"),
+                "horizon": r.get("horizon"),
+                "gap": r.get("gap"),
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("strategy", "horizon", "gap"),
     ),
     "eda.model_matrix.applicability": _spec(
         "eda.model_matrix.applicability", "html_table", "model_matrix",
-        lambda r: {
-            "families": r.get("families") or [],
-            "models": r.get("models") or [],
-            "summary": r.get("summary") or {},
-            "applicable": r.get("applicable"),
-            "reason": r.get("reason"),
-        },
+        lambda r: _print_table(
+            ["model", "family", "compatibility", "platform_status",
+             "min_observations"],
+            [
+                {
+                    "model": item.get("model_name") or item.get("model_id"),
+                    "family": item.get("family_name") or item.get("family_id"),
+                    "compatibility": item.get("compatibility"),
+                    "platform_status": item.get("platform_status"),
+                    "min_observations": item.get("min_observations"),
+                }
+                for item in (r.get("models") or [])
+                if isinstance(item, dict)
+            ],
+            target={
+                "families": r.get("families") or [],
+                "models": r.get("models") or [],
+                "summary": r.get("summary") or {},
+                "applicable": r.get("applicable"),
+                "reason": r.get("reason"),
+            },
+        ),
         _DIMENSIONLESS, dict(_FULL),
         selection_keys=("family_filter",),
     ),
@@ -1502,7 +1820,29 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
     # ── Tasks (1) ────────────────────────────────────────────────────
     "tasks.causes.fold_importance": _spec(
         "tasks.causes.fold_importance", "recharts_svg", "xai_fold_importance",
-        _tasks_causes_data, _DIMENSIONLESS, dict(_FULL),
+        lambda r: {
+            **_print_table(
+                ["feature_name", "mean_share", "n_folds"],
+                [
+                    {
+                        "feature_name": item.get("feature_name"),
+                        "mean_share": item.get("mean_share"),
+                        "n_folds": item.get("n_folds"),
+                    }
+                    for item in ((r.get("method") or {}).get("factors") or [])
+                    if isinstance(item, dict)
+                ],
+                target={},
+            ),
+            # PGV-11: обязательный ref реестра PGV-00 -- из frozen card
+            # (без фабрикации: нет card_id -- честный отказ refs).
+            "modeling_artifact_ref": (
+                ((r.get("card") or {}).get("card_id")) or None
+            ),
+            "method": r.get("method") or {},
+            "card": r.get("card") or {},
+        },
+        _DIMENSIONLESS, dict(_FULL),
         selection_keys=("method",),
     ),
 }

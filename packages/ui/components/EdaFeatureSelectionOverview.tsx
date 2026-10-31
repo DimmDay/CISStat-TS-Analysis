@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 // Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
 // графиков. Корень Обзора: relative всегда (правка A), overflow переключается
@@ -10,6 +10,11 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, ReferenceLine, ResponsiveCo
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» смешанного сайта (график + таблица из одного
+// frozen ответа; геометрия -- СВОЙ chart-узел, не первый SVG).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 export type FeatureDecision = "keep" | "review" | "low_signal";
 export interface EdaFeatureSelectionItem { name:string; n_observations:number; pearson:number; spearman:number; vif:number|null; vif_infinite:boolean; max_abs_predictor_correlation:number; granger_available:boolean; best_granger_lag:number|null; granger_p_value:number|null; granger_adjusted_p_value:number|null; granger_significant:boolean; decision:FeatureDecision; decision_reason:string }
@@ -28,7 +33,10 @@ export function EdaFeatureSelectionOverview(props:Props){
  );
 }
 function EdaFeatureSelectionOverviewInner({profile,loading,error,noDataset,parameters,onParametersChange}:Props){
- const [view,setView]=useState<View>("association"); const [method,setMethod]=useState<"pearson"|"spearman">("pearson"); const {expandedChartId}=useExpandableChartState();
+ const [view,setView]=useState<View>("association");
+ // PGV-11: ref СВОЕЙ поверхности рендера; объявлен до ранних
+ // возвратов (урок PGV-10).
+ const exportSectionRef = useRef<HTMLElement>(null); const [method,setMethod]=useState<"pearson"|"spearman">("pearson"); const {expandedChartId}=useExpandableChartState();
  if(loading)return <div role="status" className="flex h-[468px] items-center justify-center">Сопоставляем связь с целью, VIF и Granger…</div>;
  if(error)return <div role="alert" className="flex h-[468px] items-center justify-center text-red-700">{error}</div>;
  if(noDataset)return <div role="status" className="flex h-[468px] items-center justify-center">Загрузите датасет, чтобы выполнить отбор признаков.</div>;
@@ -39,9 +47,15 @@ function EdaFeatureSelectionOverviewInner({profile,loading,error,noDataset,param
   return neutral?<section role="status" className="flex h-[468px] flex-col items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-neutral-700">{content}</section>:<section role="alert" className="flex h-[468px] flex-col items-center justify-center overflow-y-auto rounded-lg bg-amber-50 px-8 text-center text-amber-900">{content}</section>;
  }
  const data=profile.features; const names=Array.from(new Set(profile.correlation_matrix.map(x=>x.row))); const pairs=new Map(profile.correlation_matrix.map(x=>[`${x.row}\0${x.column}`,x]));
- return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border bg-white feed-scroll ${expandedChartId?"overflow-hidden":"overflow-y-auto"}`}>
+ return <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border bg-white feed-scroll ${expandedChartId?"overflow-hidden":"overflow-y-auto"}`}>
   <div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex justify-between gap-4"><div><h4 className="text-sm font-semibold">Отбор для Y = «{profile.column}»</h4><p className="text-xs text-neutral-500">n={profile.n_observations} · кандидатов {profile.analyzed_features} · Granger: {profile.difference_order?"первые разности":"текущие уровни"}</p></div><div className="flex flex-wrap justify-end gap-2"><Select label="Уровень значимости α" value={parameters.alpha} options={[.01,.05,.1].map(value=>({value}))} onChange={alpha=>onParametersChange({alpha})}/><Select label="Максимальный лаг" value={parameters.maxLag} options={[1,2,3,6,12].map(value=>({value}))} onChange={maxLag=>onParametersChange({maxLag})}/><Select label="Порог связи |r|" value={parameters.correlationThreshold} options={[.2,.3,.5,.7].map(value=>({value}))} onChange={correlationThreshold=>onParametersChange({correlationThreshold})}/><Select label="Порог VIF" value={parameters.vifThreshold} options={[5,10,20].map(value=>({value}))} onChange={vifThreshold=>onParametersChange({vifThreshold})}/><Select label="Ряд для Granger" value={parameters.differenceOrder} options={[{value:0,label:"Текущий"},{value:1,label:"Δ1"}]} onChange={differenceOrder=>onParametersChange({differenceOrder:differenceOrder as 0|1})}/></div></div>
-  {profile.recommendation&&<p className="mt-2 rounded bg-brand-light p-2 text-xs">{profile.recommendation}</p>}{profile.warnings.length>0&&<p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}{/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора» «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки, контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1; шапке добавлен border-neutral-100 для единства с эталоном. */}<div role="tablist" aria-label="Представления отбора признаков" className="mt-3 flex flex-wrap gap-2">{tabs.map(t=><button key={t.id} role="tab" aria-selected={view===t.id} onClick={()=>setView(t.id)} className={`rounded-full border px-3 py-1 text-xs ${view===t.id?"border-neutral-300 bg-neutral-200 text-neutral-800":"border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{t.label}</button>)}</div></div>
+  {profile.recommendation&&<p className="mt-2 rounded bg-brand-light p-2 text-xs">{profile.recommendation}</p>}{profile.warnings.length>0&&<p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}{/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора» «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки, контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1; шапке добавлен border-neutral-100 для единства с эталоном. */}<div className="mt-3 flex flex-wrap items-center gap-2"><VisualExportButton
+  viewId={view === "matrix" ? "eda.feature_select.matrix" : "eda.feature_select.scores"}
+  label="Скачать PNG: активное представление"
+  compact
+  getScreenSvg={view === "matrix" ? undefined : () => serializeChartSvgSafe(() => exportSectionRef.current)}
+/></div>
+  <div role="tablist" aria-label="Представления отбора признаков" className="mt-3 flex flex-wrap gap-2">{tabs.map(t=><button key={t.id} role="tab" aria-selected={view===t.id} onClick={()=>setView(t.id)} className={`rounded-full border px-3 py-1 text-xs ${view===t.id?"border-neutral-300 bg-neutral-200 text-neutral-800":"border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{t.label}</button>)}</div></div>
   {view==="association"&&<ExpandableChartPanel chartId="feature-association" title="Связь признаков с целью"><div role="img" aria-label={`Связь признаков с целью ${profile.column}`} className="min-h-0 flex-1 p-3"><ResponsiveContainer><BarChart data={data} layout="vertical"><CartesianGrid strokeDasharray="3 3"/><XAxis type="number" domain={[-1,1]}/><YAxis type="category" dataKey="name" width={110}/><Tooltip/><Legend/><Bar dataKey="pearson" fill="var(--chart-blue)" isAnimationActive={false}/><Bar dataKey="spearman" fill="var(--chart-violet)" isAnimationActive={false}/></BarChart></ResponsiveContainer></div></ExpandableChartPanel>}
   {view==="matrix"&&<ExpandableChartPanel chartId="feature-matrix" title="Матрица корреляций признаков"><div role="img" aria-label={`Матрица корреляций признаков для ${profile.column}`} className="min-h-0 flex-1 overflow-auto p-3"><div className="mb-2 text-right"><button onClick={()=>setMethod("pearson")} className="mr-1 text-xs">Pearson</button><button onClick={()=>setMethod("spearman")} className="text-xs">Spearman</button></div><div className="inline-grid min-w-full gap-1" style={{gridTemplateColumns:`100px repeat(${names.length},55px)`}}><div/>{names.map(n=><div key={`h${n}`} className="truncate text-[9px]">{n}</div>)}{names.flatMap(r=>[<div key={`r${r}`} className="truncate text-[9px]">{r}</div>,...names.map(c=>{const v=pairs.get(`${r}\0${c}`)?.[method]??0;return <div key={`${r}${c}`} title={`${r} × ${c}: ${fmt(v)}`} className="rounded p-2 text-center text-[9px] text-white" style={{backgroundColor:v>=0?`rgba(37,99,235,${.2+.7*Math.abs(v)})`:`rgba(220,38,38,${.2+.7*Math.abs(v)})`}}>{fmt(v,2)}</div>})])}</div></div></ExpandableChartPanel>}
   {view==="vif"&&<ExpandableChartPanel chartId="feature-vif" title="Диагностика VIF"><div role="img" aria-label={`Диагностика VIF для ${profile.column}`} className="min-h-0 flex-1 p-3"><ResponsiveContainer><BarChart data={data.map(x=>({...x,displayVif:x.vif_infinite?profile.vif_threshold*2:x.vif??0}))} layout="vertical"><CartesianGrid strokeDasharray="3 3"/><XAxis type="number"/><YAxis type="category" dataKey="name" width={110}/><Tooltip/><ReferenceLine x={profile.vif_threshold} stroke="var(--status-error)"/><Bar dataKey="displayVif" isAnimationActive={false}>{data.map(x=><Cell key={x.name} fill={x.vif_infinite||(x.vif??0)>=profile.vif_threshold?"var(--status-error)":"var(--chart-blue)"}/>)}</Bar></BarChart></ResponsiveContainer></div></ExpandableChartPanel>}

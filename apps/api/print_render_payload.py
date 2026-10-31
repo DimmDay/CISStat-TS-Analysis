@@ -118,7 +118,12 @@ def _table_content(data: Mapping[str, Any]) -> dict[str, Any] | None:
                 normalized.append([_cell(cell) for cell in row])
             else:
                 normalized.append([_cell(row)])
-        return {"rows": normalized}
+        content = {"rows": normalized}
+        # PGV-11: caption печатной формы (честная пометка о шкале/
+        # знаменателе) переносится и для формы {columns, rows}.
+        if isinstance(data.get("caption"), str):
+            content["caption"] = data.get("caption")
+        return content
     matrix = data.get("matrix")
     if isinstance(columns, list) and isinstance(matrix, list):
         names = [str(c) for c in columns]
@@ -128,7 +133,10 @@ def _table_content(data: Mapping[str, Any]) -> dict[str, Any] | None:
                 normalized.append([_cell(cell) for cell in row])
             else:
                 normalized.append([_cell(row)])
-        return {"rows": normalized}
+        content = {"rows": normalized}
+        if isinstance(data.get("caption"), str):
+            content["caption"] = data.get("caption")
+        return content
     return None
 
 

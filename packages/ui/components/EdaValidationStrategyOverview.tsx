@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 // Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
 // графиков. Корень Обзора: relative всегда (правка A), overflow переключается
@@ -11,6 +11,11 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» смешанного сайта (график + таблица из одного
+// frozen ответа; геометрия -- СВОЙ chart-узел, не первый SVG).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 export type ValidationStrategy = "expanding" | "sliding" | "single";
 
@@ -129,9 +134,21 @@ export function EdaValidationStrategyOverview(props: Props) {
 
 function EdaValidationStrategyOverviewInner({ profile, loading, error, noDataset, parameters, onParametersChange }: Props) {
   const [view, setView] = useState<View>("folds");
+  // PGV-11: ref СВОЕЙ поверхности рендера (frozen геометрия
+  // активного представления -- не первый SVG документа);
+  // объявлен ДО ранних возвратов (урок PGV-10).
+  const exportSectionRef = useRef<HTMLElement>(null);
   const { expandedChartId } = useExpandableChartState();
-  return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
-    <div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-neutral-800">План временной валидации{profile ? ` «${profile.column}»` : ""}</h4>{profile ? <p className="mt-1 text-xs text-neutral-500">{STRATEGY_LABELS[profile.strategy]} · h={profile.horizon} · folds={profile.effective_splits} · gap={profile.gap}</p> : null}<p className="mt-1 text-[10px] text-neutral-500">Методология: <a className="text-brand underline" href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html" target="_blank" rel="noreferrer">scikit-learn TimeSeriesSplit</a> · <a className="text-brand underline" href="https://skforecast.org/latest/user_guides/backtesting.html" target="_blank" rel="noreferrer">skforecast backtesting</a></p></div><Controls parameters={parameters} onChange={onParametersChange} /></div>{profile?.recommendation ? <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p> : null}{profile?.warnings.length ? <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p> : null}{/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора» «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки, контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1. Guard сохраняет прежнюю видимость: только при готовых применимых данных (не в loading/error/пустых состояниях). */}{!loading && !error && !noDataset && profile && profile.applicable ? <div role="tablist" aria-label="Представления стратегии валидации" className="mt-3 flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}</div> : null}</div>
+  return <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-neutral-800">План временной валидации{profile ? ` «${profile.column}»` : ""}</h4>{profile ? <p className="mt-1 text-xs text-neutral-500">{STRATEGY_LABELS[profile.strategy]} · h={profile.horizon} · folds={profile.effective_splits} · gap={profile.gap}</p> : null}<p className="mt-1 text-[10px] text-neutral-500">Методология: <a className="text-brand underline" href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html" target="_blank" rel="noreferrer">scikit-learn TimeSeriesSplit</a> · <a className="text-brand underline" href="https://skforecast.org/latest/user_guides/backtesting.html" target="_blank" rel="noreferrer">skforecast backtesting</a></p></div><Controls parameters={parameters} onChange={onParametersChange} /></div>{profile?.recommendation ? <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p> : null}{profile?.warnings.length ? <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p> : null}{/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора» «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки, контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1. Guard сохраняет прежнюю видимость: только при готовых применимых данных (не в loading/error/пустых состояниях). */}{!loading && !error && !noDataset && profile && profile.applicable ? <>
+          <VisualExportButton
+            viewId="eda.validation_strategy.windows"
+            label="Скачать PNG: окна валидации"
+            compact
+            getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)}
+          />
+          <div role="tablist" aria-label="Представления стратегии валидации" className="mt-3 flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}</div>
+          </> : null}</div>
     {loading ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Строим временные folds…</div> : error ? <div role="alert" className="flex min-h-0 flex-1 items-center justify-center bg-red-50 px-8 text-center text-sm text-red-700">{error}</div> : noDataset ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Загрузите датасет, чтобы спроектировать валидацию.</div> : !profile ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Выберите числовой исследуемый признак.</div> : !profile.applicable ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Стратегия неприменима."}</div> : <>{view === "folds" ? <ExpandableChartPanel chartId="validation-folds" title="Схема folds"><FoldTimeline profile={profile} /></ExpandableChartPanel> : null}{view === "train" ? <ExpandableChartPanel chartId="validation-train" title="Рост обучающего окна"><TrainChart profile={profile} /></ExpandableChartPanel> : null}{view === "alternatives" ? <Alternatives profile={profile} /> : null}{view === "table" ? <FoldTable profile={profile} /> : null}</>}
   </section>;
 }

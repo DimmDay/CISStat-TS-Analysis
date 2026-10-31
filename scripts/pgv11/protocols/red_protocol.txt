@@ -1,0 +1,3 @@
+FAILED tests/api/test_pgv11_visual_exports.py::TestVisualExportHttp::test_post_visuals_cas_conflict_409
+FAILED tests/api/test_pgv11_visual_exports.py::TestVisualSourcesList::test_visual_sources_lists_combined_scope
+========================= 29 failed, 3 passed in 5.46s =========================

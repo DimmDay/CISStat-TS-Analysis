@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -24,6 +24,10 @@ import {
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11: «Скачать PNG» трёх IH-видов (results -- на chart-вкладках
+// со своей frozen геометрией; metrics/conditional -- таблицы без svg).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 
 export interface EdaIhFeature {
@@ -300,6 +304,9 @@ function EdaIhOverviewInner({
   onParametersChange,
 }: EdaIhOverviewProps) {
   const [activeView, setActiveView] = useState<IhView>("ranking");
+  // PGV-11: ref СВОЕЙ поверхности (frozen геометрия активной вкладки);
+  // объявлен ДО ранних возвратов (урок PGV-10).
+  const exportSectionRef = useRef<HTMLElement>(null);
   const { expandedChartId } = useExpandableChartState();
 
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Вычисляем IH-профиль и перестановочный baseline…</div>;
@@ -309,7 +316,7 @@ function EdaIhOverviewInner({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "IH-анализ неприменим."}</div>;
 
   return (
-    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -331,7 +338,21 @@ function EdaIhOverviewInner({
             «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
             контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1.
             Шапка IH — p-3 (не эталонная p-4) — сохранена как есть. */}
-        <div role="tablist" aria-label="Представления IH-анализа" className="mt-3 flex flex-wrap gap-2">
+        <div role="tablist" aria-label="Представления IH-анализа" className="mt-3 flex flex-wrap items-center gap-2">
+          {(activeView === "ranking" || activeView === "synergy") && (
+            <VisualExportButton
+              viewId="eda.ih.results"
+              label="Скачать PNG: рейтинг/синергия IH"
+              compact
+              getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)}
+            />
+          )}
+          {activeView === "metrics" && (
+            <VisualExportButton viewId="eda.ih.metrics_table" label="Скачать PNG: карту метрик" compact />
+          )}
+          {activeView === "conditional" && (
+            <VisualExportButton viewId="eda.ih.conditional_map" label="Скачать PNG: условное распределение" compact />
+          )}
           {TABS.map((tab) => (
             <button
               key={tab.id}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -22,6 +22,11 @@ import {
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» смешанного сайта (график + таблица из одного
+// frozen ответа; геометрия -- СВОЙ chart-узел, не первый SVG).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 
 export interface EdaCorrelationPoint {
@@ -154,6 +159,10 @@ function EdaCorrelationOverviewInner({
   onMaxLagsChange,
 }: EdaCorrelationOverviewProps) {
   const [activeView, setActiveView] = useState<CorrelationView>("acf");
+  // PGV-11: ref СВОЕЙ поверхности рендера (frozen геометрия
+  // активного представления -- не первый SVG документа);
+  // объявлен ДО ранних возвратов (урок PGV-10).
+  const exportSectionRef = useRef<HTMLElement>(null);
   const { expandedChartId } = useExpandableChartState();
 
   if (loading) {
@@ -198,7 +207,7 @@ function EdaCorrelationOverviewInner({
     pacf: profile.pacf[index],
   }));
   return (
-    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -233,6 +242,14 @@ function EdaCorrelationOverviewInner({
         {/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора»
             «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
             контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <VisualExportButton
+            viewId="eda.correlation.acf_pacf"
+            label="Скачать PNG: ACF/PACF"
+            compact
+            getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)}
+          />
+        </div>
         <div role="tablist" aria-label="Представления корреляционной структуры" className="mt-3 flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button

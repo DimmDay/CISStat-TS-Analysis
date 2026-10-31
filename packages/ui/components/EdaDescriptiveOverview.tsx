@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import {
   HistogramDistributionChart,
@@ -18,6 +18,11 @@ import {
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» представлений Обзора (таблица статистик + scatter/
+// histogram/kde — отдельные view со своей frozen геометрией; AC01).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 export interface DescriptiveStatsValues {
   mean: number;
@@ -93,6 +98,10 @@ function EdaDescriptiveOverviewInner({
   refreshKey = 0,
 }: EdaDescriptiveOverviewProps) {
   const [activeView, setActiveView] = useState<DescriptiveView>("table");
+  // PGV-11: ref СВОЕЙ поверхности рендера (frozen геометрия активного
+  // представления -- не первый SVG документа); объявлен ДО ранних
+  // возвратов (урок PGV-10: hooks после return запрещены).
+  const exportSectionRef = useRef<HTMLElement>(null);
   const { expandedChartId } = useExpandableChartState();
   const [distribution, setDistribution] = useState<DistributionChartData | null>(null);
   const [distributionCacheKey, setDistributionCacheKey] = useState<string | null>(null);
@@ -195,7 +204,7 @@ function EdaDescriptiveOverviewInner({
   }
 
   return (
-    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -215,6 +224,26 @@ function EdaDescriptiveOverviewInner({
             «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
             контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1;
             aria-selected без aria-pressed (прецедент Task w/n-3). */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <VisualExportButton
+            viewId={
+              activeView === "table"
+                ? "eda.descriptive.stats"
+                : activeView === "histogram"
+                  ? "eda.descriptive.distribution.histogram"
+                  : activeView === "kde"
+                    ? "eda.descriptive.distribution.kde"
+                    : "eda.descriptive.distribution.scatter"
+            }
+            label="Скачать PNG: активное представление"
+            compact
+            getScreenSvg={
+              activeView === "table"
+                ? undefined
+                : () => serializeChartSvgSafe(() => exportSectionRef.current)
+            }
+          />
+        </div>
         <div role="tablist" aria-label="Представления описательных статистик" className="mt-3 flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   CartesianGrid,
   ComposedChart,
@@ -21,6 +21,11 @@ import {
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» смешанного сайта (график + таблица из одного
+// frozen ответа; геометрия -- СВОЙ chart-узел, не первый SVG).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 
 
 export interface EdaSpectrumPoint {
@@ -253,6 +258,10 @@ function EdaSeasonalityOverviewInner({
   onParametersChange,
 }: EdaSeasonalityOverviewProps) {
   const [activeView, setActiveView] = useState<SeasonalityView>("fft");
+  // PGV-11: ref СВОЕЙ поверхности рендера (frozen геометрия
+  // активного представления -- не первый SVG документа);
+  // объявлен ДО ранних возвратов (урок PGV-10).
+  const exportSectionRef = useRef<HTMLElement>(null);
   const { expandedChartId } = useExpandableChartState();
 
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Строим спектральный и фазовый профиль…</div>;
@@ -262,7 +271,7 @@ function EdaSeasonalityOverviewInner({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Спектральный анализ неприменим."}</div>;
 
   return (
-    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
+    <section ref={exportSectionRef} className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -282,6 +291,14 @@ function EdaSeasonalityOverviewInner({
         {/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора»
             «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
             контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <VisualExportButton
+            viewId="eda.seasonality.spectrum"
+            label="Скачать PNG: спектр сезонности"
+            compact
+            getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)}
+          />
+        </div>
         <div role="tablist" aria-label="Представления сезонности и периодичности" className="mt-3 flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button key={tab.id} type="button" role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${activeView === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>

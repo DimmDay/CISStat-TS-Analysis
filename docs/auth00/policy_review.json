@@ -1,5 +1,5 @@
 {
-  "baseline": "f38500fa4c3c258b4893199302d43d9a0fca4b0b",
+  "baseline": "5e0920eefe593c5a88f495e75a34a79e9de762fa",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -6641,11 +6641,13 @@
     "apps/api/model_execution.py",
     "apps/api/model_jobs.py",
     "apps/api/plans.py",
+    "apps/api/print_render_payload.py",
     "apps/api/report_snapshot.py",
     "apps/api/routers/documentation.py",
     "apps/api/security_audit.py",
     "apps/api/session_store.py",
     "apps/api/visual_exports.py",
+    "apps/api/visual_producers.py",
     "apps/print-renderer/build/deployment/docker-compose.yml",
     "apps/print-renderer/src/renderWorker.ts",
     "docs/ROLES_AND_PLANS_SPEC.md",

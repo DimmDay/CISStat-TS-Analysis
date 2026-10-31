@@ -41,7 +41,7 @@
 // контейнером страницы (сегодня страница монтирует с дефолтом 0 --
 // точка подписки готова к появлению счётчика мутаций сессии).
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, SearchCheck } from "lucide-react";
 import {
@@ -149,6 +149,12 @@ function RadioDot({ active }: { active: boolean }) {
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
 
+// PGV-11 (spec_passport_graphics_visual.md §13 «Export EDA/IH/tasks»):
+// «Скачать PNG» XAI fold-важности (mixed-сайт: график + таблица из
+// одного frozen ответа /tasks/causes; not_computed не фабрикуется).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
+
 export function TasksCauses({ refreshKey = 0 }: { refreshKey?: number }) {
   const { stages, sessionLoading } = useAppShell();
   const safeStages = stages ?? {};
@@ -157,6 +163,9 @@ export function TasksCauses({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<TasksCausesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // PGV-11: ref поверхности fold-важности (frozen геометрия СВОЕГО
+  // графика -- не первый SVG документа); объявлен до ранних возвратов.
+  const exportSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!modelingDone || sessionLoading) return;
@@ -279,7 +288,14 @@ export function TasksCauses({ refreshKey = 0 }: { refreshKey?: number }) {
           {/* ── Паттерн C: методы → факторы → деталь (§11.2, образец
               AppliedTasksNavigator: поля px-6, gap, shrink-0 колонки,
               flex-1 min-w-0 поглощает дельту) ── */}
-          <div className="flex flex-col gap-6 px-6 xl:flex-row xl:gap-[49px]">
+          <div className="flex justify-center px-6">
+            <VisualExportButton
+              viewId="tasks.causes.fold_importance"
+              label="Скачать PNG: fold-важность"
+              getScreenSvg={() => serializeChartSvgSafe(() => exportSectionRef.current)}
+            />
+          </div>
+          <div ref={exportSectionRef} className="flex flex-col gap-6 px-6 xl:flex-row xl:gap-[49px]">
             {/* Колонка 1: методы */}
             <aside className="w-full shrink-0 xl:w-60" data-testid="causes-methods">
               <div className="mb-4 flex items-center gap-2">
