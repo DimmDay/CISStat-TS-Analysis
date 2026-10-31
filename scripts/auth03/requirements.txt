@@ -1,0 +1,5 @@
+-r ../auth01/requirements.txt
+-r ../auth02/requirements.txt
+# Legacy research-pointer compatibility tests use the real SessionStore.
+numpy==2.3.5
+pandas==2.2.3

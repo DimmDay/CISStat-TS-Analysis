@@ -2289,6 +2289,9 @@ class TestMentorDerivedSpikesEndpoint:
                 last_active_at=_now_iso(),
             )
         )
+        # AUTH-03: ADMIN is a distinct actor; research pointer is not its login.
+        # The run still references ghost-session, preserving this oracle.
+        client.cookies.clear()
         response = client.get(
             "/v1/progress/runs/RUN-AAA00001/mentor/next-step",
             headers={"X-API-Key": "d0-admin-mentor"},

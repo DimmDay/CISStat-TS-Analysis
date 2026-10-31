@@ -1,0 +1,69 @@
+test_client_identity_account_role_mfa_headers_ignored (test_auth03_context.ContextTests.test_client_identity_account_role_mfa_headers_ignored) ... ok
+test_context_is_immutable (test_auth03_context.ContextTests.test_context_is_immutable) ... ok
+test_cookie_and_key_conflicting_server_owner_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_server_owner_rejected) ... ok
+test_cookie_and_key_conflicting_tenant_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_tenant_rejected) ... ok
+test_duplicate_key_headers_rejected (test_auth03_context.ContextTests.test_duplicate_key_headers_rejected) ... ok
+test_empty_present_key_is_not_absent (test_auth03_context.ContextTests.test_empty_present_key_is_not_absent) ... ok
+test_explicit_subject_rotation_is_stable (test_auth03_context.ContextTests.test_explicit_subject_rotation_is_stable) ... ok
+test_invalid_key_never_falls_back_to_owned_cookie (test_auth03_context.ContextTests.test_invalid_key_never_falls_back_to_owned_cookie) ... ok
+test_invalid_registry_subject_tenant_and_scopes_fail_closed (test_auth03_context.ContextTests.test_invalid_registry_subject_tenant_and_scopes_fail_closed) ... ok
+test_key_principal_and_subject_are_same_safe_projection (test_auth03_context.ContextTests.test_key_principal_and_subject_are_same_safe_projection) ... ok
+test_matching_research_pointer_cannot_add_scopes_or_role (test_auth03_context.ContextTests.test_matching_research_pointer_cannot_add_scopes_or_role) ... ok
+test_missing_key_is_401_on_actual_dependency (test_auth03_context.ContextTests.test_missing_key_is_401_on_actual_dependency) ... ok
+test_real_subject_projection_keeps_uniform_object_denial (test_auth03_context.ContextTests.test_real_subject_projection_keeps_uniform_object_denial) ... Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+ok
+test_require_api_key_returns_safe_string_and_revocation_rechecked (test_auth03_context.ContextTests.test_require_api_key_returns_safe_string_and_revocation_rechecked) ... ok
+test_restored_cookie_continuity_without_role (test_auth03_context.ContextTests.test_restored_cookie_continuity_without_role) ... ok
+test_scope_and_request_cache_do_not_cross_requests (test_auth03_context.ContextTests.test_scope_and_request_cache_do_not_cross_requests) ... ok
+test_scoped_mode_never_uses_research_surrogate (test_auth03_context.ContextTests.test_scoped_mode_never_uses_research_surrogate) ... ok
+test_surrogate_is_not_key_protected_principal (test_auth03_context.ContextTests.test_surrogate_is_not_key_protected_principal) ... ok
+test_unconfigured_registry_is_503_without_config_disclosure (test_auth03_context.ContextTests.test_unconfigured_registry_is_503_without_config_disclosure) ... ok
+test_unknown_auth_cookie_does_not_fall_back_to_research (test_auth03_context.ContextTests.test_unknown_auth_cookie_does_not_fall_back_to_research) ... ok
+test_unknown_pointer_does_not_replace_verified_key (test_auth03_context.ContextTests.test_unknown_pointer_does_not_replace_verified_key) ... ok
+test_authority_data_is_current_and_owner_not_admin (test_auth03_context.DurableContextTests.test_authority_data_is_current_and_owner_not_admin) ... ok
+test_db_and_schema_outages_have_safe_503 (test_auth03_context.DurableContextTests.test_db_and_schema_outages_have_safe_503) ... ok
+test_falsey_server_verifier_never_falls_back_to_env (test_auth03_context.DurableContextTests.test_falsey_server_verifier_never_falls_back_to_env) ... FAIL
+test_matching_credentials_keep_key_scopes_ceiling (test_auth03_context.DurableContextTests.test_matching_credentials_keep_key_scopes_ceiling) ... ok
+test_missing_binding_never_auto_selects_account (test_auth03_context.DurableContextTests.test_missing_binding_never_auto_selects_account) ... ok
+test_missing_suspended_closed_account_denied (test_auth03_context.DurableContextTests.test_missing_suspended_closed_account_denied) ... ok
+test_revoked_missing_membership_denied (test_auth03_context.DurableContextTests.test_revoked_missing_membership_denied) ... ok
+test_suspended_missing_identity_denied (test_auth03_context.DurableContextTests.test_suspended_missing_identity_denied) ... ok
+test_untrusted_verifier_failure_is_503_without_secret (test_auth03_context.DurableContextTests.test_untrusted_verifier_failure_is_503_without_secret) ... ok
+test_uuid_env_binding_reads_db_role_tenant_not_env (test_auth03_context.DurableContextTests.test_uuid_env_binding_reads_db_role_tenant_not_env) ... ok
+test_verified_browser_and_key_must_match_subject_and_account (test_auth03_context.DurableContextTests.test_verified_browser_and_key_must_match_subject_and_account) ... ok
+test_verifier_http_error_cannot_disclose_secrets (test_auth03_context.DurableContextTests.test_verifier_http_error_cannot_disclose_secrets) ... ERROR
+test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context) ... ok
+test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi) ... ok
+test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack) ... ok
+test_error_request_id_matches_telemetry_response_header (test_auth03_http.HTTPTests.test_error_request_id_matches_telemetry_response_header) ... ok
+test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie) ... ok
+test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound) ... ok
+test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source) ... ok
+test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage) ... ok
+
+======================================================================
+ERROR: test_verifier_http_error_cannot_disclose_secrets (test_auth03_context.DurableContextTests.test_verifier_http_error_cannot_disclose_secrets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/tests/unit/test_auth03_context.py", line 454, in test_verifier_http_error_cannot_disclose_secrets
+    self.assert_error(lambda:resolve_request_context(request([('x-api-key',KEY)],app=app)),503,'auth_authority_unavailable')
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/tests/unit/test_auth03_context.py", line 126, in assert_error
+    self.assertEqual(caught.exception.detail["code"], code)
+                     ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+TypeError: string indices must be integers, not 'str'
+
+======================================================================
+FAIL: test_falsey_server_verifier_never_falls_back_to_env (test_auth03_context.DurableContextTests.test_falsey_server_verifier_never_falls_back_to_env)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/tests/unit/test_auth03_context.py", line 446, in test_falsey_server_verifier_never_falls_back_to_env
+    self.assert_error(lambda:resolve_request_context(request([('x-api-key',KEY)],app=app)),503,'auth_authority_unavailable')
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/tests/unit/test_auth03_context.py", line 123, in assert_error
+    with self.assertRaises(HTTPException) as caught:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: HTTPException not raised
+
+----------------------------------------------------------------------
+Ran 41 tests in 0.404s
+
+FAILED (failures=1, errors=1)

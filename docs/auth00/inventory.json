@@ -1,6 +1,6 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "649027ee3e97c46bb64cb0e7319790c022a0c3bc",
+  "baseline": "be553b8ff6e6471eb53427822ccd937a3a71433a",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
     "api": 220,
@@ -41,7 +41,7 @@
       ]
     },
     "api.key": {
-      "observed": "Router Depends(require_api_key); ENV key registry, без общего can_use_api/CU gate.",
+      "observed": "AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet.",
       "target": "Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets.",
       "follow_up": [
         "AUTH-01",
@@ -57,7 +57,7 @@
       ]
     },
     "api.model_key": {
-      "observed": "get_current_principal + legacy can_train_models; candidates/backtest/diagnostics также под этим флагом.",
+      "observed": "AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11.",
       "target": "Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation.",
       "follow_up": [
         "AUTH-01",
@@ -120,7 +120,7 @@
       ]
     },
     "run.object": {
-      "observed": "resolve_request_subject + authorize_run_access; owner/tenant/unresolved continuity, ADMIN bypass.",
+      "observed": "AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09.",
       "target": "Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration.",
       "follow_up": [
         "AUTH-03",
@@ -135,7 +135,7 @@
       ]
     },
     "admin.key": {
-      "observed": "Depends(require_admin_role), ENV API-key ADMIN; MFA browser session отсутствует.",
+      "observed": "AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet.",
       "target": "Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive.",
       "follow_up": [
         "AUTH-03",
@@ -149,7 +149,7 @@
       ]
     },
     "document.object": {
-      "observed": "Document services apply subject/tenant/run/scopes/lifecycle decisions; surrogate subject still possible.",
+      "observed": "Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09.",
       "target": "Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission.",
       "follow_up": [
         "AUTH-03",
@@ -165,7 +165,7 @@
       ]
     },
     "profile.policy": {
-      "observed": "Subject resolver + OrgProfileService policy.admin and mandatory audit for create/retire.",
+      "observed": "AUTH-03 shared context subject + existing OrgProfileService policy.admin/mandatory audit. Named MFA policy remains AUTH-05/07.",
       "target": "Unified context + explicit policy admin permission/MFA; preserve tenant and mandatory transaction semantics.",
       "follow_up": [
         "AUTH-03",
@@ -179,7 +179,7 @@
       ]
     },
     "logs.scoped": {
-      "observed": "Manual _principal_or_401 adapter + scopes/SupportGrant effective access; export/grants mandatory audit.",
+      "observed": "Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained.",
       "target": "Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports.",
       "follow_up": [
         "AUTH-03",
@@ -313,7 +313,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02 PostgreSQL-only repositories + shared transaction; unique/FK/deferred membership guards; explicit schema migration. No HTTP/AuthN integration.",
+      "observed": "AUTH-02 PostgreSQL-only shared UoW; AUTH-03 reloads identity/account/active membership for verified UUID binding in one readonly transaction. No automatic schema migration or HTTP storage access.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -344,9 +344,11 @@
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
-    "apps/api/auth.py": "539d7d0e7d26f8f2732a0ed82869de2365fba89f9ae50afb015c6a960a165a10",
+    "apps/api/auth.py": "8bc89291713eaf1e715a19b91886ab85c7eeb34a3ef8ba100a8730c75482571a",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
+    "apps/api/authentication/context.py": "aadec2367a6a1ff940b472b7bbd2a274114e82e60fcbc051ee867753d28e0f93",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
+    "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
     "apps/api/authentication/migrations.py": "80886b95e42417e5a259ea9989d709cc66e9159010562af24d45385c5e5c86ae",
     "apps/api/authentication/models.py": "418c577bcc6a790b2c662453b64a656a5c9dd3a18f3af0e8adc87b3371f61b0f",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
@@ -380,7 +382,7 @@
     "apps/api/forecasting.py": "265485a8a6697dd42a0393392a55b3d9a50f05eba032bbad597b01456f49e43b",
     "apps/api/forecasting_contract.py": "7b26e55fe16d83f3c2ed6e829437195433c2eb2e141e820ab8e619ce5559284a",
     "apps/api/format_correction.py": "441792d0e61f2b6b0320102c9cd791004a45eef1e3ec7640f0f1dd88c3c074c3",
-    "apps/api/identity.py": "b6a17dd5f146f1a4800b94f9a84e0456956416ee48578f2102f5a67d680a8126",
+    "apps/api/identity.py": "a1518765c84fff3d19ad94935b1673988ffd91b25af2b380e720f3e6b5feb688",
     "apps/api/inclusion_correction.py": "7e1cd2d35748a8472b066bbb81a3687521af87d4c50aff4347985af20fe26018",
     "apps/api/knowledge/__init__.py": "9caf4568ad76d245cd199a746d5d0c0c213260557719915b4b39e916ff8b028c",
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
@@ -429,7 +431,7 @@
     "apps/api/passport_checkpoints.py": "88a96b7f1976e1c1cbe1ac4dd63e56470bee9214365063c566fd613e6d79fd8a",
     "apps/api/passport_comparison.py": "eeaad8c295300370b6808d811dfff1937f6cda4cd8aadf75e1618ea257a8c425",
     "apps/api/passport_history.py": "3bc321f6de12fe9c98186c29851dd8462b882bc055e1551f4f90546bcdf4699d",
-    "apps/api/plans.py": "ca22cde5250cce12f846383b9cd7856ede8fdc3bf3d5a0dea571d6d550891f14",
+    "apps/api/plans.py": "31f67617d128ca0a5abfb4ab6793021d46ea4d17fd71e55639a9942517372b3c",
     "apps/api/png_renderer_client.py": "347e757a6b8e02329de2e23187f7af28d5c274cfc5a0db62b25c1a4efeccc9c4",
     "apps/api/preprocessing_decomposition.py": "1dfc0f30dc8c5949aa3dce7e64a14147b661fe3284ff9d68497479e6b3e43a37",
     "apps/api/preprocessing_feature_engineering.py": "f65918aa845b1e87b676cd5a9458dc9dc710a600aa4cb16dbf034c7efaee078b",
@@ -455,11 +457,11 @@
     "apps/api/routers/documentation.py": "94196421ac179a38dfcfd2028f52934a8c6a22f9073aba87f0017020fdb7ad75",
     "apps/api/routers/forecasting_session.py": "4de8d79b7457fcc5d9fd48218eba6d23ecb1d63a21220b4a79b1c17bea5483bb",
     "apps/api/routers/internal.py": "67aa1feb36294ea0b3460259e385205bea49d08a861400383986afbaf63659c4",
-    "apps/api/routers/logs.py": "388d1e428c3372f865f4480b59b4ee38db95e67c5ff8a8f72e29640f240dd223",
+    "apps/api/routers/logs.py": "682bd4fff702987422458e1c523b0696d2c272be270415e15a499635170c5d1e",
     "apps/api/routers/modeling_session.py": "c3f89dcf3a03887b80f2da1ae810eeb600151c3a8e8b6bd74e39407737b5f0dc",
     "apps/api/routers/models.py": "8a17f480883d7ec812015f944cecc659a037684362db1a02de95acbf0b3d55c8",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
-    "apps/api/routers/progress.py": "46ea22837df9daa8ee3b480f7d319fab20911c88fcdef41f0f56a352d89a7b71",
+    "apps/api/routers/progress.py": "6a66fd47db9c88a3b7d0980ca94ed8fe9d2ca885976b04f2bdf7d95050f9e33c",
     "apps/api/routers/public.py": "9655a1ec20d03ffff8377130bda9e3b3dae896e51c080ad9e5f957e2d4b016a5",
     "apps/api/routers/session.py": "194a070e23f269574952db8c69a3fb3e8a4edd896084577d1100cbd922271614",
     "apps/api/routers/tasks_session.py": "6478e9df66721b7fc66ed5ea7a2edc8e1694edfe6305f1ad0baf0e54c6bf2a46",
@@ -516,11 +518,12 @@
     "apps/standalone/next.config.mjs": "b8c5a8ec17ae6427f224b402a5eca1a0673e52c05d81ae11bce19e703b7fa569",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
-    "docs/auth00/operation_variants.md": "93c4aeb8ebeebbac38e3b3c4fc26c378af7e7ae16998986998f7cd9d26d80283",
+    "docs/auth00/operation_variants.md": "298916b474bacf61efa878dbde6e90ac4260ed7442220b4c48d3dbe7898b5a71",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
     "docs/auth01/openapi.json": "7b2de0f845f6e9a2d78cfbba2b1aee1bcca3a55ed6fe2b4d7a74cf63b18d7e00",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
+    "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "packages/ui/lib/access-contract.generated.ts": "8fbc3ab97a5e872ea31a74ca60f5964e9897c3fd86347ff6b60740eeca4fa101",
     "packages/ui/lib/admin.ts": "13d1cdaa557b6c88e67dab6aeb96671ccbcb194a7e9a101cd00c08cb7efefd51",
     "packages/ui/lib/apiClient.ts": "022b665d96d3a28e6c2ad60127925cdabcb580c7825b310ad30703ffe3e9795c",
@@ -1337,7 +1340,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 154,
+          "line": 147,
           "symbol": "get_log_access"
         },
         {
@@ -1372,7 +1375,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 242,
+          "line": 233,
           "symbol": "get_audit_logs"
         },
         {
@@ -1406,7 +1409,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 284,
+          "line": 275,
           "symbol": "get_delivery_logs"
         },
         {
@@ -1440,7 +1443,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 428,
+          "line": 419,
           "symbol": "list_grants"
         },
         {
@@ -1474,7 +1477,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 200,
+          "line": 191,
           "symbol": "get_telemetry_logs"
         },
         {
@@ -1508,7 +1511,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2545,
+          "line": 2547,
           "symbol": "get_case_bank_candidates"
         },
         {
@@ -1541,7 +1544,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2497,
+          "line": 2499,
           "symbol": "get_admin_overview"
         },
         {
@@ -1574,7 +1577,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1281,
+          "line": 1283,
           "symbol": "get_run_detail"
         },
         {
@@ -1607,7 +1610,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1780,
+          "line": 1782,
           "symbol": "list_run_delivery"
         },
         {
@@ -1640,7 +1643,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1817,
+          "line": 1819,
           "symbol": "get_operation_delivery"
         },
         {
@@ -1673,7 +1676,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2160,
+          "line": 2162,
           "symbol": "get_mentor_next_step"
         },
         {
@@ -1707,7 +1710,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2261,
+          "line": 2263,
           "symbol": "get_run_report"
         },
         {
@@ -1741,7 +1744,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1506,
+          "line": 1508,
           "symbol": "restore_run"
         },
         {
@@ -5549,7 +5552,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 328,
+          "line": 319,
           "symbol": "export_logs_bundle"
         },
         {
@@ -5584,7 +5587,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 444,
+          "line": 435,
           "symbol": "create_grant"
         },
         {
@@ -5619,7 +5622,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 489,
+          "line": 480,
           "symbol": "revoke_grant"
         },
         {
@@ -5871,7 +5874,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2341,
+          "line": 2343,
           "symbol": "run_mentor_sanity_check"
         },
         {
@@ -5935,7 +5938,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1370,
+          "line": 1372,
           "symbol": "create_checkpoint"
         },
         {
@@ -5973,7 +5976,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1309,
+          "line": 1311,
           "symbol": "pause_run"
         },
         {
@@ -6007,7 +6010,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1343,
+          "line": 1345,
           "symbol": "resume_run"
         },
         {

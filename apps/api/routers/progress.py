@@ -1146,13 +1146,15 @@ def _authorized_run(
 ) -> ResearchRun:
     """DOCLOG-0 (§19, строка DOCLOG-0; §15.1): ЕДИНАЯ точка доступа к
     run-маршрутам -- объектная авторизация (R09): субъект запроса (API-
-    ключ приоритетен, иначе суррогат cookie-сессии) против привязки
+    ключ / legacy-суррогат через единый AUTH-03 context) против привязки
     запуска. Отказ -- uniform 404 (тот же код/тело, что отсутствие);
     причина -- AccessDecision в журнале. Знание run_id НЕ является
     правом; WRITE-действия (pause/resume/checkpoints/restore) проходят
     ту же таблицу."""
-    run = _require_run(run_id)
+    # AUTH-03: reject invalid/ambiguous credentials before object lookup.
+    # Otherwise invalid-key 401 vs missing-run 404 discloses existence.
     subject = resolve_request_subject(request)
+    run = _require_run(run_id)
     session_id = request.cookies.get(SESSION_COOKIE_NAME) or ""
     decision = authorize_run_access(run, subject, session_id=session_id, action=action)
     if not decision.allowed:

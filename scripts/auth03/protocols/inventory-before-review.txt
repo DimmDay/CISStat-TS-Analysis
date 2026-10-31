@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 427, in <module>
+    main()
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 422, in main
+    check(ROOT, report)
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 403, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json

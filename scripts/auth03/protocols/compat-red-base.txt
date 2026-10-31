@@ -1,0 +1,74 @@
+test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context) ... FAIL
+test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi) ... FAIL
+test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack) ... FAIL
+test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie) ... FAIL
+test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound) ... FAIL
+test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source) ... FAIL
+test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage) ... FAIL
+
+======================================================================
+FAIL: test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 83, in test_actual_logs_manual_adapter_uses_request_context
+    self.assertEqual(r.status_code,400,r.text)
+AssertionError: 200 != 400 : {"principal":{"subject_id":"subj-0011001100110011","role":"admin"},"access":{"telemetry":true,"audit":true,"delivery":true,"export":true,"grants_management":true,"scope":"unrestricted"}}
+
+======================================================================
+FAIL: test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 47, in test_both_adapters_see_same_safe_identity_in_asgi
+    self.assertEqual(r.json()['principal_id'],r.json()['subject_id'])
+AssertionError: 'auth03-http-secret-sentinel' != 'subj-0011001100110011'
+- auth03-http-secret-sentinel
++ subj-0011001100110011
+
+
+======================================================================
+FAIL: test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 74, in test_duplicate_key_detected_by_real_header_stack
+    self.assertEqual(r.status_code,400,r.text)
+AssertionError: 200 != 400 : {"subject_id":"subj-0011001100110011","via":"api_key"}
+
+======================================================================
+FAIL: test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 54, in test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie
+    self.assertEqual(r.status_code,401,r.text)
+AssertionError: 200 != 401 : {"subject_id":"subj-29fca319aede547a","via":"session_surrogate"}
+
+======================================================================
+FAIL: test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 70, in test_legacy_cookie_surrogate_stays_stable_when_unbound
+    self.assertEqual(self.client.get('/key').status_code,401)
+AssertionError: 422 != 401
+
+======================================================================
+FAIL: test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 100, in test_model_train_response_secret_contract_from_actual_source
+    self.assertEqual(payload['principal_id'],SUBJECT)
+AssertionError: 'auth03-http-secret-sentinel' != 'subj-0011001100110011'
+- auth03-http-secret-sentinel
++ subj-0011001100110011
+
+
+======================================================================
+FAIL: test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth03-baseline/tests/unit/test_auth03_http.py", line 64, in test_research_cookie_legacy_continuity_and_lookup_outage
+    self.assertEqual(r.status_code,503)
+AssertionError: 200 != 503
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.585s
+
+FAILED (failures=7)

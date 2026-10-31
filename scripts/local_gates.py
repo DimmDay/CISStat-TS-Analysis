@@ -6,6 +6,8 @@
 затронутым областям), а CI на каждый push гоняет ВСЕ workflows. Этот
 скрипт запускает те же команды тем же порядком, что и CI, до пуша:
 
+  auth03  (auth03.yml,   push/PR)   unified context/ASGI compatibility contracts
+  auth03-postgres (auth03.yml)     live PG context/currentness; test DSN required
   auth02  (auth02.yml,   push/PR)   storage unit contracts (no DB required)
   auth02-postgres (auth02.yml)     live PG; --with-auth02-postgres + test DSN
   auth01  (auth01.yml,   push/PR)   dependencies + registry tests + generated parity
@@ -14,7 +16,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -41,6 +43,15 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth03", "auth03.yml contracts", "AUTH-03 unified context / ASGI adapters (no DB)", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth03/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
+         "-p", "test_auth03*.py", "-v"],
+    ]),
+    ("auth03-postgres", "auth03.yml postgres", "AUTH-03 LIVE PostgreSQL context/currentness", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth03/requirements.txt"],
+        [sys.executable, "scripts/auth03/verify_postgres.py"],
+    ]),
     ("auth02", "auth02.yml contracts", "AUTH-02 storage unit contracts (no DB)", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth02/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
@@ -109,13 +120,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth02,auth02-postgres,auth01,auth00,rules,pytest,jest)")
+                        help="запустить только выбранные гейты (auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,pytest,jest)")
     parser.add_argument("--skip-install", action="store_true",
                         help="пропустить npm ci / pip install (повторные локальные прогоны)")
     parser.add_argument("--with-pytest", action="store_true",
                         help="добавить полный pytest-гейт (нужен для push в develop/refactor/*)")
     parser.add_argument("--with-auth02-postgres", action="store_true",
                         help="добавить live PG проверки; нужен disposable CISSTAT_AUTH_TEST_DSN (в CI обязательны)")
+    parser.add_argument("--with-auth03-postgres", action="store_true",
+                        help="добавить live PG context/currentness; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--fail-fast", action="store_true",
                         help="остановиться на первом упавшем гейте")
     parser.add_argument("--jest-workers", metavar="N", type=int, default=None,
@@ -130,6 +143,8 @@ def main() -> int:
         excluded.add("pytest")
     if not args.with_auth02_postgres:
         excluded.add("auth02-postgres")
+    if not args.with_auth03_postgres:
+        excluded.add("auth03-postgres")
     order = [g for g in GATES if g[0] not in excluded]
     full = list(GATES)
     if args.only:
@@ -147,10 +162,10 @@ def main() -> int:
             mark = "*" if name not in excluded else " "
             print(f" {mark} {name:7s} <- {origin:32s} {description}")
         print("\n* = входит в прогон по умолчанию (push в main); "
-              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres")
+              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth02,auth02-postgres,auth01,auth00,rules,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
@@ -172,11 +187,13 @@ def main() -> int:
         print(f"  {'PASS' if ok else 'FAIL'}  {name:7s} {seconds:7.1f} c")
     failed = any(not ok for _, ok, _ in results)
     names_run = {name for name, _, _ in results}
-    if not failed and "auth02" in names_run and "auth02-postgres" not in names_run:
-        print("\nИТОГ: выбранные гейты зелёные; AUTH-02 live PostgreSQL не проверен "
-              "(нужен --with-auth02-postgres и отдельная проверка restart/CI)")
+    missing_live = [name for name in ("auth02", "auth03")
+                    if name in names_run and name + "-postgres" not in names_run]
+    if not failed and missing_live:
+        print("\nИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: "
+              + ", ".join(missing_live) + " (нужны соответствующие --with-authXX-postgres; native CI отдельно)")
     else:
-        print("\nИТОГ: " + ("ПУШ РАЗРЕШЁН — все гейты зелёные" if not failed
+        print("\nИТОГ: " + ("выбранные гейты зелёные" if not failed
                             else "НЕ ПУШТЕ — есть красные гейты"))
     return 1 if failed else 0
 

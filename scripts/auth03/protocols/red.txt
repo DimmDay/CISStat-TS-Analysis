@@ -1,0 +1,21 @@
+test_auth03_context (unittest.loader._FailedTest.test_auth03_context) ... ERROR
+
+======================================================================
+ERROR: test_auth03_context (unittest.loader._FailedTest.test_auth03_context)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth03_context
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/56f113437abe/CISStat-TS-Analysis/tests/unit/test_auth03_context.py", line 19, in <module>
+    from apps.api.authentication.context import (
+ModuleNotFoundError: No module named 'apps.api.authentication.context'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

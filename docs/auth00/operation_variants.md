@@ -58,3 +58,15 @@ auth.schema.apply. Они используют policy auth.storage: PostgreSQL-o
 repositories/явный DDL; не означают самостоятельную авторизацию вызывающего.
 Общий состав карты 537; источники и SQL fingerprints обновлены после review.
 AUTH-03/08 подключат новый authority context; старые resolver/guards пока сохранены.
+
+## AUTH-03 — unified context review (31.10.2026)
+
+База `be553b8ff6e6471eb53427822ccd937a3a71433a`. API method/path IDs
+(220), task aliases (4) и полное множество entry IDs (537) неизменны.
+`auth.py`, `identity.py`, manual logs adapter используют единый RequestContext;
+missing key 401, invalid key не переходит в cookie, ambiguous credentials 400,
+authority outage 503. `principal_id` — безопасный subject ID. UUID bindings
+перечитывают AUTH-02; legacy surrogate явно отделён от AuthSession и не работает
+как личный вход в scoped mode. Ни новый login, ни stage/CU enforcement не заявлены.
+См. [AUTH-03 design](../auth03/design.md). Policy review и fingerprints обновлены;
+это review существующих входов, не добавление/удаление HTTP routes.

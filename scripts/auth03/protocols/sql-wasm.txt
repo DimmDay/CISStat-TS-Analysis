@@ -1,0 +1,13 @@
+PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_account_suspend_and_closed_denied (test_auth03_postgres.ContextPostgresTests.test_account_suspend_and_closed_denied) ... ok
+test_context_and_subject_keep_stable_ids_and_mfa_evidence (test_auth03_postgres.ContextPostgresTests.test_context_and_subject_keep_stable_ids_and_mfa_evidence) ... ok
+test_foreign_and_absent_account_have_same_error (test_auth03_postgres.ContextPostgresTests.test_foreign_and_absent_account_have_same_error) ... ok
+test_identity_suspend_denied_on_next_resolution (test_auth03_postgres.ContextPostgresTests.test_identity_suspend_denied_on_next_resolution) ... ok
+test_membership_revoke_denied_on_next_resolution (test_auth03_postgres.ContextPostgresTests.test_membership_revoke_denied_on_next_resolution) ... ok
+test_reads_persisted_identity_account_member_and_updated_version (test_auth03_postgres.ContextPostgresTests.test_reads_persisted_identity_account_member_and_updated_version) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.496s
+
+OK
+AUTH-03 SQL rehearsal PASS; native PostgreSQL scheduling/CI NOT tested

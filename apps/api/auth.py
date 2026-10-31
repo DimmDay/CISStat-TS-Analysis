@@ -7,7 +7,8 @@
 с ролью и (для внешних) тарифным планом -- это то, что реально позволяет
 проверять "can_train_models" и т.п., а не просто пускать/не пускать.
 
-ЗАГЛУШКА: сопоставление ключ -> principal сейчас статичное (переменная
+AUTH-03: единый immutable RequestContext проецируется в безопасный principal.
+Legacy сопоставление ключ -> principal пока статичное (переменная
 окружения в формате "ключ:роль:план,ключ:роль:план"). Для продакшена --
 таблица клиентов в БД (нужна ради биллинга/лимитов использования,
 см. открытый вопрос "Биллинг/лимиты для публичного API" в
@@ -15,114 +16,62 @@ docs/MIGRATION_ARCHITECTURE.md), но контракт зависимостей
 (Depends(get_current_principal), Depends(require_capability(...)))
 не изменится при переходе на неё.
 """
-import os
+
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
-from apps.api.plans import AuthenticatedPrincipal, Capabilities, PlanName, Role
+from apps.api.plans import AuthenticatedPrincipal, Capabilities, Role
 
 
 def _parse_key_registry() -> dict[str, AuthenticatedPrincipal]:
-    """
-    Формат переменной окружения CISSTAT_API_KEYS (DOCLOG-0: аддитивное
-    расширение, прежний формат продолжает работать):
+    """Compatibility facade; the ENV adapter never exposes key material."""
+    from apps.api.authentication.legacy import parse_key_registry
 
-      "key1:external_user:starter,key2:internal_analyst:"          -- legacy 3 поля
-      "key3:external_user:starter:subj-<hex16>:tenant-alpha:"       -- + явный субъект/tenant
-      "key4:admin::subj-<hex16>:tenant-default:policy.admin+audit.read" -- + scopes
-
-    Обязательные права каталогизирует apps/api/identity.py::Scope; в
-    реестре перечисляются через «+» в 6-м сегменте (факультативно;
-    запятая занята разделителем ЗАПИСЕЙ реестра; базовая выдача по
-    роли -- identity.default_scopes_for_role).
-    Fail-closed (§15): субъект, равный значению ключа, НЕ принимается
-    (ключ не становится идентичностью) -- запись пропускается; без
-    явного subject_id -- псевдоним ключа (subject_pseudonym), НИКОГДА
-    не само значение.
-    """
-    from apps.api.identity import DEFAULT_TENANT_ID, subject_pseudonym
-
-    raw = os.environ.get("CISSTAT_API_KEYS", "")
-    registry: dict[str, AuthenticatedPrincipal] = {}
-    for entry in filter(None, raw.split(",")):
-        parts = entry.split(":")
-        if len(parts) < 3:
-            continue
-        key, role_str, plan_str = parts[0], parts[1], parts[2]
-        subject_id: Optional[str] = parts[3] if len(parts) >= 4 and parts[3] else None
-        tenant_id: Optional[str] = parts[4] if len(parts) >= 5 and parts[4] else None
-        scopes_raw = parts[5] if len(parts) >= 6 and parts[5] else ""
-        # Fail-closed (§15/T4): субъект == значение ключа -- запрещено.
-        if subject_id is not None and subject_id == key:
-            continue
-        try:
-            role = Role(role_str)
-            plan = PlanName(plan_str) if plan_str else None
-        except ValueError:
-            # Некорректная запись в конфиге -- пропускаем, а не роняем весь сервис.
-            continue
-        scopes = tuple(
-            s.strip() for s in scopes_raw.split("+") if s.strip()
-        )
-        registry[key] = AuthenticatedPrincipal(
-            principal_id=key,
-            role=role,
-            plan=plan,
-            # Идентичность -- НЕ значение ключа: явный subject_id реестра
-            # либо стабильный псевдоним (subject_pseudonym).
-            subject_id=subject_id if subject_id is not None else subject_pseudonym(key),
-            tenant_id=tenant_id if tenant_id is not None else DEFAULT_TENANT_ID,
-            scopes=scopes,
-        )
-    return registry
+    return parse_key_registry()
 
 
 def resolve_principal_for_key(key: str) -> Optional[AuthenticatedPrincipal]:
-    """Публичный резолв ключа для identity-контура (DOCLOG-0): None для
-    неизвестного ключа / незарегистрированного реестра -- НЕ исключение:
-    объектная авторизация (R09) сама решает судьбу анонима."""
-    if not key:
+    """Legacy lookup, authoritative for durable bindings, None for unknown key."""
+    if not key or key not in _parse_key_registry():
         return None
-    return _parse_key_registry().get(key)
+    return get_current_principal(x_api_key=key)
 
 
-def _audit_authn_denied(presented_key: str) -> None:
-    """DOCLOG-3 (§14.1): аутентификационный отказ -- durable audit.
-    Значение предъявленного ключа НЕ дисклоужается: субъект -- HMAC
-    псевдоним материала (связь повторов сохранена, материал не
-    восстановим). best-effort: отказ уже решён (401), сбой записи не
-    меняет его (AC11-инвариант)."""
-    try:
-        from apps.api.identity import subject_pseudonym
-        from apps.api.security_audit import record_standard
+def get_current_principal(
+    request: Request = None,
+    x_api_key: Optional[str] = Header(default=None),
+) -> AuthenticatedPrincipal:
+    """Key-protected legacy dependency, projected from the shared context.
 
-        record_standard(
-            "authn_denied",
-            "denied",
-            actor_subject=subject_pseudonym(presented_key),
-            actor_via="api_key",
-            resource_kind="principal",
-            policy_basis="API-key registry",
-            details={"reason_code": "invalid_key"},
+    Direct Python callers may still supply x_api_key. HTTP requests always
+    use their real headers, so a manual caller cannot replace an HTTP key.
+    Research surrogates never satisfy this dependency. AUTH-07 owns migration
+    of key-only admin endpoints to named sessions with fresh MFA.
+    """
+    from apps.api.authentication.context import resolve_request_context, auth_error
+
+    if request is None:
+        from starlette.requests import Request as HTTPRequest
+
+        headers = (
+            [(b"x-api-key", x_api_key.encode("utf-8"))]
+            if isinstance(x_api_key, str)
+            else []
         )
-    except Exception:  # pragma: no cover -- audit не роняет auth
-        pass
-
-
-def get_current_principal(x_api_key: str = Header(...)) -> AuthenticatedPrincipal:
-    """Резолвит API-ключ в аутентифицированного принципала (роль + план)."""
-    registry = _parse_key_registry()
-    if not registry:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="CISSTAT_API_KEYS не настроены на сервере",
+        request = HTTPRequest(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "query_string": b"",
+                "headers": headers,
+            }
         )
-    principal = registry.get(x_api_key)
-    if principal is None:
-        _audit_authn_denied(x_api_key)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный API-ключ")
-    return principal
+    context = resolve_request_context(request)
+    if context.auth_method not in ("api_key", "legacy_api_key"):
+        auth_error(401, "authentication_required", context.request_id)
+    return context.as_principal()
 
 
 def require_capability(capability_name: str):
@@ -135,7 +84,10 @@ def require_capability(capability_name: str):
     Если новый тариф получит can_train_models=True -- эндпоинт станет
     доступен ему автоматически, без правки роутера.
     """
-    def _checker(principal: AuthenticatedPrincipal = Depends(get_current_principal)) -> AuthenticatedPrincipal:
+
+    def _checker(
+        principal: AuthenticatedPrincipal = Depends(get_current_principal),
+    ) -> AuthenticatedPrincipal:
         caps: Capabilities = principal.capabilities
         if not getattr(caps, capability_name, False):
             raise HTTPException(
@@ -143,13 +95,16 @@ def require_capability(capability_name: str):
                 detail=f"Текущий план не включает возможность '{capability_name}'",
             )
         return principal
+
     return _checker
 
 
 # Обратная совместимость с уже написанными роутерами (public.py, internal.py),
 # которые используют Depends(require_api_key) без учёта плана -- просто
 # проверка подлинности ключа, без проверки конкретной возможности.
-def require_api_key(principal: AuthenticatedPrincipal = Depends(get_current_principal)) -> str:
+def require_api_key(
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+) -> str:
     return principal.principal_id
 
 

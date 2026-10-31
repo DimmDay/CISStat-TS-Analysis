@@ -611,8 +611,9 @@ class TestRightsSeparation:
         _document, revision = _seed_revision()
         _cookie(client)
         resp = client.post(_approval_route(revision.revision_id), json={"action": "request"})
-        assert resp.status_code == 403
-        assert resp.json()["detail"]["code"] == "insufficient_scope"
+        # AUTH-03: scoped mode no longer fabricates a personal identity from
+        # the research pointer. Object denial stays uniform-404 before scopes.
+        assert resp.status_code == 404
 
     def test_admin_key_has_full_catalog(self, client, monkeypatch):
         monkeypatch.setenv(
@@ -623,6 +624,12 @@ class TestRightsSeparation:
         _cookie(client)  # владелец запрашивает согласование
         client.post(_approval_route(revision.revision_id), json={"action": "request"})
         _api_key(client, ADMIN_KEY)
+        # AUTH-03: switching actor cannot inherit the owner's research pointer.
+        ambiguous = client.post(_approval_route(revision.revision_id),
+            json={"decision": "approve", "reason": "credential conflict"})
+        assert ambiguous.status_code == 400
+        assert ambiguous.json()["detail"]["code"] == "auth_ambiguous"
+        client.cookies.clear()
         resp = client.post(
             _approval_route(revision.revision_id),
             json={"decision": "approve", "reason": "админ-согласование"},
@@ -657,6 +664,12 @@ class TestTwoPersonPolicy:
         _cookie(client)  # владелец создаёт/запрашивает
         client.post(_approval_route(revision.revision_id), json={"action": "request"})
         _api_key(client, ADMIN_KEY)
+        # AUTH-03: switching actor cannot inherit the owner's research pointer.
+        ambiguous = client.post(_approval_route(revision.revision_id),
+            json={"decision": "approve", "reason": "credential conflict"})
+        assert ambiguous.status_code == 400
+        assert ambiguous.json()["detail"]["code"] == "auth_ambiguous"
+        client.cookies.clear()
         resp = client.post(
             _approval_route(revision.revision_id),
             json={"decision": "approve", "reason": "второе лицо"},

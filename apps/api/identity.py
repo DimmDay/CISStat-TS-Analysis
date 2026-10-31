@@ -60,10 +60,10 @@ LEGACY OWNERSHIP POLICY (§15.1):
     cross-session доступ разрешён и помечен reason'ом
     dev_single_user_isolated (§15.1: «не выдаётся за multi-tenant
     production»); /health/ops показывает режим честно;
-  - "scoped": производственный контракт (субъекты из API-ключей/
-    portal assertion). Структура готова; полный адаптер portal
-    assertion -- будущая задача; поведение в этой задаче =
-    session_scoped (честно помечено).
+  - "scoped" (AUTH-03): только проверенный durable context с UUID
+    Identity/Account/Membership AUTH-02. Research cookie не заменяет
+    личный вход; unbound legacy ENV key отклоняется. AuthSession/OIDC
+    verifier реализуют AUTH-04/19; без credential субъект анонимен.
 
 НЕ входит в DOCLOG-0 (спека §19): durable-артефакты (DOCLOG-1),
 ReportSnapshot (DOCLOG-2), телеметрия/audit-поток (DOCLOG-3), UI
@@ -171,8 +171,15 @@ def is_valid_subject_id(value: str) -> bool:
 
 
 def is_valid_tenant_id(value: str) -> bool:
-    """Tenant -- слаг tenant-<a-z0-9->; query-параметром не задаётся."""
-    return bool(isinstance(value, str) and TENANT_ID_PATTERN.match(value))
+    """Server-bound tenant: legacy slug or AUTH-02 UUID, never query authority."""
+    if isinstance(value, str) and TENANT_ID_PATTERN.fullmatch(value):
+        return True
+    # AUTH-02 server-generated Account tenants are canonical UUIDs.
+    from uuid import UUID
+    try:
+        return isinstance(value, str) and str(UUID(value)) == value
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 # ── Каталог scopes (§15, таблица обязательных прав) ──────────────────
@@ -221,9 +228,15 @@ class SubjectRef:
 
     subject_id: str = ""
     tenant_id: str = DEFAULT_TENANT_ID
-    via: str = "anonymous"  # api_key | session_surrogate | anonymous
+    via: str = "anonymous"  # api_key | auth_session | service | session_surrogate | anonymous
     role: Optional[str] = None
     scopes: frozenset[str] = field(default_factory=frozenset)
+
+    # AUTH-03 additive context evidence; account object policy remains AUTH-09.
+    account_id: Optional[str] = None
+    credential_id: Optional[str] = None
+    auth_method: Optional[str] = None
+    is_authenticated: bool = False
 
     @property
     def is_anonymous(self) -> bool:
@@ -260,58 +273,23 @@ class SubjectRef:
             via="api_key",
             role=getattr(role, "value", role),
             scopes=frozenset(getattr(principal, "scopes", ()) or ()),
+            account_id=getattr(principal, "account_id", None),
+            credential_id=getattr(principal, "credential_id", None),
+            auth_method=getattr(principal, "auth_method", None) or "legacy_api_key",
+            is_authenticated=True,
         )
 
 
 def resolve_request_subject(request: Any) -> SubjectRef:
-    """Единая точка резолва субъекта запроса (R09): валидный API-ключ
-    приоритетен; иначе -- субъект cookie-сессии; иначе -- аноним.
-    tenant/subject из НЕподписанных браузерных заголовков не
-    принимаются (§15) -- их просто не существует в контракте.
+    """AUTH-03: subject projection of the same context used by auth.py.
 
-    DOCLOG-0 (§15.1, restore-континуитет): для cookie-сессии замороженный
-    владелец СЕРВЕРНОЙ записи (AnalysisSession.owner_subject,
-    first-write-wins/restore-наследование) приоритетен суррогату сырого
-    cookie: восстановленная сессия несёт НОВЫЙ cookie и УНАСЛЕДОВАННОГО
-    владельца -- идентичность продолжает владелец, а не новый носитель.
-    Субъект всегда серверная запись, не клиентское заявление; сбой
-    lookup-а -- деградация к детерминированному суррогату без 500."""
-    api_key = request.headers.get("x-api-key") if request is not None else None
-    if api_key:
-        from apps.api.auth import resolve_principal_for_key
-
-        principal = resolve_principal_for_key(api_key)
-        if principal is not None:
-            return SubjectRef.from_principal(principal)
-    # Ленивый импорт -- разрыв цикла (session_store импортирует identity).
-    from apps.api.session_store import (
-        SESSION_COOKIE_NAME,
-        get_or_create_session_id,
-        peek_session_store,
-    )
-
-    session_id = ""
-    if request is not None:
-        session_id = request.cookies.get(SESSION_COOKIE_NAME) or ""
-    if not session_id:
-        return SubjectRef.anonymous()
-    store = peek_session_store()
-    if store is not None:
-        try:
-            session = store.get(session_id)
-        except Exception:  # pragma: no cover -- lookup не роняет резолв
-            session = None
-        if session is not None and getattr(session, "owner_subject", None):
-            return SubjectRef(
-                subject_id=str(session.owner_subject),
-                tenant_id=(
-                    str(session.tenant_id)
-                    if getattr(session, "tenant_id", None)
-                    else DEFAULT_TENANT_ID
-                ),
-                via="session_surrogate",
-            )
-    return SubjectRef.from_session(session_id)
+    Invalid presented credentials and authority failures never fall through to
+    research cookies. Restored owner continuity is retained in legacy modes.
+    """
+    from apps.api.authentication.context import RequestContext, resolve_request_context
+    if request is None:
+        return RequestContext().as_subject()
+    return resolve_request_context(request).as_subject()
 
 
 # ── Владение run и решающая таблица (одна объектная авторизация) ─────

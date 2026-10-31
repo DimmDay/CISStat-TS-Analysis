@@ -136,19 +136,12 @@ def _resolve_access(principal: Any) -> EffectiveLogAccess:
 
 
 def _principal_or_401(
-    x_api_key: Optional[str],
+    x_api_key: Optional[str], request: Request,
 ) -> Any:
     """401 на отсутствующий/неверный ключ (§15.1: вход -- действующий
     API-key adapter; Header(...) FastAPI вернул бы 422 на отсутствие --
     для админ-области честнее различимый 401)."""
-    if not x_api_key:
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=401,
-            detail="Требуется API-ключ (X-API-Key)",
-        )
-    return get_current_principal(x_api_key=x_api_key)
+    return get_current_principal(request=request, x_api_key=x_api_key)
 
 
 @router.get("/access")
@@ -156,11 +149,9 @@ def get_log_access(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     """Эффективный доступ текущего субъекта (§15 таблица прав) --
     без чтения журналов, поэтому audit_log_accessed не пишется."""
-    del request
-    principal = _principal_or_401(x_api_key)
     access = _resolve_access(principal)
     return {
         "principal": {
@@ -202,7 +193,7 @@ def get_telemetry_logs(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     try:
         access = _resolve_access(principal)
         parsed = parse_query(
@@ -244,7 +235,7 @@ def get_audit_logs(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     try:
         access = _resolve_access(principal)
         parsed = parse_query(
@@ -286,7 +277,7 @@ def get_delivery_logs(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     try:
         access = _resolve_access(principal)
         parsed = parse_query(
@@ -331,7 +322,7 @@ def export_logs_bundle(
     body: Optional[dict] = Body(default=None),
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     body = dict(body or {})
     streams_raw = body.get("streams")
     streams = tuple(streams_raw) if isinstance(streams_raw, list) else None
@@ -430,7 +421,7 @@ def list_grants(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     access = _resolve_access(principal)
     if not access.grants_management:
         return _denied(request, principal, "grants: support.grant отсутствует")
@@ -447,7 +438,7 @@ def create_grant(
     body: Optional[dict] = Body(default=None),
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     access = _resolve_access(principal)
     if not access.grants_management:
         return _denied(request, principal, "grants: support.grant отсутствует")
@@ -493,7 +484,7 @@ def revoke_grant(
     body: Optional[dict] = Body(default=None),
     x_api_key: Optional[str] = Header(default=None),
 ):
-    principal = _principal_or_401(x_api_key)
+    principal = _principal_or_401(x_api_key, request)
     access = _resolve_access(principal)
     if not access.grants_management:
         return _denied(request, principal, "grants: support.grant отсутствует")

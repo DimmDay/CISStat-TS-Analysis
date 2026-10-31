@@ -831,12 +831,15 @@ class TestReportEndpoint:
         Рекалибровка DOCLOG-0 (P2): прежний сценарий (чужой аноним читает
         отчёт) закрыт объектной авторизацией (404 -- проверяется
         test_doclog0_identity); фильтрация корпуса слоя 2 проверяется
-        чтением ADMIN-ключа поверх чужой сессии того же браузера."""
+        чтением ADMIN-ключа после явного удаления чужого research pointer
+        (AUTH-03: несовместимые акторы не объединяются)."""
         monkeypatch.setenv("CISSTAT_API_KEYS", "d0-admin-report:admin:")
         run_id = self._seed_full_run()
         # Чужая браузерная сессия грузит свой датасет -- слой 2 другого запуска
         other = client.post("/v1/session/demo")
         assert other.status_code == 200
+        # AUTH-03: explicit actor switch; foreign dataset remains in layer 2.
+        client.cookies.clear()
         resp = client.get(
             f"/v1/progress/runs/{run_id}/report",
             headers={"X-API-Key": "d0-admin-report"},

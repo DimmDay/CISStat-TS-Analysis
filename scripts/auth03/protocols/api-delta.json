@@ -1,0 +1,46 @@
+{
+  "baseline": "be553b8ff6e6471eb53427822ccd937a3a71433a",
+  "baseline_counts": {
+    "passed": 3378,
+    "failed": 27,
+    "skipped": 44
+  },
+  "final_counts": {
+    "passed": 3382,
+    "failed": 27,
+    "skipped": 44
+  },
+  "new_failed_ids": [],
+  "removed_failed_ids": [],
+  "common_failed_ids": [
+    "tests.api.test_doclog3_telemetry_audit.TestMainAppWiring::test_no_new_http_surface",
+    "tests.api.test_doclog5_formats_worker.TestCrossFormatFactsConsistency::test_ac03_same_facts_across_all_formats",
+    "tests.api.test_doclog5_formats_worker.TestHeavyAsyncPath::test_all_heavy_formats_end_to_end",
+    "tests.api.test_doclog7_logs_support.TestStaticCatalogs::test_routes_present",
+    "tests.api.test_doclog8_monitoring.TestStaticCatalogs::test_routes_registered",
+    "tests.api.test_doclog9_profiles.TestStaticCatalogs::test_routes_catalog",
+    "tests.api.test_doclog_pdf_full_upload_e2e.TestFullUploadStageToPdf::test_health_ops_reports_render_environment",
+    "tests.api.test_doclog_pdf_render_env_deploy.TestRenderDependenciesStatus::test_status_keys_and_self_consistency",
+    "tests.api.test_feature_regressors_api.TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it",
+    "tests.api.test_modeling_workflow::test_feature_plan_enters_session_cohort_and_gates_regressors",
+    "tests.api.test_modeling_workflow::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates",
+    "tests.api.test_modeling_workflow::test_soft_history_backtest_runs_and_returns_explicit_warning",
+    "tests.api.test_modeling_workflow::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff",
+    "tests.api.test_modeling_workflow::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics",
+    "tests.api.test_models_backtest_neural_capacity::test_backtest_lstm_503_with_honest_message_on_insufficient_memory",
+    "tests.api.test_models_backtest_real.TestBacktestImplementationsRegistry::test_registry_has_23_implementations",
+    "tests.api.test_models_backtest_real.TestRealModelsHandleEdgeCases::test_short_series_does_not_500",
+    "tests.api.test_models_candidates.TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics",
+    "tests.api.test_p10cert_oracles.TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile",
+    "tests.api.test_pgv05_cert_findings.TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count",
+    "tests.api.test_progress_audit_4.TestPanelIntegration::test_unknown_transform_apply_does_not_claim_done",
+    "tests.api.test_progress_audit_6c.TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly",
+    "tests.api.test_tasks_causes::test_causes_default_card_is_latest_by_created_at",
+    "tests.api.test_tasks_causes::test_causes_fold_importance_aggregates_mean_share_sorted_desc",
+    "tests.api.test_tasks_causes::test_causes_fold_importance_provenance_bound_to_backtest",
+    "tests.api.test_tasks_causes::test_causes_returns_card_and_full_method_registry",
+    "tests.api.test_tasks_causes::test_causes_unknown_card_id_returns_404"
+  ],
+  "delta_passed": 4,
+  "interpretation": "All failures reproduce on baseline in the same environment; no new API regression. Not a claim of a completely green scientific suite."
+}

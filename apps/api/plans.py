@@ -165,8 +165,8 @@ class AuthenticatedPrincipal(BaseModel):
 
     DOCLOG-0 (spec_documentation_logging.md §15): аддитивные поля
     идентичности -- субъект должен иметь СТАБИЛЬНЫЙ БЕЗОПАСНЫЙ ID, НЕ
-    значение API-key (principal_id остаётся легаси-полем маршрутов;
-    идентичность -- subject_id). None -- честное отсутствие (старые
+    значение API-key. AUTH-03: principal_id — безопасный subject_id;
+    совместимые маршруты больше не получают секрет. None -- честное отсутствие (старые
     записи реестра без явного subject/tenant -- суррогат вычисляет
     auth.resolve_principal_for_key); scopes -- выданные права policy
     layer'а (каталог apps/api/identity.py::Scope), у ролей без явной
@@ -179,6 +179,11 @@ class AuthenticatedPrincipal(BaseModel):
     subject_id: Optional[str] = None
     tenant_id: Optional[str] = None
     scopes: tuple[str, ...] = ()
+    # AUTH-03: additive safe context projection, not entitlement authority.
+    account_id: Optional[str] = None
+    credential_id: Optional[str] = None
+    auth_method: Optional[str] = None
+    entitlement_version: Optional[int] = None
 
     @property
     def capabilities(self) -> Capabilities:

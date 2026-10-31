@@ -1,0 +1,810 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/56f113437abe/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.0, timeout-2.4.0, anyio-4.15.1
+collected 3452 items / 1 skipped
+
+tests/api/test_admin_analytics.py ............................           [  0%]
+tests/api/test_admin_logs_audit_reasons.py .....                         [  0%]
+tests/api/test_admin_progress_api.py .......................             [  1%]
+tests/api/test_auth03_adapters.py ....                                   [  1%]
+tests/api/test_cv.py ...................................                 [  2%]
+tests/api/test_dataset_consistency_correction.py ....                    [  2%]
+tests/api/test_dataset_derived_columns.py ..........                     [  3%]
+tests/api/test_dataset_derived_columns_delete.py .................       [  3%]
+tests/api/test_dataset_eda_correlation.py ....                           [  3%]
+tests/api/test_dataset_eda_descriptive.py ....                           [  3%]
+tests/api/test_dataset_eda_distribution.py ...                           [  3%]
+tests/api/test_dataset_eda_feature_selection.py ..                       [  4%]
+tests/api/test_dataset_eda_model_matrix.py ..                            [  4%]
+tests/api/test_dataset_eda_seasonality.py ....                           [  4%]
+tests/api/test_dataset_eda_stationarity.py ....                          [  4%]
+tests/api/test_dataset_eda_structural_breaks.py ..                       [  4%]
+tests/api/test_dataset_eda_validation_strategy.py ..                     [  4%]
+tests/api/test_dataset_format_correction.py ...                          [  4%]
+tests/api/test_dataset_inclusion_correction.py ....                      [  4%]
+tests/api/test_dataset_missing_correction.py .................           [  5%]
+tests/api/test_dataset_outlier_correction.py ........................    [  5%]
+tests/api/test_dataset_passport.py ............................          [  6%]
+tests/api/test_dataset_preprocessing_decomposition.py ....               [  6%]
+tests/api/test_dataset_preprocessing_feature_engineering.py ...          [  6%]
+tests/api/test_dataset_preprocessing_regularity.py .........             [  7%]
+tests/api/test_dataset_preprocessing_scaling.py ...                      [  7%]
+tests/api/test_dataset_preprocessing_smoothing.py .....                  [  7%]
+tests/api/test_dataset_preprocessing_spectral.py ...                     [  7%]
+tests/api/test_dataset_preprocessing_stationarity.py .....               [  7%]
+tests/api/test_dataset_preprocessing_variance.py ....                    [  7%]
+tests/api/test_dataset_profile_detail_level.py ..........                [  7%]
+tests/api/test_dataset_range_correction.py ....                          [  8%]
+tests/api/test_dataset_referential_correction.py ...                     [  8%]
+tests/api/test_dataset_regularity_correction.py ...                      [  8%]
+tests/api/test_dataset_rows.py ...........                               [  8%]
+tests/api/test_dataset_sufficiency_plan.py ...                           [  8%]
+tests/api/test_dataset_text_quality_correction.py ....                   [  8%]
+tests/api/test_dataset_type_conversion.py ....                           [  8%]
+tests/api/test_dataset_type_schema.py ....                               [  9%]
+tests/api/test_dataset_uniqueness_correction.py ...                      [  9%]
+tests/api/test_dataset_validate.py ...............                       [  9%]
+tests/api/test_dataset_validation_rules.py ............                  [  9%]
+tests/api/test_deepar_panel_pivot.py ............................s...... [ 10%]
+......                                                                   [ 11%]
+tests/api/test_diagnostics.py ......                                     [ 11%]
+tests/api/test_diagnostics_internal.py ...                               [ 11%]
+tests/api/test_distribution.py ..........                                [ 11%]
+tests/api/test_docker_image_layout.py ....                               [ 11%]
+tests/api/test_doclog0_identity.py ..................................... [ 12%]
+.....                                                                    [ 12%]
+tests/api/test_doclog1_artifacts.py .................................... [ 13%]
+.......................                                                  [ 14%]
+tests/api/test_doclog2_snapshots.py .................................... [ 15%]
+......................................                                   [ 16%]
+tests/api/test_doclog3_telemetry_audit.py .............................. [ 17%]
+............................................................F.....       [ 19%]
+tests/api/test_doclog4_document_delivery.py ............................ [ 20%]
+......................                                                   [ 21%]
+tests/api/test_doclog5_formats_worker.py .............ss..........F..... [ 21%]
+F.............................                                           [ 22%]
+tests/api/test_doclog6_approvals_archive.py ............................ [ 23%]
+.....................                                                    [ 24%]
+tests/api/test_doclog7_logs_support.py ................................. [ 25%]
+F....                                                                    [ 25%]
+tests/api/test_doclog8_monitoring.py ................................... [ 26%]
+...........................F                                             [ 27%]
+tests/api/test_doclog9_profiles.py ..................................... [ 28%]
+..............F.                                                         [ 28%]
+tests/api/test_doclog_pdf_font_deploy.py ....                            [ 28%]
+tests/api/test_doclog_pdf_full_upload_e2e.py .F                          [ 28%]
+tests/api/test_doclog_pdf_render_env_classification.py ...               [ 28%]
+tests/api/test_doclog_pdf_render_env_deploy.py .......F....              [ 29%]
+tests/api/test_doclog_recheck_fix.py ..................                  [ 29%]
+tests/api/test_egarch_session.py ....                                    [ 29%]
+tests/api/test_feature_regressors_api.py .......F...                     [ 30%]
+tests/api/test_forecasting_session.py ......................             [ 30%]
+tests/api/test_garch_session.py .....                                    [ 31%]
+tests/api/test_h29_documents_durable.py .............                    [ 31%]
+tests/api/test_internal_backtest.py ............                         [ 31%]
+tests/api/test_internal_candidates.py .......                            [ 31%]
+tests/api/test_knowledge_api.py ........................................ [ 33%]
+.                                                                        [ 33%]
+tests/api/test_mentor_rules.py ......................................... [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+................                                                         [ 38%]
+tests/api/test_missing_manual_editor.py ..............                   [ 39%]
+tests/api/test_modeling_comparison_spec.py ..                            [ 39%]
+tests/api/test_modeling_diagnostics_spec.py .....                        [ 39%]
+tests/api/test_modeling_selection_spec.py ..                             [ 39%]
+tests/api/test_modeling_workflow.py ...F..FFF........................... [ 40%]
+....F.....                                                               [ 40%]
+tests/api/test_models_backtest_neural_capacity.py F.                     [ 41%]
+tests/api/test_models_backtest_real.py ...............F.....F.           [ 41%]
+tests/api/test_models_candidates.py ...........................F........ [ 42%]
+..                                                                       [ 42%]
+tests/api/test_node_status_engine.py ................................... [ 43%]
+.................................                                        [ 44%]
+tests/api/test_outlier_manual_editor.py .................                [ 45%]
+tests/api/test_p10cert_oracles.py ..........................F            [ 46%]
+tests/api/test_p9cert_oracles.py ..............                          [ 46%]
+tests/api/test_panel_contract.py .............                           [ 46%]
+tests/api/test_panel_execution.py ..............................         [ 47%]
+tests/api/test_panel_transforms.py ................                      [ 48%]
+tests/api/test_param_space.py ..............                             [ 48%]
+tests/api/test_passport_session_state.py ............                    [ 48%]
+tests/api/test_pgv01_print_schema.py ................................... [ 49%]
+                                                                         [ 49%]
+tests/api/test_pgv02_durable_inputs.py ................................. [ 50%]
+....................................                                     [ 51%]
+tests/api/test_pgv03_producer_adapters.py .............................. [ 52%]
+.........................................                                [ 53%]
+tests/api/test_pgv04_cert_findings.py ........                           [ 54%]
+tests/api/test_pgv04_cert_oracles.py ......................              [ 54%]
+tests/api/test_pgv04_passport_checkpoints.py ..........................  [ 55%]
+tests/api/test_pgv05_cert_findings.py F.                                 [ 55%]
+tests/api/test_pgv05_cert_oracles.py .......................             [ 56%]
+tests/api/test_pgv05_passport_history.py ..................              [ 56%]
+tests/api/test_pgv06_cert_findings.py .                                  [ 56%]
+tests/api/test_pgv06_cert_oracles.py ............................        [ 57%]
+tests/api/test_pgv06_passport_comparison.py ............................ [ 58%]
+......                                                                   [ 58%]
+tests/api/test_pgv08_render_container.py .......................         [ 59%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 59%]
+................                                                         [ 60%]
+tests/api/test_pgv09fix_write_path.py ....................               [ 61%]
+tests/api/test_pgv10_visual_exports.py ................................. [ 61%]
+.............                                                            [ 62%]
+tests/api/test_pgv11_visual_exports.py ................................. [ 63%]
+                                                                         [ 63%]
+tests/api/test_pipeline_graph.py ....................................... [ 64%]
+........................................................................ [ 66%]
+.....................................                                    [ 67%]
+tests/api/test_progress_audit_1a.py .................................... [ 68%]
+                                                                         [ 68%]
+tests/api/test_progress_audit_2a.py ......................               [ 69%]
+tests/api/test_progress_audit_3.py .........................             [ 69%]
+tests/api/test_progress_audit_4.py ..................................... [ 71%]
+..........F                                                              [ 71%]
+tests/api/test_progress_audit_5b.py ....................                 [ 71%]
+tests/api/test_progress_audit_6a.py .s.s.s.s.s.s.s.s.s.s.s.s.s...s.s.... [ 73%]
+ss                                                                       [ 73%]
+tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 74%]
+.............ss                                                          [ 74%]
+tests/api/test_progress_audit_6c.py ..................s.s..............F [ 75%]
+....ss                                                                   [ 75%]
+tests/api/test_progress_audit_7a.py ...................                  [ 76%]
+tests/api/test_progress_audit_7b.py .................................    [ 77%]
+tests/api/test_progress_audit_8.py ...............                       [ 77%]
+tests/api/test_progress_audit_c.py ................................      [ 78%]
+tests/api/test_progress_audit_cert_store.py .s..ss.s                     [ 78%]
+tests/api/test_progress_audit_h1.py ..........................           [ 79%]
+tests/api/test_progress_audit_s.py ..................................... [ 80%]
+....                                                                     [ 80%]
+tests/api/test_progress_defects_progr13.py ........                      [ 81%]
+tests/api/test_progress_panel.py ...................                     [ 81%]
+tests/api/test_progress_progr13a.py .........................            [ 82%]
+tests/api/test_progress_progr13b.py ...................                  [ 82%]
+tests/api/test_progress_progr13c.py ..................                   [ 83%]
+tests/api/test_progress_progr16.py ...........                           [ 83%]
+tests/api/test_progress_progr17.py .........                             [ 83%]
+tests/api/test_progress_progr18.py .........                             [ 84%]
+tests/api/test_progress_progr23.py .....................                 [ 84%]
+tests/api/test_progress_progr25a.py ................                     [ 85%]
+tests/api/test_progress_progr25c.py ........                             [ 85%]
+tests/api/test_progress_progr25d.py .........                            [ 85%]
+tests/api/test_progress_trace_hook.py .................................. [ 86%]
+..................                                                       [ 87%]
+tests/api/test_research_runs.py ........................................ [ 88%]
+....................                                                     [ 89%]
+tests/api/test_run_report.py ........................................... [ 90%]
+..................                                                       [ 90%]
+tests/api/test_session_date_column.py ..........                         [ 91%]
+tests/api/test_session_store.py ........................................ [ 92%]
+...............................................                          [ 93%]
+tests/api/test_status_original_series.py ............................... [ 94%]
+.                                                                        [ 94%]
+tests/api/test_structure_detection.py .......                            [ 94%]
+tests/api/test_target_column.py ....................                     [ 95%]
+tests/api/test_tasks_causes.py .FFFFF...                                 [ 95%]
+tests/api/test_timeseries_decomposition.py ...................           [ 96%]
+tests/api/test_trace_events.py ........................                  [ 96%]
+tests/api/test_tune.py ................................................. [ 98%]
+...........                                                              [ 98%]
+tests/api/test_tune_production_dispatch.py ....                          [ 98%]
+tests/api/test_tune_real_models.py ..........                            [ 98%]
+tests/api/test_upload.py .....                                           [ 99%]
+tests/api/test_upload_db.py ...............................              [100%]
+
+=================================== FAILURES ===================================
+__________________ TestMainAppWiring.test_no_new_http_surface __________________
+tests/api/test_doclog3_telemetry_audit.py:1165: in test_no_new_http_surface
+    assert any(p.startswith("/v1/documentation") for p in paths)
+E   assert False
+E    +  where False = any(<generator object TestMainAppWiring.test_no_new_http_surface.<locals>.<genexpr> at 0x7f3c42462f60>)
+___ TestCrossFormatFactsConsistency.test_ac03_same_facts_across_all_formats ____
+apps/api/document_renditions.py:960: in render_snapshot_parquet
+    import pyarrow as pa
+E   ModuleNotFoundError: No module named 'pyarrow'
+
+The above exception was the direct cause of the following exception:
+tests/api/test_doclog5_formats_worker.py:669: in test_ac03_same_facts_across_all_formats
+    "parquet": render_snapshot_parquet(snapshot),
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/api/document_renditions.py:963: in render_snapshot_parquet
+    raise RenderDependencyError(
+E   apps.api.document_renditions.RenderDependencyError: dependency_unavailable: pyarrow недоступен для parquet-рендера
+_____________ TestHeavyAsyncPath.test_all_heavy_formats_end_to_end _____________
+tests/api/test_doclog5_formats_worker.py:829: in test_all_heavy_formats_end_to_end
+    assert summary["ready"] == len(HEAVY)
+E   AssertionError: assert 7 == 8
+E    +  where 8 = len(('pdf', 'xlsx', 'parquet', 'svg', 'png', 'zip', ...))
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.document_render_worker:document_render_worker.py:535 Document render worker: job djob-3802907bf37542a5956575bd348a60ff terminal failed (render_dependency_unavailable)
+____________________ TestStaticCatalogs.test_routes_present ____________________
+tests/api/test_doclog7_logs_support.py:840: in test_routes_present
+    assert path in paths, path
+E   AssertionError: /v1/logs/access
+E   assert '/v1/logs/access' in {'', '/docs', '/docs/oauth2-redirect', '/health', '/health/ops', '/openapi.json', ...}
+__________________ TestStaticCatalogs.test_routes_registered ___________________
+tests/api/test_doclog8_monitoring.py:1323: in test_routes_registered
+    assert (
+E   AssertionError: assert '/v1/documentation/runs/{run_id}/monitoring/actuals' in set()
+____________________ TestStaticCatalogs.test_routes_catalog ____________________
+tests/api/test_doclog9_profiles.py:1101: in test_routes_catalog
+    if r.path.startswith("/v1/documentation/org-profiles")
+       ^^^^^^
+E   AttributeError: '_IncludedRouter' object has no attribute 'path'
+_____ TestFullUploadStageToPdf.test_health_ops_reports_render_environment ______
+tests/api/test_doclog_pdf_full_upload_e2e.py:202: in test_health_ops_reports_render_environment
+    assert deps["pyarrow"]["ok"] is True
+E   assert False is True
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.identity:identity.py:385 Run access: DENY run=RUN-AD444360 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AD444360 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+______ TestRenderDependenciesStatus.test_status_keys_and_self_consistency ______
+tests/api/test_doclog_pdf_render_env_deploy.py:200: in test_status_keys_and_self_consistency
+    assert status[key]["ok"] is _expected_module_ok(module), (
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/api/test_doclog_pdf_render_env_deploy.py:155: in _expected_module_ok
+    return importlib.util.find_spec(module) is not None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib.util>:108: in find_spec
+    ???
+E   ValueError: pyarrow.__spec__ is not set
+_ TestRegressorSessionE2E.test_declared_regressor_enters_cohort_and_prophet_receives_it _
+tests/api/test_feature_regressors_api.py:196: in test_declared_regressor_enters_cohort_and_prophet_receives_it
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-C2C9BFF7 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+___ test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics ____
+tests/api/test_modeling_workflow.py:151: in test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+    assert "заблокирована матрицей применимости" in response.json()["detail"]
+E   assert 'заблокирована матрицей применимости' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-70DA1BF5 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+__ test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates __
+tests/api/test_modeling_workflow.py:203: in test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-8EAAEDCF operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+__ test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff ___
+tests/api/test_modeling_workflow.py:240: in test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Production backtest для модели 'tbats' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-37BE6FEB operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+_________ test_soft_history_backtest_runs_and_returns_explicit_warning _________
+tests/api/test_modeling_workflow.py:287: in test_soft_history_backtest_runs_and_returns_explicit_warning
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-A3838785 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+_________ test_feature_plan_enters_session_cohort_and_gates_regressors _________
+tests/api/test_modeling_workflow.py:1593: in test_feature_plan_enters_session_cohort_and_gates_regressors
+    assert prophet.status_code == 200, prophet.text
+E   AssertionError: {"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-84C8CEC4 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+______ test_backtest_lstm_503_with_honest_message_on_insufficient_memory _______
+tests/api/test_models_backtest_neural_capacity.py:73: in test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+    assert "512 MB" in detail and "1024 MB" in detail
+E   assert ('512 MB' in "Реестр готовности моделей расходится с production backtest dispatch (missing=[], unexpected=['lstm']); исполнение заблокировано (fail-closed, AUDIT-6C)")
+_________ TestRealModelsHandleEdgeCases.test_short_series_does_not_500 _________
+tests/api/test_models_backtest_real.py:373: in test_short_series_does_not_500
+    assert resp.status_code == 200, (
+E   AssertionError: prophet on short series: expected 200, got 422 ({"detail":"Production backtest для модели 'prophet' не реализован; фиктивные метрики запрещены"})
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+___ TestBacktestImplementationsRegistry.test_registry_has_23_implementations ___
+tests/api/test_models_backtest_real.py:487: in test_registry_has_23_implementations
+    assert set(impls.keys()) == expected, (
+E   AssertionError: Expected 23 implementations: {'naive', 'panel_var', 'xgboost', 'ets_damped', 'seasonal_naive', 'panel_gmm', 'catboost', 'garch', 'var', 'arima', 'vecm', 'prophet', 'panel_re', 'arima_auto', 'panel_fe', 'theta', 'lightgbm', 'random_forest', 'mean', 'ets', 'tbats', 'egarch', 'drift'}, got: {'var', 'arima', 'naive', 'vecm', 'panel_var', 'arima_auto', 'ets_damped', 'panel_fe', 'seasonal_naive', 'theta', 'random_forest', 'panel_re', 'mean', 'panel_gmm', 'ets', 'garch', 'egarch', 'drift'}
+E   assert {'arima', 'ar..._damped', ...} == {'arima', 'ar...', 'ets', ...}
+E     
+E     Extra items in the right set:
+E     'prophet'
+E     'xgboost'
+E     'lightgbm'
+E     'catboost'
+E     'tbats'
+E     Use -v to get more diff
+____ TestBacktestNaive.test_unsupported_model_never_returns_penalty_metrics ____
+tests/api/test_models_candidates.py:461: in test_unsupported_model_never_returns_penalty_metrics
+    assert "панель" in response.json()["detail"]
+E   assert 'панель' in "Production backtest для модели 'deepar' не реализован; фиктивные метрики запрещены"
+_ TestCertProfileConsistencyProof.test_o20_second_profile_render_payload_declares_requested_profile _
+tests/api/test_p10cert_oracles.py:1414: in test_o20_second_profile_render_payload_declares_requested_profile
+    assert captured["payload"]["snapshot"]["print"]["profile_id"] == (
+E   AssertionError: F-P10C1: ревизия декларирует a4-portrait, а рендер несёт figure-landscape
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape
+_ TestFP5C1SmokeDocstring.test_b1_smoke_docstring_does_not_understate_group_count _
+tests/api/test_pgv05_cert_findings.py:27: in test_b1_smoke_docstring_does_not_understate_group_count
+    assert "13 метрик" not in source, (
+E   AssertionError: F-P5C1: докстринг smoke-скрипта заявляет «13 метрик», фактический паспорт платформы несёт 15 групп (собственный вывод скрипта печатает groups=15) -- документная честность
+E   assert '13 метрик' not in '"""PGV-05 s...it(main())\n'
+E     
+E     '13 метрик' is contained here:
+E       паспорта (13 метрик),
+E       content_status=present, schema/calculation version = legacy_unknown.
+E       """
+E       from __future__ import annotations
+E       ...
+E     
+E     ...Full output truncated, use '-vv' to show
+____ TestPanelIntegration.test_unknown_transform_apply_does_not_claim_done _____
+tests/api/test_progress_audit_4.py:772: in test_unknown_transform_apply_does_not_claim_done
+    response = client.post(
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:546: in post
+    return super().post(
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:445: in request
+    return super().request(
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:348: in handle_request
+    raise exc
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/anyio/from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../auth03-venv/lib/python3.12/site-packages/anyio/from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/fastapi/applications.py:1194: in __call__
+    await super().__call__(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/middleware/errors.py:186: in __call__
+    raise exc
+../auth03-venv/lib/python3.12/site-packages/starlette/middleware/errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/middleware/cors.py:87: in __call__
+    await self.app(scope, receive, send)
+apps/api/telemetry.py:1051: in __call__
+    await self.app(scope, receive, send_wrapper)
+apps/api/trace_hook.py:867: in __call__
+    await self.app(scope, receive, send_wrapper)
+../auth03-venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+../auth03-venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+../auth03-venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:2811: in app
+    await route.handle(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:1839: in handle
+    await self.original_router.handle(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:2894: in handle
+    await included_router._handle_selected(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:1865: in _handle_selected
+    await original_route.handle(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:1328: in handle
+    await effective_context.app(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:166: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+../auth03-venv/lib/python3.12/site-packages/starlette/_exception_handler.py:53: in wrapped_app
+    raise exc
+../auth03-venv/lib/python3.12/site-packages/starlette/_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:152: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:745: in app
+    raw_response = await run_endpoint_function(
+../auth03-venv/lib/python3.12/site-packages/fastapi/routing.py:374: in run_endpoint_function
+    return await run_in_threadpool(
+../auth03-venv/lib/python3.12/site-packages/starlette/concurrency.py:32: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+../auth03-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+../auth03-venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/api/routers/session.py:4712: in create_dataset_preprocessing_scaling_recipe
+    summary = preview_scaling_recipe(
+apps/api/preprocessing_scaling.py:337: in preview_scaling_recipe
+    transformed, preview_metadata = fit_transform_scaling(
+app/preprocessing/scaling.py:124: in fit_transform_scaling
+    transformed = scaler.fit_transform(numeric)  # type: ignore[union-attr]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/utils/_set_output.py:316: in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/base.py:907: in fit_transform
+    return self.fit(X, **fit_params).transform(X)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/preprocessing/_data.py:924: in fit
+    return self.partial_fit(X, y, sample_weight)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/base.py:1336: in wrapper
+    return fit_method(estimator, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/preprocessing/_data.py:959: in partial_fit
+    xp, _, X_device = get_namespace_and_device(X)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/utils/_array_api.py:448: in get_namespace_and_device
+    array_list = _remove_non_arrays(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/utils/_array_api.py:324: in _remove_non_arrays
+    if is_df_or_series(array):
+       ^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/utils/_dataframe.py:22: in is_df_or_series
+    return is_pandas_df_or_series(X) or is_polars_df_or_series(X) or is_pyarrow_data(X)
+                                                                     ^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/sklearn/utils/_dataframe.py:83: in is_pyarrow_data
+    return isinstance(X, (pa.Table, pa.RecordBatch, pa.Array, pa.ChunkedArray))
+                          ^^^^^^^^
+E   AttributeError: 'object' object has no attribute 'Table'
+_ TestModelsDispatchDegradation.test_light_env_reload_imports_and_degrades_honestly _
+tests/api/test_progress_audit_6c.py:867: in test_light_env_reload_imports_and_degrades_honestly
+    assert set(state["dropped_by_registry"]) == dropped
+E   AssertionError: assert {'catboost', ... 'tbats', ...} == {'egarch', 'g...'var', 'vecm'}
+E     
+E     Extra items in the left set:
+E     'xgboost'
+E     'prophet'
+E     'lightgbm'
+E     'catboost'
+E     'tbats'
+E     Use -v to get more diff
+___________________ test_causes_unknown_card_id_returns_404 ____________________
+tests/api/test_tasks_causes.py:154: in test_causes_unknown_card_id_returns_404
+    _reach_model_card_rf(client)
+tests/api/test_tasks_causes.py:110: in _reach_model_card_rf
+    _backtest_with_diagnostics(client, "random_forest")
+tests/api/test_tasks_causes.py:75: in _backtest_with_diagnostics
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-AB326F80 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+______________ test_causes_returns_card_and_full_method_registry _______________
+tests/api/test_tasks_causes.py:166: in test_causes_returns_card_and_full_method_registry
+    card = _reach_model_card_rf(client)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/api/test_tasks_causes.py:110: in _reach_model_card_rf
+    _backtest_with_diagnostics(client, "random_forest")
+tests/api/test_tasks_causes.py:75: in _backtest_with_diagnostics
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-6FBA3851 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+________ test_causes_fold_importance_aggregates_mean_share_sorted_desc _________
+tests/api/test_tasks_causes.py:193: in test_causes_fold_importance_aggregates_mean_share_sorted_desc
+    _reach_model_card_rf(client)
+tests/api/test_tasks_causes.py:110: in _reach_model_card_rf
+    _backtest_with_diagnostics(client, "random_forest")
+tests/api/test_tasks_causes.py:75: in _backtest_with_diagnostics
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-1E706BCB operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+___________ test_causes_fold_importance_provenance_bound_to_backtest ___________
+tests/api/test_tasks_causes.py:231: in test_causes_fold_importance_provenance_bound_to_backtest
+    _reach_model_card_rf(client)
+tests/api/test_tasks_causes.py:110: in _reach_model_card_rf
+    _backtest_with_diagnostics(client, "random_forest")
+tests/api/test_tasks_causes.py:75: in _backtest_with_diagnostics
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-3C9FB1EE operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+_______________ test_causes_default_card_is_latest_by_created_at _______________
+tests/api/test_tasks_causes.py:247: in test_causes_default_card_is_latest_by_created_at
+    first = _reach_model_card_rf(client)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/api/test_tasks_causes.py:110: in _reach_model_card_rf
+    _backtest_with_diagnostics(client, "random_forest")
+tests/api/test_tasks_causes.py:75: in _backtest_with_diagnostics
+    assert backtest.status_code == 200, backtest.text
+E   AssertionError: {"detail":"Random Forest: fold 1 завершился ошибкой: 'object' object has no attribute 'Table'"}
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-63A826B8 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+=============================== warnings summary ===============================
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/api/test_auth03_adapters.py: 1 warning
+tests/api/test_internal_candidates.py: 1 warning
+tests/api/test_models_backtest_neural_capacity.py: 2 warnings
+tests/api/test_models_candidates.py: 36 warnings
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/apps/api/auth.py:92: DeprecationWarning: deprecated
+    if not getattr(caps, capability_name, False):
+
+tests/api/test_dataset_consistency_correction.py::test_apply_persists_sort_updates_metadata_and_revalidation_passes
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_format_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_text_quality_correction.py: 3 warnings
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 14 warnings
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: The argument 'infer_datetime_format' is deprecated and will be removed in a future version. A strict version of it is now the default, see https://pandas.pydata.org/pdeps/0004-consistent-to-datetime-parsing.html. You can safely remove this argument.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_consistency_correction.py: 3 warnings
+tests/api/test_dataset_inclusion_correction.py: 3 warnings
+tests/api/test_dataset_preprocessing_regularity.py: 1 warning
+tests/api/test_dataset_referential_correction.py: 3 warnings
+tests/api/test_dataset_sufficiency_plan.py: 1 warning
+tests/api/test_dataset_type_conversion.py: 6 warnings
+tests/api/test_dataset_type_schema.py: 3 warnings
+tests/api/test_dataset_uniqueness_correction.py: 3 warnings
+tests/api/test_dataset_validate.py: 6 warnings
+tests/api/test_dataset_validation_rules.py: 15 warnings
+tests/api/test_session_date_column.py: 1 warning
+tests/api/test_structure_detection.py: 4 warnings
+tests/api/test_target_column.py: 2 warnings
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/app/data/detectors.py:116: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+    test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
+
+tests/api/test_dataset_eda_correlation.py: 1 warning
+tests/api/test_pgv03_producer_adapters.py: 1 warning
+tests/api/test_progress_audit_3.py: 4 warnings
+tests/api/test_progress_trace_hook.py: 8 warnings
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/app/eda/correlation.py:118: FutureWarning: acf currently returns a plain tuple whose length depends on the qstat and alpha arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an AcfResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    acf_values, acf_intervals = acf(
+
+tests/api/test_dataset_eda_model_matrix.py: 3 warnings
+tests/api/test_dataset_passport.py: 1 warning
+tests/api/test_feature_regressors_api.py: 28 warnings
+tests/api/test_forecasting_session.py: 673 warnings
+tests/api/test_mentor_rules.py: 16 warnings
+tests/api/test_modeling_workflow.py: 679 warnings
+tests/api/test_progress_audit_3.py: 3 warnings
+tests/api/test_progress_audit_7a.py: 155 warnings
+tests/api/test_progress_defects_progr13.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 65 warnings
+tests/api/test_tasks_causes.py: 97 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:149: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    results[lag] = mod_instance.fit()
+
+tests/api/test_dataset_eda_model_matrix.py: 3 warnings
+tests/api/test_dataset_passport.py: 1 warning
+tests/api/test_feature_regressors_api.py: 28 warnings
+tests/api/test_forecasting_session.py: 673 warnings
+tests/api/test_mentor_rules.py: 14 warnings
+tests/api/test_modeling_workflow.py: 609 warnings
+tests/api/test_progress_audit_3.py: 3 warnings
+tests/api/test_progress_audit_7a.py: 155 warnings
+tests/api/test_progress_defects_progr13.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 41 warnings
+tests/api/test_tasks_causes.py: 97 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:432: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    resols = OLS(xdshort, add_trend(xdall[:, : usedlag + 1], regression)).fit()
+
+tests/api/test_dataset_eda_model_matrix.py: 1 warning
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_mentor_rules.py: 2 warnings
+tests/api/test_modeling_workflow.py: 190 warnings
+tests/api/test_progress_audit_3.py: 1 warning
+tests/api/test_progress_trace_hook.py: 20 warnings
+tests/api/test_tasks_causes.py: 30 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/stattools/_stattools.py:3995: SingularMatrixWarning: The design matrix is rank-deficient. The model parameters are not uniquely determined.
+    o = OLS(endog[baselags:], exog, hasconst=1).fit()
+
+tests/api/test_dataset_passport.py: 33 warnings
+tests/api/test_doclog_pdf_full_upload_e2e.py: 2 warnings
+tests/api/test_doclog_recheck_fix.py: 14 warnings
+tests/api/test_egarch_session.py: 4 warnings
+tests/api/test_feature_regressors_api.py: 10 warnings
+tests/api/test_forecasting_session.py: 22 warnings
+tests/api/test_garch_session.py: 4 warnings
+tests/api/test_modeling_workflow.py: 47 warnings
+tests/api/test_pgv04_cert_oracles.py: 16 warnings
+tests/api/test_pgv04_passport_checkpoints.py: 16 warnings
+tests/api/test_pgv05_cert_oracles.py: 78 warnings
+tests/api/test_pgv05_passport_history.py: 42 warnings
+tests/api/test_pgv06_cert_findings.py: 8 warnings
+tests/api/test_pgv06_cert_oracles.py: 78 warnings
+tests/api/test_pgv06_passport_comparison.py: 86 warnings
+tests/api/test_progress_audit_7a.py: 8 warnings
+tests/api/test_progress_defects_progr13.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 5 warnings
+tests/api/test_tasks_causes.py: 7 warnings
+  /workspace/scratch/56f113437abe/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/api/test_dataset_preprocessing_variance.py: 21 warnings
+tests/api/test_diagnostics.py: 4 warnings
+tests/api/test_diagnostics_internal.py: 1 warning
+tests/api/test_forecasting_session.py: 42 warnings
+tests/api/test_modeling_workflow.py: 27 warnings
+tests/api/test_progress_audit_7a.py: 2 warnings
+tests/api/test_progress_trace_hook.py: 2 warnings
+tests/api/test_tasks_causes.py: 7 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    return acorr_lm(
+
+tests/api/test_deepar_panel_pivot.py::TestSessionPanelContour::test_r4_tripwire_univariate_contour_untouched
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/_pytest/fixtures.py:1392: PytestRemovedIn10Warning: Class-scoped fixtures defined as instance methods are deprecated.
+  Instance attributes set in the 'client' fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use a @classmethod decorator below @pytest.fixture and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/api/test_diagnostics.py: 2 warnings
+tests/api/test_modeling_workflow.py: 2 warnings
+tests/api/test_models_backtest_real.py: 28 warnings
+tests/api/test_models_candidates.py: 1 warning
+tests/api/test_tune.py: 10 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-invertible starting MA parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/api/test_doclog1_artifacts.py: 5 warnings
+tests/api/test_p10cert_oracles.py: 7 warnings
+tests/api/test_progress_audit_1a.py: 2 warnings
+tests/api/test_progress_audit_8.py: 2 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:445: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_modeling_workflow.py: 188 warnings
+tests/api/test_tasks_causes.py: 30 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:716: RuntimeWarning: invalid value encountered in log
+    tmp = np.log(iota - a)[i:]
+
+tests/api/test_feature_regressors_api.py: 6 warnings
+tests/api/test_forecasting_session.py: 217 warnings
+tests/api/test_modeling_workflow.py: 188 warnings
+tests/api/test_tasks_causes.py: 30 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/vector_ar/vecm.py:718: RuntimeWarning: invalid value encountered in log
+    lr2[i] = -t * np.log(1 - a[i])
+
+tests/api/test_models_backtest_real.py: 7 warnings
+tests/api/test_tune.py: 6 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/api/test_models_backtest_real.py: 13 warnings
+tests/api/test_tune.py: 36 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:737: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    mlefit = super().fit(
+
+tests/api/test_panel_execution.py::TestCatalog::test_family_panel_present
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/_pytest/fixtures.py:1392: PytestRemovedIn10Warning: Class-scoped fixtures defined as instance methods are deprecated.
+  Instance attributes set in the 'spec' fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use a @classmethod decorator below @pytest.fixture and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+tests/api/test_progress_defects_progr13.py::test_mentor_phase_stays_upload_after_upload_page_actions
+tests/api/test_progress_defects_progr13.py::test_passport_start_event_attributed_to_upload_stage
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+    llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+
+tests/api/test_tune.py: 44 warnings
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:989: EstimationWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    params_variance) = self._conditional_sum_squares(
+
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/statsmodels/tsa/holtwinters/model.py:1065: ConvergenceWarning: Optimization failed to converge. Check mle_retvals.
+    res = self._optimize_parameters(res, use_brute, method, minimize_kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------ generated xml file: /workspace/scratch/56f113437abe/final-api.xml -------
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface
+FAILED tests/api/test_doclog5_formats_worker.py::TestCrossFormatFactsConsistency::test_ac03_same_facts_across_all_formats
+FAILED tests/api/test_doclog5_formats_worker.py::TestHeavyAsyncPath::test_all_heavy_formats_end_to_end
+FAILED tests/api/test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present
+FAILED tests/api/test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered
+FAILED tests/api/test_doclog9_profiles.py::TestStaticCatalogs::test_routes_catalog
+FAILED tests/api/test_doclog_pdf_full_upload_e2e.py::TestFullUploadStageToPdf::test_health_ops_reports_render_environment
+FAILED tests/api/test_doclog_pdf_render_env_deploy.py::TestRenderDependenciesStatus::test_status_keys_and_self_consistency
+FAILED tests/api/test_feature_regressors_api.py::TestRegressorSessionE2E::test_declared_regressor_enters_cohort_and_prophet_receives_it
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_modeling_workflow.py::test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates
+FAILED tests/api/test_modeling_workflow.py::test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff
+FAILED tests/api/test_modeling_workflow.py::test_soft_history_backtest_runs_and_returns_explicit_warning
+FAILED tests/api/test_modeling_workflow.py::test_feature_plan_enters_session_cohort_and_gates_regressors
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_backtest_real.py::TestRealModelsHandleEdgeCases::test_short_series_does_not_500
+FAILED tests/api/test_models_backtest_real.py::TestBacktestImplementationsRegistry::test_registry_has_23_implementations
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+FAILED tests/api/test_p10cert_oracles.py::TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+FAILED tests/api/test_progress_audit_4.py::TestPanelIntegration::test_unknown_transform_apply_does_not_claim_done
+FAILED tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+FAILED tests/api/test_tasks_causes.py::test_causes_unknown_card_id_returns_404
+FAILED tests/api/test_tasks_causes.py::test_causes_returns_card_and_full_method_registry
+FAILED tests/api/test_tasks_causes.py::test_causes_fold_importance_aggregates_mean_share_sorted_desc
+FAILED tests/api/test_tasks_causes.py::test_causes_fold_importance_provenance_bound_to_backtest
+FAILED tests/api/test_tasks_causes.py::test_causes_default_card_is_latest_by_created_at
+==== 27 failed, 3382 passed, 44 skipped, 5635 warnings in 223.90s (0:03:43) ====

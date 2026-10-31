@@ -1,0 +1,5 @@
+{
+  "returncode": 2,
+  "stderr": "Set CISSTAT_AUTH_TEST_DSN to a disposable PostgreSQL database. No tests ran.",
+  "tests_run": 0
+}

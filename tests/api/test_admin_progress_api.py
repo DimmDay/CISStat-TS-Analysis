@@ -7,7 +7,7 @@
   1. Авторизация §10 дословно: «admin-эндпоинты должны требовать
      API-ключ с ролью ADMIN, а не cookie -- админ заходит другим путём».
      Та же ролевая модель (Role + get_current_principal), не новая
-     система: 401 неверный ключ, 403 не-ADMIN, 500 ключи не настроены.
+     система: 401 неверный ключ, 403 не-ADMIN, 503 authority не настроен (AUTH-03).
   2. GET /v1/progress/admin/overview -- агрегаты по корпусу (сборка
      роутером из хранилища; семантика движка покрыта
      test_admin_analytics.py); пустой корпус -- честные нули
@@ -172,10 +172,12 @@ class TestAdminAuth:
         resp = client.get("/v1/progress/admin/overview", headers=ANALYST_HEADERS)
         assert resp.status_code == 403
 
-    def test_keys_not_configured_is_500(self, client, monkeypatch):
+    def test_keys_not_configured_is_503(self, client, monkeypatch):
         monkeypatch.delenv("CISSTAT_API_KEYS", raising=False)
         resp = client.get("/v1/progress/admin/overview", headers=ADMIN_HEADERS)
-        assert resp.status_code == 500
+        # AUTH-03: configuration/authority outage is unavailable, no secrets.
+        assert resp.status_code == 503
+        assert resp.json()["detail"]["code"] == "auth_authority_unavailable"
 
     def test_admin_role_passes(self, client):
         resp = client.get("/v1/progress/admin/overview", headers=ADMIN_HEADERS)

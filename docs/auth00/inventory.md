@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `649027ee3e97c46bb64cb0e7319790c022a0c3bc`. Автоматически собранные входы + явная policy review.
+База: `be553b8ff6e6471eb53427822ccd937a3a71433a`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -29,23 +29,23 @@
 
 | Policy | Observed | Target | Follow-up |
 |---|---|---|---|
-| admin.key | Depends(require_admin_role), ENV API-key ADMIN; MFA browser session отсутствует. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
-| api.key | Router Depends(require_api_key); ENV key registry, без общего can_use_api/CU gate. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
-| api.model_key | get_current_principal + legacy can_train_models; candidates/backtest/diagnostics также под этим флагом. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
-| auth.storage | AUTH-02 PostgreSQL-only repositories + shared transaction; unique/FK/deferred membership guards; explicit schema migration. No HTTP/AuthN integration. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
+| admin.key | AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
+| api.key | AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
+| api.model_key | AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
+| auth.storage | AUTH-02 PostgreSQL-only shared UoW; AUTH-03 reloads identity/account/active membership for verified UUID binding in one readonly transaction. No automatic schema migration or HTTP storage access. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | browser.internal | Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-11, AUTH-12 |
 | browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
 | cors.transport | CORS permits configured/dev origins and regex *.vercel.app with credentials; not access control. | Approved origins + CSRF/Origin/Fetch Metadata; direct API remains subject to AuthN/object gates. | AUTH-06, AUTH-11 |
-| document.object | Document services apply subject/tenant/run/scopes/lifecycle decisions; surrogate subject still possible. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
+| document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
-| logs.scoped | Manual _principal_or_401 adapter + scopes/SupportGrant effective access; export/grants mandatory audit. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
+| logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | ops.diagnostics | /health/ops без AuthN; безопасная проекция технического состояния. | Private ops/service или platform permission; не раскрывать конфигурацию/секреты. | AUTH-03, AUTH-20 |
-| profile.policy | Subject resolver + OrgProfileService policy.admin and mandatory audit for create/retire. | Unified context + explicit policy admin permission/MFA; preserve tenant and mandatory transaction semantics. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
+| profile.policy | AUTH-03 shared context subject + existing OrgProfileService policy.admin/mandatory audit. Named MFA policy remains AUTH-05/07. | Unified context + explicit policy admin permission/MFA; preserve tenant and mandatory transaction semantics. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | progress.session | Research session + существующие trace/delivery/mirror guards; не личная AuthN. | Unified account context; сохранить object/mirror проверки, ограничить admission/observations. | AUTH-03, AUTH-09, AUTH-11 |
 | proxy.transport | First-party Next rewrite only; not AuthN, no signed context or CSRF BFF. | Forward allowlisted credentials over TLS; strip spoofed identity headers; server validation + CSRF/Origin. | AUTH-03, AUTH-06 |
 | public.metadata | Открытые metadata/education endpoints; личная AuthN не заявлена. | Явный public allowlist; безопасная проекция, лимит ответа и throttle для compute. | AUTH-01, AUTH-11 |
 | renderer.service | No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints. | Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
-| run.object | resolve_request_subject + authorize_run_access; owner/tenant/unresolved continuity, ADMIN bypass. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
+| run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
 | storage.internal | Internal file/object/DB operation; content hash/path/registry checks are not user authentication. | Reach only via authorized object service; trusted roots/keys, no direct filesystem mount or public object ACL. | AUTH-09, AUTH-11, AUTH-13, AUTH-20 |
 | task.alias | Four UI application hrefs; causes has live backend data, other task views do not imply ready compute. | Canonical application-stage gate including aliases; scientific EDA Granger/DOCLOG monitoring are distinct. | AUTH-01, AUTH-11 |
 | ui.admin | Only embedded /admin/progress exists; dashboard uses entered API-key in tab memory. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
@@ -77,19 +77,19 @@
 | api:GET:/v1/internal/rules/templates | apps.api.routers.internal:get_rules_templates / scientific:validation | browser.internal / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:110 |
 | api:GET:/v1/knowledge/articles | apps.api.knowledge.router:get_articles / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:143 |
 | api:GET:/v1/knowledge/glossary | apps.api.knowledge.router:get_glossary / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:203 |
-| api:GET:/v1/logs/access | apps.api.routers.logs:get_log_access / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:154 |
-| api:GET:/v1/logs/audit | apps.api.routers.logs:get_audit_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:242 |
-| api:GET:/v1/logs/delivery | apps.api.routers.logs:get_delivery_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:284 |
-| api:GET:/v1/logs/grants | apps.api.routers.logs:list_grants / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:428 |
-| api:GET:/v1/logs/telemetry | apps.api.routers.logs:get_telemetry_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:200 |
-| api:GET:/v1/progress/admin/case-bank/candidates | apps.api.routers.progress:get_case_bank_candidates / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2545 |
-| api:GET:/v1/progress/admin/overview | apps.api.routers.progress:get_admin_overview / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2497 |
-| api:GET:/v1/progress/runs/{run_id} | apps.api.routers.progress:get_run_detail / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1281 |
-| api:GET:/v1/progress/runs/{run_id}/delivery | apps.api.routers.progress:list_run_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1780 |
-| api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id} | apps.api.routers.progress:get_operation_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1817 |
-| api:GET:/v1/progress/runs/{run_id}/mentor/next-step | apps.api.routers.progress:get_mentor_next_step / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2160 |
-| api:GET:/v1/progress/runs/{run_id}/report | apps.api.routers.progress:get_run_report / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2261 |
-| api:GET:/v1/progress/runs/{run_id}/restore | apps.api.routers.progress:restore_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1506 |
+| api:GET:/v1/logs/access | apps.api.routers.logs:get_log_access / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:147 |
+| api:GET:/v1/logs/audit | apps.api.routers.logs:get_audit_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:233 |
+| api:GET:/v1/logs/delivery | apps.api.routers.logs:get_delivery_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:275 |
+| api:GET:/v1/logs/grants | apps.api.routers.logs:list_grants / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:419 |
+| api:GET:/v1/logs/telemetry | apps.api.routers.logs:get_telemetry_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:191 |
+| api:GET:/v1/progress/admin/case-bank/candidates | apps.api.routers.progress:get_case_bank_candidates / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2547 |
+| api:GET:/v1/progress/admin/overview | apps.api.routers.progress:get_admin_overview / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2499 |
+| api:GET:/v1/progress/runs/{run_id} | apps.api.routers.progress:get_run_detail / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1283 |
+| api:GET:/v1/progress/runs/{run_id}/delivery | apps.api.routers.progress:list_run_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1782 |
+| api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id} | apps.api.routers.progress:get_operation_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1819 |
+| api:GET:/v1/progress/runs/{run_id}/mentor/next-step | apps.api.routers.progress:get_mentor_next_step / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2162 |
+| api:GET:/v1/progress/runs/{run_id}/report | apps.api.routers.progress:get_run_report / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2263 |
+| api:GET:/v1/progress/runs/{run_id}/restore | apps.api.routers.progress:restore_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1508 |
 | api:GET:/v1/progress/trace | apps.api.routers.progress:get_progress_trace / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:391 |
 | api:GET:/v1/public/rules/load/{template_id} | apps.api.routers.public:load_rules_template / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:105 |
 | api:GET:/v1/public/rules/templates | apps.api.routers.public:get_rules_templates / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:99 |
@@ -193,20 +193,20 @@
 | api:POST:/v1/internal/upload/db/load | apps.api.routers.upload_db:_register.load_db_dataset / scientific:upload | browser.internal / submitted data / research session / rule namespace | apps/api/routers/upload_db.py:185 |
 | api:POST:/v1/internal/upload/db/test | apps.api.routers.upload_db:_register.test_db_connection / scientific:upload | browser.internal / submitted data / research session / rule namespace | apps/api/routers/upload_db.py:149 |
 | api:POST:/v1/learning/track | apps.api.knowledge.router:build_learning_track / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:228 |
-| api:POST:/v1/logs/export | apps.api.routers.logs:export_logs_bundle / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:328 |
-| api:POST:/v1/logs/grants | apps.api.routers.logs:create_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:444 |
-| api:POST:/v1/logs/grants/{grant_id}/revoke | apps.api.routers.logs:revoke_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:489 |
+| api:POST:/v1/logs/export | apps.api.routers.logs:export_logs_bundle / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:319 |
+| api:POST:/v1/logs/grants | apps.api.routers.logs:create_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:435 |
+| api:POST:/v1/logs/grants/{grant_id}/revoke | apps.api.routers.logs:revoke_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:480 |
 | api:POST:/v1/models/backtest | apps.api.routers.models:run_backtest / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:623 |
 | api:POST:/v1/models/candidates | apps.api.routers.models:get_candidates / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:100 |
 | api:POST:/v1/models/diagnostics | apps.api.routers.diagnostics:run_diagnostics / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/diagnostics.py:204 |
 | api:POST:/v1/models/train | apps.api.routers.models:train_model / scientific:modeling | api.model_key / placeholder accepted response; reflects raw ENV principal_id/API-key | apps/api/routers/models.py:713 |
 | api:POST:/v1/models/tune | apps.api.routers.models:tune_model / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:725 |
 | api:POST:/v1/progress/eda-checks | apps.api.routers.progress:report_eda_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:946 |
-| api:POST:/v1/progress/mentor/sanity-check | apps.api.routers.progress:run_mentor_sanity_check / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:2341 |
+| api:POST:/v1/progress/mentor/sanity-check | apps.api.routers.progress:run_mentor_sanity_check / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:2343 |
 | api:POST:/v1/progress/preprocessing-checks | apps.api.routers.progress:report_preprocessing_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:816 |
-| api:POST:/v1/progress/runs/{run_id}/checkpoints | apps.api.routers.progress:create_checkpoint / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1370 |
-| api:POST:/v1/progress/runs/{run_id}/pause | apps.api.routers.progress:pause_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1309 |
-| api:POST:/v1/progress/runs/{run_id}/resume | apps.api.routers.progress:resume_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1343 |
+| api:POST:/v1/progress/runs/{run_id}/checkpoints | apps.api.routers.progress:create_checkpoint / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1372 |
+| api:POST:/v1/progress/runs/{run_id}/pause | apps.api.routers.progress:pause_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1311 |
+| api:POST:/v1/progress/runs/{run_id}/resume | apps.api.routers.progress:resume_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1345 |
 | api:POST:/v1/progress/upload-stops | apps.api.routers.progress:report_upload_stops / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:589 |
 | api:POST:/v1/progress/validation-checks | apps.api.routers.progress:report_validation_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:699 |
 | api:POST:/v1/public/passport | apps.api.routers.public:get_passport / scientific:validation | api.key / submitted data / rule namespace | apps/api/routers/public.py:35 |
