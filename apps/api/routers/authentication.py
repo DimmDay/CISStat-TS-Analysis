@@ -1,6 +1,7 @@
-"""AUTH-04 password/session endpoints. No registration, MFA bypass or legacy claim."""
+"""Personal password/session/MFA endpoints; CLI bootstrap is never mounted."""
 
 from uuid import UUID
+from typing import Literal
 from fastapi import APIRouter, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -22,6 +23,7 @@ from apps.api.authentication.csrf import (
     trusted_origin,
 )
 from apps.api.authentication.sessions import service_for_request
+from apps.api.authentication.mfa import IssuedChallenge, mfa_for_request
 
 
 class SafeAuthRoute(APIRoute):
@@ -99,6 +101,7 @@ class LoginBody(AuthBody):
 
 
 class PasswordBody(AuthBody):
+    proof: SecretStr | None = Field(default=None, min_length=46, max_length=46)
     current_password: SecretStr = Field(min_length=1, max_length=1024)
     new_password: SecretStr = Field(min_length=15, max_length=1024)
 
@@ -155,6 +158,21 @@ def login(request: Request, response: Response, payload: LoginBody):
         peer=request.client.host if request.client else "unknown",
     )
     _clear(response)
+    if isinstance(result, IssuedChallenge):
+        return _challenge_json(result)
+    return _authenticated(response, result)
+
+
+def _challenge_json(challenge):
+    return {
+        "status": "challenge_required",
+        "challenge_token": challenge.token,
+        "purpose": challenge.purpose,
+        "expires_at": challenge.expires_at.isoformat(),
+    }
+
+
+def _authenticated(response, result):
     response.set_cookie(
         AUTH_COOKIE,
         result.token,
@@ -232,6 +250,107 @@ def change_password(request: Request, response: Response, payload: PasswordBody)
         auth_cookie(request),
         payload.current_password.get_secret_value(),
         payload.new_password.get_secret_value(),
+        proof=payload.proof.get_secret_value() if payload.proof else None,
+        origin=trusted_origin(request),
     )
     _clear(response)
     return {"password_changed": True, "sessions_revoked": True}
+
+
+class ChallengeBody(AuthBody):
+    challenge_token: SecretStr = Field(min_length=46, max_length=46)
+
+
+class VerifyBody(ChallengeBody):
+    code: SecretStr = Field(min_length=1, max_length=64)
+
+
+class StepUpBody(AuthBody):
+    password: SecretStr = Field(min_length=1, max_length=1024)
+    action: Literal["mfa.replace", "recovery.rotate", "password.change"]
+
+
+class ProofBody(AuthBody):
+    proof: SecretStr = Field(min_length=46, max_length=46)
+
+
+@router.post("/mfa/enroll")
+def mfa_enroll(request: Request, payload: ChallengeBody):
+    _entry(request, True)
+    result = mfa_for_request(request).begin_enrollment(
+        payload.challenge_token.get_secret_value(), origin=trusted_origin(request)
+    )
+    return {
+        **_challenge_json(result.challenge),
+        "secret": result.secret,
+        "otpauth_uri": result.uri,
+    }
+
+
+@router.post("/mfa/verify")
+def mfa_verify(request: Request, response: Response, payload: VerifyBody):
+    _entry(request, True)
+    result = mfa_for_request(request).complete(
+        payload.challenge_token.get_secret_value(),
+        payload.code.get_secret_value(),
+        origin=trusted_origin(request),
+        session_token=auth_cookie(request),
+    )
+    if result.proof:
+        return _challenge_json(result.proof)
+    _clear(response)
+    body = _authenticated(response, result.session)
+    if result.recovery_codes:
+        body["recovery_codes"] = result.recovery_codes
+    return body
+
+
+@router.post("/step-up")
+def step_up(request: Request, payload: StepUpBody):
+    _entry(request, True)
+    _session(request)
+    return _challenge_json(
+        mfa_for_request(request).start_step_up(
+            auth_cookie(request),
+            payload.password.get_secret_value(),
+            payload.action,
+            origin=trusted_origin(request),
+        )
+    )
+
+
+@router.post("/mfa/replace")
+def mfa_replace(request: Request, response: Response, payload: ProofBody):
+    _entry(request, True)
+    _session(request)
+    result = mfa_for_request(request).replace_factor(
+        auth_cookie(request),
+        payload.proof.get_secret_value(),
+        origin=trusted_origin(request),
+    )
+    _clear(response)
+    return _challenge_json(result)
+
+
+@router.post("/recovery")
+def recovery(request: Request, response: Response, payload: VerifyBody):
+    _entry(request, True)
+    result = mfa_for_request(request).recover(
+        payload.challenge_token.get_secret_value(),
+        payload.code.get_secret_value(),
+        origin=trusted_origin(request),
+    )
+    _clear(response)
+    return _challenge_json(result)
+
+
+@router.post("/recovery/rotate")
+def recovery_rotate(request: Request, payload: ProofBody):
+    _entry(request, True)
+    _session(request)
+    codes = mfa_for_request(request).rotate_recovery(
+        auth_cookie(request),
+        payload.proof.get_secret_value(),
+        origin=trusted_origin(request),
+    )
+    return {"recovery_codes": codes}

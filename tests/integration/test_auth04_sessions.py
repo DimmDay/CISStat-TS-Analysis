@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from apps.api.authentication.storage import PostgresAccessStore
 from apps.api.authentication.sessions import SessionService, token_digest
-from apps.api.authentication.session_migrations import apply_migration
+from apps.api.authentication.mfa_migrations import apply_migration
 from apps.api.routers.authentication import router
 
 DSN = os.environ.get("CISSTAT_AUTH_TEST_DSN")

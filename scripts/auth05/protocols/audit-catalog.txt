@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/56f113437abe/auth05
+configfile: pytest.ini
+plugins: anyio-4.15.1, timeout-2.4.0, typeguard-4.6.0
+collected 63 items / 62 deselected / 1 selected
+
+tests/api/test_doclog8_monitoring.py .                                   [100%]
+
+=============================== warnings summary ===============================
+../auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:45
+  /workspace/scratch/56f113437abe/auth03-venv/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 1 passed, 62 deselected, 1 warning in 1.22s ==================

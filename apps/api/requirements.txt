@@ -105,3 +105,6 @@ pyodbc>=5.0.0                 # диалект mssql+pyodbc, ODBC Driver 18 (S2)
 
 # AUTH-04: versioned Argon2id password verifier; never plaintext/fast password hash.
 argon2-cffi==25.1.0
+
+# AUTH-05 encrypted TOTP seeds (AES-256-GCM)
+cryptography==46.0.7

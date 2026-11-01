@@ -1309,9 +1309,10 @@ class TestStaticCatalogs:
         # DOCLOG-E2E-RECHECK-1-FIX (честное обновление пина): +1
         # artifact_promotion_failed (standard) -- durable-receipt сбоя
         # producer→artifact промоушена (акт C03, §9.3); 28 + 1 = 29.
-        # AUTH-04 adds two mandatory session/password mutation actions.
-        assert len(security_audit.AUDIT_ACTIONS) == 31
-        assert {"auth_session_changed","auth_password_changed"} <= security_audit.AUDIT_ACTIONS
+        # AUTH-04 adds two mandatory session/password mutation actions;
+        # AUTH-05 adds one mandatory MFA/bootstrap/recovery action.
+        assert len(security_audit.AUDIT_ACTIONS) == 32
+        assert {"auth_session_changed","auth_password_changed","auth_mfa_changed"} <= security_audit.AUDIT_ACTIONS
 
     def test_routes_registered(self):
         from apps.api.main import app

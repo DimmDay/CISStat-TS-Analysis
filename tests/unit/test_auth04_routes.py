@@ -22,6 +22,13 @@ EXPECTED = {
     "POST:/v1/auth/sessions/revoke-all",
     "POST:/v1/auth/sessions/{session_id}/revoke",
     "POST:/v1/auth/password",
+    "POST:/v1/auth/mfa/enroll",
+    "POST:/v1/auth/mfa/verify",
+    "POST:/v1/auth/step-up",
+    "POST:/v1/auth/mfa/replace",
+    "POST:/v1/auth/recovery",
+    "POST:/v1/auth/recovery/rotate",
+
 }
 
 

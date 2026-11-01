@@ -1,0 +1,32 @@
+test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key) ... ERROR
+test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint) ... ERROR
+test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay) ... ERROR
+
+======================================================================
+ERROR: test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/unit/test_auth05_mfa.py", line 21, in test_encryption_authenticates_identity_factor_and_key
+    from apps.api.authentication.mfa_crypto import seal, unseal
+ModuleNotFoundError: No module named 'apps.api.authentication.mfa_crypto'
+
+======================================================================
+ERROR: test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/unit/test_auth05_mfa.py", line 34, in test_opaque_types_are_disjoint
+    from apps.api.authentication.mfa import challenge_digest
+ModuleNotFoundError: No module named 'apps.api.authentication.mfa'
+
+======================================================================
+ERROR: test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/unit/test_auth05_mfa.py", line 10, in test_rfc6238_sha1_vectors_and_replay
+    from apps.api.authentication.mfa_crypto import totp, verify_totp
+ModuleNotFoundError: No module named 'apps.api.authentication.mfa_crypto'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (errors=3)

@@ -1,0 +1,42 @@
+{
+  "base": "a7502efe349c8a3eb8f80157d9c93f1ff10bc7f1",
+  "auth05_unit": {
+    "passed": 4,
+    "protocol": "clean-unit.txt"
+  },
+  "auth05_sql_http": {
+    "passed": 24,
+    "skipped": 0,
+    "engine": "PostgreSQL 18.6 / PGlite 0.5.14",
+    "protocol": "sql-final-pass.txt"
+  },
+  "auth04_sql_regression": {
+    "passed": 42,
+    "skipped": 0,
+    "protocol": "auth04-regression-final.txt"
+  },
+  "local_gates": {
+    "status": "PASS",
+    "protocol": "gates-final.txt"
+  },
+  "routes": {
+    "status": "PASS",
+    "api": 234,
+    "registry_bindings": 238,
+    "inventory_entries": 557,
+    "protocol": "route-check-final.txt"
+  },
+  "jest": {
+    "passed_tests": 2791,
+    "skipped_tests": 2,
+    "passed_suites": 245,
+    "skipped_suites": 1,
+    "protocol": "jest.txt"
+  },
+  "renderer": "PASS",
+  "typecheck_embedded_standalone": "PASS",
+  "production_next_builds": "BLOCKED: ENOENT uv_resident_set_memory",
+  "native_postgres_16_18": "NOT RUN; required CI configured; WASM is not native lock/restart certification",
+  "scientific_pytest": "NOT RERUN; unrelated failures documented by AUTH-04, no claim they were fixed",
+  "git_commit_push": "NOT PERFORMED"
+}

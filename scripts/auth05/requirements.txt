@@ -1,0 +1,2 @@
+-r ../auth04/requirements.txt
+cryptography==46.0.7

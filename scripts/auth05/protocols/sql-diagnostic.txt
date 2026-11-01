@@ -1,0 +1,235 @@
+auth PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+audit PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_admin_login_mfa_context_and_totp_replay (test_auth05_mfa.MfaSQLTests.test_admin_login_mfa_context_and_totp_replay) ... ok
+test_attempt_budget_survives_failures_and_new_login (test_auth05_mfa.MfaSQLTests.test_attempt_budget_survives_failures_and_new_login) ... ERROR
+test_bootstrap_one_use_and_no_second_first_admin (test_auth05_mfa.MfaSQLTests.test_bootstrap_one_use_and_no_second_first_admin) ... ok
+test_enrollment_challenge_never_session_and_replay_closed (test_auth05_mfa.MfaSQLTests.test_enrollment_challenge_never_session_and_replay_closed) ... ok
+test_expiry_credential_epoch_and_authority_failure (test_auth05_mfa.MfaSQLTests.test_expiry_credential_epoch_and_authority_failure) ... ERROR
+test_mandatory_audit_failure_rolls_back_recovery (test_auth05_mfa.MfaSQLTests.test_mandatory_audit_failure_rolls_back_recovery) ... ERROR
+test_membership_and_role_change_fence_challenges (test_auth05_mfa.MfaSQLTests.test_membership_and_role_change_fence_challenges) ... ERROR
+test_recovery_revokes_all_and_requires_new_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_revokes_all_and_requires_new_enrollment) ... ERROR
+test_step_up_action_session_binding_and_single_use (test_auth05_mfa.MfaSQLTests.test_step_up_action_session_binding_and_single_use) ... ERROR
+test_step_up_expiry_and_wrong_session (test_auth05_mfa.MfaSQLTests.test_step_up_expiry_and_wrong_session) ... ERROR
+
+======================================================================
+ERROR: test_attempt_budget_survives_failures_and_new_login (test_auth05_mfa.MfaSQLTests.test_attempt_budget_survives_failures_and_new_login)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 75, in test_attempt_budget_survives_failures_and_new_login
+    self.enroll(); challenge=self.login()
+    ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_expiry_credential_epoch_and_authority_failure (test_auth05_mfa.MfaSQLTests.test_expiry_credential_epoch_and_authority_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 82, in test_expiry_credential_epoch_and_authority_failure
+    self.enroll(); challenge=self.login()
+    ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_mandatory_audit_failure_rolls_back_recovery (test_auth05_mfa.MfaSQLTests.test_mandatory_audit_failure_rolls_back_recovery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 121, in test_mandatory_audit_failure_rolls_back_recovery
+    result=self.enroll(); challenge=self.login()
+           ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_membership_and_role_change_fence_challenges (test_auth05_mfa.MfaSQLTests.test_membership_and_role_change_fence_challenges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 128, in test_membership_and_role_change_fence_challenges
+    self.enroll(); challenge=self.login()
+    ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_recovery_revokes_all_and_requires_new_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_revokes_all_and_requires_new_enrollment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 90, in test_recovery_revokes_all_and_requires_new_enrollment
+    result=self.enroll(); old=result.session.token
+           ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_step_up_action_session_binding_and_single_use (test_auth05_mfa.MfaSQLTests.test_step_up_action_session_binding_and_single_use)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 102, in test_step_up_action_session_binding_and_single_use
+    result=self.enroll(); token=result.session.token
+           ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+======================================================================
+ERROR: test_step_up_expiry_and_wrong_session (test_auth05_mfa.MfaSQLTests.test_step_up_expiry_and_wrong_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 112, in test_step_up_expiry_and_wrong_session
+    result=self.enroll(); token=result.session.token
+           ^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 38, in enroll
+    result = self.mfa.complete.__wrapped__(self.mfa, enrollment.challenge.token, totp(self.seed, int(self.now.timestamp())//30), origin=ORIGIN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/mfa.py", line 152, in complete
+    with self._tx() as tx:
+         ^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/sessions.py", line 81, in _tx
+    with store.transaction(readonly=readonly) as tx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 88, in transaction
+    with self._connection(readonly) as conn:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/workspace/scratch/56f113437abe/auth05/apps/api/authentication/storage.py", line 84, in _connection
+    raise AuthSchemaNotReady() from None
+apps.api.authentication.errors.AuthSchemaNotReady: auth_schema_not_ready
+
+----------------------------------------------------------------------
+Ran 10 tests in 10.077s
+
+FAILED (errors=7)
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+DuplicatePreparedStatement prepared statement "_pg3_0" already exists
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/scripts/auth05/pglite_check.py", line 95, in <module>
+    main()
+  File "/workspace/scratch/56f113437abe/auth05/scripts/auth05/pglite_check.py", line 67, in main
+    subprocess.run(
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/workspace/scratch/56f113437abe/auth04-clean/bin/python', '/workspace/scratch/56f113437abe/auth05/scripts/auth05/verify_postgres.py']' returned non-zero exit status 1.

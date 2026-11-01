@@ -2195,6 +2195,54 @@
         "capability": null,
         "selector": "none",
         "authority": "external"
+      },
+      "auth.mfa.enroll": {
+        "operation_id": "auth.mfa.enroll",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.mfa.verify": {
+        "operation_id": "auth.mfa.verify",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.mfa.step_up": {
+        "operation_id": "auth.mfa.step_up",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.mfa.replace": {
+        "operation_id": "auth.mfa.replace",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.mfa.recover": {
+        "operation_id": "auth.mfa.recover",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.mfa.recovery_rotate": {
+        "operation_id": "auth.mfa.recovery_rotate",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
       }
     },
     "bindings": {
@@ -3124,6 +3172,30 @@
       },
       "api:POST:/v1/auth/password": {
         "operation_id": "auth.password.change",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/mfa/enroll": {
+        "operation_id": "auth.mfa.enroll",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/mfa/verify": {
+        "operation_id": "auth.mfa.verify",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/step-up": {
+        "operation_id": "auth.mfa.step_up",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/mfa/replace": {
+        "operation_id": "auth.mfa.replace",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/recovery": {
+        "operation_id": "auth.mfa.recover",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/recovery/rotate": {
+        "operation_id": "auth.mfa.recovery_rotate",
         "programmatic_api": false
       }
     }

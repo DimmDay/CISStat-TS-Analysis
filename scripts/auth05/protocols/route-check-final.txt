@@ -1,0 +1,3 @@
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 234, "inventory_api": 234, "registry_bindings": 238, "inventory_entries": 557, "added": [], "missing": []}

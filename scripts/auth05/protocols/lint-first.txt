@@ -1,0 +1,139 @@
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth05/bootstrap.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Operator-only bootstrap; secrets/passwords never accepted via argv or logs."""
+  |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> scripts/auth05/bootstrap.py:36:12
+   |
+34 |             print(json.dumps(service.bootstrap(secret, args.login, password)))
+35 |         return 0
+36 |     except Exception:
+   |            ^^^^^^^^^
+37 |         print(json.dumps({"ok": False, "code": "bootstrap_failed"}))
+38 |         return 1
+   |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth05/migrate.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Explicit AUTH-05 schema apply/readiness; credentials only in environment."""
+  |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> scripts/auth05/migrate.py:29:12
+   |
+27 |         print(json.dumps(SessionService(store).readiness()))
+28 |         return 0
+29 |     except Exception:
+   |            ^^^^^^^^^
+30 |         print(json.dumps({"ok": False, "code": "auth_authority_unavailable"}))
+31 |         return 1
+   |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth05/pglite_check.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Optional two-database PostgreSQL WASM proof; native CI remains mandatory.
+  |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth05/verify_postgres.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Mandatory live-PostgreSQL gate. Missing DSN/skipped tests cannot mean PASS."""
+  |
+
+PLW1510 `subprocess.run` without explicit `check` argument
+   --> tests/integration/test_auth05_mfa.py:301:18
+    |
+299 | print('durable MFA verified')
+300 | """
+301 |         result = subprocess.run(
+    |                  ^^^^^^^^^^^^^^
+302 |             [sys.executable, "-c", script],
+303 |             input=json.dumps(
+    |
+help: Add explicit `check=False`
+    |
+302 |             [sys.executable, "-c", script],
+    -             input=json.dumps(
+303 +             check=False, input=json.dumps(
+304 |                 {
+    |
+note: This suggestion may be incorrect or produce invalid syntax. It requires manual review and cannot be applied automatically
+
+B023 Function definition does not bind loop variable `challenge`
+   --> tests/integration/test_auth05_mfa.py:365:47
+    |
+363 |             for _ in range(count):
+364 |                 self.error(
+365 |                     lambda: self.mfa.complete(challenge.token, "bad", origin=ORIGIN),
+    |                                               ^^^^^^^^^
+366 |                     401,
+367 |                 )
+    |
+
+B017 Do not assert blind exception: `Exception`
+  --> tests/unit/test_auth05_mfa.py:41:18
+   |
+39 |             self.assertNotIn("secret", encrypted)
+40 |             self.assertEqual(unseal(kid, encrypted, "binding-a"), b"secret factor seed")
+41 |             with self.assertRaises(Exception):
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+42 |                 unseal(kid, encrypted, "binding-b")
+43 |         with patch.dict(os.environ, {}, clear=True):
+   |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+  --> tests/unit/test_auth05_mfa.py:43:9
+   |
+41 |               with self.assertRaises(Exception):
+42 |                   unseal(kid, encrypted, "binding-b")
+43 | /         with patch.dict(os.environ, {}, clear=True):
+44 | |             with self.assertRaises(Exception):
+   | |______________________________________________^
+45 |                   seal(b"seed", "binding")
+   |
+help: Combine `with` statements
+
+B017 Do not assert blind exception: `Exception`
+  --> tests/unit/test_auth05_mfa.py:44:18
+   |
+42 |                 unseal(kid, encrypted, "binding-b")
+43 |         with patch.dict(os.environ, {}, clear=True):
+44 |             with self.assertRaises(Exception):
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+45 |                 seal(b"seed", "binding")
+   |
+
+B017 Do not assert blind exception: `Exception`
+  --> tests/unit/test_auth05_mfa.py:53:14
+   |
+51 |         token = "c1_" + "A" * 43
+52 |         self.assertEqual(len(challenge_digest(token)), 64)
+53 |         with self.assertRaises(Exception):
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+54 |             token_digest(token)
+55 |         with self.assertRaises(Exception):
+   |
+
+B017 Do not assert blind exception: `Exception`
+  --> tests/unit/test_auth05_mfa.py:55:14
+   |
+53 |         with self.assertRaises(Exception):
+54 |             token_digest(token)
+55 |         with self.assertRaises(Exception):
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+56 |             challenge_digest("s1_" + "A" * 43)
+   |
+
+Found 32 errors (19 fixed, 13 remaining).

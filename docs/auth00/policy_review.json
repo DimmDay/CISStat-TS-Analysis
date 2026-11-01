@@ -1,5 +1,5 @@
 {
-  "baseline": "d3f78a79d71a9768dfd4d24c2cad2c1f0764dc57",
+  "baseline": "a7502efe349c8a3eb8f80157d9c93f1ff10bc7f1",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -313,7 +313,7 @@
       ]
     },
     "auth.entry": {
-      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store.",
+      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA.",
       "target": "Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority.",
       "follow_up": [
         "AUTH-04",
@@ -329,8 +329,8 @@
       ]
     },
     "auth.session": {
-      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state.",
-      "target": "MFA for admin, effective Account entitlements/ownership, unified enforcement and rollout remain AUTH-05/07/08/09/11/20.",
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP.",
+      "target": "Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20.",
       "follow_up": [
         "AUTH-04",
         "AUTH-05",
@@ -345,6 +345,34 @@
         "T04",
         "T06",
         "T11",
+        "T13",
+        "T15"
+      ]
+    },
+    "auth.mfa.entry": {
+      "observed": "AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment.",
+      "target": "First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP.",
+      "follow_up": [
+        "AUTH-06",
+        "AUTH-07"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T13",
+        "T15"
+      ]
+    },
+    "auth.mfa.session": {
+      "observed": "AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof.",
+      "target": "Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions.",
+      "follow_up": [
+        "AUTH-07"
+      ],
+      "threats": [
+        "T02",
+        "T03",
+        "T06",
         "T13",
         "T15"
       ]
@@ -6630,6 +6658,108 @@
       "canonical_operation": "auth.audit.publish",
       "admission": "trusted-authority-writer",
       "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/mfa/enroll": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.enroll",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/mfa/verify": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.verify",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/step-up": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.step_up",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/mfa/replace": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.replace",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/recovery": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.recover",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/recovery/rotate": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.recovery_rotate",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "storage:auth.mfa": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "storage:auth.mfa",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "auth.mfa.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.schema.apply",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "auth.mfa.bootstrap": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.bootstrap",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
     }
   },
   "extra_surfaces": [
@@ -6926,6 +7056,48 @@
           "symbol": "publish_pending"
         }
       ]
+    },
+    {
+      "id": "storage:auth.mfa",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:auth.mfa",
+      "operation": "storage:auth.mfa",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/mfa.py",
+          "line": 68,
+          "symbol": "MfaService"
+        }
+      ]
+    },
+    {
+      "id": "auth.mfa.schema.apply",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "auth.mfa.schema.apply",
+      "operation": "auth.mfa.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/mfa_migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "auth.mfa.bootstrap",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "auth.mfa.bootstrap",
+      "operation": "auth.mfa.bootstrap",
+      "evidence": [
+        {
+          "source": "scripts/auth05/bootstrap.py",
+          "line": 14,
+          "symbol": "main"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -6982,6 +7154,9 @@
     "spec_auth.md",
     "spec_auth_architecture.md",
     "spec_billing_accounts.md",
-    "validation/engine.py"
+    "validation/engine.py",
+    "apps/api/migrations/0021_auth05_mfa.sql",
+    "docs/auth05/design.md",
+    "scripts/auth05/bootstrap.py"
   ]
 }

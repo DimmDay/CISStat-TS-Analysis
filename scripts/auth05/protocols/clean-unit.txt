@@ -1,0 +1,9 @@
+test_cli_requires_operator_terminal_and_dsn_gate_never_skips (test_auth05_mfa.MfaPrimitiveTests.test_cli_requires_operator_terminal_and_dsn_gate_never_skips) ... ok
+test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key) ... ok
+test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint) ... ok
+test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.294s
+
+OK

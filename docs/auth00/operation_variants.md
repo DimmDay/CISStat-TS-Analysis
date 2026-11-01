@@ -87,3 +87,23 @@ self-only, opaque-cookie/online authority, без API-key или surrogate login
 Итого 228 API method/path, 232 AUTH-01 bindings (включая 4 aliases), 548 entry IDs.
 Scientific routes не переименованы; существующие key dependencies остаются key-only.
 Подробности: [AUTH-04 design](../auth04/design.md).
+
+## AUTH-05 — MFA/bootstrap/recovery boundary (01.11.2026)
+
+База a7502ef: шесть новых POST method/path: /v1/auth/mfa/enroll,
+/mfa/verify, /step-up, /mfa/replace, /recovery и /recovery/rotate.
+Login ADMIN теперь возвращает только ограниченный MFA challenge; полная
+AuthSession появляется после подтверждения TOTP. me получает серверное
+mfa_verified_at. Password mutation MFA session дополнительно требует
+одноразовый step-up proof action password.change.
+
+Весь auth transport требует CSRF/Origin, новые challenge entry не дают protected
+access. Step-up proof привязан к action/session и 5 минутам; recovery и MFA
+replacement отзывают sessions; reset не открывает password-only enrollment.
+Recovery code одноразовый, остаток набора погашается после нового enrollment;
+replacement сразу погашает старый набор. Bootstrap — только trusted CLI,
+не публичный HTTP. Все новые AUTH-01 operations external-policy, capability
+никогда не заменяет MFA. Добавлены три non-HTTP boundaries: MFA authority,
+0021 schema apply и CLI bootstrap. Итого 234 API, 238 AUTH-01 bindings с aliases,
+557 entries. Admin browser rollout / общий proxy остаются AUTH-07/06.
+Подробности: [AUTH-05 design](../auth05/design.md).

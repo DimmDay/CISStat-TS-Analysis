@@ -1,0 +1,47 @@
+auth PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+audit PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_all_new_commands_require_csrf_and_exact_origin (test_auth05_mfa.MfaHTTPTests.test_all_new_commands_require_csrf_and_exact_origin) ... ok
+test_full_http_enroll_login_me_logout_and_cookie (test_auth05_mfa.MfaHTTPTests.test_full_http_enroll_login_me_logout_and_cookie) ... ok
+test_http_recovery_no_full_session_and_safe_validation (test_auth05_mfa.MfaHTTPTests.test_http_recovery_no_full_session_and_safe_validation) ... ok
+test_http_stepup_and_recovery_rotation_guard (test_auth05_mfa.MfaHTTPTests.test_http_stepup_and_recovery_rotation_guard) ... ok
+test_account_membership_revocation_and_safe_storage (test_auth05_mfa.MfaSQLTests.test_account_membership_revocation_and_safe_storage) ... ok
+test_admin_login_mfa_context_and_totp_replay (test_auth05_mfa.MfaSQLTests.test_admin_login_mfa_context_and_totp_replay) ... ok
+test_attempt_budget_survives_failures_and_new_login (test_auth05_mfa.MfaSQLTests.test_attempt_budget_survives_failures_and_new_login) ... ok
+test_bootstrap_one_use_and_no_second_first_admin (test_auth05_mfa.MfaSQLTests.test_bootstrap_one_use_and_no_second_first_admin) ... ok
+test_concurrent_recovery_codes_cannot_recover_twice (test_auth05_mfa.MfaSQLTests.test_concurrent_recovery_codes_cannot_recover_twice) ... FAIL
+test_concurrent_totp_accepts_exactly_one (test_auth05_mfa.MfaSQLTests.test_concurrent_totp_accepts_exactly_one) ... ok
+test_enrollment_challenge_never_session_and_replay_closed (test_auth05_mfa.MfaSQLTests.test_enrollment_challenge_never_session_and_replay_closed) ... ok
+test_expiry_credential_epoch_and_authority_failure (test_auth05_mfa.MfaSQLTests.test_expiry_credential_epoch_and_authority_failure) ... ok
+test_factor_replacement_requires_reenrollment_and_fences_sessions (test_auth05_mfa.MfaSQLTests.test_factor_replacement_requires_reenrollment_and_fences_sessions) ... ok
+test_mandatory_audit_failure_rolls_back_recovery (test_auth05_mfa.MfaSQLTests.test_mandatory_audit_failure_rolls_back_recovery) ... ok
+test_membership_and_role_change_fence_challenges (test_auth05_mfa.MfaSQLTests.test_membership_and_role_change_fence_challenges) ... ok
+test_mfa_password_change_requires_action_step_up (test_auth05_mfa.MfaSQLTests.test_mfa_password_change_requires_action_step_up) ... ok
+test_migration_checksum_and_database_guards (test_auth05_mfa.MfaSQLTests.test_migration_checksum_and_database_guards) ... ok
+test_missing_key_fails_closed_and_does_not_consume_challenge (test_auth05_mfa.MfaSQLTests.test_missing_key_fails_closed_and_does_not_consume_challenge) ... ok
+test_new_challenge_does_not_reset_subject_attempt_limit (test_auth05_mfa.MfaSQLTests.test_new_challenge_does_not_reset_subject_attempt_limit) ... ok
+test_new_process_verifies_durable_challenge (test_auth05_mfa.MfaSQLTests.test_new_process_verifies_durable_challenge) ... ok
+test_recovery_lost_response_never_reopens_password_only_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_lost_response_never_reopens_password_only_enrollment) ... ok
+test_recovery_revokes_all_and_requires_new_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_revokes_all_and_requires_new_enrollment) ... ok
+test_step_up_action_session_binding_and_single_use (test_auth05_mfa.MfaSQLTests.test_step_up_action_session_binding_and_single_use) ... ok
+test_step_up_expiry_and_wrong_session (test_auth05_mfa.MfaSQLTests.test_step_up_expiry_and_wrong_session) ... ok
+
+======================================================================
+FAIL: test_concurrent_recovery_codes_cannot_recover_twice (test_auth05_mfa.MfaSQLTests.test_concurrent_recovery_codes_cannot_recover_twice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/tests/integration/test_auth05_mfa.py", line 398, in test_concurrent_recovery_codes_cannot_recover_twice
+    self.assertTrue(all(r["consumed_at"] for r in self.rows("auth_recovery_codes")))
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 24 tests in 27.625s
+
+FAILED (failures=1)
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth05/scripts/auth05/pglite_check.py", line 95, in <module>
+    main()
+  File "/workspace/scratch/56f113437abe/auth05/scripts/auth05/pglite_check.py", line 67, in main
+    subprocess.run(
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/workspace/scratch/56f113437abe/auth04-clean/bin/python', '/workspace/scratch/56f113437abe/auth05/scripts/auth05/verify_postgres.py']' returned non-zero exit status 1.

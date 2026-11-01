@@ -76,7 +76,7 @@ class SessionService:
     @contextmanager
     def _tx(self, readonly=False):
         store = self.store if self.store is not None else PostgresAccessStore.from_env()
-        from .session_migrations import check_schema
+        from .mfa_migrations import check_schema
 
         with store.transaction(readonly=readonly) as tx:
             check_schema(tx.connection)
@@ -109,19 +109,30 @@ class SessionService:
             (subject,),
         ).fetchone()["session_epoch"]
 
-    def _audit(self, c, action, subject, resource, operation):
+    def _audit(
+        self,
+        c,
+        action,
+        subject,
+        resource,
+        operation,
+        *,
+        actor_via="auth_session",
+        resource_kind=None,
+    ):
         from apps.api.security_audit import build_audit_record
 
         record = build_audit_record(
             action,
             "allowed",
             actor_subject=str(subject),
-            actor_via="auth_session",
-            resource_kind="auth_session"
-            if action == "auth_session_changed"
-            else "credential",
+            actor_via=actor_via,
+            resource_kind=resource_kind
+            or ("auth_session" if action == "auth_session_changed" else "credential"),
             resource_id=str(resource),
-            policy_basis="AUTH-04 durable command",
+            policy_basis="AUTH-05 MFA command"
+            if action == "auth_mfa_changed"
+            else "AUTH-04 durable command",
             details={"operation": operation},
         )
         c.execute(
@@ -261,8 +272,6 @@ class SessionService:
                 or current["version"] != candidate["version"]
             ):
                 auth_error(401, "invalid_credential")
-            if u["platform_role"] == "admin":
-                auth_error(403, "mfa_required")
             a = tx.accounts.get(account_id)
             members = tx.accounts.memberships(account_id) if a else ()
             if (
@@ -303,34 +312,45 @@ class SessionService:
                         old["session_id"],
                         "login_replaced",
                     )
-            token = "s1_" + secrets.token_urlsafe(32)
-            row = c.execute(
-                """INSERT INTO auth_sessions(session_id,family_id,token_hash,subject_id,account_id,credential_id,
-                credential_version,subject_version,session_epoch,scopes,origin,auth_time,issued_at,last_seen_at,idle_expires_at,absolute_expires_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s) RETURNING *""",
-                (
-                    uuid4(),
-                    uuid4(),
-                    token_digest(token),
-                    u["subject_id"],
-                    a.account_id,
-                    current["credential_id"],
-                    current["version"],
-                    u["subject_version"],
-                    epoch,
-                    json.dumps(current["scopes"]),
-                    origin,
-                    now,
-                    now,
-                    now,
-                    now + IDLE,
-                    now + ABSOLUTE,
-                ),
-            ).fetchone()
-            self._audit(
-                c, "auth_session_changed", u["subject_id"], row["session_id"], "created"
+            from .mfa import MfaService
+
+            mfa = MfaService(self.store, clock=self.clock)
+            challenge = mfa.login_challenge(
+                c, u, current, a.account_id, origin, now, epoch
             )
-            return IssuedSession(token, public_session(row))
+            if challenge is not None:
+                return challenge
+            return self._issue(c, u, current, a.account_id, origin, now, epoch)
+
+    def _issue(self, c, u, current, account_id, origin, now, epoch, *, auth_time=None):
+        token = "s1_" + secrets.token_urlsafe(32)
+        row = c.execute(
+            """INSERT INTO auth_sessions(session_id,family_id,token_hash,subject_id,account_id,credential_id,
+            credential_version,subject_version,session_epoch,scopes,origin,auth_time,issued_at,last_seen_at,idle_expires_at,absolute_expires_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s) RETURNING *""",
+            (
+                uuid4(),
+                uuid4(),
+                token_digest(token),
+                u["subject_id"],
+                account_id,
+                current["credential_id"],
+                current["version"],
+                u["subject_version"],
+                epoch,
+                json.dumps(current["scopes"]),
+                origin,
+                auth_time or now,
+                now,
+                now,
+                now + IDLE,
+                now + ABSOLUTE,
+            ),
+        ).fetchone()
+        self._audit(
+            c, "auth_session_changed", u["subject_id"], row["session_id"], "created"
+        )
+        return IssuedSession(token, public_session(row))
 
     def _load(self, c, digest, *, touch):
         hint = c.execute(
@@ -354,7 +374,6 @@ class SessionService:
         if (
             not u
             or u["status"] != "active"
-            or u["platform_role"] == "admin"
             or row["revoked_at"] is not None
             or now >= row["absolute_expires_at"]
             or now >= row["idle_expires_at"]
@@ -373,6 +392,9 @@ class SessionService:
         ).fetchone()
         if not account:
             auth_error(401, "invalid_credential")
+        from .mfa import session_mfa
+
+        session_mfa(c, row, required=u["platform_role"] == "admin")
         if touch:
             # Never extend absolute lifetime; row lock prevents post-revoke touch.
             row = c.execute(
@@ -388,6 +410,8 @@ class SessionService:
             row = self._load(tx.connection, digest, touch=touch)
             if origin is not None and row["origin"] != origin:
                 auth_error(401, "invalid_credential")
+            from .mfa import session_mfa
+
             return VerifiedCredential(
                 subject_id=str(row["subject_id"]),
                 credential_id=str(row["credential_id"]),
@@ -396,6 +420,7 @@ class SessionService:
                 auth_session_id=str(row["session_id"]),
                 scopes=frozenset(row["scopes"]),
                 auth_time=row["auth_time"],
+                mfa_verified_at=session_mfa(tx.connection, row),
             )
 
     @boundary
@@ -473,7 +498,9 @@ class SessionService:
             )
 
     @boundary
-    def change_password(self, token, current_password, new_password):
+    def change_password(
+        self, token, current_password, new_password, *, proof=None, origin=None
+    ):
         evidence = self.verify(token, touch=False)
         with self._tx(readonly=True) as tx:
             old = tx.connection.execute(
@@ -492,6 +519,12 @@ class SessionService:
             ).fetchone()
             if cred["version"] != old["version"]:
                 auth_error(409, "auth_version_conflict")
+            from .mfa import MfaService, session_mfa
+
+            if session_mfa(c, row) is not None:
+                MfaService(self.store, clock=self.clock).consume_step_up(
+                    c, token, proof, "password.change", origin or row["origin"]
+                )
             now = self._now(c)
             c.execute(
                 "UPDATE auth_password_credentials SET password_hash=%s,updated_at=%s WHERE credential_id=%s",
@@ -529,7 +562,7 @@ class SessionService:
 
     @boundary
     def readiness(self):
-        from .session_migrations import check_schema
+        from .mfa_migrations import check_schema
 
         with self._tx(readonly=True) as tx:
             check_schema(tx.connection)
@@ -539,7 +572,7 @@ class SessionService:
         return {
             "ok": True,
             "backend": "postgres",
-            "schema_version": "0020_auth04_sessions",
+            "schema_version": "0021_auth05_mfa",
             "audit_pending": pending,
         }
 
