@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/visualExports.ts
 //
 // PGV-10 (spec_passport_graphics_visual.md §10.1/§11/§13, строка
@@ -78,7 +79,7 @@ export interface ApiResult<T> {
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const resp = await fetch(url, {
+    const resp = await apiFetch(url, {
       credentials: "include",
       ...init,
       headers: {

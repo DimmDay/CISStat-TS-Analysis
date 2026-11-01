@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Database, Loader2, PlugZap } from "lucide-react";
@@ -75,7 +76,7 @@ export function DbConnectionForm({ onLoaded, onBusyChange, disabled = false }: P
     const controller = new AbortController(); requestRef.current = controller;
     inFlight.current = true; setBusy(operation); onBusyChange?.(true);
     try {
-      const response = await fetch(apiUrl(`/upload/db/${operation}`), {
+      const response = await apiFetch(apiUrl(`/upload/db/${operation}`), {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(operation === "test" ? { connection } : { connection, sql: sql.trim(), row_limit: Number(limit) }),
         signal: controller.signal,

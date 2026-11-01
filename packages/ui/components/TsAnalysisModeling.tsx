@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisModeling.tsx
 //
@@ -248,7 +249,7 @@ export function TsAnalysisModeling() {
     if (modelingStateRequestRef.current) return modelingStateRequestRef.current;
     const pending = (async () => {
       try {
-        const response = await fetch(`${API_BASE}/v1/session/modeling/state`, {
+        const response = await apiFetch(`${API_BASE}/v1/session/modeling/state`, {
           credentials: "include",
         });
         if (!response.ok) return;
@@ -282,7 +283,7 @@ export function TsAnalysisModeling() {
   const fetchModelingContext = useCallback(async () => {
     setModelingContextError(null);
     try {
-      const response = await fetch(`${API_BASE}/v1/session/modeling/context`, {
+      const response = await apiFetch(`${API_BASE}/v1/session/modeling/context`, {
         credentials: "include",
       });
       const body = await response.json().catch(() => ({}));
@@ -325,7 +326,7 @@ export function TsAnalysisModeling() {
     setTargetColumnLoading(true);
     setTargetColumnError(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/session/target-column`, {
+      const res = await apiFetch(`${API_BASE}/v1/session/target-column`, {
         method: "GET",
         credentials: "include", // cookie сессии обязателен (см. apiClient.ts)
       });
@@ -384,7 +385,7 @@ export function TsAnalysisModeling() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/session/modeling/candidates`, {
+      const res = await apiFetch(`${API_BASE}/v1/session/modeling/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -404,7 +405,7 @@ export function TsAnalysisModeling() {
         );
       }
       const data: CandidatesResponse = await res.json();
-      const baselineRes = await fetch(`${API_BASE}/v1/session/modeling/baselines`, {
+      const baselineRes = await apiFetch(`${API_BASE}/v1/session/modeling/baselines`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -476,7 +477,7 @@ export function TsAnalysisModeling() {
       setBacktestLoading(true);
       setBacktestError(null);
       try {
-        const res = await fetch(`${API_BASE}/v1/session/modeling/backtest`, {
+        const res = await apiFetch(`${API_BASE}/v1/session/modeling/backtest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include", // cookie сессии — для чтения target_column
@@ -513,7 +514,7 @@ export function TsAnalysisModeling() {
         setBacktestError("Укажите причину исключения модели из comparison.");
         return;
       }
-      const response = await fetch(`${API_BASE}/v1/session/modeling/backtest/exclude`, {
+      const response = await apiFetch(`${API_BASE}/v1/session/modeling/backtest/exclude`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1711,7 +1712,7 @@ function PanelContourSection() {
 
   const loadColumns = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/session/dataset`, {
+      const res = await apiFetch(`${API_BASE}/v1/session/dataset`, {
         credentials: "include",
       });
       if (!res.ok) return;
@@ -1747,7 +1748,7 @@ function PanelContourSection() {
     setError(null);
     setBacktest(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/session/modeling/panel/passport`, {
+      const res = await apiFetch(`${API_BASE}/v1/session/modeling/panel/passport`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -1774,7 +1775,7 @@ function PanelContourSection() {
     setBusy("confirm");
     setError(null);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_BASE}/v1/session/modeling/panel/passport/confirm`,
         { method: "POST", credentials: "include" },
       );
@@ -1790,7 +1791,7 @@ function PanelContourSection() {
 
   const loadCandidates = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/session/modeling/panel/candidates`, {
+      const res = await apiFetch(`${API_BASE}/v1/session/modeling/panel/candidates`, {
         credentials: "include",
       });
       const body = await res.json();
@@ -1810,7 +1811,7 @@ function PanelContourSection() {
       setBusy(`backtest:${modelId}`);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE}/v1/session/modeling/panel/backtest`, {
+        const res = await apiFetch(`${API_BASE}/v1/session/modeling/panel/backtest`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

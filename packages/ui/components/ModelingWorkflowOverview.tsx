@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -136,7 +137,7 @@ function apiErrorDetail(detail: unknown, status: number): string {
 }
 
 async function postJson(path: string, body: Record<string, unknown>) {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await apiFetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

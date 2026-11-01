@@ -2032,7 +2032,7 @@ describe("TsAnalysisPreprocessing — PROGR-17: URL-контракт отчёт�
     // НЕ sessionApiUrl -- двойной префикс /v1/session/v1/... ловится
     // здесь (дискриминатор дефекта PROGR-15-REPRO Г-1).
     expect(postCalls[0].url).toBe(
-      "http://localhost:8000/v1/progress/preprocessing-checks",
+      "/api/v1/progress/preprocessing-checks",
     );
 
     // Снапшот ВСЕХ 10 остановок реестра (all-or-nothing контракт
@@ -2089,7 +2089,7 @@ describe("TsAnalysisPreprocessing — PROGR-17: URL-контракт отчёт�
     expect(postCalls[1].body?.checks?.missing).toBe("skipped");
     for (const call of postCalls) {
       expect(call.url).toBe(
-        "http://localhost:8000/v1/progress/preprocessing-checks",
+        "/api/v1/progress/preprocessing-checks",
       );
     }
   });
@@ -2185,7 +2185,7 @@ describe("TsAnalysisPreprocessing — PROGR-17-CERT: закрытие наход
     expect(postCalls[1].body?.checks).toEqual(EXPECTED_SNAPSHOT);
     for (const call of postCalls) {
       expect(call.url).toBe(
-        "http://localhost:8000/v1/progress/preprocessing-checks",
+        "/api/v1/progress/preprocessing-checks",
       );
     }
   });

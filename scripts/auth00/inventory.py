@@ -256,8 +256,17 @@ def discovery(root):
             route = '/' + page.parent.relative_to(app).as_posix().replace('.', '').strip('/')
             text = page.read_text(encoding='utf-8')
             entries.append({'id': f'page:{shell}:{route}', 'kind': 'page', 'method': 'GET', 'path': route, 'operation': f'ui:{shell}:{route}', 'redirects': re.findall(r'\bredirect\(["\x27]([^"\x27]+)', text), 'evidence': [{'source': rel, 'line': 1, 'symbol': 'Page'}]})
+        handlers = []
         for route in sorted(app.rglob('route.*')):
-            raise ValueError(f'New Next route handler requires collector support: {route.relative_to(root)}')
+            text=route.read_text(encoding='utf-8')
+            expected={'dynamic':'"force-dynamic"','runtime':'"nodejs"',**{m:'firstPartyProxy' for m in ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS']}}
+            exports=re.findall(r'export const (\w+) = ([^;\n]+);',text)
+            canonical='import { firstPartyProxy } from "@cisstat/ui/server/firstPartyProxy";'
+            rest=re.sub(r'export const \w+ = [^;\n]+;','',text.replace(canonical,'')).strip()
+            if route.relative_to(app).as_posix()!='api/v1/[...path]/route.ts' or canonical not in text or rest or dict(exports)!=expected or len(exports)!=len(expected):
+                raise ValueError(f'New/changed Next handler requires review: {route.relative_to(root)}')
+            handlers.append(route)
+            entries.append({'id':f'proxy:{shell}:/api/v1/:path*','kind':'proxy','method':'*','methods':[m for m in expected if m.isupper()], 'path':'/api/v1/:path*','operation':'proxy:'+shell,'destination_template':'API_URL/v1/:path* (fixed server-only origin)','evidence':[{'source':route.relative_to(root).as_posix(),'line':1,'symbol':'firstPartyProxy'}]})
         for base in [root / f'apps/{shell}', root / f'apps/{shell}/src']:
             for name in ['middleware.ts', 'middleware.js']:
                 if (base / name).exists():
@@ -265,8 +274,8 @@ def discovery(root):
         config = root / f'apps/{shell}/next.config.mjs'
         text = config.read_text(encoding='utf-8')
         pairs = re.findall(r'source:\s*"([^"\n]+)"\s*,\s*destination:\s*`([^`]+)`', text)
-        if not pairs:
-            raise ValueError(f'Proxy rewrite requires review: {config}')
+        if not pairs and not handlers:
+            raise ValueError(f'Proxy rewrite/handler requires review: {config}')
         for source, destination in pairs:
             entries.append({'id': f'proxy:{shell}:{source}', 'kind': 'proxy', 'method': '*', 'path': source, 'operation': 'proxy:' + shell, 'destination_template': destination, 'evidence': [{'source': config.relative_to(root).as_posix(), 'line': text[:text.index('source:')].count('\n') + 1, 'symbol': 'rewrites'}]})
         for asset in sorted((root / f'apps/{shell}/public').rglob('*')):
@@ -354,6 +363,10 @@ def build(root=ROOT):
     # changing a guard body or adding an unseen entry module also causes drift.
     source_files.update(p.relative_to(root).as_posix() for p in (root / 'apps/api').rglob('*.py') if not p.name.startswith('test_'))
     def source_digest(path):
+        # Installed packages vary by npm layout/version and are not reviewed
+        # application sources. Fail rather than silently accepting a bad list.
+        if 'node_modules' in Path(path.replace('\\', '/')).parts:
+            raise ValueError('Dependency source cannot be reviewed: ' + path)
         data = (root / path).read_bytes()
         if Path(path).suffix in {'.py', '.ts', '.tsx', '.js', '.mjs', '.md', '.json', '.yml', '.yaml', '.sql', '.txt'}:
             data = data.replace(b'\r\n', b'\n')

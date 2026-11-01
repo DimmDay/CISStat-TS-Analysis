@@ -1,0 +1,35 @@
+test_cors_exact_allowlist (test_auth06_csrf.Auth06Contracts.test_cors_exact_allowlist) ... ERROR
+test_csrf_reuse_is_bound_to_sid (test_auth06_csrf.Auth06Contracts.test_csrf_reuse_is_bound_to_sid) ... FAIL
+test_me_contract_is_generated (test_auth06_csrf.Auth06Contracts.test_me_contract_is_generated) ... FAIL
+
+======================================================================
+ERROR: test_cors_exact_allowlist (test_auth06_csrf.Auth06Contracts.test_cors_exact_allowlist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth06-restored/tests/unit/test_auth06_csrf.py", line 18, in test_cors_exact_allowlist
+    from apps.api.authentication.csrf import configured_origins
+ImportError: cannot import name 'configured_origins' from 'apps.api.authentication.csrf' (/workspace/scratch/56f113437abe/auth06-restored/apps/api/authentication/csrf.py)
+
+======================================================================
+FAIL: test_csrf_reuse_is_bound_to_sid (test_auth06_csrf.Auth06Contracts.test_csrf_reuse_is_bound_to_sid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth06-restored/tests/unit/test_auth06_csrf.py", line 14, in test_csrf_reuse_is_bound_to_sid
+    self.assertEqual(issue_csrf(r),token)
+AssertionError: 'c1.1793536497.K_WB4K3yXnOqXIZc9kwVsLqisb6-6JmW.834d0c8d[52 chars]9eae' != 'c1.1793536497.HW1wbUQriV2xIz8_uZpU6O0wJZ75qJMK.75f24adf[52 chars]1975'
+- c1.1793536497.K_WB4K3yXnOqXIZc9kwVsLqisb6-6JmW.834d0c8dc3923e92094caec65f6a9d70821dec0540b24edee7ec00b65ded9eae
++ c1.1793536497.HW1wbUQriV2xIz8_uZpU6O0wJZ75qJMK.75f24adf32ca0867f69f9a34c87bc585cebd4fd7e2dc53e920669dfc51671975
+
+
+======================================================================
+FAIL: test_me_contract_is_generated (test_auth06_csrf.Auth06Contracts.test_me_contract_is_generated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/56f113437abe/auth06-restored/tests/unit/test_auth06_csrf.py", line 25, in test_me_contract_is_generated
+    self.assertTrue('AuthMeResponse' in schemas)
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.013s
+
+FAILED (failures=2, errors=1)

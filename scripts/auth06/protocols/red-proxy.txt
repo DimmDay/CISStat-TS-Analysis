@@ -1,0 +1,14 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/server/firstPartyProxy.test.ts
+  ● Test suite failed to run
+
+    [96mpackages/ui/server/firstPartyProxy.test.ts[0m:[93m2[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module './firstPartyProxy' or its corresponding type declarations.
+
+    [7m2[0m import {proxyRequest} from './firstPartyProxy';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        1.738 s
+Ran all test suites matching packages/ui/server/firstPartyProxy.test.ts.

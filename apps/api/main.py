@@ -175,15 +175,9 @@ app = FastAPI(
 from apps.api.access_registry import install_openapi_contract
 install_openapi_contract(app)
 
-# CORS origins -- через переменную окружения ALLOWED_ORIGINS (список через
-# запятую), задаётся на хостинге бэкенда (Render/Railway/...). Localhost
-# для локальной разработки добавлен всегда, чтобы не сломать её при
-# отсутствии переменной. allow_origin_regex дополнительно разрешает ЛЮБОЙ
-# *.vercel.app -- иначе каждый preview-деплой (PR/ветка) получает новый
-# поддомен и ловит CORS-ошибку, пока вручную не пропишешь его в
-# ALLOWED_ORIGINS.
-_env_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-_default_dev_origins = ["http://localhost:3000", "http://localhost:3001"]
+# AUTH-06: exact configured HTTPS origins, no wildcard preview credentials.
+from apps.api.authentication.csrf import configured_origins
+_env_origins = sorted(configured_origins())
 
 # Хук трассы «Прогресса» (spec_progress.md §4.2, Task PROGR-3): события
 # пишутся на успешных ответах по таблице маршрутов apps/api/trace_hook.py.
@@ -199,8 +193,7 @@ app.add_middleware(TelemetryContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_default_dev_origins + _env_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=_env_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

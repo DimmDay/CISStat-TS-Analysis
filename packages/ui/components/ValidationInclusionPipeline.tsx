@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -41,7 +42,7 @@ export function ValidationInclusionPipeline({ onApplied, onOpenRules = () => und
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/inclusion-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/inclusion-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const data: InclusionProfileResponse = await response.json();
         if (!active) return;
@@ -58,7 +59,7 @@ export function ValidationInclusionPipeline({ onApplied, onOpenRules = () => und
   const requestCorrection = async (apply: boolean) => {
     setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/inclusion-corrections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/inclusion-corrections"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ columns: selected, strategy, apply }),
       });

@@ -182,7 +182,7 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
     const logo = screen.getByAltText("CISStat DataTime Lab");
     const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const toggle = screen.getByRole("button", { name: "Включить тёмную тему" });
-    const cabinet = screen.getByLabelText("Личный кабинет");
+    const cabinet = screen.getByLabelText("Вход в личный аккаунт");
     const logoBox = logo.closest("div.relative")!;
 
     expect(logoBox.className).not.toMatch(/self-/);

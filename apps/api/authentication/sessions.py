@@ -65,6 +65,12 @@ class IssuedSession:
     session: dict
 
 
+@dataclass(frozen=True)
+class AccountChoices:
+    # Password-verified projection only, not a credential.
+    accounts: tuple
+
+
 class SessionService:
     def __init__(self, store=None, clock=None):
         from .credentials import PasswordCodec
@@ -229,7 +235,14 @@ class SessionService:
 
     @boundary
     def login(
-        self, login, password, account_id, *, old_token=None, origin, peer="unknown"
+        self,
+        login,
+        password,
+        account_id=None,
+        *,
+        old_token=None,
+        origin,
+        peer="unknown",
     ):
         from .credentials import normalize_login
 
@@ -272,7 +285,32 @@ class SessionService:
                 or current["version"] != candidate["version"]
             ):
                 auth_error(401, "invalid_credential")
-            a = tx.accounts.get(account_id)
+            if account_id is None:
+                available = [
+                    a
+                    for a in tx.accounts.for_subject(u["subject_id"])
+                    if a.status == "active"
+                ]
+                if len(available) > 1:
+                    names = {"mono": "Личный", "multi": "Командный"}
+                    plans = {
+                        "internal": "Внутренний",
+                        "demo": "Демо",
+                        "starter": "Стартовый",
+                        "professional": "Профессиональный",
+                        "enterprise": "Корпоративный",
+                    }
+                    return AccountChoices(
+                        tuple(
+                            {
+                                "account_id": str(a.account_id),
+                                "label": f"{names[a.account_type]} аккаунт {i + 1} — {plans[a.plan]}",
+                            }
+                            for i, a in enumerate(available)
+                        )
+                    )
+                account_id = available[0].account_id if available else None
+            a = tx.accounts.get(account_id) if account_id else None
             members = tx.accounts.memberships(account_id) if a else ()
             if (
                 not a

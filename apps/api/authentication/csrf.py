@@ -46,18 +46,17 @@ def _key():
     return value
 
 
-def trusted_origin(request, *, bootstrap=False):
+def configured_origins():
     raw = os.environ.get("CISSTAT_AUTH_ALLOWED_ORIGINS") or os.environ.get(
         "ALLOWED_ORIGINS", ""
     )
     origins = {s.strip().rstrip("/") for s in raw.split(",") if s.strip()}
-    if not origins or "*" in origins:
-        auth_error(503, "auth_authority_unavailable")
     for origin in origins:
         p = urlsplit(origin)
         if (
             p.scheme != "https"
             or not p.netloc
+            or "*" in origin
             or p.username
             or p.password
             or p.path
@@ -65,6 +64,13 @@ def trusted_origin(request, *, bootstrap=False):
             or p.fragment
         ):
             auth_error(503, "auth_authority_unavailable")
+    return origins
+
+
+def trusted_origin(request, *, bootstrap=False):
+    origins = configured_origins()
+    if not origins:
+        auth_error(503, "auth_authority_unavailable")
     headers = request.headers
     values = (
         headers.getlist("origin")
@@ -97,6 +103,9 @@ def _mac(body, request):
 
 def issue_csrf(request):
     trusted_origin(request, bootstrap=True)
+    existing = _cookie(request, CSRF_COOKIE)
+    if existing and _valid(existing, request):
+        return existing
     body = "c1." + str(int(time.time())) + "." + secrets.token_urlsafe(24)
     return body + "." + _mac(body, request)
 
@@ -120,9 +129,15 @@ def check_csrf(request):
         or not hmac.compare_digest(token, cookie)
     ):
         auth_error(403, "csrf_invalid")
-    if not re.fullmatch(r"c1\.[0-9]{1,12}\.[A-Za-z0-9_-]{32}\.[0-9a-f]{64}", token):
+    if not _valid(token, request):
         auth_error(403, "csrf_invalid")
+
+
+def _valid(token, request):
+    if len(token) > 180 or not re.fullmatch(
+        r"c1\.[0-9]{1,12}\.[A-Za-z0-9_-]{32}\.[0-9a-f]{64}", token
+    ):
+        return False
     body, signature = token.rsplit(".", 1)
     age = int(time.time()) - int(token.split(".")[1])
-    if not 0 <= age < TTL or not hmac.compare_digest(signature, _mac(body, request)):
-        auth_error(403, "csrf_invalid")
+    return 0 <= age < TTL and hmac.compare_digest(signature, _mac(body, request))

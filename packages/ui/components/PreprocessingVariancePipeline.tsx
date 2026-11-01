@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -36,7 +37,7 @@ export function PreprocessingVariancePipeline({ column, recommendedMethod, onApp
     if (!column) return;
     setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/preprocessing/variance-transformations"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/variance-transformations"), {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ column, method, lambda_value: isPower && !autoLambda ? Number(lambdaValue) : null, apply }),
       });

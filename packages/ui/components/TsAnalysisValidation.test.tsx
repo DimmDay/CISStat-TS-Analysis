@@ -1468,7 +1468,7 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
     // sessionApiUrl -- двойной префикс /v1/session/v1/... ловится здесь
     // (дискриминатор дефекта PROGR-15-REPRO Г-1, применённый к отчёту).
     await waitFor(() => expect(postCalls).toHaveLength(1));
-    expect(postCalls[0].url).toBe("http://localhost:8000/v1/progress/validation-checks");
+    expect(postCalls[0].url).toBe("/api/v1/progress/validation-checks");
 
     // Снапшот ВСЕХ 10 проверок реестра (all-or-nothing контракт бэкенда),
     // статусы -- те, что показывает модуль.
@@ -1524,7 +1524,7 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
     await waitFor(() => expect(postCalls).toHaveLength(2));
     expect(postCalls[1].body?.checks?.formats).toBe("warning");
     for (const call of postCalls) {
-      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+      expect(call.url).toBe("/api/v1/progress/validation-checks");
     }
   });
 
@@ -1595,7 +1595,7 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
       Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
     );
     for (const call of postCalls) {
-      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+      expect(call.url).toBe("/api/v1/progress/validation-checks");
     }
   });
 
@@ -1638,7 +1638,7 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
         EXPECTED_CHECK_IDS_ARR.map((id) => [id, id === "formats" ? "warning" : "done"]),
       ),
     );
-    expect(postCalls[0].url).toBe("http://localhost:8000/v1/progress/validation-checks");
+    expect(postCalls[0].url).toBe("/api/v1/progress/validation-checks");
   });
 
   it("re-reports after a DATASET CHANGE even when the status picture is identical (marker reset is the only cause of the retry)", async () => {
@@ -1688,7 +1688,7 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
       Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
     );
     for (const call of postCalls) {
-      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+      expect(call.url).toBe("/api/v1/progress/validation-checks");
     }
   });
 });

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -26,7 +27,7 @@ export function ValidationSufficiencyOverview({ refreshKey = 0 }: { refreshKey?:
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { let active = true; setLoading(true); setError(null); void (async () => { try {
-    const response = await fetch(sessionApiUrl("/dataset/sufficiency-profile"), { credentials: "include" });
+    const response = await apiFetch(sessionApiUrl("/dataset/sufficiency-profile"), { credentials: "include" });
     if (!response.ok) throw new Error(await responseDetail(response));
     const body: SufficiencyProfileResponse = await response.json(); if (active) setData(body);
   } catch (caught) { if (active) setError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль достаточности"); } finally { if (active) setLoading(false); } })(); return () => { active = false; }; }, [refreshKey]);

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -32,7 +33,7 @@ export function ValidationRegularityPipeline({ onApplied, onOpenRules }: { onApp
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => { let active = true; void (async () => { try {
-    const response = await fetch(sessionApiUrl("/dataset/regularity-profile"), { credentials: "include" });
+    const response = await apiFetch(sessionApiUrl("/dataset/regularity-profile"), { credentials: "include" });
     if (!response.ok) throw new Error(await responseDetail(response));
     const body: RegularityProfileResponse = await response.json(); if (!active) return;
     setProfile(body); setFrequency(body.profile.target_frequency || "");
@@ -42,7 +43,7 @@ export function ValidationRegularityPipeline({ onApplied, onOpenRules }: { onApp
   const invalidate = () => { setPreview(null); setConfirmed(false); setSuccess(null); setError(null); };
   const requestCorrection = async (apply: boolean) => { setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null); try {
     const body = { strategy, frequency: STRATEGIES[strategy].needsFrequency ? frequency : null, apply };
-    const response = await fetch(sessionApiUrl("/dataset/regularity-corrections"), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
+    const response = await apiFetch(sessionApiUrl("/dataset/regularity-corrections"), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
     if (!response.ok) throw new Error(await responseDetail(response));
     const data: CorrectionResponse = await response.json(); setPreview(data); setConfirmed(false);
     if (apply) { setProfile((current) => current ? { ...current, profile: data.profile } : current); setSuccess("Изменения применены, проверка запущена повторно"); onApplied(); }

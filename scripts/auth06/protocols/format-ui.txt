@@ -1,0 +1,17 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+packages/ui/server/firstPartyProxy.ts 159ms
+packages/ui/server/firstPartyProxy.test.ts 29ms
+packages/ui/lib/authClient.ts 14ms
+packages/ui/lib/authClient.test.ts 6ms
+packages/ui/lib/browserTransport.ts 8ms
+packages/ui/lib/browserTransport.test.ts 6ms
+packages/ui/lib/auth06SourceBoundary.test.ts 5ms
+packages/ui/context/AuthContext.tsx 11ms
+packages/ui/context/AuthContext.test.tsx 11ms
+packages/ui/components/LoginScreen.tsx 25ms
+packages/ui/components/LoginScreen.test.tsx 17ms
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

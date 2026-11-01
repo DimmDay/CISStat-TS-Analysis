@@ -107,3 +107,18 @@ replacement сразу погашает старый набор. Bootstrap — �
 0021 schema apply и CLI bootstrap. Итого 234 API, 238 AUTH-01 bindings с aliases,
 557 entries. Admin browser rollout / общий proxy остаются AUTH-07/06.
 Подробности: [AUTH-05 design](../auth05/design.md).
+
+## AUTH-06 — восстановление 01.11.2026
+
+База 8e8f747: добавлен /login обеих shells, общий LoginScreen/AuthProvider.
+Две прежние proxy IDs /api/v1/:path* сохранены, unrestricted rewrite заменён
+точным shared Node handler с 7 exports и generated API method/path allowlist.
+Collector не принимает arbitrary новый handler/middleware без review.
+API пути неизменны: 234; registry bindings 238 с aliases. GET me использует
+Pydantic/OpenAPI→generated TS safe DTO. POST login допускает optional Account
+после password proof (single active auto-select либо limited own choices без
+session). Proxy Origin/CSRF/header gate не заменяет API authority. Backend
+ошибки не вызывают автоматический повтор mutation; один resend разрешён лишь
+после local отказа до forwarding. GET restore остаётся закрыт на browser BFF.
+CORS exact HTTPS, без wildcard previews; iframe login — top-level, не перенос SID.
+Итого 29 pages, 2 proxy declarations, 559 entries. См. docs/auth06/design.md.

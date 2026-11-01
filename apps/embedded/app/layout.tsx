@@ -1,3 +1,4 @@
+import { AuthProvider } from "@cisstat/ui/context/AuthContext";
 // apps/embedded/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -28,12 +29,12 @@ export default function RootLayout({
   return (
     <html lang="ru" className={inter.variable}>
       <body className="font-sans antialiased">
-        <AppShellProvider>
+        <AuthProvider><AppShellProvider>
           <PortalNavBar />
           <ModuleNav />
           <main className="p-4">{children}</main>
           <Toaster />
-        </AppShellProvider>
+        </AppShellProvider></AuthProvider>
       </body>
     </html>
   );

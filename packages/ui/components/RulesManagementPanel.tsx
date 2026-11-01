@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/RulesManagementPanel.tsx
 //
@@ -214,8 +215,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     const hydrate = async () => {
       try {
         const [templatesResponse, sessionResponse] = await Promise.all([
-          fetch(`${API_BASE}/v1/internal/rules/templates`),
-          fetch(`${API_BASE}/v1/session/dataset/validation-rules`, { credentials: "include" }),
+          apiFetch(`${API_BASE}/v1/internal/rules/templates`),
+          apiFetch(`${API_BASE}/v1/session/dataset/validation-rules`, { credentials: "include" }),
         ]);
         if (!templatesResponse.ok) throw new Error("templates");
         const templatesData = await templatesResponse.json();
@@ -254,7 +255,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setError(null);
     setApplied(false);
     try {
-      const resp = await fetch(`${API_BASE}/v1/internal/rules/load/${templateId}`);
+      const resp = await apiFetch(`${API_BASE}/v1/internal/rules/load/${templateId}`);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         setError(err.detail || `Ошибка загрузки шаблона "${templateId}"`);
@@ -788,7 +789,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       if (JSON.stringify(currentSufficiency) !== JSON.stringify(originalSufficiency)) {
         overrides.sufficiency = currentSufficiency;
       }
-      const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
+      const resp = await apiFetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

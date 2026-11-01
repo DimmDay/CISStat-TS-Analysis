@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/adminLogs.ts
 //
 // DOCLOG-7 (спека §14.2, §15): клиент API журналов /v1/logs.
@@ -133,7 +134,7 @@ async function requestJson<T>(
   init?: RequestInit,
 ): Promise<ApiResult<T>> {
   try {
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       ...init,
       headers: {
         ...authHeaders(apiKey),
@@ -281,7 +282,7 @@ export async function exportDiagnosticBundle(
   body: { from: string; to: string; streams?: string[] },
 ): Promise<BundleResult | { ok: false; status: number }> {
   try {
-    const response = await fetch(adminLogsApiUrl("/export"), {
+    const response = await apiFetch(adminLogsApiUrl("/export"), {
       method: "POST",
       headers: { ...authHeaders(apiKey), "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -500,7 +500,7 @@ describe("edarecalccert — T7: ④ mount-scope ревизии графика р
     return mock.mock.calls
       .map(([url]) => String(url))
       .filter((url) => url.includes("/dataset/distribution?"))
-      .map((url) => new URL(url).searchParams.get("revision") ?? "");
+      .map((url) => new URL(url, window.location.origin).searchParams.get("revision") ?? "");
   }
 
   function mountOverview(props?: { refreshKey?: number; activeFeature?: string }) {

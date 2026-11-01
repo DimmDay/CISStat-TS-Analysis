@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `a7502efe349c8a3eb8f80157d9c93f1ff10bc7f1`. Автоматически собранные входы + явная policy review.
+База: `8e8f747b376c9b09ec7406996dec2374dc1fdf54`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -16,7 +16,7 @@
 | internal_operation | 8 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
-| page | 27 |
+| page | 29 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
@@ -35,24 +35,25 @@
 | auth.entry | AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. | Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority. | AUTH-04, AUTH-05, AUTH-06, AUTH-19 |
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
-| auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
+| auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
 | auth.storage | AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | browser.internal | Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-11, AUTH-12 |
 | browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
-| cors.transport | CORS permits configured/dev origins and regex *.vercel.app with credentials; not access control. | Approved origins + CSRF/Origin/Fetch Metadata; direct API remains subject to AuthN/object gates. | AUTH-06, AUTH-11 |
+| cors.transport | AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN. | Scientific direct API authority rollout remains AUTH-11. | AUTH-11 |
 | document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
 | logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | ops.diagnostics | /health/ops без AuthN; безопасная проекция технического состояния. | Private ops/service или platform permission; не раскрывать конфигурацию/секреты. | AUTH-03, AUTH-20 |
 | profile.policy | AUTH-03 shared context subject + existing OrgProfileService policy.admin/mandatory audit. Named MFA policy remains AUTH-05/07. | Unified context + explicit policy admin permission/MFA; preserve tenant and mandatory transaction semantics. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | progress.session | Research session + существующие trace/delivery/mirror guards; не личная AuthN. | Unified account context; сохранить object/mirror проверки, ограничить admission/observations. | AUTH-03, AUTH-09, AUTH-11 |
-| proxy.transport | First-party Next rewrite only; not AuthN, no signed context or CSRF BFF. | Forward allowlisted credentials over TLS; strip spoofed identity headers; server validation + CSRF/Origin. | AUTH-03, AUTH-06 |
+| proxy.transport | AUTH-06 shared force-dynamic Node proxy: fixed TLS target, exact configured Origin/Fetch Metadata/CSRF before forwarding, generated method/path allowlist, identity/forwarded headers stripped, explicit cookie/header forwarding, no redirect/no-store. Backend remains authority. GET restore blocked. | Scientific ownership/enforcement remains AUTH-09/11; maintain reviewed allowlist. | AUTH-09, AUTH-11 |
 | public.metadata | Открытые metadata/education endpoints; личная AuthN не заявлена. | Явный public allowlist; безопасная проекция, лимит ответа и throttle для compute. | AUTH-01, AUTH-11 |
 | renderer.service | No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints. | Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
 | run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
 | storage.internal | Internal file/object/DB operation; content hash/path/registry checks are not user authentication. | Reach only via authorized object service; trusted roots/keys, no direct filesystem mount or public object ACL. | AUTH-09, AUTH-11, AUTH-13, AUTH-20 |
 | task.alias | Four UI application hrefs; causes has live backend data, other task views do not imply ready compute. | Canonical application-stage gate including aliases; scientific EDA Granger/DOCLOG monitoring are distinct. | AUTH-01, AUTH-11 |
 | ui.admin | Only embedded /admin/progress exists; dashboard uses entered API-key in tab memory. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
+| ui.login | AUTH-06 shared personal login/MFA/recovery and safe generated me DTO; no token URL/storage, exact local return_to, top-level login for framed context. API authority mandatory. | Named admin pages and account lifecycle remain AUTH-07/08. | AUTH-07, AUTH-08 |
 | ui.page | Page component/navigation/redirect, no common personal AuthN gate; UI is not an authority. | UI handles auth/denial/account switch; backend independently enforces operation policy. | AUTH-01, AUTH-06, AUTH-11 |
 | worker.authority | In-process worker trusts queued durable work/admission; not a browser-authenticated request. | Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication. | AUTH-03, AUTH-12, AUTH-13, AUTH-16, AUTH-20 |
 
@@ -60,11 +61,11 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:267 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:272 |
-| api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:133 |
-| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:188 |
-| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:211 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:260 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:265 |
+| api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
+| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
+| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:214 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:555 |
 | api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:744 |
 | api:GET:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:list_org_profiles / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:60 |
@@ -172,17 +173,17 @@
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | browser.session / session Model Card and fold importance | apps/api/routers/tasks_session.py:221 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | browser.internal / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:169 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:164 |
-| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:149 |
-| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:219 |
-| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:277 |
-| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:322 |
-| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:290 |
-| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:245 |
-| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:335 |
-| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:347 |
-| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:226 |
-| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:235 |
-| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:308 |
+| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:150 |
+| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:222 |
+| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:280 |
+| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:325 |
+| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:293 |
+| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:248 |
+| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:338 |
+| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:350 |
+| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:229 |
+| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:238 |
+| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:311 |
 | api:POST:/v1/documentation/documents/{document_id}/retention | apps.api.routers.documentation:document_retention / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1031 |
 | api:POST:/v1/documentation/jobs/{job_id}/cancel | apps.api.routers.documentation:cancel_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:757 |
 | api:POST:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:create_org_profile / service:documentation | profile.policy / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:86 |
@@ -591,6 +592,7 @@
 | page:embedded:/analytics/ts-analysis | ui:embedded:/analytics/ts-analysis / service:analytics/ts-analysis | ui.page / UI navigation only | apps/embedded/app/analytics/ts-analysis/page.tsx:1 |
 | page:embedded:/eda | ui:embedded:/eda / scientific:eda | ui.page / UI navigation only | apps/embedded/app/eda/page.tsx:1 |
 | page:embedded:/forecasting | ui:embedded:/forecasting / scientific:forecasting | ui.page / UI navigation only | apps/embedded/app/forecasting/page.tsx:1 |
+| page:embedded:/login | ui:embedded:/login / service:platform | ui.login / personal login UI | apps/embedded/app/login/page.tsx:1 |
 | page:embedded:/modeling | ui:embedded:/modeling / scientific:modeling | ui.page / UI navigation only | apps/embedded/app/modeling/page.tsx:1 |
 | page:embedded:/navigator | ui:embedded:/navigator / service:navigator | ui.page / UI navigation only | apps/embedded/app/navigator/page.tsx:1 |
 | page:embedded:/preprocessing | ui:embedded:/preprocessing / scientific:preprocessing | ui.page / UI navigation only | apps/embedded/app/preprocessing/page.tsx:1 |
@@ -603,6 +605,7 @@
 | page:standalone:/eda | ui:standalone:/eda / scientific:eda | ui.page / UI navigation only | apps/standalone/app/eda/page.tsx:1 |
 | page:standalone:/education | ui:standalone:/education / service:education | ui.page / UI navigation only | apps/standalone/app/education/page.tsx:1 |
 | page:standalone:/forecasting | ui:standalone:/forecasting / scientific:forecasting | ui.page / UI navigation only | apps/standalone/app/forecasting/page.tsx:1 |
+| page:standalone:/login | ui:standalone:/login / service:platform | ui.login / personal login UI | apps/standalone/app/login/page.tsx:1 |
 | page:standalone:/modeling | ui:standalone:/modeling / scientific:modeling | ui.page / UI navigation only | apps/standalone/app/modeling/page.tsx:1 |
 | page:standalone:/navigator | ui:standalone:/navigator / service:navigator | ui.page / UI navigation only | apps/standalone/app/navigator/page.tsx:1 |
 | page:standalone:/preprocessing | ui:standalone:/preprocessing / scientific:preprocessing | ui.page / UI navigation only | apps/standalone/app/preprocessing/page.tsx:1 |
@@ -618,8 +621,8 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| proxy:embedded:/api/v1/:path* | proxy:embedded / service:transport | proxy.transport / forwarded HTTP request | apps/embedded/next.config.mjs:26 |
-| proxy:standalone:/api/v1/:path* | proxy:standalone / service:transport | proxy.transport / forwarded HTTP request | apps/standalone/next.config.mjs:63 |
+| proxy:embedded:/api/v1/:path* | proxy:embedded / service:transport | proxy.transport / forwarded HTTP request | apps/embedded/app/api/v1/[...path]/route.ts:1 |
+| proxy:standalone:/api/v1/:path* | proxy:standalone / service:transport | proxy.transport / forwarded HTTP request | apps/standalone/app/api/v1/[...path]/route.ts:1 |
 
 ## renderer
 

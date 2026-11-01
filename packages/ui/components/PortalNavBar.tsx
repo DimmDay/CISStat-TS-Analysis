@@ -39,13 +39,11 @@ export function PortalNavBar() {
         <button type="button" className="text-neutral-500 hover:text-neutral-900">
           РУС / ENG
         </button>
-        <button
-          type="button"
-          aria-label="Личный кабинет"
+        <a href="/login" target="_top" aria-label="Вход в личный аккаунт"
           className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 hover:bg-neutral-300"
         >
           <User size={14} aria-hidden="true" />
-        </button>
+        </a>
       </div>
     </div>
   );

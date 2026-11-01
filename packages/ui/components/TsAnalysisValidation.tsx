@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisValidation.tsx
 //
@@ -291,7 +292,7 @@ export function TsAnalysisValidation() {
     setValidationError(null);
     const url = sessionApiUrl("/dataset/validate");
     try {
-      const response = await fetch(url, { credentials: "include" });
+      const response = await apiFetch(url, { credentials: "include" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (requestId !== validationRequestId.current || !data) return;
@@ -351,7 +352,7 @@ export function TsAnalysisValidation() {
     let cancelled = false;
     const fetchModes = async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/validation-check-modes"), {
+        const response = await apiFetch(sessionApiUrl("/dataset/validation-check-modes"), {
           credentials: "include",
         });
         if (!response.ok) return;
@@ -460,7 +461,7 @@ export function TsAnalysisValidation() {
     setModeSaving(checkId);
     setModeError(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/validation-check-modes"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/validation-check-modes"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

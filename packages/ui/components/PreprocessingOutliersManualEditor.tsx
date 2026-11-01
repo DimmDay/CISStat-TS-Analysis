@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // Ручное исправление выбросов -- редактор датасета остановки «Выбросы»
 // (MANUAL-OUTLIERS-1, 2026-10-15, постановка тимлида). Паттерн
@@ -135,7 +136,7 @@ export function PreprocessingOutliersManualEditor({ onApplied }: { onApplied: ()
       setPending((n) => n + 1);
       try {
         const offset = page * PAGE_LIMIT;
-        const res = await fetch(
+        const res = await apiFetch(
           sessionApiUrl(
             `/dataset/outlier-editor-rows?offset=${offset}&limit=${PAGE_LIMIT}&outliers_only=${filter === "outliers" ? "true" : "false"}`,
           ),
@@ -248,7 +249,7 @@ export function PreprocessingOutliersManualEditor({ onApplied }: { onApplied: ()
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/outlier-manual-corrections"), {
+      const res = await apiFetch(sessionApiUrl("/dataset/outlier-manual-corrections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

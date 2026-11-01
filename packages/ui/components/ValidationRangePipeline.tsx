@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -82,7 +83,7 @@ export function ValidationRangePipeline({
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/range-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/range-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const data: RangeProfileResponse = await response.json();
         if (!active) return;
@@ -109,7 +110,7 @@ export function ValidationRangePipeline({
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/range-corrections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/range-corrections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

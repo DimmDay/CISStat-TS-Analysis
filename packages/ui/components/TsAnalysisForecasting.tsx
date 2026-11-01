@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisForecasting.tsx
 //
@@ -847,7 +848,7 @@ function PanelForecastSection() {
     setGateMessage(null);
     setError(null);
     try {
-      const res = await fetch(`${PANEL_API_BASE}/v1/session/modeling/panel/candidates`, {
+      const res = await apiFetch(`${PANEL_API_BASE}/v1/session/modeling/panel/candidates`, {
         credentials: "include",
       });
       const body = await res.json();
@@ -885,7 +886,7 @@ function PanelForecastSection() {
         model_id: modelId,
         horizon,
       };
-      const res = await fetch(`${PANEL_API_BASE}/v1/session/modeling/panel/forecast`, {
+      const res = await apiFetch(`${PANEL_API_BASE}/v1/session/modeling/panel/forecast`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

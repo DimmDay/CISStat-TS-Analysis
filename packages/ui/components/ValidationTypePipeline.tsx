@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -123,7 +124,7 @@ export function ValidationTypePipeline({
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/convert-types"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/convert-types"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -157,7 +158,7 @@ export function ValidationTypePipeline({
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/type-schema"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/type-schema"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

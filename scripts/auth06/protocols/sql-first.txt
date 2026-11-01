@@ -1,0 +1,11 @@
+auth PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+audit PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_closed_account_not_selected (test_auth06_transport.AccountSelectionTests.test_closed_account_not_selected) ... ok
+test_only_own_accounts_offered_without_session (test_auth06_transport.AccountSelectionTests.test_only_own_accounts_offered_without_session) ... ok
+test_single_account_auto_selected (test_auth06_transport.AccountSelectionTests.test_single_account_auto_selected) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.309s
+
+OK
+AUTH-06 SQL/HTTP proof PASS; native PostgreSQL locking/restart NOT certified

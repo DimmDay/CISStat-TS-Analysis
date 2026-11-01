@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -22,9 +23,9 @@ export function ValidationSufficiencyPipeline({ onApplied, onOpenRules }: { onAp
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => { let active = true; void (async () => { try { const response = await fetch(sessionApiUrl("/dataset/sufficiency-profile"), { credentials: "include" }); if (!response.ok) throw new Error(await responseDetail(response)); const body: SufficiencyProfileResponse = await response.json(); if (active) setData(body); } catch (caught) { if (active) setError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль достаточности"); } finally { if (active) setBusy(null); } })(); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; void (async () => { try { const response = await apiFetch(sessionApiUrl("/dataset/sufficiency-profile"), { credentials: "include" }); if (!response.ok) throw new Error(await responseDetail(response)); const body: SufficiencyProfileResponse = await response.json(); if (active) setData(body); } catch (caught) { if (active) setError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль достаточности"); } finally { if (active) setBusy(null); } })(); return () => { active = false; }; }, []);
   const invalidate = () => { setPreview(null); setConfirmed(false); setSuccess(null); setError(null); };
-  const requestPlan = async (apply: boolean) => { setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null); try { const response = await fetch(sessionApiUrl("/dataset/sufficiency-plan"), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ strategy, apply }) }); if (!response.ok) throw new Error(await responseDetail(response)); const body: PlanResponse = await response.json(); setPreview(body); setConfirmed(false); if (apply) { setData((current) => current ? { ...current, plan: { strategy }, profile: body.profile } : current); setSuccess("План анализа сохранён, валидация запущена повторно"); onApplied(); } } catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось сохранить план анализа"); } finally { setBusy(null); } };
+  const requestPlan = async (apply: boolean) => { setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null); try { const response = await apiFetch(sessionApiUrl("/dataset/sufficiency-plan"), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ strategy, apply }) }); if (!response.ok) throw new Error(await responseDetail(response)); const body: PlanResponse = await response.json(); setPreview(body); setConfirmed(false); if (apply) { setData((current) => current ? { ...current, plan: { strategy }, profile: body.profile } : current); setSuccess("План анализа сохранён, валидация запущена повторно"); onApplied(); } } catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось сохранить план анализа"); } finally { setBusy(null); } };
   const profile = data?.profile;
   const passed = Boolean(profile?.applicable && profile.total_failed_checks === 0);
   const hasSavedPlan = typeof data?.plan?.strategy === "string";

@@ -1,0 +1,35 @@
+{
+  "base": "8e8f747b376c9b09ec7406996dec2374dc1fdf54",
+  "restored": true,
+  "historical_archive": "unavailable; fresh functional reconstruction and validation",
+  "jest": {
+    "passed": 2814,
+    "skipped": 2,
+    "passed_suites": 251,
+    "skipped_suites": 1,
+    "protocol": "jest-recovery.txt"
+  },
+  "auth06_focused": 23,
+  "auth06_python": 3,
+  "sql": {
+    "auth04": 42,
+    "auth05": 24,
+    "auth06": 3,
+    "engine": "PostgreSQL 18.6 / PGlite 0.5.14"
+  },
+  "two_origin_https": "PASS shared handler -> actual auth API -> PostgreSQL; not Next/browser certification",
+  "routes": {
+    "api": 234,
+    "bindings": 238,
+    "entries": 559,
+    "pages": 29,
+    "proxy_declarations": 2,
+    "status": "PASS"
+  },
+  "local_gates": "PASS",
+  "typechecks": "PASS both",
+  "renderer_build": "PASS",
+  "next_builds": "BLOCKED ENOENT uv_resident_set_memory",
+  "native_pg_16_18_ci": "prepared, NOT RUN",
+  "git_commit_push": "NOT PERFORMED"
+}

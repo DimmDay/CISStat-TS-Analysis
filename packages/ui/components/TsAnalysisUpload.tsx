@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisUpload.tsx
 //
@@ -365,7 +366,7 @@ function topCandidates(candidates: DetectionCandidate[], max = 8): DetectionCand
 
 async function fetchStructureDetection(): Promise<StructureDetection | null> {
   try {
-    const res = await fetch(sessionApiUrl("/dataset/structure-detection"), { credentials: "include" });
+    const res = await apiFetch(sessionApiUrl("/dataset/structure-detection"), { credentials: "include" });
     if (!res.ok) return null;
     const data = await res.json();
     const dateCandidates = topCandidates(data.date_col.candidates);
@@ -540,7 +541,7 @@ export function TsAnalysisUpload() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const resp = await fetch(sessionApiUrl("/dataset/stats"), { credentials: "include" });
+      const resp = await apiFetch(sessionApiUrl("/dataset/stats"), { credentials: "include" });
       if (resp.ok) {
         const data = await resp.json();
         setStats(data.columns ?? []);
@@ -580,7 +581,7 @@ export function TsAnalysisUpload() {
     }
     let cancelled = false;
     setDistributionLoading(true);
-    fetch(sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(selectedFeature)}`), {
+    apiFetch(sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(selectedFeature)}`), {
       credentials: "include",
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -637,7 +638,7 @@ export function TsAnalysisUpload() {
     }
     let cancelled = false;
     setTimeseriesLoading(true);
-    fetch(
+    apiFetch(
       sessionApiUrl(
         `/dataset/timeseries?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
       ),
@@ -701,7 +702,7 @@ export function TsAnalysisUpload() {
     setFullPending((n) => n + 1);
     try {
       const offset = page * FULL_PAGE_LIMIT;
-      const res = await fetch(
+      const res = await apiFetch(
         sessionApiUrl(`/dataset/rows?offset=${offset}&limit=${FULL_PAGE_LIMIT}`),
         { credentials: "include" }
       );
@@ -789,8 +790,8 @@ export function TsAnalysisUpload() {
       `/dataset/decomposition-series?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
     );
     Promise.all([
-      fetch(badgesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
-      fetch(seriesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+      apiFetch(badgesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+      apiFetch(seriesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
     ])
       .then(([badges, series]: [DecompositionData | null, DecompositionSeriesData | null]) => {
         setDecomposition(badges);
@@ -810,7 +811,7 @@ export function TsAnalysisUpload() {
     if (!activeDataset || uploadData) return;
     let cancelled = false;
     setHydrating(true);
-    fetch(sessionApiUrl("/dataset"), { credentials: "include" })
+    apiFetch(sessionApiUrl("/dataset"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: UploadApiResponse | null) => {
         if (cancelled || !data) return;
@@ -886,7 +887,7 @@ export function TsAnalysisUpload() {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const resp = await fetch(apiUrl("/upload"), {
+        const resp = await apiFetch(apiUrl("/upload"), {
           method: "POST",
           body: formData,
           credentials: "include", // несёт cookie сессии -- сервер обновит AnalysisSession
@@ -981,7 +982,7 @@ export function TsAnalysisUpload() {
     let cancelled = false;
     setPanelBalance("unknown");
     const params = new URLSearchParams({ date_col: detection.dateCol.selected, entity_col: detection.entityCol.selected });
-    fetch(sessionApiUrl(`/dataset/panel-balance?${params}`), { credentials: "include" })
+    apiFetch(sessionApiUrl(`/dataset/panel-balance?${params}`), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { balanced: boolean } | null) => {
         if (cancelled || !data) return;
@@ -1106,7 +1107,7 @@ export function TsAnalysisUpload() {
       let seedStructureConfirmed = false;
       let seedOk = false;
       try {
-        const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
+        const response = await apiFetch(progressApiUrl("/trace"), { credentials: "include" });
         if (response.ok) {
           const data = await response.json();
           // AUDIT-3 (план §13): seed -- только из ПОЛНОЙ проекции
@@ -1358,7 +1359,7 @@ export function TsAnalysisUpload() {
     setStructureConfirming(true);
     setStructureConfirmError(null);
     try {
-      const res = await fetch(sessionApiUrl("/date-column"), {
+      const res = await apiFetch(sessionApiUrl("/date-column"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -1415,7 +1416,7 @@ export function TsAnalysisUpload() {
     setPanelEntityValue("");
     setPanelEntityPreview(null);
     setPanelEntityError(null);
-    fetch(sessionApiUrl("/dataset/entity-filter"), {
+    apiFetch(sessionApiUrl("/dataset/entity-filter"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -1446,7 +1447,7 @@ export function TsAnalysisUpload() {
     let cancelled = false;
     setPanelEntityBusy(true);
     setPanelEntityError(null);
-    fetch(sessionApiUrl("/dataset/entity-filter"), {
+    apiFetch(sessionApiUrl("/dataset/entity-filter"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -1480,7 +1481,7 @@ export function TsAnalysisUpload() {
     let cancelled = false;
     setPanelAggBusy(true);
     setPanelAggError(null);
-    fetch(sessionApiUrl("/dataset/panel-aggregate"), {
+    apiFetch(sessionApiUrl("/dataset/panel-aggregate"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -1513,7 +1514,7 @@ export function TsAnalysisUpload() {
     setTransformEpoch((e) => e + 1);
     fetchStructureDetection().then((d) => setDetection(d));
     fetchStats();
-    fetch(sessionApiUrl("/dataset"), { credentials: "include" })
+    apiFetch(sessionApiUrl("/dataset"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: UploadApiResponse | null) => {
         if (data && data.columns_info) setUploadData(data);
@@ -1528,7 +1529,7 @@ export function TsAnalysisUpload() {
     setPanelEntityBusy(true);
     setPanelEntityError(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/entity-filter"), {
+      const res = await apiFetch(sessionApiUrl("/dataset/entity-filter"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -1552,7 +1553,7 @@ export function TsAnalysisUpload() {
     setPanelAggBusy(true);
     setPanelAggError(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/panel-aggregate"), {
+      const res = await apiFetch(sessionApiUrl("/dataset/panel-aggregate"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

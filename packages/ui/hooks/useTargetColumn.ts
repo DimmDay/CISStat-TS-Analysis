@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/hooks/useTargetColumn.ts
 //
@@ -122,7 +123,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(sessionApiUrl("/target-column"), {
+      const res = await apiFetch(sessionApiUrl("/target-column"), {
         method: "GET",
         credentials: "include",
       });
@@ -167,7 +168,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
       setPassportResetNotice(null);
       const previousColumn = targetColumn;
       try {
-        const res = await fetch(sessionApiUrl("/target-column"), {
+        const res = await apiFetch(sessionApiUrl("/target-column"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

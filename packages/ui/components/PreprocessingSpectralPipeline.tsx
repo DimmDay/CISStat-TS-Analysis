@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -52,7 +53,7 @@ export function PreprocessingSpectralPipeline({ column, profile, parameters, onP
     if (!column) return;
     setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/preprocessing/spectral-selections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/spectral-selections"), {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ column, periods: selected, min_cycles: config.minCycles, max_candidates: config.maxCandidates, welch_segment_length: config.welchSegmentLength, confirm_unconfirmed: confirmUnconfirmed, apply }),
       });

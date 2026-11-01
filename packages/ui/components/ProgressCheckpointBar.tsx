@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/ProgressCheckpointBar.tsx
 //
@@ -98,7 +99,7 @@ export function ProgressCheckpointBar({
       setBusy(true);
       setError(null);
       try {
-        const response = await fetch(progressApiUrl(`/runs/${runId}${path}`), {
+        const response = await apiFetch(progressApiUrl(`/runs/${runId}${path}`), {
           method: "POST",
           credentials: "include",
           headers: body ? { "Content-Type": "application/json" } : undefined,

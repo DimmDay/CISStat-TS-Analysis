@@ -1,0 +1,48 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/server/firstPartyProxy.test.ts
+  ● Test suite failed to run
+
+    The error below may be caused by using the wrong test environment, see https://jestjs.io/docs/configuration#testenvironment-string.
+    Consider using the "jsdom" test environment.
+
+    ReferenceError: window is not defined
+
+      66 |
+      67 | // matchMedia: jsdom не реализует, но отдельные компоненты могут звать.
+    > 68 | window.matchMedia =
+         | ^
+      69 |   window.matchMedia ||
+      70 |   ((query) => ({
+      71 |     matches: false,
+
+      at Object.<anonymous> (jest.setup.js:68:1)
+
+FAIL packages/ui/components/LoginScreen.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/LoginScreen.test.tsx[0m:[93m3[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module './LoginScreen' or its corresponding type declarations.
+
+    [7m3[0m import {LoginScreen} from './LoginScreen';
+    [7m [0m [91m                          ~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/LoginScreen.test.tsx[0m:[93m4[0m:[93m28[0m - [91merror[0m[90m TS2307: [0mCannot find module '../context/AuthContext' or its corresponding type declarations.
+
+    [7m4[0m import {AuthProvider} from '../context/AuthContext';
+    [7m [0m [91m                           ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/LoginScreen.test.tsx[0m:[93m5[0m:[93m46[0m - [91merror[0m[90m TS2307: [0mCannot find module '../lib/authClient' or its corresponding type declarations.
+
+    [7m5[0m import {authMe,authCommand,AuthFailure} from '../lib/authClient';
+    [7m [0m [91m                                             ~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL packages/ui/lib/authClient.test.ts
+  ● Test suite failed to run
+
+    [96mpackages/ui/lib/authClient.test.ts[0m:[93m1[0m:[93m47[0m - [91merror[0m[90m TS2307: [0mCannot find module './authClient' or its corresponding type declarations.
+
+    [7m1[0m import {safeReturnTo,authMe,AuthFailure} from './authClient';
+    [7m [0m [91m                                              ~~~~~~~~~~~~~~[0m
+
+Test Suites: 3 failed, 3 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        2.273 s
+Ran all test suites matching packages/ui/server/firstPartyProxy.test.ts|packages/ui/lib/authClient.test.ts|packages/ui/components/LoginScreen.test.tsx.

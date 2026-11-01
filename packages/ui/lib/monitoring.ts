@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/monitoring.ts
 //
 // DOCLOG-8 (спека §6 D12, §12.2/§12.3, AC15/AC17): клиент API контура
@@ -129,7 +130,7 @@ export async function listRunComparisons(
   runId: string,
 ): Promise<ComparisonListResult> {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       documentationApiUrl(`/runs/${encodeURIComponent(runId)}/monitoring/comparisons`),
       { credentials: "include" },
     );
@@ -145,7 +146,7 @@ export async function getComparison(
   comparisonId: string,
 ): Promise<ComparisonDetailResult> {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       documentationApiUrl(
         `/runs/${encodeURIComponent(runId)}/monitoring/comparisons/${encodeURIComponent(comparisonId)}`,
       ),

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -389,8 +390,8 @@ export function DatasetPassportPanel({
     setError(null);
     try {
       const [statusResponse, dateResponse] = await Promise.all([
-        fetch(sessionApiUrl("/dataset/passport/status"), { credentials: "include" }),
-        fetch(sessionApiUrl("/date-column"), { credentials: "include" }),
+        apiFetch(sessionApiUrl("/dataset/passport/status"), { credentials: "include" }),
+        apiFetch(sessionApiUrl("/date-column"), { credentials: "include" }),
       ]);
       if (!statusResponse.ok) throw new Error(await responseDetail(statusResponse));
       if (!dateResponse.ok) throw new Error(await responseDetail(dateResponse));
@@ -480,7 +481,7 @@ export function DatasetPassportPanel({
     let dateHistoryWasReset = false;
     try {
       if (selectedDate && selectedDate !== status.date_column) {
-        const dateResponse = await fetch(sessionApiUrl("/date-column"), {
+        const dateResponse = await apiFetch(sessionApiUrl("/date-column"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -501,7 +502,7 @@ export function DatasetPassportPanel({
         }
       }
 
-      const response = await fetch(sessionApiUrl(`/dataset/passport/${stage}`), {
+      const response = await apiFetch(sessionApiUrl(`/dataset/passport/${stage}`), {
         method: "POST",
         credentials: "include",
       });
@@ -534,7 +535,7 @@ export function DatasetPassportPanel({
     setBusy("compare");
     setError(null);
     try {
-      const response = await fetch(sessionApiUrl(`/dataset/passport/compare?to=${stage}`), {
+      const response = await apiFetch(sessionApiUrl(`/dataset/passport/compare?to=${stage}`), {
         credentials: "include",
       });
       if (!response.ok) throw new Error(await responseDetail(response));

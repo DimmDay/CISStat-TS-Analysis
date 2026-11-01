@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // Редактор датасета -- generic просмотр датасета из Мастеров
 // остановок, добавляющих колонки (DATASET-VIEW-EDITOR-1, 2026-10-16,
@@ -145,7 +146,7 @@ export function DatasetViewEditor() {
   const fetchDerived = useCallback(async () => {
     setDerivedError(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/derived-columns"), { credentials: "include" });
+      const res = await apiFetch(sessionApiUrl("/dataset/derived-columns"), { credentials: "include" });
       if (!res.ok) throw new Error(`Не удалось загрузить реестр добавленных колонок (HTTP ${res.status})`);
       const data: DerivedColumnsResponse = await res.json();
       setDerivedMap(new Map(data.columns.map((entry) => [entry.column, entry])));
@@ -165,7 +166,7 @@ export function DatasetViewEditor() {
     setPending((n) => n + 1);
     try {
       const offset = page * PAGE_LIMIT;
-      const res = await fetch(
+      const res = await apiFetch(
         sessionApiUrl(`/dataset/rows?offset=${offset}&limit=${PAGE_LIMIT}`),
         { credentials: "include" },
       );
@@ -267,7 +268,7 @@ export function DatasetViewEditor() {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/derived-columns/delete"), {
+      const res = await apiFetch(sessionApiUrl("/dataset/derived-columns/delete"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

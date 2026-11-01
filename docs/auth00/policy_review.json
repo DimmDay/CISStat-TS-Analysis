@@ -1,5 +1,5 @@
 {
-  "baseline": "a7502efe349c8a3eb8f80157d9c93f1ff10bc7f1",
+  "baseline": "8e8f747b376c9b09ec7406996dec2374dc1fdf54",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -193,15 +193,18 @@
       ]
     },
     "proxy.transport": {
-      "observed": "First-party Next rewrite only; not AuthN, no signed context or CSRF BFF.",
-      "target": "Forward allowlisted credentials over TLS; strip spoofed identity headers; server validation + CSRF/Origin.",
+      "observed": "AUTH-06 shared force-dynamic Node proxy: fixed TLS target, exact configured Origin/Fetch Metadata/CSRF before forwarding, generated method/path allowlist, identity/forwarded headers stripped, explicit cookie/header forwarding, no redirect/no-store. Backend remains authority. GET restore blocked.",
+      "target": "Scientific ownership/enforcement remains AUTH-09/11; maintain reviewed allowlist.",
       "follow_up": [
-        "AUTH-03",
-        "AUTH-06"
+        "AUTH-09",
+        "AUTH-11"
       ],
       "threats": [
+        "T02",
         "T03",
-        "T06"
+        "T06",
+        "T13",
+        "T15"
       ]
     },
     "ui.page": {
@@ -273,10 +276,9 @@
       ]
     },
     "cors.transport": {
-      "observed": "CORS permits configured/dev origins and regex *.vercel.app with credentials; not access control.",
-      "target": "Approved origins + CSRF/Origin/Fetch Metadata; direct API remains subject to AuthN/object gates.",
+      "observed": "AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN.",
+      "target": "Scientific direct API authority rollout remains AUTH-11.",
       "follow_up": [
-        "AUTH-06",
         "AUTH-11"
       ],
       "threats": [
@@ -329,7 +331,7 @@
       ]
     },
     "auth.session": {
-      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP.",
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices.",
       "target": "Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20.",
       "follow_up": [
         "AUTH-04",
@@ -368,6 +370,21 @@
       "target": "Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions.",
       "follow_up": [
         "AUTH-07"
+      ],
+      "threats": [
+        "T02",
+        "T03",
+        "T06",
+        "T13",
+        "T15"
+      ]
+    },
+    "ui.login": {
+      "observed": "AUTH-06 shared personal login/MFA/recovery and safe generated me DTO; no token URL/storage, exact local return_to, top-level login for framed context. API authority mandatory.",
+      "target": "Named admin pages and account lifecycle remain AUTH-07/08.",
+      "follow_up": [
+        "AUTH-07",
+        "AUTH-08"
       ],
       "threats": [
         "T02",
@@ -6192,7 +6209,7 @@
         "credential_forwarding"
       ],
       "canonical_operation": "proxy:embedded",
-      "admission": "API remains authoritative",
+      "admission": "Origin/CSRF/route/header gate before forwarding; API authority mandatory",
       "stage_namespace": "service"
     },
     "proxy:standalone:/api/v1/:path*": {
@@ -6203,7 +6220,7 @@
         "credential_forwarding"
       ],
       "canonical_operation": "proxy:standalone",
-      "admission": "API remains authoritative",
+      "admission": "Origin/CSRF/route/header gate before forwarding; API authority mandatory",
       "stage_namespace": "service"
     },
     "renderer:GET:/healthz": {
@@ -6760,6 +6777,28 @@
       ],
       "canonical_operation": "auth.mfa.bootstrap",
       "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "page:standalone:/login": {
+      "policy": "ui.login",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "personal login UI",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/login",
+      "admission": "UI never substitutes API authority; local redirects only"
+    },
+    "page:embedded:/login": {
+      "policy": "ui.login",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "personal login UI",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/login",
+      "admission": "UI never substitutes API authority; local redirects only"
     }
   },
   "extra_surfaces": [
@@ -7157,6 +7196,83 @@
     "validation/engine.py",
     "apps/api/migrations/0021_auth05_mfa.sql",
     "docs/auth05/design.md",
-    "scripts/auth05/bootstrap.py"
+    "scripts/auth05/bootstrap.py",
+    "packages/ui/hooks/useProgressMapDelivery.ts",
+    "packages/ui/hooks/useTargetColumn.ts",
+    "packages/ui/lib/documentation.ts",
+    "packages/ui/lib/visualExports.ts",
+    "packages/ui/lib/monitoring.ts",
+    "packages/ui/lib/tasks.ts",
+    "packages/ui/lib/adminLogs.ts",
+    "packages/ui/lib/mentor.ts",
+    "packages/ui/lib/forecasting.ts",
+    "packages/ui/components/PreprocessingMissingPipeline.tsx",
+    "packages/ui/components/ValidationConsistencyPipeline.tsx",
+    "packages/ui/components/TsAnalysisUpload.tsx",
+    "packages/ui/components/ModelingWorkflowOverview.tsx",
+    "packages/ui/components/PreprocessingStationarityPipeline.tsx",
+    "packages/ui/components/PreprocessingRegularityPipeline.tsx",
+    "packages/ui/components/ValidationInclusionOverview.tsx",
+    "packages/ui/components/PreprocessingOutliersOverview.tsx",
+    "packages/ui/components/PreprocessingMissingManualEditor.tsx",
+    "packages/ui/components/ValidationTextQualityOverview.tsx",
+    "packages/ui/components/PreprocessingSmoothingPipeline.tsx",
+    "packages/ui/components/PreprocessingSpectralPipeline.tsx",
+    "packages/ui/components/RulesManagementPanel.tsx",
+    "packages/ui/components/DatasetPassportPanel.tsx",
+    "packages/ui/components/ValidationUniquenessOverview.tsx",
+    "packages/ui/components/PreprocessingOutliersPipeline.tsx",
+    "packages/ui/components/ProgressDrawer.tsx",
+    "packages/ui/components/TsAnalysisModeling.tsx",
+    "packages/ui/components/PreprocessingRegularityVisualizations.tsx",
+    "packages/ui/components/ValidationRangeOverview.tsx",
+    "packages/ui/components/TsAnalysisForecasting.tsx",
+    "packages/ui/components/ValidationReferentialPipeline.tsx",
+    "packages/ui/components/PreprocessingMissingOverview.tsx",
+    "packages/ui/components/TsAnalysisEDA.tsx",
+    "packages/ui/components/ValidationRegularityPipeline.tsx",
+    "packages/ui/components/PreprocessingScalingPipeline.tsx",
+    "packages/ui/components/ValidationUniquenessPipeline.tsx",
+    "packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx",
+    "packages/ui/components/ValidationReferentialOverview.tsx",
+    "packages/ui/components/ValidationRangePipeline.tsx",
+    "packages/ui/components/EmbeddedHome.tsx",
+    "packages/ui/components/PreprocessingVariancePipeline.tsx",
+    "packages/ui/components/ValidationTypePipeline.tsx",
+    "packages/ui/components/ValidationTextQualityPipeline.tsx",
+    "packages/ui/components/TsAnalysisPreprocessing.tsx",
+    "packages/ui/components/ValidationInclusionPipeline.tsx",
+    "packages/ui/components/DbConnectionForm.tsx",
+    "packages/ui/components/DatasetViewEditor.tsx",
+    "packages/ui/components/ValidationConsistencyOverview.tsx",
+    "packages/ui/components/ValidationRegularityOverview.tsx",
+    "packages/ui/components/ResidualDiagnosticsPanel.tsx",
+    "packages/ui/components/ValidationFormatPipeline.tsx",
+    "packages/ui/components/ValidationSufficiencyOverview.tsx",
+    "packages/ui/components/PreprocessingOutliersManualEditor.tsx",
+    "packages/ui/components/PreprocessingOutliersVisualizations.tsx",
+    "packages/ui/components/PreprocessingRegularityOverview.tsx",
+    "packages/ui/components/PreprocessingDecompositionPipeline.tsx",
+    "packages/ui/components/EdaDescriptiveOverview.tsx",
+    "packages/ui/components/TsAnalysisValidation.tsx",
+    "packages/ui/components/ProgressCheckpointBar.tsx",
+    "packages/ui/components/ValidationSufficiencyPipeline.tsx",
+    "packages/ui/components/PreprocessingMissingVisualizations.tsx",
+    "packages/ui/context/AppShellContext.tsx",
+    "docs/auth06/design.md",
+    "packages/ui/server/firstPartyProxy.ts",
+    "packages/ui/server/proxy-routes.generated.json",
+    "packages/ui/lib/browserTransport.ts",
+    "packages/ui/lib/authClient.ts",
+    "packages/ui/context/AuthContext.tsx",
+    "packages/ui/components/LoginScreen.tsx",
+    "apps/standalone/app/api/v1/[...path]/route.ts",
+    "apps/standalone/app/login/page.tsx",
+    "apps/standalone/app/layout.tsx",
+    "apps/standalone/next.config.mjs",
+    "apps/embedded/app/api/v1/[...path]/route.ts",
+    "apps/embedded/app/login/page.tsx",
+    "apps/embedded/app/layout.tsx",
+    "apps/embedded/next.config.mjs"
   ]
 }

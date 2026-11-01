@@ -310,7 +310,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(STATS_RESPONSE) });
   }
   if (url.includes("/dataset/eda-correlation")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -318,7 +318,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-ih")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -326,7 +326,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-seasonality")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -334,7 +334,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-stationarity")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -342,7 +342,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-distribution")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -350,7 +350,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-structural-breaks")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -358,7 +358,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-validation-strategy")) {
-    const parsed = new URL(url);
+    const parsed = new URL(url, window.location.origin);
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -370,7 +370,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/eda-model-matrix")) {
-    const parsed = new URL(url);
+    const parsed = new URL(url, window.location.origin);
     return Promise.resolve({
       ok: true, status: 200,
       json: () => Promise.resolve({
@@ -382,7 +382,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/dataset/distribution")) {
-    const column = new URL(url).searchParams.get("column") ?? "Price";
+    const column = new URL(url, window.location.origin).searchParams.get("column") ?? "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -1359,7 +1359,7 @@ describe("TsAnalysisEDA — PROGR-18: URL-контракт отчёта прос
     // sessionApiUrl -- двойной префикс /v1/session/v1/... ловится здесь
     // (дискриминатор дефекта PROGR-15-REPRO Г-1).
     expect(postCalls[0].url).toBe(
-      "http://localhost:8000/v1/progress/eda-checks",
+      "/api/v1/progress/eda-checks",
     );
 
     // Снапшот ВСЕХ 10 исследований реестра (all-or-nothing контракт
@@ -1616,7 +1616,7 @@ describe("TsAnalysisEDA — EDA-RECALC-COMPENSATION", () => {
       (global.fetch as jest.Mock).mock.calls
         .map(([url]) => String(url))
         .filter((url) => url.includes("/dataset/distribution?"))
-        .map((url) => new URL(url).searchParams.get("revision") ?? "");
+        .map((url) => new URL(url, window.location.origin).searchParams.get("revision") ?? "");
 
     const first = render(<TsAnalysisEDA />);
     await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });

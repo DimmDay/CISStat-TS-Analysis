@@ -1,0 +1,55 @@
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth06/check_routes.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Independent actual ASGI OpenAPI vs reviewed AUTH-00 source inventory."""
+  |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth06/generate_proxy_routes.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Generate/check proxy method/path allowlist from reviewed AUTH-00 discovery."""
+3 | import argparse
+  |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth06/pglite_check.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Optional two-database PostgreSQL WASM proof; native CI remains mandatory.
+  |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth06/verify_postgres.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Mandatory live-PostgreSQL gate. Missing DSN/skipped tests cannot mean PASS."""
+  |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth06/wire_e2e.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Two independent HTTPS hosts -> shared handler -> real auth API -> PostgreSQL.
+  |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+  --> tests/unit/test_auth06_csrf.py:22:9
+   |
+20 |           from apps.api.authentication.csrf import configured_origins
+21 |           self.assertEqual(len(configured_origins()),2)
+22 | /         with patch.dict(os.environ,{'CISSTAT_AUTH_ALLOWED_ORIGINS':'https://*.vercel.app'}):
+23 | |             with self.assertRaises(previous.HTTPException):configured_origins()
+   | |___________________________________________________________^
+24 |       def test_me_contract_is_generated(self):
+25 |           from apps.api.access_registry import contract_openapi
+   |
+help: Combine `with` statements
+
+Found 18 errors (12 fixed, 6 remaining).

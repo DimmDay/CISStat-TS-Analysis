@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/mentor.ts
 //
 // Клиентский слой «Наставника v1» (Task PROGR-6, spec_progress.md §7).
@@ -168,7 +169,7 @@ export async function fetchSanityWarnings(
   summary: Record<string, unknown>,
 ): Promise<SanityWarningInfo[]> {
   try {
-    const response = await fetch(progressApiUrl("/mentor/sanity-check"), {
+    const response = await apiFetch(progressApiUrl("/mentor/sanity-check"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -188,7 +189,7 @@ export async function fetchMentorNextStep(
   runId: string,
 ): Promise<MentorNextStepInfo | null> {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       progressApiUrl(`/runs/${runId}/mentor/next-step`),
       { credentials: "include" },
     );

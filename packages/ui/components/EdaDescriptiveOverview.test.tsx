@@ -203,7 +203,7 @@ describe("EdaDescriptiveOverview", () => {
       fireEvent.click(screen.getByRole("tab", { name: "Гистограмма" }));
       expect(await screen.findByTestId("histogram-chart")).toHaveTextContent("Price");
       const url = String((global.fetch as jest.Mock).mock.calls[0][0]);
-      const revision = new URL(url).searchParams.get("revision") ?? "";
+      const revision = new URL(url, window.location.origin).searchParams.get("revision") ?? "";
       const segments = revision.split(":");
       // <mount-scope>:<refreshKey>:<feature>
       expect(segments).toHaveLength(3);
@@ -225,7 +225,7 @@ describe("EdaDescriptiveOverview", () => {
       );
       fireEvent.click(screen.getByRole("tab", { name: "Гистограмма" }));
       expect(await screen.findByTestId("histogram-chart")).toBeInTheDocument();
-      const firstRevision = (new URL(String((global.fetch as jest.Mock).mock.calls[0][0])).searchParams.get("revision") ?? "").split(":");
+      const firstRevision = (new URL(String((global.fetch as jest.Mock).mock.calls[0][0]), window.location.origin).searchParams.get("revision") ?? "").split(":");
 
       rerender(
         <EdaDescriptiveOverview
@@ -244,7 +244,7 @@ describe("EdaDescriptiveOverview", () => {
       await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
       const lastUrl = String((global.fetch as jest.Mock).mock.calls[1][0]);
       expect(lastUrl).toContain("column=Price");
-      const segments = (new URL(lastUrl).searchParams.get("revision") ?? "").split(":");
+      const segments = (new URL(lastUrl, window.location.origin).searchParams.get("revision") ?? "").split(":");
       expect(segments).toHaveLength(3);
       // mount-scope стабилен в пределах монтирования, refreshKey бампнулся.
       expect(segments[0]).toBe(firstRevision[0]);

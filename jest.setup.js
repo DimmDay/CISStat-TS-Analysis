@@ -65,7 +65,7 @@ if (typeof global.TextEncoder === "undefined") {
 }
 
 // matchMedia: jsdom не реализует, но отдельные компоненты могут звать.
-window.matchMedia =
+if (typeof window !== "undefined") window.matchMedia =
   window.matchMedia ||
   ((query) => ({
     matches: false,

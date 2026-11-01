@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -146,7 +147,7 @@ function PreprocessingOutliersOverviewInner({
     setError(null);
     void (async () => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/outlier-profile?method=${method}`),
           { credentials: "include" }
         );

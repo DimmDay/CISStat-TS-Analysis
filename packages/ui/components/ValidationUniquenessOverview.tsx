@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -59,7 +60,7 @@ export function ValidationUniquenessOverview({ refreshKey = 0 }: { refreshKey?: 
     setError(null);
     void (async () => {
       try {
-        const result = await fetch(sessionApiUrl("/dataset/uniqueness-profile"), { credentials: "include" });
+        const result = await apiFetch(sessionApiUrl("/dataset/uniqueness-profile"), { credentials: "include" });
         if (!result.ok) throw new Error(await detail(result));
         const data = await result.json();
         if (active) setResponse(data);

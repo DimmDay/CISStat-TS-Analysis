@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -65,7 +66,7 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const data: RegularityProfileResponse = await response.json();
         if (!active) return;
@@ -93,7 +94,7 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/preprocessing/regularity-corrections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/regularity-corrections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

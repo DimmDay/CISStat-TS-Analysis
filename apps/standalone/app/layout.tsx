@@ -1,3 +1,4 @@
+import { AuthProvider } from "@cisstat/ui/context/AuthContext";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -31,11 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider>
           <ProductHeader />
-          <AppShellProvider>
+          <AuthProvider><AppShellProvider>
             <ModuleNav />
             <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
             <ThemeToaster />
-          </AppShellProvider>
+          </AppShellProvider></AuthProvider>
         </ThemeProvider>
       </body>
     </html>

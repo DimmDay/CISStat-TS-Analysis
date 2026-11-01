@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/PreprocessingRegularityVisualizations.tsx
 //
@@ -72,7 +73,7 @@ function useRegularityChartFetch<T>(path: string): { data: T | null; loading: bo
     setError(null);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(path), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(path), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const json: T = await response.json();
         if (active) setData(json);

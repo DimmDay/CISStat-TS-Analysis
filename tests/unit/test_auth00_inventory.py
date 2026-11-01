@@ -33,6 +33,23 @@ class InventoryTests(unittest.TestCase):
         self.put("apps/api/main.py", 'from fastapi import FastAPI\nfrom apps.api.routers import demo\napp = FastAPI()\napp.include_router(demo.router, prefix="/v1/a")\n')
         self.put("apps/api/routers/demo.py", "from fastapi import APIRouter, Depends\n" + router + body)
 
+    def next_proxy(self):
+        self.api('@router.get("/x")\ndef x(): pass\n')
+        self.put('apps/standalone/next.config.mjs','export default {};\n')
+        self.put('apps/standalone/app/api/v1/[...path]/route.ts',
+                 'import { firstPartyProxy } from "@cisstat/ui/server/firstPartyProxy";\n'
+                 'export const dynamic = "force-dynamic";\nexport const runtime = "nodejs";\n'
+                 + ''.join('export const '+m+' = firstPartyProxy;\n' for m in ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS']))
+    def test_shared_next_proxy_discovery(self):
+        self.next_proxy()
+        e=next(e for e in self.mod.discovery(self.root) if e['id']=='proxy:standalone:/api/v1/:path*')
+        self.assertEqual(set(e['methods']),{'GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS'})
+    def test_changed_next_proxy_requires_review(self):
+        self.next_proxy()
+        p=self.root/'apps/standalone/app/api/v1/[...path]/route.ts'
+        p.write_text(p.read_text().replace('GET = firstPartyProxy','GET = unsafeProxy'))
+        with self.assertRaises(ValueError):self.mod.discovery(self.root)
+
     def test_method_path_prefix_and_dependencies(self):
         self.api('@router.post("/work", dependencies=[Depends(gate)])\ndef work(): pass\n', 'router = APIRouter(prefix="/nested", dependencies=[Depends(key)])\n')
         routes = self.mod.api_routes(self.root)
@@ -106,6 +123,44 @@ class InventoryTests(unittest.TestCase):
             self.assertIn(entry['policy'], report['policies'])
             self.assertTrue(entry['operation'])
             self.assertTrue(entry['evidence'])
+
+    def test_reviewed_dependency_sources_require_catalogue_correction(self):
+        self.snapshot_fixture()
+        for source in ['packages/ui/node_modules/typescript/lib/lib.dom.d.ts',
+                       'node_modules/typescript/lib/lib.webworker.d.ts']:
+            with self.subTest(source=source):
+                self.put(source, 'declare function fetch(): void;\n')
+                self.edit_review(lambda r: r.update(reviewed_sources=[source]))
+                with self.assertRaisesRegex(ValueError, 'Dependency source cannot be reviewed'):
+                    self.mod.build(self.root)
+
+    def test_installed_typescript_does_not_change_repository_inventory(self):
+        self.snapshot_fixture()
+        source = 'packages/ui/node_modules/typescript/lib/lib.dom.d.ts'
+        self.put(source, 'declare function fetch(): void;\n')
+        self.mod.check(self.root)
+        self.put(source, 'declare function fetch(input: string): Promise<void>;\n')
+        self.mod.check(self.root)
+        (self.root / source).unlink()
+        self.mod.check(self.root)
+
+    def test_auth06_migration_manifest_contains_only_application_sources(self):
+        manifest = ROOT / 'scripts/auth06/migrated-fetch-files.txt'
+        for source in manifest.read_text(encoding='utf-8').splitlines():
+            with self.subTest(source=source):
+                self.assertNotIn('node_modules', Path(source).parts)
+                self.assertTrue((ROOT / source).is_file())
+
+    def test_reviewed_application_source_change_still_invalidates_snapshot(self):
+        self.snapshot_fixture()
+        source = 'packages/ui/server/firstPartyProxy.ts'
+        self.put(source, 'export const checkOrigin = true;\n')
+        self.edit_review(lambda r: r.update(reviewed_sources=[source]))
+        report = self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json', self.mod.json_text(report))
+        self.put(source, 'export const checkOrigin = false;\n')
+        with self.assertRaisesRegex(ValueError, 'Inventory drift'):
+            self.mod.check(self.root)
 
     def test_new_route_cannot_inherit_a_generic_allow_classification(self):
         report = self.mod.build(ROOT)

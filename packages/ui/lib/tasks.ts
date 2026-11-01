@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/tasks.ts
 //
 // Типы и API-хелперы модуля «Задачи» (v2, вертикальный срез «Причины» —
@@ -65,7 +66,7 @@ export async function fetchCauses(cardId?: string, revision?: number): Promise<T
   if (cardId) params.set("card_id", cardId);
   if (revision !== undefined) params.set("revision", String(revision));
   const query = params.toString();
-  const resp = await fetch(`${sessionApiUrl("/tasks/causes")}${query ? `?${query}` : ""}`, {
+  const resp = await apiFetch(`${sessionApiUrl("/tasks/causes")}${query ? `?${query}` : ""}`, {
     credentials: "include",
   });
   if (!resp.ok) {

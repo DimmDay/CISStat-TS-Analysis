@@ -31,7 +31,7 @@ export function getApiBase(): string {
   // В dev / тестах -- по-прежнему можно дёрнуть бэкенд напрямую через
   // NEXT_PUBLIC_API_URL (http://localhost:8000). typeof window отличает
   // браузер (нужен /api) от SSR/тестов (нужен абсолютный URL).
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+  if (typeof window !== "undefined") {
     return "/api";
   }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";

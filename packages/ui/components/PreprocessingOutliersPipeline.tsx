@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -173,8 +174,8 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
     void (async () => {
       try {
         const [profileRes, columnsRes] = await Promise.all([
-          fetch(sessionApiUrl(`/dataset/outlier-profile?method=${method}`), { credentials: "include" }),
-          fetch(sessionApiUrl("/dataset/missing-profile"), { credentials: "include" }),
+          apiFetch(sessionApiUrl(`/dataset/outlier-profile?method=${method}`), { credentials: "include" }),
+          apiFetch(sessionApiUrl("/dataset/missing-profile"), { credentials: "include" }),
         ]);
         if (!profileRes.ok) throw new Error(await responseDetail(profileRes));
         const data: OutlierProfileResponse = await profileRes.json();
@@ -222,7 +223,7 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/outlier-corrections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/outlier-corrections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

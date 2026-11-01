@@ -9,6 +9,18 @@ export type AccessRegistryDTO = {
   bindings: Record<string, EntryBindingDTO>;
 };
 
+export type AuthMeResponseDTO = {
+  subject_id: string;
+  account_id: string;
+  tenant_id: string;
+  membership_role: "owner" | "member";
+  role: RoleDTO;
+  auth_method: "auth_session";
+  auth_session_id: string;
+  auth_time: string;
+  mfa_verified_at: string | null;
+};
+
 export type BaselineLimitsDTO = {
   max_rows: number;
   max_folds: number;
@@ -65,6 +77,8 @@ export type OperationDefinitionDTO = {
   selector?: "none" | "model" | "scientific_stage";
   authority?: "functional" | "external" | "unavailable";
 };
+
+export type RoleDTO = "admin" | "internal_analyst" | "external_user";
 
 export type StageDefinitionDTO = {
   namespace: "scientific" | "application" | "service";

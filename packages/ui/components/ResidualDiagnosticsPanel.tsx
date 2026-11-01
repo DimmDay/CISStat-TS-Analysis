@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -70,7 +71,7 @@ export function ResidualDiagnosticsPanel({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/v1/internal/models/diagnostics`, {
+      const response = await apiFetch(`${API_BASE}/v1/internal/models/diagnostics`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

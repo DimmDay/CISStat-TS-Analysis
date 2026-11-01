@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -57,7 +58,7 @@ export function ValidationConsistencyOverview({ refreshKey = 0 }: { refreshKey?:
     setError(null);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/consistency-profile"), {
+        const response = await apiFetch(sessionApiUrl("/dataset/consistency-profile"), {
           credentials: "include",
         });
         if (!response.ok) throw new Error(await responseDetail(response));

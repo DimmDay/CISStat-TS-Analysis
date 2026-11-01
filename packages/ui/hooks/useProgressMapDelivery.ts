@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/hooks/useProgressMapDelivery.ts
 //
@@ -181,7 +182,7 @@ interface TraceResponseShape {
  * иначе null (v2-конверт невозможен → легаси-фолбэк §20.5). */
 async function fetchBinding(): Promise<Binding | null> {
   try {
-    const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
+    const response = await apiFetch(progressApiUrl("/trace"), { credentials: "include" });
     if (!response.ok) return null;
     const data = (await response.json()) as TraceResponseShape | null;
     const observedRunId = typeof data?.run_id === "string" ? data.run_id.trim() : "";
@@ -424,7 +425,7 @@ export function useProgressMapDelivery(
         }, retryDelaysRef.current[delayIndex]);
       };
 
-      void fetch(progressApiUrl(endpoint), {
+      void apiFetch(progressApiUrl(endpoint), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

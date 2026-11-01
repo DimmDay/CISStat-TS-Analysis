@@ -1,0 +1,2 @@
+-r ../auth05/requirements.txt
+uvicorn==0.54.0

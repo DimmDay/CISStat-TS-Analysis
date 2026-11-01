@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/admin.ts
 //
 // Клиентский слой Admin-панели мониторинга «Прогресса» (Task PROGR-8,
@@ -114,7 +115,7 @@ export interface CaseBankParams {
 }
 
 function adminFetch<T>(url: string, apiKey: string): Promise<AdminResult<T>> {
-  return fetch(url, { headers: { "X-API-Key": apiKey } })
+  return apiFetch(url, { headers: { "X-API-Key": apiKey } })
     .then(async (response) => {
       if (!response.ok) {
         return { ok: false, status: response.status, data: null };

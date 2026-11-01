@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // Ручное исправление пропусков -- редактор датасета остановки «Пропуски»
 // (MANUAL-MISSING-1, 2026-10-15, постановка тимлида). Перенос legacy-
@@ -119,7 +120,7 @@ export function PreprocessingMissingManualEditor({ onApplied }: { onApplied: () 
       setPending((n) => n + 1);
       try {
         const offset = page * PAGE_LIMIT;
-        const res = await fetch(
+        const res = await apiFetch(
           sessionApiUrl(
             `/dataset/missing-editor-rows?offset=${offset}&limit=${PAGE_LIMIT}&missing_only=${filter === "missing" ? "true" : "false"}`,
           ),
@@ -223,7 +224,7 @@ export function PreprocessingMissingManualEditor({ onApplied }: { onApplied: () 
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch(sessionApiUrl("/dataset/missing-manual-corrections"), {
+      const res = await apiFetch(sessionApiUrl("/dataset/missing-manual-corrections"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,0 +1,1 @@
+{"status": "ok", "actual_api": 234, "inventory_api": 234, "registry_bindings": 238, "inventory_entries": 559, "added": [], "missing": []}

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/context/AppShellContext.tsx
 //
@@ -113,7 +114,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     try {
-      const resp = await fetch(sessionApiUrl("/current"), { credentials: "include" });
+      const resp = await apiFetch(sessionApiUrl("/current"), { credentials: "include" });
       if (resp.ok) {
         applySessionResponse(await resp.json());
       }

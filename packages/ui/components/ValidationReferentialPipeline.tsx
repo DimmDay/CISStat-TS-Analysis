@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -41,7 +42,7 @@ export function ValidationReferentialPipeline({ onApplied, onOpenRules = () => u
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/referential-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/referential-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const data: ReferentialProfileResponse = await response.json();
         if (!active) return;
@@ -61,7 +62,7 @@ export function ValidationReferentialPipeline({ onApplied, onOpenRules = () => u
   const requestCorrection = async (apply: boolean) => {
     setBusy(apply ? "apply" : "preview"); setError(null); setSuccess(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/referential-corrections"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/referential-corrections"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ rule_indices: selected, strategy, apply }),
       });

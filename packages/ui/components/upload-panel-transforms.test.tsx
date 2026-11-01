@@ -300,7 +300,7 @@ describe("UPLOAD-RECOMP-2c: блок «Панельные данные: три �
   it("непанельный датасет -- блок не показан (одномерный ряд в действиях не нуждается)", async () => {
     await renderPanelDataset([univariateDetection, univariateDetection]);
     await waitFor(() => expect(screen.getAllByText("Univariate TS").length).toBeGreaterThan(0));
-    expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument());
   });
 });
 
@@ -355,7 +355,7 @@ describe("UPLOAD-RECOMP-2c: микросервис «Фильтр сущност
 
     // Re-detection: класс становится одномерным рядом, блок исчезает.
     await waitFor(() => expect(screen.getAllByText("Univariate TS").length).toBeGreaterThan(0));
-    expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument());
   });
 
   it("без выбранного значения «Применить» заблокирован (честное состояние)", async () => {
@@ -387,7 +387,7 @@ describe("UPLOAD-RECOMP-2c: микросервис «Агрегация по в�
     expect(applyCall).toMatchObject({ date_col: "dt", func: "sum", apply: true });
 
     await waitFor(() => expect(screen.getAllByText("Univariate TS").length).toBeGreaterThan(0));
-    expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId("panel-paths-block")).not.toBeInTheDocument());
   });
 });
 

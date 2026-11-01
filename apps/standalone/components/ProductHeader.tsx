@@ -176,13 +176,11 @@ export function ProductHeader() {
           </nav>
           <button type="button" className="relative top-[2.4px] text-neutral-500 hover:text-neutral-900">РУС / ENG</button>
           <ThemeToggle />
-          <button
-            type="button"
-            aria-label="Личный кабинет"
+          <a href="/login" target="_top" aria-label="Вход в личный аккаунт"
             className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 hover:bg-neutral-300"
           >
             <User size={14} aria-hidden="true" />
-          </button>
+          </a>
         </div>
       </div>
     </div>

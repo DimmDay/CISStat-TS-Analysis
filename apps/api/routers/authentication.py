@@ -22,7 +22,8 @@ from apps.api.authentication.csrf import (
     check_csrf,
     trusted_origin,
 )
-from apps.api.authentication.sessions import service_for_request
+from apps.api.authentication.sessions import service_for_request, AccountChoices
+from apps.api.authentication.http_contract import AuthMeResponse
 from apps.api.authentication.mfa import IssuedChallenge, mfa_for_request
 
 
@@ -97,7 +98,7 @@ class AuthBody(BaseModel):
 class LoginBody(AuthBody):
     login: str = Field(min_length=3, max_length=128)
     password: SecretStr = Field(min_length=1, max_length=1024)
-    account_id: UUID
+    account_id: UUID | None = None
 
 
 class PasswordBody(AuthBody):
@@ -157,6 +158,8 @@ def login(request: Request, response: Response, payload: LoginBody):
         origin=trusted_origin(request),
         peer=request.client.host if request.client else "unknown",
     )
+    if isinstance(result, AccountChoices):
+        return {"status": "account_required", "accounts": result.accounts}
     _clear(response)
     if isinstance(result, IssuedChallenge):
         return _challenge_json(result)
@@ -185,7 +188,7 @@ def _authenticated(response, result):
     return {"status": "authenticated", "session": result.session}
 
 
-@router.get("/me")
+@router.get("/me", response_model=AuthMeResponse)
 def me(request: Request):
     ctx = _session(request)
     return {

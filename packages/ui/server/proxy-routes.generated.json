@@ -1,0 +1,938 @@
+[
+  {
+    "method": "GET",
+    "path": "/health"
+  },
+  {
+    "method": "GET",
+    "path": "/health/ops"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/auth/csrf"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/auth/me"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/auth/sessions"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/documents/{document_id}/revisions"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/jobs/{job_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/org-profiles"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/renditions/{rendition_id}/content"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/renditions/{rendition_id}/validations"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/revisions/{revision_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/revisions/{revision_id}/diff"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/revisions/{revision_id}/lifecycle"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/revisions/{revision_id}/preview"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/documents"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/actuals"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/visual-sources"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/internal/rules/load/{template_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/internal/rules/templates"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/articles"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/glossary"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/logs/access"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/logs/audit"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/logs/delivery"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/logs/grants"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/logs/telemetry"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/admin/case-bank/candidates"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/admin/overview"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}/delivery"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}/delivery/{operation_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}/mentor/next-step"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}/report"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/runs/{run_id}/restore"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/progress/trace"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/public/rules/load/{template_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/public/rules/templates"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/current"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/consistency-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/decomposition"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/decomposition-series"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/derived-columns"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/distribution"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-correlation"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-distribution"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-feature-selection"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-ih"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-model-matrix"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-seasonality"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-stationarity"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-structural-breaks"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/eda-validation-strategy"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/format-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/inclusion-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/missing-correlation"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/missing-distribution"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/missing-editor-rows"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/missing-matrix"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/missing-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-boxplot"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-density"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-editor-rows"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-histogram"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-line"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/outlier-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/panel-balance"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/passport/compare"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/passport/status"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing-check-modes"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/decomposition-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/feature-generation-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/regularity-intervals"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/regularity-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/regularity-timeline"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/scaling-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/smoothing-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/spectral-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/stationarity-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/preprocessing/variance-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/range-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/referential-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/regularity-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/rows"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/stats"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/structure-detection"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/sufficiency-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/text-quality-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/timeseries"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/uniqueness-profile"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/validate"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/validation-check-modes"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/dataset/validation-rules"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/date-column"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/card"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/card/{card_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/context"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/feature-regressors"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/forecast"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/forecast/{forecast_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/forecast/{forecast_id}/export.csv"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/forecast/{forecast_id}/export.json"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/jobs/{job_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/panel/candidates"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/modeling/state"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/target-column"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/session/tasks/causes"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/internal/rules/update"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/public/rules/update"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/login"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/logout"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/mfa/enroll"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/mfa/replace"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/mfa/verify"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/password"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/recovery"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/recovery/rotate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/sessions/revoke-all"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/sessions/{session_id}/revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/step-up"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/documents/{document_id}/retention"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/jobs/{job_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/org-profiles"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/org-profiles/{profile_id}/retire"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/print-revisions/{print_revision_id}/renditions"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/renditions/{rendition_id}/verify-signature"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/revisions/{revision_id}/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/revisions/{revision_id}/publish"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/revisions/{revision_id}/renditions"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/revisions/{revision_id}/retract"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/archive"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/archive/verify"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/documents"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/actuals"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/retention/sweep"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/visuals"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/models/backtest"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/models/candidates"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/models/diagnostics"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/passport"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/regularity"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/rules/validate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/upload"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/upload/db/load"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/internal/upload/db/test"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/learning/track"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/logs/export"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/logs/grants"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/logs/grants/{grant_id}/revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/models/backtest"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/models/candidates"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/models/diagnostics"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/models/train"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/models/tune"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/eda-checks"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/mentor/sanity-check"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/preprocessing-checks"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/runs/{run_id}/checkpoints"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/runs/{run_id}/pause"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/runs/{run_id}/resume"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/upload-stops"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/progress/validation-checks"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/passport"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/regularity"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/rules/validate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/upload"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/upload/db/load"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/public/upload/db/test"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/consistency-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/convert-types"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/derived-columns/delete"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/entity-filter"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/format-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/inclusion-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/missing-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/missing-manual-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/outlier-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/outlier-manual-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/panel-aggregate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/passport/{stage}"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/decomposition-outputs"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/feature-generations"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/regularity-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/scaling-recipes"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/smoothing-transformations"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/spectral-selections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/stationarity-transformations"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/preprocessing/variance-transformations"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/range-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/referential-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/regularity-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/sufficiency-plan"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/text-quality-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/dataset/uniqueness-corrections"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/date-column"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/demo"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/backtest"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/backtest/exclude"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/baselines"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/candidates"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/card"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/compare"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/diagnostics"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/diagnostics/ensure"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/forecast"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/forecast/compare"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/forecast/{forecast_id}/sensitivity"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/forecast/{forecast_id}/trace"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/jobs/start"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/jobs/{job_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/jobs/{job_id}/step"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/panel/backtest"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/panel/forecast"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/panel/passport"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/panel/passport/confirm"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/select"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/selection/evaluate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/tune"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/tuning/skip"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/tuning/skip-pending"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/tuning/start"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/modeling/tuning/step"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/stage/{stage}"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/session/target-column"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/session/dataset/preprocessing-check-modes"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/session/dataset/type-schema"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/session/dataset/validation-check-modes"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/session/dataset/validation-rules"
+  },
+  {
+    "method": "PUT",
+    "path": "/v1/session/modeling/feature-regressors"
+  }
+]

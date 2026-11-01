@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisPreprocessing.tsx
 //
@@ -336,7 +337,7 @@ export function TsAnalysisPreprocessing() {
     setMissingNoDataset(false);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/missing-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/missing-profile"), { credentials: "include" });
         if (response.status === 404) {
           if (active) setMissingNoDataset(true);
           return;
@@ -388,7 +389,7 @@ export function TsAnalysisPreprocessing() {
     setOutliersNoDataset(false);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/outlier-profile?method=iqr"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/outlier-profile?method=iqr"), { credentials: "include" });
         if (response.status === 404) {
           if (active) setOutliersNoDataset(true);
           return;
@@ -435,7 +436,7 @@ export function TsAnalysisPreprocessing() {
     setRegularityNoDataset(false);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
         if (response.status === 404) {
           if (active) setRegularityNoDataset(true);
           return;
@@ -487,7 +488,7 @@ export function TsAnalysisPreprocessing() {
     setDecompositionLoading(true);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/decomposition-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/decomposition-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
         if (response.status === 404) { if (active) setDecompositionNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -529,7 +530,7 @@ export function TsAnalysisPreprocessing() {
     setVarianceLoading(true);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/variance-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/variance-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
         if (response.status === 404) { if (active) setVarianceNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -560,7 +561,7 @@ export function TsAnalysisPreprocessing() {
     setSmoothingLoading(true);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/smoothing-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/smoothing-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
         if (response.status === 404) { if (active) setSmoothingNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -592,7 +593,7 @@ export function TsAnalysisPreprocessing() {
     void (async () => {
       try {
         const query = new URLSearchParams({ column: activeFeature, seasonal_period: "12" });
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/stationarity-profile?${query.toString()}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/stationarity-profile?${query.toString()}`), { credentials: "include" });
         if (response.status === 404) { if (active) setStationarityNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -633,7 +634,7 @@ export function TsAnalysisPreprocessing() {
           wavelet_scales: String(spectralParameters.waveletScales),
         });
         if (spectralParameters.welchSegmentLength !== null) query.set("welch_segment_length", String(spectralParameters.welchSegmentLength));
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/spectral-profile?${query.toString()}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/spectral-profile?${query.toString()}`), { credentials: "include" });
         if (response.status === 404) { if (active) setSpectralNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -664,7 +665,7 @@ export function TsAnalysisPreprocessing() {
     setFeatureGenerationLoading(true);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/feature-generation-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/feature-generation-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
         if (response.status === 404) { if (active) setFeatureGenerationNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -695,7 +696,7 @@ export function TsAnalysisPreprocessing() {
     setScalingLoading(true);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/scaling-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/preprocessing/scaling-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
         if (response.status === 404) { if (active) setScalingNoDataset(true); return; }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -857,7 +858,7 @@ export function TsAnalysisPreprocessing() {
     setModeSaving(checkId);
     setModeError(null);
     try {
-      const response = await fetch(sessionApiUrl("/dataset/preprocessing-check-modes"), {
+      const response = await apiFetch(sessionApiUrl("/dataset/preprocessing-check-modes"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

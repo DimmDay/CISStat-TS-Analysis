@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisEDA.tsx
 //
@@ -338,7 +339,7 @@ export function TsAnalysisEDA() {
     setDescriptiveNoDataset(false);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/stats"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/stats"), { credentials: "include" });
         if (response.status === 404) {
           if (active) {
             setDescriptiveNoDataset(true);
@@ -408,7 +409,7 @@ export function TsAnalysisEDA() {
     setCorrelationNoDataset(false);
     void (async () => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(
             `/dataset/eda-correlation?column=${encodeURIComponent(activeFeature)}&max_lags=${correlationMaxLags}`,
           ),
@@ -493,7 +494,7 @@ export function TsAnalysisEDA() {
           max_lag: String(ihParameters.maxLag),
           permutations: "49",
         });
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/eda-ih?${query.toString()}`),
           { credentials: "include" },
         );
@@ -569,7 +570,7 @@ export function TsAnalysisEDA() {
           min_cycles: String(seasonalityParameters.minCycles),
           max_candidates: String(seasonalityParameters.maxCandidates),
         });
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/eda-seasonality?${query.toString()}`),
           { credentials: "include" },
         );
@@ -647,7 +648,7 @@ export function TsAnalysisEDA() {
           alpha: String(stationarityParameters.alpha),
           rolling_window: String(stationarityParameters.rollingWindow),
         });
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/eda-stationarity?${query.toString()}`),
           { credentials: "include" },
         );
@@ -727,7 +728,7 @@ export function TsAnalysisEDA() {
           alpha: String(distributionParameters.alpha),
           bins: String(distributionParameters.bins),
         });
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/eda-distribution?${query.toString()}`),
           { credentials: "include" },
         );
@@ -798,7 +799,7 @@ export function TsAnalysisEDA() {
           min_segment: String(structuralParameters.minSegment),
           penalty_multiplier: String(structuralParameters.penaltyMultiplier),
         });
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/eda-structural-breaks?${query.toString()}`),
           { credentials: "include" },
         );
@@ -842,7 +843,7 @@ export function TsAnalysisEDA() {
     if(!hasDataset){setFeatureSelectionNoDataset(true);setFeatureSelectionProfile(null);return;}
     if(!activeFeature){setFeatureSelectionProfile(null);return;}
     let active=true; setFeatureSelectionLoading(true); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
-    void(async()=>{try{const p=featureSelectionParameters;const query=new URLSearchParams({column:activeFeature,alpha:String(p.alpha),max_lag:String(p.maxLag),correlation_threshold:String(p.correlationThreshold),vif_threshold:String(p.vifThreshold),difference_order:String(p.differenceOrder)});const response=await fetch(sessionApiUrl(`/dataset/eda-feature-selection?${query}`),{credentials:"include"});if(response.status===404){const detail=await featureSelectionResponseDetail(response);if(detail==="В сессии нет активного датасета"){if(active)setFeatureSelectionNoDataset(true);return;}throw new Error(detail);}if(!response.ok)throw new Error(await featureSelectionResponseDetail(response));const data:EdaFeatureSelectionResponse=await response.json();if(active)setFeatureSelectionProfile(data);}catch(e){if(active)setFeatureSelectionError(e instanceof Error?e.message:"Не удалось выполнить отбор признаков");}finally{if(active)setFeatureSelectionLoading(false);}})();
+    void(async()=>{try{const p=featureSelectionParameters;const query=new URLSearchParams({column:activeFeature,alpha:String(p.alpha),max_lag:String(p.maxLag),correlation_threshold:String(p.correlationThreshold),vif_threshold:String(p.vifThreshold),difference_order:String(p.differenceOrder)});const response=await apiFetch(sessionApiUrl(`/dataset/eda-feature-selection?${query}`),{credentials:"include"});if(response.status===404){const detail=await featureSelectionResponseDetail(response);if(detail==="В сессии нет активного датасета"){if(active)setFeatureSelectionNoDataset(true);return;}throw new Error(detail);}if(!response.ok)throw new Error(await featureSelectionResponseDetail(response));const data:EdaFeatureSelectionResponse=await response.json();if(active)setFeatureSelectionProfile(data);}catch(e){if(active)setFeatureSelectionError(e instanceof Error?e.message:"Не удалось выполнить отбор признаков");}finally{if(active)setFeatureSelectionLoading(false);}})();
     return()=>{active=false};
   },[activeCheckId,activeFeature,datasetKey,featureSelectionParameters,featureSelectionRefreshKey,hasDataset,targetLoading]);
   const featureSelectionBusy=featureSelectionLoading||(activeCheckId==="feature_select"&&targetLoading);
@@ -875,7 +876,7 @@ export function TsAnalysisEDA() {
           gap: String(parameters.gap),
           train_window: String(parameters.trainWindow),
         });
-        const response = await fetch(sessionApiUrl(`/dataset/eda-validation-strategy?${query}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/eda-validation-strategy?${query}`), { credentials: "include" });
         if (response.status === 404) {
           const detail = await validationStrategyResponseDetail(response);
           if (detail === "В сессии нет активного датасета") { if (active) setValidationStrategyNoDataset(true); return; }
@@ -928,7 +929,7 @@ export function TsAnalysisEDA() {
           gap: String(validationStrategyParameters.gap),
           train_window: String(validationStrategyParameters.trainWindow),
         });
-        const response = await fetch(sessionApiUrl(`/dataset/eda-model-matrix?${query}`), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl(`/dataset/eda-model-matrix?${query}`), { credentials: "include" });
         if (response.status === 404) {
           const detail = await modelMatrixResponseDetail(response);
           if (detail === "В сессии нет активного датасета") { if (active) setModelMatrixNoDataset(true); return; }
@@ -1142,7 +1143,7 @@ export function TsAnalysisEDA() {
       const seedViewed = new Set<string>();
       let seedOk = false;
       try {
-        const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
+        const response = await apiFetch(progressApiUrl("/trace"), { credentials: "include" });
         if (response.ok) {
           const data = await response.json();
           // AUDIT-3 (план §13): seed -- ТОЛЬКО из ПОЛНОЙ проекции.

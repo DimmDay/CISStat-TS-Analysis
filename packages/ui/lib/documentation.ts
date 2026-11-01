@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/documentation.ts
 //
 // DOCLOG-4 (спека §12, §17): клиент API документирования /v1/documentation.
@@ -133,7 +134,7 @@ export interface ApiResult<T> {
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const resp = await fetch(url, {
+    const resp = await apiFetch(url, {
       credentials: "include",
       ...init,
       headers: {

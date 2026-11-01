@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -101,7 +102,7 @@ function PreprocessingRegularityOverviewInner({ refreshKey = 0 }: { refreshKey?:
     setError(null);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const json: RegularityProfileResponse = await response.json();
         if (active) setData(json);

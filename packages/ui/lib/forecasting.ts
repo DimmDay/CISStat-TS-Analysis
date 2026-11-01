@@ -1,3 +1,4 @@
+import { apiFetch } from "./browserTransport";
 // packages/ui/lib/forecasting.ts
 //
 // Типы и API-хелперы этапа «Прогнозирование» (spec_forecasting2.md §6-§7).
@@ -109,13 +110,13 @@ async function parse<T>(resp: Response): Promise<T> {
 }
 
 export async function fetchCardSummaries(): Promise<CardSummary[]> {
-  const resp = await fetch(`${base()}/card`, { credentials: "include" });
+  const resp = await apiFetch(`${base()}/card`, { credentials: "include" });
   const body = await parse<{ cards: CardSummary[] }>(resp);
   return body.cards;
 }
 
 export async function fetchForecastHistory(): Promise<ForecastRun[]> {
-  const resp = await fetch(`${base()}/forecast`, { credentials: "include" });
+  const resp = await apiFetch(`${base()}/forecast`, { credentials: "include" });
   const body = await parse<{ forecasts: ForecastRun[] }>(resp);
   return body.forecasts;
 }
@@ -125,7 +126,7 @@ export async function generateForecast(payload: {
   horizon?: number | null;
   alpha?: number | null;
 }): Promise<ForecastRun> {
-  const resp = await fetch(`${base()}/forecast`, {
+  const resp = await apiFetch(`${base()}/forecast`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -135,7 +136,7 @@ export async function generateForecast(payload: {
 }
 
 export async function compareForecasts(forecastIds: string[]): Promise<ForecastRun[]> {
-  const resp = await fetch(`${base()}/forecast/compare`, {
+  const resp = await apiFetch(`${base()}/forecast/compare`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -146,7 +147,7 @@ export async function compareForecasts(forecastIds: string[]): Promise<ForecastR
 }
 
 export async function computeSensitivity(forecastId: string): Promise<ForecastRun> {
-  const resp = await fetch(`${base()}/forecast/${forecastId}/sensitivity`, {
+  const resp = await apiFetch(`${base()}/forecast/${forecastId}/sensitivity`, {
     method: "POST",
     credentials: "include",
   });
@@ -154,7 +155,7 @@ export async function computeSensitivity(forecastId: string): Promise<ForecastRu
 }
 
 export async function recordClientExport(forecastId: string, format: "png" | "pdf"): Promise<ForecastRun> {
-  const resp = await fetch(`${base()}/forecast/${forecastId}/trace`, {
+  const resp = await apiFetch(`${base()}/forecast/${forecastId}/trace`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

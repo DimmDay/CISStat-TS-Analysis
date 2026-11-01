@@ -178,9 +178,10 @@ def contract_openapi() -> dict:
     /openapi.json, without adding an endpoint or an auth/me placeholder.
     """
     from pydantic.json_schema import models_json_schema
+    from apps.api.authentication.http_contract import AuthMeResponse
 
     _, schema = models_json_schema(
-        [(m, "serialization") for m in (Capabilities, AccessRegistry, ModelWorkload, FunctionalDecision)],
+        [(m, "serialization") for m in (Capabilities, AccessRegistry, ModelWorkload, FunctionalDecision, AuthMeResponse)],
         ref_template="#/components/schemas/{model}",
     )
     return {"openapi":"3.1.0", "info":{"title":"CISStat access contract", "version":REGISTRY_VERSION},

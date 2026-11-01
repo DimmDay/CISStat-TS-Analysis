@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/ProgressDrawer.tsx
 //
@@ -162,7 +163,7 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         // ForecastRun.trace и отдаёт готовое состояние -- панель больше
         // не опрашивает /v1/session/modeling/forecast и не вычисляет
         // статусы/свёртки сама (минус один запрос и клиентское слияние).
-        const traceResp = await fetch(progressApiUrl("/trace"), {
+        const traceResp = await apiFetch(progressApiUrl("/trace"), {
           credentials: "include",
         });
         const traceData = traceResp.ok ? await traceResp.json() : null;
@@ -197,7 +198,7 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         const runId: string | null = traceData?.run_id ?? null;
         if (runId) {
           try {
-            const runResp = await fetch(progressApiUrl(`/runs/${runId}`), {
+            const runResp = await apiFetch(progressApiUrl(`/runs/${runId}`), {
               credentials: "include",
             });
             const runData = runResp.ok ? await runResp.json() : null;

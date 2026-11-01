@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -149,7 +150,7 @@ function EdaDescriptiveOverviewInner({
         // (фокус-рефетч/подтверждение даты/«Повторить») меняют средний
         // сегмент, перемонтирование модуля порождает новый префикс.
         // Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
-        const response = await fetch(
+        const response = await apiFetch(
           sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(activeFeature)}&revision=${requestKey}`),
           { credentials: "include" },
         );

@@ -54,6 +54,77 @@
         "title": "AccessRegistry",
         "type": "object"
       },
+      "AuthMeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "membership_role": {
+            "enum": [
+              "owner",
+              "member"
+            ],
+            "title": "Membership Role",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "auth_method": {
+            "const": "auth_session",
+            "title": "Auth Method",
+            "type": "string"
+          },
+          "auth_session_id": {
+            "format": "uuid",
+            "title": "Auth Session Id",
+            "type": "string"
+          },
+          "auth_time": {
+            "format": "date-time",
+            "title": "Auth Time",
+            "type": "string"
+          },
+          "mfa_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mfa Verified At"
+          }
+        },
+        "required": [
+          "subject_id",
+          "account_id",
+          "tenant_id",
+          "membership_role",
+          "role",
+          "auth_method",
+          "auth_session_id",
+          "auth_time",
+          "mfa_verified_at"
+        ],
+        "title": "AuthMeResponse",
+        "type": "object"
+      },
       "BaselineLimits": {
         "additionalProperties": false,
         "description": "Finite policy ceilings, NOT measured capacity/CU pricing (AUTH-14).",
@@ -415,6 +486,15 @@
         ],
         "title": "OperationDefinition",
         "type": "object"
+      },
+      "Role": {
+        "enum": [
+          "admin",
+          "internal_analyst",
+          "external_user"
+        ],
+        "title": "Role",
+        "type": "string"
       },
       "StageDefinition": {
         "additionalProperties": false,

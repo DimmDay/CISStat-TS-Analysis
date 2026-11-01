@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -38,7 +39,7 @@ export function ValidationRegularityOverview({ refreshKey = 0 }: { refreshKey?: 
     setLoading(true); setError(null);
     void (async () => {
       try {
-        const response = await fetch(sessionApiUrl("/dataset/regularity-profile"), { credentials: "include" });
+        const response = await apiFetch(sessionApiUrl("/dataset/regularity-profile"), { credentials: "include" });
         if (!response.ok) throw new Error(await responseDetail(response));
         const body: RegularityProfileResponse = await response.json();
         if (active) setData(body);

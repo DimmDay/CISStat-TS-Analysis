@@ -41,7 +41,7 @@ describe("Переключатель темы в ProductHeader (§4.6)", () => {
     renderHeader();
     const rusEng = screen.getByText("РУС / ENG");
     const toggle = screen.getByRole("button", { name: "Включить тёмную тему" });
-    const cabinet = screen.getByLabelText("Личный кабинет");
+    const cabinet = screen.getByLabelText("Вход в личный аккаунт");
     expect(
       // eslint-disable-next-line no-bitwise
       rusEng.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/EmbeddedHome.tsx
 //
@@ -32,7 +33,7 @@ export function EmbeddedHome() {
     setLoadingDemo(true);
     setDemoError(null);
     try {
-      const resp = await fetch(sessionApiUrl("/demo"), { method: "POST", credentials: "include" });
+      const resp = await apiFetch(sessionApiUrl("/demo"), { method: "POST", credentials: "include" });
       if (!resp.ok) {
         throw new Error("Не удалось загрузить демо-датасет");
       }
