@@ -1,0 +1,21 @@
+test_auth04_password_transport (unittest.loader._FailedTest.test_auth04_password_transport) ... ERROR
+
+======================================================================
+ERROR: test_auth04_password_transport (unittest.loader._FailedTest.test_auth04_password_transport)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth04_password_transport
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/56f113437abe/auth04/tests/unit/test_auth04_password_transport.py", line 13, in <module>
+    from apps.api.authentication.credentials import PasswordCodec,validate_password
+ModuleNotFoundError: No module named 'apps.api.authentication.credentials'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

@@ -113,20 +113,30 @@ _MESSAGES = {
     "durable_binding_required": "Требуется подтверждённая привязка учётных данных",
     "account_required": "Требуется привязка к аккаунту",
     "account_access_denied": "Доступ к аккаунту запрещён",
+    "password_policy": "Пароль: от 15 символов, до 1024 байт; распространённые пароли запрещены",
+    "too_many_attempts": "Слишком много попыток; повторите позже",
+    "csrf_invalid": "Проверка источника запроса не пройдена",
+    "mfa_required": "Требуется подтверждение MFA",
+    "session_not_found": "Сессия не найдена",
+    "auth_version_conflict": "Учётные данные изменились; повторите вход",
 }
+
+
+class AuthHTTPException(HTTPException):
+    """Only locally constructed safe DTOs may cross the verifier boundary."""
 
 
 def auth_error(status, code, request_id=""):
     # FastAPI's existing HTTPException envelope stays compatible: detail carries
     # the versioned safe error payload. No driver error or credential material.
-    raise HTTPException(
+    raise AuthHTTPException(
         status_code=status,
         detail={
             "code": code,
             "message": _MESSAGES[code],
             "request_id": request_id,
         },
-    )
+    ) from None
 
 
 def _request_id(request):
@@ -247,6 +257,8 @@ def _verify(verifier, method, value, request_id):
     """Normalize adapter errors; an upstream HTTPException is not a safe DTO."""
     try:
         return getattr(verifier, method)(value)
+    except AuthHTTPException:
+        raise
     except HTTPException as exc:
         if exc.status_code == 401:
             auth_error(401, "invalid_credential", request_id)
@@ -257,7 +269,7 @@ def _verify(verifier, method, value, request_id):
 
 def _resolve_context(request, request_id):
     from apps.api.identity import get_identity_mode, MODE_SCOPED, SubjectRef
-    from .legacy import LegacyCredentialVerifier
+    from .sessions import SessionCredentialVerifier
 
     app = getattr(request, "scope", {}).get("app")
     if app is None and not hasattr(request, "scope"):
@@ -265,7 +277,7 @@ def _resolve_context(request, request_id):
     state = getattr(app, "state", None)
     verifier = getattr(state, "auth_credential_verifier", None)
     if verifier is None:
-        verifier = LegacyCredentialVerifier()
+        verifier = SessionCredentialVerifier(request)
     # Headers.getlist preserves empty and duplicate credentials. Some existing
     # producer adapters pass a tiny request object with a plain headers dict.
     headers = request.headers

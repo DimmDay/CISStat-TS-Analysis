@@ -1687,6 +1687,70 @@
       "capability": null,
       "selector": "none",
       "authority": "functional"
+    },
+    "auth.csrf.issue": {
+      "operation_id": "auth.csrf.issue",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.password.login": {
+      "operation_id": "auth.password.login",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.session.me": {
+      "operation_id": "auth.session.me",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.session.list": {
+      "operation_id": "auth.session.list",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.session.logout": {
+      "operation_id": "auth.session.logout",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.session.revoke_all": {
+      "operation_id": "auth.session.revoke_all",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.session.revoke": {
+      "operation_id": "auth.session.revoke",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.password.change": {
+      "operation_id": "auth.password.change",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
     }
   },
   "bindings": {
@@ -2584,6 +2648,38 @@
     },
     "task_alias:/tasks/scenarios": {
       "operation_id": "application.scenarios.inspect",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/auth/csrf": {
+      "operation_id": "auth.csrf.issue",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/auth/login": {
+      "operation_id": "auth.password.login",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/auth/me": {
+      "operation_id": "auth.session.me",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/auth/sessions": {
+      "operation_id": "auth.session.list",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/auth/logout": {
+      "operation_id": "auth.session.logout",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/auth/sessions/revoke-all": {
+      "operation_id": "auth.session.revoke_all",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/auth/sessions/{session_id}/revoke": {
+      "operation_id": "auth.session.revoke",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/auth/password": {
+      "operation_id": "auth.password.change",
       "programmatic_api": false
     }
   }

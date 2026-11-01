@@ -1,0 +1,25 @@
+test_argon2id_random_salt_and_verify (test_auth04_password_transport.PasswordTests.test_argon2id_random_salt_and_verify) ... ok
+test_invalid_unicode_is_policy_denial_not_server_error (test_auth04_password_transport.PasswordTests.test_invalid_unicode_is_policy_denial_not_server_error) ... ok
+test_long_password_not_truncated_or_stripped (test_auth04_password_transport.PasswordTests.test_long_password_not_truncated_or_stripped) ... ok
+test_malformed_hash_never_authenticates (test_auth04_password_transport.PasswordTests.test_malformed_hash_never_authenticates) ... ok
+test_no_dummy_password_is_a_real_account (test_auth04_password_transport.PasswordTests.test_no_dummy_password_is_a_real_account) ... ok
+test_policy_length_and_blocklist (test_auth04_password_transport.PasswordTests.test_policy_length_and_blocklist) ... ok
+test_duplicate_auth_cookie_is_invalid (test_auth04_password_transport.TransportTests.test_duplicate_auth_cookie_is_invalid) ... ok
+test_expired_csrf_and_future_issue_are_denied (test_auth04_password_transport.TransportTests.test_expired_csrf_and_future_issue_are_denied) ... ok
+test_invalid_opaque_tokens_rejected_before_db (test_auth04_password_transport.TransportTests.test_invalid_opaque_tokens_rejected_before_db) ... ok
+test_missing_cross_origin_and_cross_site_fail (test_auth04_password_transport.TransportTests.test_missing_cross_origin_and_cross_site_fail) ... ok
+test_no_default_key_or_wildcard_origin (test_auth04_password_transport.TransportTests.test_no_default_key_or_wildcard_origin) ... ok
+test_signature_cookie_header_and_session_binding (test_auth04_password_transport.TransportTests.test_signature_cookie_header_and_session_binding) ... ok
+test_valid_csrf_both_exact_origins (test_auth04_password_transport.TransportTests.test_valid_csrf_both_exact_origins) ... ok
+test_verifier_domain_separated_and_deterministic (test_auth04_password_transport.TransportTests.test_verifier_domain_separated_and_deterministic) ... ok
+test_actual_openapi_routes_equal_reviewed_inventory (test_auth04_routes.RouteTests.test_actual_openapi_routes_equal_reviewed_inventory) ... ok
+test_capabilities_cannot_authorize_any_auth_operation (test_auth04_routes.RouteTests.test_capabilities_cannot_authorize_any_auth_operation) ... ok
+test_no_header_identity_or_key_is_a_personal_session (test_auth04_routes.RouteTests.test_no_header_identity_or_key_is_a_personal_session) ... ok
+test_password_schema_is_write_only_and_has_no_default_secret (test_auth04_routes.RouteTests.test_password_schema_is_write_only_and_has_no_default_secret) ... ok
+test_safe_validation_and_origin_errors_on_actual_asgi (test_auth04_routes.RouteTests.test_safe_validation_and_origin_errors_on_actual_asgi) ... ok
+test_same_origin_browser_csrf_bootstrap_without_origin (test_auth04_routes.RouteTests.test_same_origin_browser_csrf_bootstrap_without_origin) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 2.164s
+
+OK

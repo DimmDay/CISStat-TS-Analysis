@@ -103,7 +103,13 @@ ACTION_RENDITION_ANCHORED = "rendition_anchored"
 # pending/receipt»). Standard -- сбой виден, научную операцию не ломает.
 ACTION_ARTIFACT_PROMOTION_FAILED = "artifact_promotion_failed"
 
+# AUTH-04: state mutation + durable intent are one auth transaction.
+ACTION_AUTH_SESSION_CHANGED = "auth_session_changed"
+ACTION_AUTH_PASSWORD_CHANGED = "auth_password_changed"
+
 AUDIT_ACTIONS: frozenset[str] = frozenset({
+    ACTION_AUTH_SESSION_CHANGED,
+    ACTION_AUTH_PASSWORD_CHANGED,
     ACTION_AUTHN_DENIED,
     ACTION_AUTHZ_DENIED,
     ACTION_RUN_ACCESS_ALLOWED,
@@ -138,6 +144,8 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/
 # approval/выдача защищённых данных), standard -- durable best-effort.
 AUDIT_REQUIREMENTS: dict[str, str] = {
+    ACTION_AUTH_SESSION_CHANGED: "mandatory",
+    ACTION_AUTH_PASSWORD_CHANGED: "mandatory",
     ACTION_DOCUMENT_PUBLISHED: "mandatory",
     ACTION_DOCUMENT_APPROVED: "mandatory",
     ACTION_DOCUMENT_REVOKED: "mandatory",

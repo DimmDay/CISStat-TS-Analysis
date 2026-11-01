@@ -1,0 +1,21 @@
+test_auth04_sessions (unittest.loader._FailedTest.test_auth04_sessions) ... ERROR
+
+======================================================================
+ERROR: test_auth04_sessions (unittest.loader._FailedTest.test_auth04_sessions)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth04_sessions
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/56f113437abe/auth04/tests/integration/test_auth04_sessions.py", line 16, in <module>
+    from apps.api.authentication.sessions import SessionService,token_digest
+ModuleNotFoundError: No module named 'apps.api.authentication.sessions'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

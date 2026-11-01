@@ -1,0 +1,2 @@
+-r ../auth03/requirements.txt
+argon2-cffi==25.1.0

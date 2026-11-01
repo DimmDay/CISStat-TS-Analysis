@@ -1,18 +1,18 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "be553b8ff6e6471eb53427822ccd937a3a71433a",
+  "baseline": "d3f78a79d71a9768dfd4d24c2cad2c1f0764dc57",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 220,
+    "api": 228,
     "framework": 8,
-    "internal_operation": 4,
+    "internal_operation": 6,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 27,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 8,
+    "storage": 9,
     "task_alias": 4,
     "transport": 2,
     "worker": 6
@@ -313,7 +313,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02 PostgreSQL-only shared UoW; AUTH-03 reloads identity/account/active membership for verified UUID binding in one readonly transaction. No automatic schema migration or HTTP storage access.",
+      "observed": "AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -327,6 +327,43 @@
         "T11",
         "T15"
       ]
+    },
+    "auth.entry": {
+      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store.",
+      "target": "Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority.",
+      "follow_up": [
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06",
+        "AUTH-19"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T13",
+        "T15"
+      ]
+    },
+    "auth.session": {
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state.",
+      "target": "MFA for admin, effective Account entitlements/ownership, unified enforcement and rollout remain AUTH-05/07/08/09/11/20.",
+      "follow_up": [
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06",
+        "AUTH-08",
+        "AUTH-09",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T02",
+        "T03",
+        "T04",
+        "T06",
+        "T11",
+        "T13",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -337,7 +374,7 @@
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "49905ab38bac799527d19ee70d4504467e393e0242954ef06daece9ee4c03528",
-    "apps/api/access_registry.v1.json": "a26c1682767cc7cb33a5fa5fccafe42566ae44df699ad1bd4829db7aa50ac26e",
+    "apps/api/access_registry.v1.json": "41a3c2014e32b87cf4f807957e92d71b0ffff104879788faf42a23a2462da06a",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/models.py": "4a3dfb8fdd135bd2b8bff0259a0baff396a262c2485d655c3be310a354587b4a",
     "apps/api/accounts/repository.py": "53010414c2ee5f2aa73a944785928e924a724316cf461135c3d6a38732633de4",
@@ -346,12 +383,18 @@
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
     "apps/api/auth.py": "8bc89291713eaf1e715a19b91886ab85c7eeb34a3ef8ba100a8730c75482571a",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
-    "apps/api/authentication/context.py": "aadec2367a6a1ff940b472b7bbd2a274114e82e60fcbc051ee867753d28e0f93",
+    "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
+    "apps/api/authentication/context.py": "88d13650d58678bde0c89dc5bf33a110964ca2d9efe20aa81c500b3d66e805dc",
+    "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
+    "apps/api/authentication/csrf.py": "a56a012e1a53363a339f0ee7e085320f3b73a29b89ef5d6136804b1b4f6ce06d",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
     "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
     "apps/api/authentication/migrations.py": "80886b95e42417e5a259ea9989d709cc66e9159010562af24d45385c5e5c86ae",
     "apps/api/authentication/models.py": "418c577bcc6a790b2c662453b64a656a5c9dd3a18f3af0e8adc87b3371f61b0f",
+    "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
+    "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
+    "apps/api/authentication/sessions.py": "fea9f75ec436afb8f9cce3dab5740e3060f52586c2027662f7dff9db3c6c4bd4",
     "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
     "apps/api/backtesting.py": "d6199c4b7f88220dd13c54e0df5341961ccf14035eebc160c09c2e9f6315c841",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
@@ -388,8 +431,9 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "f5064f8f549a3aa2e30a65fb17d259ef9d8620ff3b3d8f3d5be054fee575ff8b",
+    "apps/api/main.py": "d592d4b5d813a8706218d7859dd1c2b6ed026349b68914e828b4eeab2f492e42",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
+    "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -451,6 +495,7 @@
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
     "apps/api/research_runs.py": "9676e3b8b338213df1d07a7e00e084f9e738ab826452ded93e4607fedd3544dd",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "apps/api/routers/authentication.py": "72ed03e06377ea954efa5d7498b354c3ab44aa1cbf06195c3bdf4ea2d21e7996",
     "apps/api/routers/diagnostics.py": "a6a4061cace32805fef524041a420e72a3144793ad0b589310aa2cd35953f2b6",
     "apps/api/routers/diagnostics_internal.py": "928558b5b09a56ca2a9d815d64e9db9e0ddee35ebfd06250c97a349a570e44a0",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
@@ -467,7 +512,7 @@
     "apps/api/routers/tasks_session.py": "6478e9df66721b7fc66ed5ea7a2edc8e1694edfe6305f1ad0baf0e54c6bf2a46",
     "apps/api/routers/upload_db.py": "a0679c9e9220ce935a4b555327f8c25e444750b4190403f9f1432018aa0e7a4d",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
-    "apps/api/security_audit.py": "3e806628f8a0a65eae84367fc1292ff7cbbdf6d7c265b32fee1e7963662acaf2",
+    "apps/api/security_audit.py": "92aa35d452d74eb03e2acc14ad8d5fc03b765af7c6b0aefdc70e5f03f662086a",
     "apps/api/session_store.py": "e28d5c71ce0ea1924001466769bdccdeb65930d3ece2fe57aaa496e4280054d8",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "ed37a44ba8f32cfc1bf798d65c5ec2603e2cd7944b166f01b7df19a3f29b718d",
@@ -518,13 +563,14 @@
     "apps/standalone/next.config.mjs": "b8c5a8ec17ae6427f224b402a5eca1a0673e52c05d81ae11bce19e703b7fa569",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
-    "docs/auth00/operation_variants.md": "298916b474bacf61efa878dbde6e90ac4260ed7442220b4c48d3dbe7898b5a71",
+    "docs/auth00/operation_variants.md": "77980e2fe8dc7c54cfa909610ff213fcfb52fa6c006ca95a5d6a837343e75d93",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "7b2de0f845f6e9a2d78cfbba2b1aee1bcca3a55ed6fe2b4d7a74cf63b18d7e00",
+    "docs/auth01/openapi.json": "bc2f58298384ad138c7782fff5d6e1e8f4512c9fd57e86351fd19f199133ed4d",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
-    "packages/ui/lib/access-contract.generated.ts": "8fbc3ab97a5e872ea31a74ca60f5964e9897c3fd86347ff6b60740eeca4fa101",
+    "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
+    "packages/ui/lib/access-contract.generated.ts": "06cf13f35b80a689839424b3558493883707ef5bc5020f2bf101fa282155a403",
     "packages/ui/lib/admin.ts": "13d1cdaa557b6c88e67dab6aeb96671ccbcb194a7e9a101cd00c08cb7efefd51",
     "packages/ui/lib/apiClient.ts": "022b665d96d3a28e6c2ad60127925cdabcb580c7825b310ad30703ffe3e9795c",
     "packages/ui/lib/plans.ts": "732fd6cff623d91b53d784d78c33e0b46cc53b8381c223b438d7e937c93acd94",
@@ -598,7 +644,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 266,
+          "line": 267,
           "symbol": "health"
         }
       ],
@@ -624,7 +670,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 271,
+          "line": 272,
           "symbol": "health_ops"
         }
       ],
@@ -694,6 +740,107 @@
       ],
       "canonical_operation": "fastapi:redoc_url",
       "admission": "authorize-before-operation",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/auth/csrf",
+      "operation": "apps.api.routers.authentication:csrf",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 130,
+          "symbol": "csrf"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:GET:/v1/auth/csrf",
+      "discovery": "automatic",
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.csrf.issue",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "operation": "apps.api.routers.authentication:me",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 170,
+          "symbol": "me"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_session"
+      ],
+      "id": "api:GET:/v1/auth/me",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.me",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/auth/sessions",
+      "operation": "apps.api.routers.authentication:sessions",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 193,
+          "symbol": "sessions"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_session",
+        "auth_cookie",
+        "service_for_request(request).list_sessions"
+      ],
+      "id": "api:GET:/v1/auth/sessions",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.list",
+      "admission": "authenticate-CSRF-object-before-command",
       "stage_namespace": "service"
     },
     {
@@ -4593,6 +4740,178 @@
         "T10",
         "T16"
       ]
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "operation": "apps.api.routers.authentication:login",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 146,
+          "symbol": "login"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/login",
+      "discovery": "automatic",
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.login",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "operation": "apps.api.routers.authentication:logout",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 201,
+          "symbol": "logout"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/logout",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.logout",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/password",
+      "operation": "apps.api.routers.authentication:change_password",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 227,
+          "symbol": "change_password"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_session",
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/password",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.change",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/sessions/revoke-all",
+      "operation": "apps.api.routers.authentication:revoke_all",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 208,
+          "symbol": "revoke_all"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_session",
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/sessions/revoke-all",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.revoke_all",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/sessions/{session_id}/revoke",
+      "operation": "apps.api.routers.authentication:revoke",
+      "evidence": [
+        {
+          "source": "apps/api/routers/authentication.py",
+          "line": 217,
+          "symbol": "revoke"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 249,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_session",
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/sessions/{session_id}/revoke",
+      "discovery": "automatic",
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.session.revoke",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
     },
     {
       "kind": "api",
@@ -8636,6 +8955,31 @@
       "admission": "explicit public asset allowlist"
     },
     {
+      "id": "auth.audit.publish",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "publish_pending",
+      "operation": "auth.audit.publish",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/audit_outbox.py",
+          "line": 12,
+          "symbol": "publish_pending"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.audit.publish",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    {
       "id": "auth.schema.apply",
       "kind": "internal_operation",
       "method": "CALL",
@@ -8658,6 +9002,31 @@
       ],
       "canonical_operation": "auth.schema.apply",
       "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
+      "id": "auth.sessions.schema.apply",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "apply_migration",
+      "operation": "auth.sessions.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/session_migrations.py",
+          "line": 17,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.sessions.schema.apply",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
     },
     {
       "id": "execution:model.job_step",
@@ -15909,6 +16278,31 @@
       ],
       "canonical_operation": "auth.repository.identity",
       "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
+      "id": "storage:auth.sessions",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "SessionService",
+      "operation": "auth.session.authority",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/sessions.py",
+          "line": 68,
+          "symbol": "SessionService"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.authority",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
     },
     {
       "id": "storage:datasets",

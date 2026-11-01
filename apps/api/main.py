@@ -46,7 +46,7 @@ from apps.api.routers import upload_db
 from apps.api.routers import documentation
 from apps.api.routers import doc_profiles
 from apps.api.routers import monitoring
-from apps.api.routers import logs
+from apps.api.routers import logs, authentication
 # PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
 from apps.api.routers import progress
 from apps.api.knowledge import router as knowledge_router_module
@@ -246,6 +246,7 @@ app.include_router(monitoring.router, prefix="/v1/documentation", tags=["monitor
 # policy.admin на управление; §14.1: mandatory-аудит создания/retire).
 app.include_router(doc_profiles.router, prefix="/v1/documentation", tags=["doc-profiles"])
 app.include_router(logs.router, prefix="/v1/logs", tags=["logs"])
+app.include_router(authentication.router, prefix="/v1/auth", tags=["auth"])
 
 
 @app.exception_handler(SessionConflictError)

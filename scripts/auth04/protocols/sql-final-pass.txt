@@ -1,0 +1,50 @@
+auth PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+audit PostgreSQL 18.6 (PGlite 0.5.14) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit
+test_http_all_revoke_drops_cookie_and_next_request_denied (test_auth04_sessions.SessionHTTPTests.test_http_all_revoke_drops_cookie_and_next_request_denied) ... ok
+test_http_auth_db_down_never_uses_research_cookie (test_auth04_sessions.SessionHTTPTests.test_http_auth_db_down_never_uses_research_cookie) ... ok
+test_http_cookie_no_secret_body_and_research_pointer_removed (test_auth04_sessions.SessionHTTPTests.test_http_cookie_no_secret_body_and_research_pointer_removed) ... ok
+test_http_csrf_protects_login_and_cookie_mutations (test_auth04_sessions.SessionHTTPTests.test_http_csrf_protects_login_and_cookie_mutations) ... ok
+test_http_large_body_is_bounded (test_auth04_sessions.SessionHTTPTests.test_http_large_body_is_bounded) ... ok
+test_http_me_then_logout_and_invalid_replay (test_auth04_sessions.SessionHTTPTests.test_http_me_then_logout_and_invalid_replay) ... ok
+test_http_origin_binding_and_cross_site_reads (test_auth04_sessions.SessionHTTPTests.test_http_origin_binding_and_cross_site_reads) ... ok
+test_http_unsafe_context_consumer_requires_csrf (test_auth04_sessions.SessionHTTPTests.test_http_unsafe_context_consumer_requires_csrf) ... ok
+test_http_validation_never_echoes_password_inputs (test_auth04_sessions.SessionHTTPTests.test_http_validation_never_echoes_password_inputs) ... ok
+test_http_verifier_integrates_with_subject_context (test_auth04_sessions.SessionHTTPTests.test_http_verifier_integrates_with_subject_context) ... ok
+test_admin_password_is_not_full_mfa_session (test_auth04_sessions.SessionSQLTests.test_admin_password_is_not_full_mfa_session) ... ok
+test_chosen_or_missing_sid_is_not_used_on_login (test_auth04_sessions.SessionSQLTests.test_chosen_or_missing_sid_is_not_used_on_login) ... ok
+test_concurrent_touch_logout_cannot_resurrect_sid (test_auth04_sessions.SessionSQLTests.test_concurrent_touch_logout_cannot_resurrect_sid) ... ok
+test_connection_outage_is_safe_503 (test_auth04_sessions.SessionSQLTests.test_connection_outage_is_safe_503) ... ok
+test_credential_revoke_invalidates_sessions_and_password (test_auth04_sessions.SessionSQLTests.test_credential_revoke_invalidates_sessions_and_password) ... ok
+test_direct_role_change_invalidates_session_version (test_auth04_sessions.SessionSQLTests.test_direct_role_change_invalidates_session_version) ... ok
+test_durable_throttle_limits_attempts (test_auth04_sessions.SessionSQLTests.test_durable_throttle_limits_attempts) ... ok
+test_existing_postgres_audit_sink_deduplicates_after_lost_ack (test_auth04_sessions.SessionSQLTests.test_existing_postgres_audit_sink_deduplicates_after_lost_ack) ... ok
+test_family_revoke_does_not_affect_other_login (test_auth04_sessions.SessionSQLTests.test_family_revoke_does_not_affect_other_login) ... ok
+test_fixation_login_always_rotates_and_revokes_old (test_auth04_sessions.SessionSQLTests.test_fixation_login_always_rotates_and_revokes_old) ... ok
+test_foreign_or_missing_account_not_adopted (test_auth04_sessions.SessionSQLTests.test_foreign_or_missing_account_not_adopted) ... ok
+test_foreign_session_id_cannot_be_revoked (test_auth04_sessions.SessionSQLTests.test_foreign_session_id_cannot_be_revoked) ... ok
+test_fresh_python_process_observes_persisted_session (test_auth04_sessions.SessionSQLTests.test_fresh_python_process_observes_persisted_session) ... ok
+test_hash_only_persistence_and_safe_public_list (test_auth04_sessions.SessionSQLTests.test_hash_only_persistence_and_safe_public_list) ... ok
+test_idle_touch_does_not_move_absolute_expiry (test_auth04_sessions.SessionSQLTests.test_idle_touch_does_not_move_absolute_expiry) ... ok
+test_inclusive_idle_expiry (test_auth04_sessions.SessionSQLTests.test_inclusive_idle_expiry) ... ok
+test_logout_idempotent_and_replay_rejected (test_auth04_sessions.SessionSQLTests.test_logout_idempotent_and_replay_rejected) ... ok
+test_member_revoke_and_account_close_checked_online (test_auth04_sessions.SessionSQLTests.test_member_revoke_and_account_close_checked_online) ... ok
+test_outbox_failure_rolls_back_issue_and_revoke (test_auth04_sessions.SessionSQLTests.test_outbox_failure_rolls_back_issue_and_revoke) ... ok
+test_outbox_replay_preserves_ids_across_partial_delivery_failure (test_auth04_sessions.SessionSQLTests.test_outbox_replay_preserves_ids_across_partial_delivery_failure) ... ok
+test_password_change_during_verification_never_issues_stale_session (test_auth04_sessions.SessionSQLTests.test_password_change_during_verification_never_issues_stale_session) ... ok
+test_password_change_revokes_all_and_rejects_old_password (test_auth04_sessions.SessionSQLTests.test_password_change_revokes_all_and_rejects_old_password) ... ok
+test_revoke_all_is_subject_scoped_and_terminal (test_auth04_sessions.SessionSQLTests.test_revoke_all_is_subject_scoped_and_terminal) ... ok
+test_revoke_one_does_not_revoke_other (test_auth04_sessions.SessionSQLTests.test_revoke_one_does_not_revoke_other) ... ok
+test_revoked_member_loses_session_without_harming_owner (test_auth04_sessions.SessionSQLTests.test_revoked_member_loses_session_without_harming_owner) ... ok
+test_same_identity_two_accounts_keep_server_bindings (test_auth04_sessions.SessionSQLTests.test_same_identity_two_accounts_keep_server_bindings) ... ok
+test_schema_checksum_drift_denies_session_resolution (test_auth04_sessions.SessionSQLTests.test_schema_checksum_drift_denies_session_resolution) ... ok
+test_schema_outage_never_falls_back_or_exposes_driver_error (test_auth04_sessions.SessionSQLTests.test_schema_outage_never_falls_back_or_exposes_driver_error) ... ok
+test_session_security_fields_cannot_be_rebound_or_unrevoked (test_auth04_sessions.SessionSQLTests.test_session_security_fields_cannot_be_rebound_or_unrevoked) ... ok
+test_suspend_then_reactivate_does_not_resurrect (test_auth04_sessions.SessionSQLTests.test_suspend_then_reactivate_does_not_resurrect) ... ok
+test_wrong_and_unknown_login_same_error (test_auth04_sessions.SessionSQLTests.test_wrong_and_unknown_login_same_error) ... ok
+test_wrong_current_password_does_not_mutate (test_auth04_sessions.SessionSQLTests.test_wrong_current_password_does_not_mutate) ... ok
+
+----------------------------------------------------------------------
+Ran 42 tests in 29.432s
+
+OK
+AUTH-04 SQL/HTTP proof PASS; native PostgreSQL locking/restart NOT certified

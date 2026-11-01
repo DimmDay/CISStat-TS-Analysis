@@ -1,0 +1,1 @@
+{"baseline_xlsx_determinism_defect_reproduced": true, "different_members": ["docProps/core.xml"], "same_frozen_snapshot": true, "only_clock_advanced": true, "auth04_source_used": false}

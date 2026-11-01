@@ -1,0 +1,18 @@
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{
+  "runtime_openapi_methods": 228,
+  "inventory_methods": 228,
+  "extra": [],
+  "missing": [],
+  "auth_methods": [
+    "GET:/v1/auth/csrf",
+    "GET:/v1/auth/me",
+    "GET:/v1/auth/sessions",
+    "POST:/v1/auth/login",
+    "POST:/v1/auth/logout",
+    "POST:/v1/auth/password",
+    "POST:/v1/auth/sessions/revoke-all",
+    "POST:/v1/auth/sessions/{session_id}/revoke"
+  ]
+}

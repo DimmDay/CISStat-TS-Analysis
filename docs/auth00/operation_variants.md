@@ -70,3 +70,20 @@ authority outage 503. `principal_id` — безопасный subject ID. UUID b
 как личный вход в scoped mode. Ни новый login, ни stage/CU enforcement не заявлены.
 См. [AUTH-03 design](../auth03/design.md). Policy review и fingerprints обновлены;
 это review существующих входов, не добавление/удаление HTTP routes.
+
+## AUTH-04 — password/session boundary (31.10.2026)
+
+База d3f78a7: восемь новых method/path `/v1/auth/*` (csrf, login, me,
+sessions, logout, self revoke/all, password). Public entry не означает
+общедоступную mutation: login требует CSRF + password/account proof;
+logout имеет идемпотентный bearer logout с signed CSRF. Остальные операции
+self-only, opaque-cookie/online authority, без API-key или surrogate login.
+Все восемь AUTH-01 operations имеют external authority: analytical capabilities
+не разрешают login, admin или управление сессиями. Role ADMIN password-only
+не выпускает full session. GET me/sessions обновляют idle time; абсолютный срок
+не меняется. GET csrf не выпускает AuthSession и не переназначает research owner.
+
+Добавлены non-HTTP boundaries session authority, 0020 schema apply и audit replay.
+Итого 228 API method/path, 232 AUTH-01 bindings (включая 4 aliases), 548 entry IDs.
+Scientific routes не переименованы; существующие key dependencies остаются key-only.
+Подробности: [AUTH-04 design](../auth04/design.md).

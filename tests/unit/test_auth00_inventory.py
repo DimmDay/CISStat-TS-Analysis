@@ -177,6 +177,17 @@ class InventoryTests(unittest.TestCase):
         path.write_bytes(path.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
         self.mod.check(self.root)
 
+    def test_reviewed_password_blocklist_fingerprint_is_checkout_portable(self):
+        self.snapshot_fixture()
+        self.put('apps/api/authentication/password_blocklist.txt', '# password policy\ncommon password\n')
+        self.edit_review(lambda r:r['reviewed_sources'].append('apps/api/authentication/password_blocklist.txt'))
+        report=self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json',self.mod.json_text(report))
+        self.put('docs/auth00/inventory.md',self.mod.markdown(report))
+        path=self.root/'apps/api/authentication/password_blocklist.txt'
+        path.write_bytes(path.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
+        self.mod.check(self.root)
+
     def edit_review(self, fn):
         p = self.root / 'docs/auth00/policy_review.json'
         review = json.loads(p.read_text(encoding='utf-8'))

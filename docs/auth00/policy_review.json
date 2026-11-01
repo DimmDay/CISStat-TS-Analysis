@@ -1,5 +1,5 @@
 {
-  "baseline": "be553b8ff6e6471eb53427822ccd937a3a71433a",
+  "baseline": "d3f78a79d71a9768dfd4d24c2cad2c1f0764dc57",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -297,7 +297,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02 PostgreSQL-only shared UoW; AUTH-03 reloads identity/account/active membership for verified UUID binding in one readonly transaction. No automatic schema migration or HTTP storage access.",
+      "observed": "AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -309,6 +309,43 @@
         "T02",
         "T04",
         "T11",
+        "T15"
+      ]
+    },
+    "auth.entry": {
+      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store.",
+      "target": "Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority.",
+      "follow_up": [
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06",
+        "AUTH-19"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T13",
+        "T15"
+      ]
+    },
+    "auth.session": {
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state.",
+      "target": "MFA for admin, effective Account entitlements/ownership, unified enforcement and rollout remain AUTH-05/07/08/09/11/20.",
+      "follow_up": [
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06",
+        "AUTH-08",
+        "AUTH-09",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T02",
+        "T03",
+        "T04",
+        "T06",
+        "T11",
+        "T13",
         "T15"
       ]
     }
@@ -6463,6 +6500,136 @@
       ],
       "canonical_operation": "auth.schema.apply",
       "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "api:GET:/v1/auth/csrf": {
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.csrf.issue",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/login": {
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.login",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:GET:/v1/auth/me": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.me",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:GET:/v1/auth/sessions": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.list",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/logout": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.logout",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/sessions/revoke-all": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.revoke_all",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/sessions/{session_id}/revoke": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.session.revoke",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/password": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.change",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "storage:auth.sessions": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.authority",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    "auth.sessions.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.sessions.schema.apply",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    "auth.audit.publish": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.audit.publish",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
     }
   },
   "extra_surfaces": [
@@ -6717,6 +6884,48 @@
           "symbol": "apply_migration"
         }
       ]
+    },
+    {
+      "id": "storage:auth.sessions",
+      "kind": "storage",
+      "method": "CALL",
+      "path": "SessionService",
+      "operation": "auth.session.authority",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/sessions.py",
+          "line": 68,
+          "symbol": "SessionService"
+        }
+      ]
+    },
+    {
+      "id": "auth.sessions.schema.apply",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "apply_migration",
+      "operation": "auth.sessions.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/session_migrations.py",
+          "line": 17,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "auth.audit.publish",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "publish_pending",
+      "operation": "auth.audit.publish",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/audit_outbox.py",
+          "line": 12,
+          "symbol": "publish_pending"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -6726,8 +6935,14 @@
     "apps/api/access_registry.v1.json",
     "apps/api/admin_logs.py",
     "apps/api/auth.py",
+    "apps/api/authentication/audit_outbox.py",
     "apps/api/authentication/context.py",
+    "apps/api/authentication/credentials.py",
+    "apps/api/authentication/csrf.py",
     "apps/api/authentication/legacy.py",
+    "apps/api/authentication/password_blocklist.txt",
+    "apps/api/authentication/session_migrations.py",
+    "apps/api/authentication/sessions.py",
     "apps/api/delivery_outbox.py",
     "apps/api/document_jobs.py",
     "apps/api/document_lifecycle.py",
@@ -6735,11 +6950,13 @@
     "apps/api/document_renditions.py",
     "apps/api/identity.py",
     "apps/api/migrations/0019_auth02_identity_accounts.sql",
+    "apps/api/migrations/0020_auth04_sessions.sql",
     "apps/api/model_execution.py",
     "apps/api/model_jobs.py",
     "apps/api/plans.py",
     "apps/api/print_render_payload.py",
     "apps/api/report_snapshot.py",
+    "apps/api/routers/authentication.py",
     "apps/api/routers/documentation.py",
     "apps/api/security_audit.py",
     "apps/api/session_store.py",
@@ -6754,6 +6971,7 @@
     "docs/auth01/openapi.json",
     "docs/auth02/design.md",
     "docs/auth03/design.md",
+    "docs/auth04/design.md",
     "packages/ui/lib/access-contract.generated.ts",
     "packages/ui/lib/admin.ts",
     "packages/ui/lib/apiClient.ts",

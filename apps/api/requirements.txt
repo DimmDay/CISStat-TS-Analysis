@@ -102,3 +102,6 @@ duckdb-engine>=0.13.0         # SQLAlchemy-диалект duckdb:// (RP3 зак�
 PyMySQL>=1.1.0                # диалект mysql+pymysql (MySQL / MariaDB)
 cryptography>=41.0.0          # caching_sha2_password (MySQL 8) для PyMySQL
 pyodbc>=5.0.0                 # диалект mssql+pyodbc, ODBC Driver 18 (S2)
+
+# AUTH-04: versioned Argon2id password verifier; never plaintext/fast password hash.
+argon2-cffi==25.1.0

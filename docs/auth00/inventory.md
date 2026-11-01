@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `be553b8ff6e6471eb53427822ccd937a3a71433a`. Автоматически собранные входы + явная policy review.
+База: `d3f78a79d71a9768dfd4d24c2cad2c1f0764dc57`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -11,16 +11,16 @@
 
 | Вид | Число |
 |---|---:|
-| api | 220 |
+| api | 228 |
 | framework | 8 |
-| internal_operation | 4 |
+| internal_operation | 6 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 27 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 8 |
+| storage | 9 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 6 |
@@ -32,7 +32,9 @@
 | admin.key | AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | api.key | AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
 | api.model_key | AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
-| auth.storage | AUTH-02 PostgreSQL-only shared UoW; AUTH-03 reloads identity/account/active membership for verified UUID binding in one readonly transaction. No automatic schema migration or HTTP storage access. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
+| auth.entry | AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. | Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority. | AUTH-04, AUTH-05, AUTH-06, AUTH-19 |
+| auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. | MFA for admin, effective Account entitlements/ownership, unified enforcement and rollout remain AUTH-05/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
+| auth.storage | AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | browser.internal | Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-11, AUTH-12 |
 | browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
 | cors.transport | CORS permits configured/dev origins and regex *.vercel.app with credentials; not access control. | Approved origins + CSRF/Origin/Fetch Metadata; direct API remains subject to AuthN/object gates. | AUTH-06, AUTH-11 |
@@ -56,8 +58,11 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:266 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:271 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:267 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:272 |
+| api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:130 |
+| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:170 |
+| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:193 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:555 |
 | api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:744 |
 | api:GET:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:list_org_profiles / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:60 |
@@ -165,6 +170,11 @@
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | browser.session / session Model Card and fold importance | apps/api/routers/tasks_session.py:221 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | browser.internal / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:169 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:164 |
+| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:146 |
+| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:201 |
+| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:227 |
+| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:208 |
+| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:217 |
 | api:POST:/v1/documentation/documents/{document_id}/retention | apps.api.routers.documentation:document_retention / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1031 |
 | api:POST:/v1/documentation/jobs/{job_id}/cancel | apps.api.routers.documentation:cancel_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:757 |
 | api:POST:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:create_org_profile / service:documentation | profile.policy / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:86 |
@@ -294,7 +304,9 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
+| auth.audit.publish | auth.audit.publish / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/audit_outbox.py:12 |
 | auth.schema.apply | auth.schema.apply / service:platform | auth.storage / DDL + schema checksum ledger | apps/api/authentication/migrations.py:13 |
+| auth.sessions.schema.apply | auth.sessions.schema.apply / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/session_migrations.py:17 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
@@ -621,6 +633,7 @@
 | storage:artifacts | storage:artifacts / service:storage | storage.internal / snapshot/artifact/rendition bytes | apps/api/artifact_store.py:321 |
 | storage:auth.accounts | auth.repository.account / service:platform | auth.storage / Account/tenant/membership/versions | apps/api/accounts/repository.py:6 |
 | storage:auth.identities | auth.repository.identity / service:platform | auth.storage / Identity/external issuer-sub mapping | apps/api/authentication/repository.py:8 |
+| storage:auth.sessions | auth.session.authority / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/sessions.py:68 |
 | storage:datasets | storage:datasets / service:storage | storage.internal / uploads + checkpoints | apps/api/research_runs.py:2785 |
 | storage:db.load | storage:db.load / scientific:upload | storage.internal / SQL and remote/local DB data | app/data/db_guard.py:352 |
 | storage:db.probe | storage:db.probe / scientific:upload | storage.internal / user-supplied DB host/port/path/credentials | app/data/file_loader.py:60 |
