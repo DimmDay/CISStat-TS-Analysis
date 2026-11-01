@@ -552,6 +552,59 @@ describe("TsAnalysisUpload", () => {
     });
   });
 
+  function mockUploadFailure(status: number, payload: unknown, invalidJson = false) {
+    const fallback = global.fetch;
+    const json = jest.fn(() => invalidJson
+      ? Promise.reject(new SyntaxError("Not JSON"))
+      : Promise.resolve(payload));
+    global.fetch = jest.fn((url: string, init?: RequestInit) =>
+      typeof url === "string" && url.endsWith("/upload")
+        ? Promise.resolve({ ok: false, status, json })
+        : fallback(url, init)) as jest.Mock;
+    return json;
+  }
+
+  it.each([false, true])("explains HTTP 401 and offers top-level login (invalid JSON: %s)", async (invalidJson) => {
+    const json = mockUploadFailure(401, { detail: { code: "authentication_required" } }, invalidJson);
+    render(<AppShellProvider><TsAnalysisUpload /></AppShellProvider>);
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    const link = await screen.findByRole("link", { name: "Войти в аккаунт" });
+    expect(link).toHaveAttribute("href", "/login?return_to=%2Fupload");
+    expect(link).toHaveAttribute("target", "_top");
+    expect(screen.getByRole("alert")).toHaveTextContent("Для загрузки датасета необходимо войти в аккаунт");
+    expect(screen.getByRole("alert")).toHaveTextContent("После входа выберите файл повторно");
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("необходимо войти"));
+    expect(json).not.toHaveBeenCalled();
+    expect((global.fetch as jest.Mock).mock.calls.filter(([url, init]) =>
+      typeof url === "string" && url.endsWith("/upload") && init?.method === "POST")).toHaveLength(1);
+  });
+
+  it.each([
+    [403, { detail: { code: "forbidden", message: "Недостаточно прав для загрузки" } }, "Недостаточно прав для загрузки"],
+    [403, { detail: { code: "csrf_invalid", message: "Запрос отклонён" } }, "Обновите страницу"],
+    [403, null, "Недостаточно прав для загрузки датасета"],
+    [503, { detail: { code: "auth_authority_unavailable" } }, "Сервис загрузки временно недоступен"],
+    [400, { detail: { code: "invalid_file", message: "Некорректный CSV" } }, "Некорректный CSV"],
+  ])("explains HTTP %s without proposing login", async (status, payload, message) => {
+    mockUploadFailure(status as number, payload);
+    render(<AppShellProvider><TsAnalysisUpload /></AppShellProvider>);
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message as string));
+    expect(screen.queryByRole("link", { name: "Войти в аккаунт" })).not.toBeInTheDocument();
+  });
+
+  it("clears a previous login prompt when a later upload fails for another reason", async () => {
+    mockUploadFailure(401, null);
+    render(<AppShellProvider><TsAnalysisUpload /></AppShellProvider>);
+    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
+    dropFiles(screen.getByTestId("dropzone-input"), [file]);
+    await screen.findByRole("link", { name: "Войти в аккаунт" });
+    mockUploadFailure(400, { detail: "Проверьте формат файла" });
+    dropFiles(screen.getByTestId("dropzone-input"), [file]);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Проверьте формат файла"));
+    expect(screen.queryByRole("link", { name: "Войти в аккаунт" })).not.toBeInTheDocument();
+  });
+
   it("should show a readable message (not [object Object]) on FastAPI 422 structured validation errors", async () => {
     // Регрессия: require_api_key на /v1/public/* отдаёт 422 с detail в
     // виде массива {loc,msg,type}, а не строкой -- раньше это превращалось

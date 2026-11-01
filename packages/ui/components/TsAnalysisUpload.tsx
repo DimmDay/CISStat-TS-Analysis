@@ -321,19 +321,25 @@ function fmtStat(n: number | null): string {
 }
 
 /**
- * FastAPI отдаёт ошибки в ДВУХ разных формах: {"detail": "строка"} для
+ * FastAPI отдаёт ошибки разных форм: {"detail": "строка"} для
  * ручных HTTPException, {"detail": [{"loc":..,"msg":..,"type":..}, ...]}
  * для автоматической 422-валидации запроса (например, не пришёл
  * обязательный заголовок). Раньше `new Error(data.detail)` на втором
  * случае превращался в "[object Object]" -- Error coerces non-string
  * аргумент через String(), а String() массива объектов даёт именно это.
+ * Auth/proxy также возвращают {"detail": {"code": "...", "message": "..."}}.
  */
-function extractErrorMessage(data: UploadApiResponse): string | null {
-  if (typeof data.detail === "string") return data.detail;
-  if (Array.isArray(data.detail) && data.detail.length > 0) {
-    return data.detail.map((e) => e.msg).join("; ");
+function extractErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const { detail, error } = data as { detail?: unknown; error?: unknown };
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail.map((e) => e?.msg).filter((msg) => typeof msg === "string").join("; ") || null;
   }
-  if (data.error) return data.error;
+  if (detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string") {
+    return detail.message;
+  }
+  if (typeof error === "string") return error;
   return null;
 }
 
@@ -423,6 +429,7 @@ export function TsAnalysisUpload() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadAuthRequired, setUploadAuthRequired] = useState(false);
   const [uploadData, setUploadData] = useState<UploadApiResponse | null>(null);
   const [hydrating, setHydrating] = useState(false);
 
@@ -884,6 +891,7 @@ export function TsAnalysisUpload() {
     async (file: File) => {
       setUploading(true);
       setUploadError(null);
+      setUploadAuthRequired(false);
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -892,10 +900,23 @@ export function TsAnalysisUpload() {
           body: formData,
           credentials: "include", // несёт cookie сессии -- сервер обновит AnalysisSession
         });
-        const data: UploadApiResponse = await resp.json();
+        if (resp.status === 401) {
+          setUploadAuthRequired(true);
+          throw new Error("Для загрузки датасета необходимо войти в аккаунт. Если вы уже входили, сеанс мог завершиться. После входа выберите файл повторно.");
+        }
+        const data = await resp.json().catch(() => null);
         if (!resp.ok) {
+          if (resp.status === 403) {
+            throw new Error(data?.detail?.code === "csrf_invalid"
+              ? "Защита запроса устарела. Обновите страницу и повторите загрузку."
+              : extractErrorMessage(data) || "Недостаточно прав для загрузки датасета. Обратитесь к администратору.");
+          }
+          if (resp.status === 503) {
+            throw new Error("Сервис загрузки временно недоступен. Повторите попытку позже.");
+          }
           throw new Error(extractErrorMessage(data) || "Не удалось загрузить файл");
         }
+        if (!data) throw new Error("Некорректный ответ сервиса загрузки.");
         await acceptUploadedData(data);
       } catch (e) {
         const message = e instanceof Error ? e.message : "Неизвестная ошибка загрузки";
@@ -1691,9 +1712,16 @@ export function TsAnalysisUpload() {
             )}
 
             {uploadError && (
-              <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2">
+              <div role="alert" className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2">
                 <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                <span>{uploadError}</span>
+                <div>
+                  <span>{uploadError}</span>
+                  {uploadAuthRequired && (
+                    <a href="/login?return_to=%2Fupload" target="_top" className="mt-2 block font-medium underline">
+                      Войти в аккаунт
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </>
