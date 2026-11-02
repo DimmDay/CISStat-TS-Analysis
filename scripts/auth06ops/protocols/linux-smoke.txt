@@ -1,0 +1,95 @@
+# Linux fail-soft smoke of scripts/auth06ops/recon_windows.ps1
+# pwsh 7.4.6 on Linux (no Windows cmdlets available by design): every Windows-specific
+# section must degrade gracefully, JSON/TXT artefacts must still be produced, exit 0.
+# Command: pwsh -NoProfile -NonInteractive -File scripts/auth06ops/recon_windows.ps1 -Domain example.com -OutDir /tmp/recon-smoke
+# Date: 2026-11-02
+
+CISStat TS Analysis - AUTH-06-OPS-RECON (read-only recon)
+generated: 2026-11-02 10:31:32 | admin: False | domain param: example.com
+
+VERDICT (6 FAIL / 5 ATTENTION / 4 PASS)
+[FAIL     ] cpu_cores :: cores:  - below the 2-core threshold for the api image
+[FAIL     ] ram_total_gb :: cannot read total RAM
+[FAIL     ] system_drive_free_gb :: cannot read system drive free space
+[FAIL     ] os_architecture :: architecture:  - 64-bit is required
+[FAIL     ] virtualization_for_docker :: neither hypervisor present nor firmware virtualization flag - enable VT-x/AMD-V in UEFI for the Windows docker path
+[ATTENTION] windows_edition :: desktop edition: Windows Update auto-reboots break API uptime; the plan recommends wiping this machine to Ubuntu Server 24.04 LTS for production
+[PASS     ] uptime_hours :: uptime window looks stable for an always-on host
+[PASS     ] public_ip :: public IP: 47.57.242.119 (class: public)
+[ATTENTION] nat_classification :: behind NAT: configure router port forwarding for 80/443 to this host (or get a white IP from the ISP)
+[FAIL     ] domain_dns :: DNS check failed: resolver_unavailable
+[PASS     ] ports_80_443 :: no third-party listeners on 80/443 (caddy will bind them)
+[ATTENTION] docker_runtime :: docker absent - expected if this machine will be wiped to Linux (docker engine is installed there); required if staying on Windows
+[ATTENTION] disk_media :: media type undetermined (an admin run enables the storage probe) - verify SSD manually
+[PASS     ] chassis_power :: no battery - desktop/server class chassis
+[ATTENTION] openssh_server :: OpenSSH server state: probe_failed - needed for operator commands over an SSH tunnel after the move
+
+RESULT: 6 BLOCKER(S) - resolve the FAIL lines before the move (plan section 6)
+
+report: /tmp/recon-smoke/cisstat_recon_20261102_103133.json
+
+Send BOTH files to the team lead: /tmp/recon-smoke/cisstat_recon_20261102_103133.json and /tmp/recon-smoke/cisstat_recon_20261102_103133.txt
+
+EXIT_CODE: 0
+
+# artefacts:
+total 28
+drwxrwxr-x 2 z    z    4096 Nov  2 10:31 .
+drwxrwxrwt 1 root root 4096 Nov  2 10:31 ..
+-rw-rw-r-- 1 z    z    4074 Nov  2 10:31 cisstat_recon_20261102_103114.json
+-rw-rw-r-- 1 z    z    1820 Nov  2 10:31 cisstat_recon_20261102_103114.txt
+-rw-rw-r-- 1 z    z    4074 Nov  2 10:31 cisstat_recon_20261102_103133.json
+-rw-rw-r-- 1 z    z    1820 Nov  2 10:31 cisstat_recon_20261102_103133.txt
+
+# JSON head (validity proof):
+==> /tmp/recon-smoke/cisstat_recon_20261102_103114.json <==
+{
+  "meta": {
+    "task": "AUTH-06-OPS-RECON (read-only recon, repo base 2299ad0)",
+    "generated_at": "2026-11-02 10:31:14",
+    "domain_param": "example.com",
+    "is_admin": false,
+    "powershell_version": "7.4.6",
+    "powershell_edition": "Core"
+  },
+  "host": {
+    "timezone": "Etc/UTC",
+    "battery_present": false
+  },
+  "hardware": {
+    "logical_disks": [],
+    "physical_media": []
+  },
+  "virtualization": {
+    "hypervisor_present": false,
+    "virtualization_firmware_enabled": false,
+    "windows_optional_features": [
+      {
+        "feature": "wsl_vmp_hyperv",
+        "state": 
+==> /tmp/recon-smoke/cisstat_recon_20261102_103133.json <==
+{
+  "meta": {
+    "task": "AUTH-06-OPS-RECON (read-only recon, repo base 2299ad0)",
+    "generated_at": "2026-11-02 10:31:32",
+    "domain_param": "example.com",
+    "is_admin": false,
+    "powershell_version": "7.4.6",
+    "powershell_edition": "Core"
+  },
+  "host": {
+    "timezone": "Etc/UTC",
+    "battery_present": false
+  },
+  "hardware": {
+    "logical_disks": [],
+    "physical_media": []
+  },
+  "virtualization": {
+    "hypervisor_present": false,
+    "virtualization_firmware_enabled": false,
+    "windows_optional_features": [
+      {
+        "feature": "wsl_vmp_hyperv",
+        "state": 
+JSON PARSE OK; sections: ['meta', 'host', 'hardware', 'virtualization', 'containers', 'network', 'conflicts', 'verdict']
