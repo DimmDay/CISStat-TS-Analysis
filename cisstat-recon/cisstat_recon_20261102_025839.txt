@@ -1,0 +1,23 @@
+CISStat TS Analysis - AUTH-06-OPS-RECON (read-only recon)
+generated: 2026-11-02 02:58:10 | admin: True | domain param: api.datasetup.ru
+
+VERDICT (1 FAIL / 3 ATTENTION / 11 PASS)
+[PASS     ] cpu_cores :: cores: 2 (threshold 2)
+[PASS     ] ram_total_gb :: total: 256 GB (threshold 4; 8+ comfortable)
+[PASS     ] system_drive_free_gb :: free: 886.95 GB (api image plus postgres plus OS need 30-40)
+[PASS     ] os_architecture :: architecture: 64-bit
+[PASS     ] virtualization_for_docker :: hypervisor_present: True; firmware_flag: False
+[PASS     ] windows_edition :: Microsoft Windows Server 2022 Datacenter - server edition; the plan still recommends Linux for production
+[PASS     ] uptime_hours :: uptime window looks stable for an always-on host
+[PASS     ] public_ip :: public IP: 178.176.32.209 (class: public)
+[ATTENTION] nat_classification :: behind NAT: configure router port forwarding for 80/443 to this host (or get a white IP from the ISP)
+[FAIL     ] domain_dns :: api.datasetup.ru has no A-record yet - create it before the TLS phase
+[PASS     ] ports_80_443 :: no third-party listeners on 80/443 (caddy will bind them)
+[ATTENTION] docker_runtime :: docker absent - expected if this machine will be wiped to Linux (docker engine is installed there); required if staying on Windows
+[PASS     ] disk_media :: no HDD in the physical media list
+[PASS     ] chassis_power :: no battery - desktop/server class chassis
+[ATTENTION] openssh_server :: OpenSSH server state: absent - needed for operator commands over an SSH tunnel after the move
+
+RESULT: 1 BLOCKER(S) - resolve the FAIL lines before the move (plan section 6)
+
+report: .\cisstat-recon\cisstat_recon_20261102_025839.json

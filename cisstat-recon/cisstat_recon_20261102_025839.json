@@ -1,0 +1,212 @@
+{
+    "meta":  {
+                 "task":  "AUTH-06-OPS-RECON (read-only recon, repo base 2299ad0)",
+                 "generated_at":  "2026-11-02 02:58:10",
+                 "domain_param":  "api.datasetup.ru",
+                 "is_admin":  true,
+                 "powershell_version":  "5.1.20348.4294",
+                 "powershell_edition":  "Desktop"
+             },
+    "host":  {
+                 "os_caption":  "Microsoft Windows Server 2022 Datacenter",
+                 "os_version":  "10.0.20348 build 20348",
+                 "os_architecture":  "64-bit",
+                 "installed_at":  "\/Date(1782138009000)\/",
+                 "last_boot":  "\/Date(1782117675500)\/",
+                 "uptime_hours":  3193.3,
+                 "computer_name":  "Q6KXLSRV",
+                 "manufacturer_model":  "VMware, Inc. VMware7,1",
+                 "domain_joined":  "WORKGROUP",
+                 "pc_system_type_code":  1,
+                 "timezone":  "Pacific Standard Time",
+                 "battery_present":  false
+             },
+    "hardware":  {
+                     "cpu_name":  "Intel(R) Xeon(R) Gold 5318Y CPU @ 2.10GHz",
+                     "cpu_cores":  2,
+                     "cpu_logical":  2,
+                     "cpu_max_clock_mhz":  2100,
+                     "ram_total_gb":  256,
+                     "ram_free_gb":  161.59,
+                     "logical_disks":  [
+                                           {
+                                               "drive":  "C:",
+                                               "size_gb":  1023.33,
+                                               "free_gb":  886.95,
+                                               "free_percent":  86.7
+                                           }
+                                       ],
+                     "physical_media":  [
+                                            {
+                                                "disk":  "VMware Virtual disk",
+                                                "media":  "SSD",
+                                                "bus":  "SAS",
+                                                "size_gb":  1024
+                                            }
+                                        ]
+                 },
+    "virtualization":  {
+                           "hypervisor_present":  true,
+                           "virtualization_firmware_enabled":  false,
+                           "windows_optional_features":  [
+                                                             {
+                                                                 "feature":  "Microsoft-Windows-Subsystem-Linux",
+                                                                 "state":  "Disabled"
+                                                             },
+                                                             {
+                                                                 "feature":  "VirtualMachinePlatform",
+                                                                 "state":  "Disabled"
+                                                             },
+                                                             {
+                                                                 "feature":  "Microsoft-Hyper-V-All",
+                                                                 "state":  ""
+                                                             }
+                                                         ],
+                           "active_power_plan":  "Balanced"
+                       },
+    "containers":  {
+                       "docker_present":  false,
+                       "docker_version":  "",
+                       "docker_compose_version":  "",
+                       "docker_daemon_running":  false,
+                       "wsl_present":  true,
+                       "wsl_status":  "",
+                       "wsl_distros":  "\r\n\r\nCopyright (c) Microsoft Corporation. All rights reserved.\r\n\r\n\r\n\r\n\r\n\r\nUsage: wsl.exe [Argument]\r\n\r\n\r\n\r\n\r\n\r\nArguments:\r\n\r\n\r\n\r\n\r\n\r\n    --install \u003cOptions\u003e\r\n\r\n\r\n        Install Windows Subsystem for Linux features. If no options are specified,\r\n\r\n\r\n        the recommended features will be installed along with the default distribution.\r\n\r\n\r\n\r\n\r\n\r\n        To view the default distribution as well as a list of other valid distributions,\r\n\r\n\r\n        use \u0027wsl --list --online\u0027.\r\n\r\n\r\n\r\n\r\n\r\n        Options:\r\n\r\n\r\n            --distribution, -d [Argument]\r\n\r\n\r\n                Specifies the distribution to be downloaded and installed by name.\r\n\r\n\r\n\r\n\r\n\r\n                Arguments:\r\n\r\n\r\n                    A valid distribution name (not case sensitive).\r\n\r\n\r\n\r\n\r\n\r\n                Examples:\r\n\r\n\r\n                    wsl --install -d Ubuntu\r\n\r\n\r\n                    wsl --install --distribution Debian\r\n\r\n\r\n\r\n\r\n\r\n            --inbox\r\n\r\n\r\n                Install the optional Windows feature instead of the version available via the Microsoft Store.\r\n\r\n\r\n\r\n\r\n\r\n            --enable-wsl1\r\n\r\n\r\n                Enable WSL1 support with the Microsoft Store version.\r\n\r\n\r\n\r\n\r\n\r\n            --no-distribution\r\n\r\n\r\n                Do not install a distribution (cannot be used with --distribution).\r\n\r\n\r\n\r\n\r\n\r\n            --no-launch, -n\r\n\r\n\r\n                Do not launch the distribution after install.\r\n\r\n\r\n\r\n\r\n\r\n            --web-download\r\n\r\n\r\n                Download the most recent version of WSL from the internet instead of the Microsoft Store.\r\n\r\n\r\n\r\n\r\n\r\n    --list, -l [Options]\r\n\r\n\r\n        Lists distributions.\r\n\r\n\r\n\r\n\r\n\r\n        Options:\r\n\r\n\r\n            --online, -o\r\n\r\n\r\n                Displays a list of available distributions for install with \u0027wsl --install\u0027.\r\n\r\n\r\n\r\n\r\n\r\n    --status\r\n\r\n\r\n        Show the status of Windows Subsystem for Linux.\r\n\r\n\r\n\r\n\r\n\r\n    --help\r\n\r\n\r\n        Display usage information.\r\n\r\n\r\n"
+                   },
+    "network":  {
+                    "public_ip":  "178.176.32.209",
+                    "local_ipv4":  "192.168.8.83",
+                    "default_gateway":  "192.168.8.65",
+                    "dns_servers":  [
+                                        "8.8.8.8",
+                                        "1.1.1.1"
+                                    ],
+                    "public_ip_class":  "public",
+                    "public_ip_on_local_adapter":  false,
+                    "firewall_profiles":  [
+                                              {
+                                                  "profile":  "Domain",
+                                                  "enabled":  1
+                                              },
+                                              {
+                                                  "profile":  "Private",
+                                                  "enabled":  1
+                                              },
+                                              {
+                                                  "profile":  "Public",
+                                                  "enabled":  1
+                                              }
+                                          ],
+                    "domain_record_ip":  "",
+                    "domain_status":  "no_a_record"
+                },
+    "conflicts":  {
+                      "listening_ports":  [
+
+                                          ],
+                      "iis_w3svc":  "absent",
+                      "openssh_server":  "absent",
+                      "native_postgres_services":  [
+
+                                                   ],
+                      "top5_processes_by_ram":  [
+                                                    {
+                                                        "process":  "llama-server",
+                                                        "working_set_gb":  39.43
+                                                    },
+                                                    {
+                                                        "process":  "llama-server",
+                                                        "working_set_gb":  37.57
+                                                    },
+                                                    {
+                                                        "process":  "opencode",
+                                                        "working_set_gb":  1.48
+                                                    },
+                                                    {
+                                                        "process":  "Code",
+                                                        "working_set_gb":  1.06
+                                                    },
+                                                    {
+                                                        "process":  "Code",
+                                                        "working_set_gb":  0.85
+                                                    }
+                                                ]
+                  },
+    "verdict":  [
+                    {
+                        "name":  "cpu_cores",
+                        "level":  "PASS",
+                        "detail":  "cores: 2 (threshold 2)"
+                    },
+                    {
+                        "name":  "ram_total_gb",
+                        "level":  "PASS",
+                        "detail":  "total: 256 GB (threshold 4; 8+ comfortable)"
+                    },
+                    {
+                        "name":  "system_drive_free_gb",
+                        "level":  "PASS",
+                        "detail":  "free: 886.95 GB (api image plus postgres plus OS need 30-40)"
+                    },
+                    {
+                        "name":  "os_architecture",
+                        "level":  "PASS",
+                        "detail":  "architecture: 64-bit"
+                    },
+                    {
+                        "name":  "virtualization_for_docker",
+                        "level":  "PASS",
+                        "detail":  "hypervisor_present: True; firmware_flag: False"
+                    },
+                    {
+                        "name":  "windows_edition",
+                        "level":  "PASS",
+                        "detail":  "Microsoft Windows Server 2022 Datacenter - server edition; the plan still recommends Linux for production"
+                    },
+                    {
+                        "name":  "uptime_hours",
+                        "level":  "PASS",
+                        "detail":  "uptime window looks stable for an always-on host"
+                    },
+                    {
+                        "name":  "public_ip",
+                        "level":  "PASS",
+                        "detail":  "public IP: 178.176.32.209 (class: public)"
+                    },
+                    {
+                        "name":  "nat_classification",
+                        "level":  "ATTENTION",
+                        "detail":  "behind NAT: configure router port forwarding for 80/443 to this host (or get a white IP from the ISP)"
+                    },
+                    {
+                        "name":  "domain_dns",
+                        "level":  "FAIL",
+                        "detail":  "api.datasetup.ru has no A-record yet - create it before the TLS phase"
+                    },
+                    {
+                        "name":  "ports_80_443",
+                        "level":  "PASS",
+                        "detail":  "no third-party listeners on 80/443 (caddy will bind them)"
+                    },
+                    {
+                        "name":  "docker_runtime",
+                        "level":  "ATTENTION",
+                        "detail":  "docker absent - expected if this machine will be wiped to Linux (docker engine is installed there); required if staying on Windows"
+                    },
+                    {
+                        "name":  "disk_media",
+                        "level":  "PASS",
+                        "detail":  "no HDD in the physical media list"
+                    },
+                    {
+                        "name":  "chassis_power",
+                        "level":  "PASS",
+                        "detail":  "no battery - desktop/server class chassis"
+                    },
+                    {
+                        "name":  "openssh_server",
+                        "level":  "ATTENTION",
+                        "detail":  "OpenSSH server state: absent - needed for operator commands over an SSH tunnel after the move"
+                    }
+                ]
+}
