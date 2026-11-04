@@ -1,0 +1,131 @@
+# deployment/cisstat-stack/docker-compose.yml
+#
+# AUTH-06-OPS-PHASE1 (2026-11-04): прод-стек CISStat TS Analysis на
+# собственном сервере (домен datasetup.ru, слот 178.176.32.210).
+# Полная замена контура Vercel (фронтенд) + render.com (API): и web, и api,
+# и postgres живут здесь, за caddy с автоматическим TLS Let's Encrypt.
+#
+# Топология (инварианты страхует tests/api/test_cisstat_stack_deployment.py):
+#   caddy    -- ЕДИНСТВЕННАЯ точка входа хоста: 80/443; три имени
+#               datasetup.ru (web:3000), www.datasetup.ru (redir на apex),
+#               api.datasetup.ru (api:8000 -- health/диагностика).
+#   web      -- Next.js standalone shell; браузер ходит только сюда.
+#               /api/v1/* проксируется SERVER-SIDE на api по внутренней
+#               сети (API_URL=http://api:8000) -- first-party proxy AUTH-06,
+#               куки остаются first-party на datasetup.ru.
+#   api      -- FastAPI/uvicorn; durable-режим fail-closed
+#               (CISSTAT_STORAGE_MODE=required), DSN libpq-формата
+#               (psycopg.connect напрямую во всех durable-сторах).
+#   postgres -- durable-хранилище (AUTH-02/04/05/06, research_runs, DOCLOG).
+#               ПОРТЫ НАРУЖУ НЕ ПУБЛИКУЮТСЯ. Оператор -- docker compose exec
+#               (см. README.md); pg_isready-gate перед стартом api.
+#
+# Запуск: из каталога deployment/cisstat-stack:
+#   cp .env.example .env  # заполнить реальными значениями, chmod 600
+#   docker compose build && docker compose up -d
+# Контекст сборки api/web -- КОРЕНЬ репозитория (../..): монорепо и
+# импорты бэкенда лежат относительно корня (см. apps/api/Dockerfile).
+
+name: cisstat-stack
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cisstat
+      POSTGRES_USER: cisstat
+      POSTGRES_PASSWORD: ${CISSTAT_PG_PASSWORD:?заполните CISSTAT_PG_PASSWORD в .env (openssl rand -base64 24)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cisstat -d cisstat"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - cisstat-internal
+    # ВАЖНО: секция ports ОТСУТСТВУЕТ НАМЕРЕННО. Postgres наружу не
+    # выставляется (own-server-recon-plan.md §3); SSH-туннель хоста сюда
+    # не нужен -- операторские команды идут через docker compose exec.
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+      # DSN в libpq-формате: все durable-сторы (auth storage.py,
+      # research_runs.py, doc_profiles.py, ...) вызывают psycopg.connect
+      # напрямую; SQLAlchemy-диалект postgresql+psycopg:// здесь ЗАПРЕЩЁН.
+      DATABASE_URL: postgresql://cisstat:${CISSTAT_PG_PASSWORD}@postgres:5432/cisstat
+      CISSTAT_STORAGE_MODE: required
+      CISSTAT_AUTH_CSRF_KEY: ${CISSTAT_AUTH_CSRF_KEY:?заполните CISSTAT_AUTH_CSRF_KEY в .env (openssl rand -base64 32)}
+      CISSTAT_AUTH_MFA_KEYS: ${CISSTAT_AUTH_MFA_KEYS:?заполните CISSTAT_AUTH_MFA_KEYS в .env (JSON-keyring, docs/auth05/design.md)}
+      CISSTAT_AUTH_MFA_ACTIVE_KEY: ${CISSTAT_AUTH_MFA_ACTIVE_KEY:?заполните CISSTAT_AUTH_MFA_ACTIVE_KEY в .env}
+      # Exact HTTPS origins; через запятую. Браузерный origin -- только
+      # фронтенд на datasetup.ru (www канонизируется, но перечислен на
+      # случай прямого захода до редиректа).
+      CISSTAT_AUTH_ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
+      ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - cisstat-internal
+    # ports ОТСУТСТВУЕТ: наружу api отдаёт только caddy (api.datasetup.ru).
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/standalone/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      # first-party proxy AUTH-06 (packages/ui/server/firstPartyProxy.ts):
+      # читает API_URL и CISSTAT_AUTH_PUBLIC_ORIGIN из окружения в runtime.
+      API_URL: http://api:8000
+      CISSTAT_AUTH_PUBLIC_ORIGIN: https://datasetup.ru
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - cisstat-internal
+    # ports ОТСУТСТВУЕТ: наружу web отдаёт только caddy (datasetup.ru).
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # сертификаты Let's Encrypt (бэкапить вместе с .env)
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    networks:
+      - cisstat-internal
+    # Перед первым `up` порты 80/443 хоста обязаны быть СВОБОДНЫ:
+    # локальный nginx слота .210 остановлен (README.md §3), иначе caddy
+    # не сможет ни слушать, ни пройти HTTP-01 challenge.
+
+volumes:
+  pgdata: {}
+  caddy_data: {}
+  caddy_config: {}
+
+networks:
+  cisstat-internal: {}

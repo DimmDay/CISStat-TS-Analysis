@@ -6,3 +6,14 @@ exports/
 reports/
 .DS_Store
 *.md
+
+# AUTH-06-OPS-PHASE1: контекст сборки -- корень репозитория (api и web
+# образы строятся из него). Без этих строк в контекст попадают gigabyte-ные
+# локальные каталоги npm/Next и артефакты задач -- сборка раздувается
+# и ломается на передаче контекста.
+node_modules
+.next
+cisstat-recon
+deployment/cisstat-stack/.env
+.claude
+agent-ctx

@@ -1,0 +1,6 @@
+FAILED tests/api/test_cisstat_stack_deployment.py::test_caddyfile_three_names_canon_and_routes
+FAILED tests/api/test_cisstat_stack_deployment.py::test_env_example_contract_and_no_real_secrets
+FAILED tests/api/test_cisstat_stack_deployment.py::test_standalone_dockerfile_multi_stage_next_start
+FAILED tests/api/test_cisstat_stack_deployment.py::test_dockerignore_covers_frontend_context
+FAILED tests/api/test_cisstat_stack_deployment.py::test_runbook_operator_surface
+======================== 10 failed, 1 skipped in 0.46s =========================

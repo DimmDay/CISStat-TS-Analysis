@@ -1,0 +1,30 @@
+# deployment/cisstat-stack/Caddyfile
+#
+# AUTH-06-OPS-PHASE1: единая точка входа платформы на собственном сервере.
+# TLS Let's Encrypt выпускается и продлевается автоматически; для выпуска
+# на старте DNS всех трёх имён должен указывать на этот хост
+# (178.176.32.210: A @, A www, A api -- на момент поставки все три уже
+# настроены), а порты 80/443 хоста -- быть свободными (локальный nginx
+# слота остановлен, README.md §3).
+#
+# Монтируется в контейнер caddy read-only: /etc/caddy/Caddyfile.
+
+# API: наружу -- только health/диагностика. Боевой трафик браузера сюда
+# НЕ ходит: first-party proxy web-контейнера обращается к api по
+# внутренней сети compose (API_URL=http://api:8000). ADMIN-роуты прикрыты
+# AUTH (сессии/MFA), нечувствительные /health* остаются доступны --
+# это замена healthCheckPath render.yaml.
+api.datasetup.ru {
+	reverse_proxy api:8000
+}
+
+# Основной интерфейс платформы (Next.js standalone shell).
+datasetup.ru {
+	reverse_proxy web:3000
+}
+
+# Канонизация: единственный канонический origin -- apex
+# (CISSTAT_AUTH_PUBLIC_ORIGIN=https://datasetup.ru). permanent = 308.
+www.datasetup.ru {
+	redir https://datasetup.ru{uri} permanent
+}
