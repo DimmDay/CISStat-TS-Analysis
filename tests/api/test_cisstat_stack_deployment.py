@@ -249,6 +249,56 @@ def test_standalone_dockerfile_multi_stage_next_start() -> None:
     ), "сборка ровно standalone workspace (как в vercel.json buildCommand)"
 
 
+def test_standalone_dockerfile_runtime_manifests_guard() -> None:
+    """AUTH-06-OPS-PHASE1-V2 (Фикс 1): runtime-стадия web обязана нести
+    корневой package.json и манифесты ВСЕХ workspace'ов: CMD выполняет
+    `npm run start --workspace=...`, а npm читает КОРНЕВОЙ манифест
+    (поле workspaces) и манифесты объявленных workspace'ов. Инцидент на
+    VM cisstat-api 2026-11-04: без них контейнер уходил в Restarting
+    (exit 254: npm ERR! This does not seem to be a Git repository /
+    ENOENT package.json --npm резолвит workspace-дерево от корня)."""
+    text = STANDALONE_DOCKERFILE.read_text(encoding="utf-8")
+    for line in (
+        r"^COPY --from=build /repo/package\.json \./package\.json$",
+        r"^COPY --from=build /repo/apps/embedded/package\.json \./apps/embedded/package\.json$",
+        r"^COPY --from=build /repo/apps/print-renderer/package\.json \./apps/print-renderer/package\.json$",
+    ):
+        assert re.search(rf"(?m){line}", text), (
+            f"runtime web без обязательного слоя {line}: npm run --workspace "
+            "читает корневой package.json и дерево workspaces"
+        )
+    # Fail-closed гвард корневого манифеста (перенос серверного hotfix
+    # 2026-11-04 дословно): сборка образа падает, если workspaces корня
+    # не объявляют apps/standalone, а не молча умирает в runtime.
+    assert 'workspace apps/standalone not declared' in text, (
+        "гвард root manifest (workspaces содержит apps/standalone) отсутствует"
+    )
+    assert "npm --workspace runnable" in text, "маркер успешного гварда манифеста"
+
+
+def test_api_dockerfile_operator_scripts_baked_in() -> None:
+    """AUTH-06-OPS-PHASE1-V2 (Фикс 2): операторские скрипты AUTH-05
+    обязаны быть в образе api: README §7 выполняет их через
+    `docker compose exec api python scripts/auth05/...`. Инцидент
+    2026-11-05: скрипты добавлялись эфемерным `docker cp` и потерялись
+    при пересоздании контейнера."""
+    text = (REPO_ROOT / "apps" / "api" / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"(?m)^COPY scripts/auth05/ \./scripts/auth05/$", text), (
+        "образ api без scripts/auth05/: операторские миграции/bootstrap "
+        "требуют эфемерный docker cp (теряется при пересоздании контейнера)"
+    )
+    # Fail-closed гвард времени сборки: без операторской тройки образ
+    # НЕ собирается (философия DEPLOY-1).
+    guard_zone = text.split("COPY scripts/auth05/", 1)[-1]
+    for name in ("migrate.py", "bootstrap.py", "verify_postgres.py"):
+        assert name in guard_zone, f"гвард образа не проверяет {name}"
+    # Целиком каталог scripts/ (43 МБ cert-корпусов) в образ НЕ копировать.
+    assert not re.search(r"(?m)^COPY scripts/ \./scripts/$", text), (
+        "COPY всего scripts/ раздувает образ: только операторская "
+        "поверхность scripts/auth05/"
+    )
+
+
 def test_dockerignore_covers_frontend_context() -> None:
     text = DOCKERIGNORE.read_text(encoding="utf-8")
     for token in (".git", "node_modules", ".next", ".venv", "cisstat-recon"):
@@ -271,3 +321,43 @@ def test_runbook_operator_surface() -> None:
         "CISSTAT_STORAGE_MODE=required",
     ):
         assert token in text, f"README-runbook без обязательного шага: {token}"
+
+
+def test_runbook_bootstrap_fresh_db_section() -> None:
+    """AUTH-06-OPS-PHASE1-V2 (Фикс 3): runbook обязан описывать bootstrap
+    СВЕЖЕЙ БД: api стартует fail-closed (CISSTAT_STORAGE_MODE=required) и
+    на пустом volume pgdata уходит в restart-цикл UndefinedTable, пока
+    core-схема (0001-0018) не создана одноразовым контейнером; auth-
+    миграции 0019-0021 применяются scripts/auth05/migrate.py из образа.
+    Инцидент первого подъёма на VM 2026-11-04/05."""
+    text = README.read_text(encoding="utf-8")
+    for token in (
+        "Bootstrap-миграции для свежей БД",
+        "docker compose run --rm api",
+        "PostgresResearchRunStore.from_env",
+        "CORE SCHEMA OK",
+        "migrate.py --check",
+        "migrate.py --apply",
+        "verify_postgres.py",
+    ):
+        assert token in text, f"README §bootstrap без обязательного шага: {token}"
+
+
+def test_runbook_perimeter_l7_scheme() -> None:
+    """AUTH-06-OPS-PHASE1-V2 (Фикс 4): README обязан фиксировать
+    ФАКТИЧЕСКУЮ схему периметра, подтверждённую внешними пробами
+    2026-11-05: TLS терминирует nginx машины периметра (L7-форвардинг,
+    вариант B), caddy за ним; TLS-ALPN-01 до caddy не доходит (шум в
+    логах нормален, challenge -- HTTP-01). Точная схема форвардинга
+    явно помечена как уточняемая у сисадмина -- не выдумывается."""
+    text = README.read_text(encoding="utf-8")
+    for token in (
+        "192.168.8.80",
+        "L7",
+        "Let's Encrypt",
+        "certbot",
+        "TLS-ALPN-01",
+        "HTTP-01",
+        "УТОЧНЯЕТСЯ У СИСАДМИНА",
+    ):
+        assert token in text, f"README §периметр без подтверждённого факта: {token}"

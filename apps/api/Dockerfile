@@ -109,6 +109,25 @@ COPY rules/ ./rules/
 # но uvicorn умирал на старте с ImportError «Общий реестр EDA не найден».
 COPY shared/ ./shared/
 
+# AUTH-06-OPS-PHASE1-V2 (2026-11-05): операторские скрипты AUTH-05 --
+# в образе. README §7 выполняет их через
+#   docker compose exec api python scripts/auth05/{migrate,bootstrap,verify_postgres}.py
+# Раньше скрипты доставлялись эфемерным `docker cp` и терялись при
+# каждом пересоздании контейнера (инцидент 2026-11-05: копия исчезла,
+# migrate.py --check недоступен). Копируется ТОЛЬКО scripts/auth05/
+# (~330 КБ, операторская поверхность README §7), не весь scripts/
+# (~43 МБ корпусов сертификаций) -- образ не раздувается.
+COPY scripts/auth05/ ./scripts/auth05/
+
+# Fail-closed гвард (философия DEPLOY-1): без операторской тройки образ
+# не собирается, а не молча возвращает к docker cp в runtime.
+RUN python -c "import pathlib; \
+               base = pathlib.Path('scripts/auth05'); \
+               required = ['migrate.py', 'bootstrap.py', 'verify_postgres.py']; \
+               missing = [name for name in required if not (base / name).is_file()]; \
+               assert not missing, 'missing auth05 operator scripts: ' + repr(missing); \
+               print('auth05 operator scripts OK:', ', '.join(required))"
+
 RUN touch apps/__init__.py
 
 # DEPLOY-1: гвард §12 п.2 -- реестр обязан читаться НА ЭТАПЕ СБОРКИ, а не

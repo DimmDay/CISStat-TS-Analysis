@@ -60,6 +60,16 @@ ENV NODE_ENV=production
 # каталог копируется рядом, поэтому ссылка разрешается (гвард ниже
 # fail-closed: пересорвавшаяся ссылка валит СБОРКУ, а не прод).
 COPY --from=build /repo/node_modules ./node_modules
+
+# AUTH-06-OPS hotfix (2026-11-04, инцидент первого docker compose build
+# на VM cisstat-api; в репо -- AUTH-06-OPS-PHASE1-V2, 2026-11-05):
+# CMD делает `npm run start --workspace=...` -- npm читает КОРНЕВОЙ
+# package.json (поле workspaces) и манифесты объявленных workspace'ов.
+# Без этих слоёв контейнер уходил в Restarting (exit 254) при собранном
+# .next: Next.js стартовал сборку манифестов раньше падения npm-резолва.
+COPY --from=build /repo/package.json ./package.json
+COPY --from=build /repo/apps/embedded/package.json ./apps/embedded/package.json
+COPY --from=build /repo/apps/print-renderer/package.json ./apps/print-renderer/package.json
 COPY --from=build /repo/packages/ui ./packages/ui
 COPY --from=build /repo/apps/standalone/package.json ./apps/standalone/package.json
 COPY --from=build /repo/apps/standalone/next.config.mjs ./apps/standalone/next.config.mjs
@@ -76,6 +86,9 @@ RUN node -e "console.log('next', require('./node_modules/next/package.json').ver
                 const p='/repo/packages/ui/server/firstPartyProxy.ts'; \
                 fs.accessSync(p); \
                 console.log('first-party proxy source OK (AUTH-06)')"
+
+# AUTH-06-OPS hotfix (2026-11-04): npm run --workspace читает КОРНЕВОЙ package.json
+RUN node -e 'const m=require("/repo/package.json"); if(!Array.isArray(m.workspaces)||!m.workspaces.includes("apps/standalone")) throw new Error("workspace apps/standalone not declared"); console.log("root manifest OK (npm --workspace runnable)")'
 
 EXPOSE 3000
 

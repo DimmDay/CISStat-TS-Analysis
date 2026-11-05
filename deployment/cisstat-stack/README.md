@@ -5,6 +5,11 @@
 Дата: 2026-11-04. База: main@3659d80. Домен: `datasetup.ru` (слот `178.176.32.210`).
 Заменяет контур: фронтенд Vercel (`ts-standalone.vercel.app`) + API render.com.
 
+Обновление **V2** (2026-11-05, база main@e1a379f): перенос серверного
+hotfix web-runtime (корневые/workspace-манифесты) в репо; `scripts/auth05`
+в образе api (docker cp больше не нужен); §3 — фактическая схема
+периметра L7; §6а — bootstrap-миграции свежей БД.
+
 ## 1. Топология
 
 ```
@@ -28,23 +33,41 @@ server-side из web в api — куки first-party (архитектура AUT
 - git clone репозитория (ветка main, база ≥ 3659d80) + файлы этой поставки
   распакованы поверх (структура каталогов совпадает).
 
-## 3. Остановка локального nginx слота (обязательно ДО первого `up`)
+## 3. Периметр и TLS: фактическая схема (L7) и порты 80/443 на VM
 
-Порты 80/443 хоста обязан занять caddy. Сейчас их слушает локальный nginx
-(наследие Keycloak). ВНИМАНИЕ: убедитесь, что nginx не обслуживает ничего
-актуального (`ls /etc/nginx/sites-enabled/`, `nginx -T | grep server_name`).
+Подтверждено внешними пробами 2026-11-05 — де-факто реализован **вариант B
+(L7-форвардинг)**:
 
-```console
-ss -ltnp | grep -E ':80 |:443 '        # убедиться: слушает nginx
-systemctl stop nginx
-systemctl disable nginx
-systemctl list-timers | grep certbot   # если есть certbot-таймер --
-systemctl disable --now certbot.timer  # отключить, продлением займётся caddy
-ss -ltnp | grep -E ':80 |:443 '        # порты свободны
+```
+интернет ──> машина периметра 192.168.8.80: nginx/1.14.2 терминирует TLS
+             (серт Let's Encrypt от certbot: CN=datasetup.ru, SAN www/api,
+              действителен до 2027-02-01; продление — certbot на периметре)
+         ──> L7-форвардинг на VM 192.168.8.82: caddy
+             (свои серты Let's Encrypt по HTTP-01 — в логах caddy
+              «certificate obtained successfully» по всем трём именам)
+         ──> web:3000 / api:8000 (внутренняя сеть compose)
 ```
 
-Если nginx обслуживал ещё какие-то сайты — их перенос/выключение согласовать
-с сисадмином до этого шага.
+Следствия схемы B:
+
+- TLS-ALPN-01 до caddy НЕ доходит (443 снаружи терминирует край) —
+  шум TLS-ALPN в логах caddy НОРМАЛЕН, challenge проходит по HTTP-01.
+  Не «чинить».
+- `Alt-Svc: h3=":443"` в ответах объявляет HTTP/3, но UDP 443 наружу
+  периметром может не пробрасываться — браузеры откатываются на TCP, не
+  блокер (вопрос №3 сисадмину).
+- Точная схема форвардинга периметра (80 → ?, 443 → ? на VM) —
+  **УТОЧНЯЕТСЯ У СИСАДМИНА** (вопрос №1 списка); пункт обновится по ответу.
+
+Порты на самой VM: caddy публикует 80/443 (см. `docker ps`). Если на VM
+слушает системный nginx (наследие Keycloak-эпохи, на текущей VM уже не
+наблюдалось) — остановить его:
+
+```console
+ss -ltnp | grep -E ':80 |:443 '        # слушает docker (caddy) — норма
+systemctl stop nginx
+systemctl disable nginx                # только если nginx присутствует
+```
 
 ## 4. Окружение (.env)
 
@@ -89,6 +112,33 @@ curl --resolve datasetup.ru:443:127.0.0.1 https://datasetup.ru/
 
 Критерий `/health/ops`: backend Postgres, `CISSTAT_STORAGE_MODE=required`,
 режим fail-closed (без БД сервис не стартует вовсе).
+
+## 6а. Bootstrap-миграции для свежей БД (первый подъём)
+
+Нужны ТОЛЬКО если volume `pgdata` пуст (первый подъём, потеря volume,
+переезд на новую VM): api стартует fail-closed
+(`CISSTAT_STORAGE_MODE=required`) и на пустой БД уходит в restart-цикл
+UndefinedTable. Для обычных обновлений (`git pull && build && up`) секция
+не нужна.
+
+```console
+# Шаг 1. Core-схема научного слоя (миграции 0001–0018) — одноразовый
+# контейнер: research-run стор применяет свою схему при подключении.
+docker compose run --rm api python -c 'from apps.api.research_runs import PostgresResearchRunStore; s=PostgresResearchRunStore.from_env(); c=s._connect(); c.close(); print("CORE SCHEMA OK")'
+# ждём строку: CORE SCHEMA OK; затем повторный `up -d` -- api станет healthy
+
+# Шаг 2. Auth-миграции 0019–0021 -- scripts/auth05 теперь В ОБРАЗЕ
+# (AUTH-06-OPS-PHASE1-V2), docker cp не нужен:
+docker compose exec api python scripts/auth05/migrate.py --check
+docker compose exec api python scripts/auth05/migrate.py --apply
+docker compose exec api python scripts/auth05/migrate.py --check     # ok:true
+docker compose exec api python scripts/auth05/verify_postgres.py
+```
+
+Историческая заметка: при первом подъёме 2026-11-04/05 core-схема и
+auth-миграции накатывались обходными путями (inline-блок apply_migration,
+docker cp scripts — копия потеряна при пересоздании контейнера). С
+поставкой V2 оба класса шагов выполняются штатно из образа.
 
 ## 7. Операторская процедура AUTH-05 (миграции + первый админ)
 
