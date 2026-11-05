@@ -38,6 +38,13 @@ RUN npm ci
 # потребляются через transpilePackages; standalone shell целиком
 # (включая app/api/v1/[...path]/route.ts -- first-party proxy AUTH-06).
 COPY packages/ui ./packages/ui
+
+# shared/pipeline_nodes/*.json -- импортируются packages/ui относительно
+# КОРНЯ монорепо (eda_checks.json, upload_stops.json); без этого next build
+# падает: Module not found: Can't resolve '../../../shared/pipeline_nodes/...'
+# (инцидент первого docker compose build на VM cisstat-api).
+COPY shared ./shared
+
 COPY apps/standalone ./apps/standalone
 
 RUN npm run build --workspace=@cisstat/ts-analysis-standalone

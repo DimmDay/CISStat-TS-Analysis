@@ -234,6 +234,11 @@ def test_standalone_dockerfile_multi_stage_next_start() -> None:
     assert re.search(r"(?m)^RUN npm ci$", text), "детерминированная установка npm ci"
     assert "@cisstat/ts-analysis-standalone" in text, "сборка именно standalone workspace"
     assert "packages/ui" in text, "transpilePackages требует исходников @cisstat/ui"
+    assert re.search(r"(?m)^COPY shared \./shared$", text), (
+        "shared/pipeline_nodes обязателен в контексте сборки web: packages/ui "
+        "импортирует eda_checks.json/upload_stops.json относительно корня "
+        "монорепо (инцидент первого docker compose build на VM)"
+    )
     assert "BUILD_ID" in text, "runtime-гвард собранного .next (fail-closed DEPLOY-1)"
     cmd = re.search(r"(?m)^CMD\s+\[.*\]", text)
     assert cmd and "npm" in cmd.group(0) and "3000" in cmd.group(0), (
