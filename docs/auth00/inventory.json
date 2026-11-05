@@ -699,7 +699,7 @@
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
-    "packages/ui/server/firstPartyProxy.ts": "b5b20821b6c886ec60c5457c4ceb92c4bf017bf8932953e611dc35720355470f",
+    "packages/ui/server/firstPartyProxy.ts": "91e48aa3c54459440dbf246b8c7c4e297ec14a3fb97c29f1b1b3c36261428236",
     "packages/ui/server/proxy-routes.generated.json": "8af834e825a715f3baef99e3875edb85f7cdc191e16007b5ce69dc955f37b489",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",

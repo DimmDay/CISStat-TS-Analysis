@@ -213,3 +213,78 @@ test("binary response and insecure legacy pointer deletion are transported safel
     "Secure; HttpOnly; SameSite=Lax",
   );
 });
+
+test("production http upstream requires explicit operator allowlist (VM cisstat-api incident 2026-11-05)", async () => {
+  // Инцидент первого входа на VM: web собран с NODE_ENV=production, а
+  // внутренний хоп compose -- API_URL=http://api:8000 (приватная docker-сеть).
+  // Гвард отклонял ЛЮБОЙ запрос /api/v1/* с 503 proxy_unavailable, до api
+  // ничего не доходило; на Vercel-эре гвард проходил (render.com по https).
+  const prevNodeEnv = process.env.NODE_ENV,
+    prevAllow = process.env.CISSTAT_PROXY_HTTP_UPSTREAMS;
+  try {
+    process.env.NODE_ENV = "production";
+    delete process.env.CISSTAT_PROXY_HTTP_UPSTREAMS;
+    // 1) production + http + без allowlist -> 503 (прежнее fail-closed поведение)
+    expect(
+      (
+        await proxyRequest(
+          request(),
+          { ...config, apiUrl: "http://api:8000" },
+          upstream,
+        )
+      ).status,
+    ).toBe(503);
+    // 2) allowlist без нужного хоста -> по-прежнему 503
+    process.env.CISSTAT_PROXY_HTTP_UPSTREAMS = "other-host";
+    expect(
+      (
+        await proxyRequest(
+          request(),
+          { ...config, apiUrl: "http://api:8000" },
+          upstream,
+        )
+      ).status,
+    ).toBe(503);
+    // 3) allowlist называет хост -> запрос уходит на http-upstream
+    process.env.CISSTAT_PROXY_HTTP_UPSTREAMS = "api";
+    const ok = await proxyRequest(
+      request(),
+      { ...config, apiUrl: "http://api:8000" },
+      upstream,
+    );
+    expect(ok.status).toBe(200);
+    expect(String(upstream.mock.calls.at(-1)![0])).toBe(
+      "http://api:8000/v1/auth/me",
+    );
+    // 4) сверка регистров и пробелов в allowlist (hostname URL уже lowercased)
+    process.env.CISSTAT_PROXY_HTTP_UPSTREAMS = "  API ,other";
+    expect(
+      (
+        await proxyRequest(
+          request(),
+          { ...config, apiUrl: "http://api:8000" },
+          upstream,
+        )
+      ).status,
+    ).toBe(200);
+  } finally {
+    if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = prevNodeEnv;
+    if (prevAllow === undefined) delete process.env.CISSTAT_PROXY_HTTP_UPSTREAMS;
+    else process.env.CISSTAT_PROXY_HTTP_UPSTREAMS = prevAllow;
+  }
+});
+
+test("https upstream never requires allowlist, even in production", async () => {
+  const prevNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "production";
+    delete process.env.CISSTAT_PROXY_HTTP_UPSTREAMS;
+    expect(
+      (await proxyRequest(request(), config, upstream)).status,
+    ).toBe(200);
+  } finally {
+    if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = prevNodeEnv;
+  }
+});

@@ -361,3 +361,18 @@ def test_runbook_perimeter_l7_scheme() -> None:
         "УТОЧНЯЕТСЯ У СИСАДМИНА",
     ):
         assert token in text, f"README §периметр без подтверждённого факта: {token}"
+
+
+def test_compose_proxy_http_upstream_allowlist() -> None:
+    """AUTH-06-OPS-PHASE1-V2.1 (Фикс 5): инвариант стека №3 -- web ходит на
+    api ТОЛЬКО по внутренней сети (API_URL=http://api:8000). Production-гвард
+    firstPartyProxy https-only отклоняла этот штатный хоп с 503
+    proxy_unavailable (инцидент первого входа на VM 2026-11-05: csrfProof
+    падал, до api запросы не доходили, логи api пусты). Разрешение теперь --
+    явный allowlist CISSTAT_PROXY_HTTP_UPSTREAMS в окружении web; compose
+    поставки обязан его содержать, иначе вход снова молча ляжет."""
+    text = COMPOSE.read_text(encoding="utf-8")
+    assert re.search(r"(?m)^\s*CISSTAT_PROXY_HTTP_UPSTREAMS:\s*api\s*$", text), (
+        "compose без CISSTAT_PROXY_HTTP_UPSTREAMS=api в web: production-гвард "
+        "firstPartyProxy отклонит внутренний http-хоп, первый вход ляжет с 503"
+    )

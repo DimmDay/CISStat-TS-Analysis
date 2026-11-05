@@ -95,6 +95,12 @@ services:
       # читает API_URL и CISSTAT_AUTH_PUBLIC_ORIGIN из окружения в runtime.
       API_URL: http://api:8000
       CISSTAT_AUTH_PUBLIC_ORIGIN: https://datasetup.ru
+      # AUTH-06-OPS-PHASE1-V2.1 (2026-11-05): инцидент первого входа на VM --
+      # production-гвард прокси отклоняла внутренний http-хоп с 503
+      # proxy_unavailable (до api ничего не доходило, логи api пусты).
+      # Явный allowlist оператора: ровно один внутренний хост "api".
+      # Fail-closed: без переменной поведение прежнее (https-only).
+      CISSTAT_PROXY_HTTP_UPSTREAMS: api
     depends_on:
       api:
         condition: service_healthy

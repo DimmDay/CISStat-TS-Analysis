@@ -10,6 +10,12 @@ hotfix web-runtime (корневые/workspace-манифесты) в репо; 
 в образе api (docker cp больше не нужен); §3 — фактическая схема
 периметра L7; §6а — bootstrap-миграции свежей БД.
 
+Обновление **V2.1** (2026-11-05): инцидент первого входа — production-гвард
+firstPartyProxy отклоняла внутренний http-хоп web→api (503 proxy_unavailable,
+логи api пусты); явный allowlist `CISSTAT_PROXY_HTTP_UPSTREAMS=api` в compose
+(Fix 5); §7 — фактическая процедура verify_postgres (образ не несёт tests/,
+прогон одноразовым контейнером); §8 — диагностика входа.
+
 ## 1. Топология
 
 ```
@@ -149,10 +155,23 @@ docker cp scripts — копия потеряна при пересоздани�
 docker compose exec api python scripts/auth05/migrate.py --check
 docker compose exec api python scripts/auth05/migrate.py --apply     # если 0021 не применена
 docker compose exec api python scripts/auth05/migrate.py --check     # ok:true
-docker compose exec api python scripts/auth05/verify_postgres.py
+# Гейт verify_postgres: образ api НЕ содержит tests/ (гигиена прод-образа),
+# поэтому прогон -- одноразовый контейнер с tests/ из репо и одноразовой БД
+# (тесты сами накатывают auth-схему на пустую БД; V2.1, проверено 2026-11-05:
+# Ran 24 tests ... OK):
+docker compose exec postgres createdb -U cisstat cisstat_auth_verify_tmp
+set -a && . ./.env && set +a && docker compose run --rm \
+  -v /opt/cisstat/CISStat-TS-Analysis/tests:/app/tests:ro \
+  -e CISSTAT_AUTH_TEST_DSN="postgresql://cisstat:${CISSTAT_PG_PASSWORD}@postgres:5432/cisstat_auth_verify_tmp" \
+  api sh -c 'pip install --quiet httpx && python scripts/auth05/verify_postgres.py'
+docker compose exec postgres dropdb -U cisstat cisstat_auth_verify_tmp
 docker compose exec api python scripts/auth05/bootstrap.py prepare   # TTL 15 минут
 docker compose exec api python scripts/auth05/bootstrap.py create --login dimm.day
 # пароль скрытым вводом, >= 15 символов; сохранить в менеджер паролей
+# Нюансы bootstrap (инцидент 2026-11-05): провал create слот НЕ расходует --
+# повторите create с тем же секретом в пределах TTL. Повторный prepare после
+# истечения/потребления даст отказ (слот singleton постоянный) -- при потере
+# секрета требуется отдельная операторская процедура (docs/auth05/design.md).
 ```
 
 ## 8. Первый вход (Phase 4)
@@ -160,6 +179,15 @@ docker compose exec api python scripts/auth05/bootstrap.py create --login dimm.d
 `https://datasetup.ru/login?return_to=%2Fupload` → вход `dimm.day` → настройка
 TOTP → сохранение recovery codes → тестовая загрузка датасета → run в Postgres.
 Подробно: `docs/auth06/first-admin.md` (без изменений).
+
+Диагностика входа (V2.1): надпись «Не удалось завершить вход» при ПУСТЫХ логах
+api = запрос отклонён прокси web до api. Проверка снаружи:
+`curl -H "X-CSRF-Request: 1" https://datasetup.ru/api/v1/auth/csrf` — ответ 503
+`proxy_unavailable` означает, что окружение web без
+`CISSTAT_PROXY_HTTP_UPSTREAMS=api` (см. Fix 5; compose поставки V2.1 уже
+содержит переменную — пересобрать web). Ошибка «Failed to find Server Action»
+в логах web при рабочей странице = вкладка браузера от старой сборки —
+жёсткое обновление Ctrl+F5.
 
 ## 9. Бэкапы (Phase 5)
 

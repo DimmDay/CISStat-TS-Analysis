@@ -91,15 +91,31 @@ function configuration(config: Config) {
     api.pathname !== "/" ||
     api.search ||
     api.hash ||
-    (api.protocol !== "https:" &&
-      !(
-        process.env.NODE_ENV !== "production" &&
-        api.protocol === "http:" &&
-        ["127.0.0.1", "localhost", "[::1]"].includes(api.hostname)
-      ))
+    (api.protocol !== "https:" && !httpUpstreamAllowed(api.hostname))
   )
     fail(503, "proxy_unavailable");
   return { origin: origin.origin, api };
+}
+
+// AUTH-06-OPS-PHASE1-V2.1 (2026-11-05, VM cisstat-api): инцидент первого
+// входа -- web собран с NODE_ENV=production, внутренний хоп compose
+// API_URL=http://api:8000 (приватная docker-сеть, наружу не торчит), и
+// прежняя https-only гвард production отклоняла ЛЮБОЙ запрос /api/v1/* с
+// 503 proxy_unavailable до пересылки в api (Vercel-эра проходила: render.com
+// по https). Разрешение на http-хоп -- ЯВНОЕ операторское решение: реестр
+// допуска CISSTAT_PROXY_HTTP_UPSTREAMS (имена через запятую, без учёта
+// регистра). Fail-closed: переменная не задана -> прежнее поведение.
+// Dev-loopback (не-production: 127.0.0.1/localhost/[::1]) сохранён как был.
+function httpUpstreamAllowed(hostname: string): boolean {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    ["127.0.0.1", "localhost", "[::1]"].includes(hostname)
+  )
+    return true;
+  return (process.env.CISSTAT_PROXY_HTTP_UPSTREAMS ?? "")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .includes(hostname.toLowerCase());
 }
 function requestCookies(raw: string) {
   if (raw.length > 8192) fail(400, "invalid_credential");
