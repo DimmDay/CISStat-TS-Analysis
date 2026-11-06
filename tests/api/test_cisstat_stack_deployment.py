@@ -51,6 +51,7 @@ ENV_EXAMPLE = STACK_DIR / ".env.example"
 STANDALONE_DOCKERFILE = REPO_ROOT / "apps" / "standalone" / "Dockerfile"
 DOCKERIGNORE = REPO_ROOT / ".dockerignore"
 README = STACK_DIR / "README.md"
+GITIGNORE = REPO_ROOT / ".gitignore"
 
 STACK_FILES = [COMPOSE, CADDYFILE, ENV_EXAMPLE, STANDALONE_DOCKERFILE, README]
 
@@ -375,4 +376,23 @@ def test_compose_proxy_http_upstream_allowlist() -> None:
     assert re.search(r"(?m)^\s*CISSTAT_PROXY_HTTP_UPSTREAMS:\s*api\s*$", text), (
         "compose без CISSTAT_PROXY_HTTP_UPSTREAMS=api в web: production-гвард "
         "firstPartyProxy отклонит внутренний http-хоп, первый вход ляжет с 503"
+    )
+
+
+def test_gitignore_covers_dotenv_backups() -> None:
+    """AUTH-06-OPS-PHASE1-V2.2: инцидент MFA-keyring 2026-11-05 -- правка
+    .env на VM оставила резервную копию .env.bak-mfa ВНУТРИ дерева
+    репозитория; шаблоны .gitignore `.env` и `*.env` её НЕ покрывают
+    (untracked), один `git add -A` уводит копию секретов в коммит.
+    Корневой .gitignore обязан нести шаблон `.env*` (любые бэкапы и
+    локальные варианты) с явным ре-включением `.env.example`, который
+    трекается намеренно (README §4: cp .env.example .env)."""
+    text = GITIGNORE.read_text(encoding="utf-8")
+    assert re.search(r"(?m)^\.env\*\s*$", text), (
+        ".gitignore без шаблона .env*: файлы вида .env.bak-* остаются "
+        "untracked-секретами в дереве, git add -A уводит их в коммит"
+    )
+    assert re.search(r"(?m)^!\.env\.example\s*$", text), (
+        ".gitignore обязан ре-включать .env.example: пример трекается "
+        "намеренно (README §4), шаблон .env* не должен его спрятать"
     )

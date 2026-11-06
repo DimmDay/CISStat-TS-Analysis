@@ -16,6 +16,14 @@ firstPartyProxy отклоняла внутренний http-хоп web→api (5
 (Fix 5); §7 — фактическая процедура verify_postgres (образ не несёт tests/,
 прогон одноразовым контейнером); §8 — диагностика входа.
 
+Обновление **V2.2** (2026-11-06): инцидент №2 — enrollment MFA падал с 503
+без traceback (`@boundary` глотает исключения): `CISSTAT_AUTH_MFA_KEYS` в
+`.env` был не-JSON, compose-проверка `${VAR:?}` контролирует только
+непустоту. §4 — точный рецепт генерации keyring + валидация ДО `up`;
+§8 — диагностика молчаливых 503 и урок `env -u` (shell перекрывает `.env`).
+Корневой `.gitignore` — шаблон `.env*` (ре-включение `!.env.example`):
+копии секретов вида `.env.bak-*` больше не остаются untracked в дереве.
+
 ## 1. Топология
 
 ```
@@ -81,13 +89,49 @@ systemctl disable nginx                # только если nginx прису�
 cd deployment/cisstat-stack
 cp .env.example .env
 # заполнить: CISSTAT_PG_PASSWORD, CISSTAT_AUTH_CSRF_KEY,
-#            CISSTAT_AUTH_MFA_KEYS (JSON без пробелов), CISSTAT_AUTH_MFA_ACTIVE_KEY
+#            CISSTAT_AUTH_MFA_ACTIVE_KEY; keyring — однострочником ниже
 # генерация: openssl rand -base64 32   (CSRF и каждый ключ keyring'а)
 chmod 600 .env
 ```
 
-Все значения — в менеджер паролей (без `.env` сессии/MFA-факторы невосстановимы).
+Кольцо ключей MFA — ТОЛЬКО корректный JSON с двойными кавычками
+(V2.2; инцидент 2026-11-05: не-JSON значение ломает enrollment с 503 без
+traceback — см. §8). Однострочник генерации (kid=k1):
+
+```console
+printf 'CISSTAT_AUTH_MFA_KEYS={"k1":"%s"}\nCISSTAT_AUTH_MFA_ACTIVE_KEY=k1\n' \
+  "$(openssl rand -base64 32)" >> .env
+```
+
+Валидация ДО `up` обязательна: compose-проверка `${VAR:?}` контролирует
+только непустоту, не валидность JSON. Печатается только имя ключа, не секрет:
+
+```console
+python3 - <<'EOF'
+import json, base64
+env = dict(l.split("=", 1) for l in open(".env").read().splitlines()
+           if "=" in l and not l.startswith("#"))
+ks = json.loads(env["CISSTAT_AUTH_MFA_KEYS"])
+assert 1 <= len(ks) <= 8
+assert all(len(base64.b64decode(v, validate=True)) == 32 for v in ks.values())
+assert env["CISSTAT_AUTH_MFA_ACTIVE_KEY"] in ks
+print("ENV OK:", list(ks))
+EOF
+```
+
+Все значения — в менеджер паролей (без `.env` сессии/MFA-факторы
+невосстановимы); резервные копии `.env*` держать ВНЕ дерева репозитория
+(`.gitignore` V2.2 закрывает `git add -A`, но не заменяет гигиену).
 `CISSTAT_STORAGE_MODE=required` зашита в compose (fail-closed, не переопределять).
+
+Правка `.env` при живом стеке: shell-окружение ПЕРЕКРЫВАЕТ `.env` при
+интерполяции compose — если переменные экспортированы в сессии, первый
+`up -d` молча оставит старое значение в контейнере. Recreate через `env -u`
+(инцидент 2026-11-05: контейнер продолжал жить со старым env):
+
+```console
+env -u CISSTAT_AUTH_MFA_KEYS -u CISSTAT_AUTH_MFA_ACTIVE_KEY docker compose up -d
+```
 
 ## 5. Сборка и запуск
 
@@ -188,6 +232,40 @@ api = запрос отклонён прокси web до api. Проверка 
 содержит переменную — пересобрать web). Ошибка «Failed to find Server Action»
 в логах web при рабочей странице = вкладка браузера от старой сборки —
 жёсткое обновление Ctrl+F5.
+
+Диагностика enrollment (V2.2): «Сервис входа временно недоступен» на шаге
+MFA + `POST /v1/auth/mfa/enroll → 503` в логах api БЕЗ traceback —
+`@boundary` (apps/api/authentication/sessions.py) конвертирует ЛЮБОЕ
+не-Auth исключение в 503 `auth_authority_unavailable`, поэтому traceback в
+логах отсутствует. Типовая причина — `CISSTAT_AUTH_MFA_KEYS` не валидный
+JSON (см. §4). Проверка в живом контейнере (печатает только имена ключей,
+длины и факт наличия активного kid — секреты не выводятся):
+
+```console
+docker compose exec api python -c "
+import os, json, base64
+ks = json.loads(os.environ.get('CISSTAT_AUTH_MFA_KEYS', ''))
+print('kids:', list(ks))
+print('lens:', {k: len(base64.b64decode(v, validate=True)) for k, v in ks.items()})
+print('active_in_keys:', os.environ.get('CISSTAT_AUTH_MFA_ACTIVE_KEY') in ks)
+"
+```
+
+`JSONDecodeError` в выводе = `.env` битый, лечится §4 (однострочник +
+валидация + recreate через `env -u`). Вращение keyring безопасно, пока
+не существует зашифрованных TOTP-факторов: `seal()` в `begin_enrollment`
+падает ДО первой записи (транзакция откатывается).
+
+Норма схемы (V2.2): `/health/ops` НЕ маршрутизируется периметром наружу
+(снаружи проксируется только `/api/v1/*`) — внешний curl даёт 404,
+это не дефект. Снимать статус изнутри:
+
+```console
+docker compose exec api python -c "
+import urllib.request
+print(urllib.request.urlopen('http://localhost:8000/health/ops').read().decode())
+"
+```
 
 ## 9. Бэкапы (Phase 5)
 
