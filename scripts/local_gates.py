@@ -18,13 +18,18 @@
   auth02-postgres (auth02.yml)     live PG; --with-auth02-postgres + test DSN
   auth01  (auth01.yml,   push/PR)   dependencies + registry tests + generated parity
   auth00  (auth00.yml,   push/PR)   unittest auth00 + inventory --check
+                                     + HEAD-паритет discovery (check_committed):
+                                     ловит поверхности, не попавшие в коммит
+                                     (класс инцидента AUTH-07-HOTFIX1: файл
+                                     на диске, но скрыт .gitignore из коммита)
+  auth07  (auth07.yml,   push/PR)   named-session admin / MFA / logs contracts
   rules   (test_rules.yml, push/PR) sanity-проверка валидационных правил
   session-postgres (test.yml + V2.3) live PG session backend: CAS/TTL/REST;
                                      нужен disposable CISSTAT_TEST_PG_DSN
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth06 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -62,6 +67,15 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
         [sys.executable,"-m","pip","install","-r","scripts/auth06/requirements.txt"],
         ["npm","ci","--ignore-scripts","--no-audit","--no-fund"],
         [sys.executable,"scripts/auth06/verify_postgres.py"],
+    ]),
+    # AUTH-07 (2026-11-06): named-сессии админ-области вместо key-only.
+    # Паритет auth07.yml (ubuntu + windows): pytest tests/api — контракт
+    # require_admin_role (роль+MFA), программный канал API-ключей,
+    # logs-роутер; Postgres не нужен (фейки через app.state).
+    ("auth07", "auth07.yml contracts", "AUTH-07 admin named-session / MFA / logs contracts", [
+        [sys.executable,"-m","pip","install","-r","apps/api/requirements.txt",
+         "-r","requirements-dev.txt"],
+        [sys.executable,"-m","pytest","tests/api/test_auth07_admin_sessions.py","-v"],
     ]),
     ("auth05", "auth05.yml contracts", "AUTH-05 MFA / bootstrap / recovery contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth05/requirements.txt"],
@@ -105,10 +119,14 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
         [sys.executable, "scripts/auth01/windows_locale_check.py"],
         [sys.executable, "scripts/auth01/generate.py", "--check"],
     ]),
-    ("auth00", "auth00.yml", "AUTH-00 inventory (unittest + drift check)", [
+    ("auth00", "auth00.yml", "AUTH-00 inventory (unittest + drift check + HEAD-паритет)", [
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
          "-p", "test_auth00_inventory.py", "-v"],
         [sys.executable, "scripts/auth00/inventory.py", "--check"],
+        # Паритет с чистой выгрузкой CI (AUTH-07-HOTFIX1): discovery
+        # рабочего дерева (вкл. незакоммиченные/игнорируемые файлы)
+        # обязан совпадать с discovery git-архива HEAD.
+        [sys.executable, "scripts/auth00/check_committed.py"],
     ]),
     ("rules", "test_rules.yml", "Validation rules sanity check", [
         [sys.executable, "-c", RULES_CHECK],
@@ -168,7 +186,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
+                        help="запустить только выбранные гейты (auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--skip-install", action="store_true",
                         help="пропустить npm ci / pip install (повторные локальные прогоны)")
     parser.add_argument("--with-pytest", action="store_true",
@@ -229,7 +247,7 @@ def main() -> int:
               "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-session-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
