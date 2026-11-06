@@ -22,6 +22,7 @@ RedisSessionStore так не может -- сериализует при save()
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -31,6 +32,7 @@ from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
     MemorySessionStore,
+    PostgresSessionStore,
     SESSION_COOKIE_NAME,
     SessionConflictError,
     SessionStore,
@@ -38,6 +40,11 @@ from apps.api.session_store import (
     get_or_create_session_id,
     get_session_store,
     reset_session_store_for_testing,
+)
+from apps.api.storage_diagnostics import (
+    COMPONENT_SESSION,
+    describe_backend,
+    reset_storage_diagnostics_for_testing,
 )
 
 
@@ -687,8 +694,22 @@ class TestGetSessionStoreFactory:
     def test_defaults_to_memory_without_redis_url(self, monkeypatch):
         monkeypatch.delenv("REDIS_URL", raising=False)
         monkeypatch.delenv("CISSTAT_SESSION_BACKEND", raising=False)
+        monkeypatch.delenv("DATABASE_URL", raising=False)
         store = get_session_store()
         assert isinstance(store, MemorySessionStore)
+
+    def test_non_postgres_dsn_is_not_an_auto_signal(self, monkeypatch):
+        """Чужой/мусорный DATABASE_URL (file:, sqlite:, sqlalchemy-диалект)
+        не переводит сессии в postgres и не роняет advisory-старт:"""
+        for bogus in ("file:/tmp/x.db", "sqlite:///tmp/x.db", "postgresql+psycopg://x/y"):
+            monkeypatch.delenv("REDIS_URL", raising=False)
+            monkeypatch.delenv("CISSTAT_SESSION_BACKEND", raising=False)
+            monkeypatch.setenv("DATABASE_URL", bogus)
+            store = get_session_store()
+            assert isinstance(store, MemorySessionStore)
+            state = describe_backend(COMPONENT_SESSION)
+            assert state["configured"] == "auto"
+            reset_session_store_for_testing()
 
     def test_uses_redis_when_redis_url_set(self, monkeypatch):
         # fakeredis нужен, иначе RedisSessionStore.from_env() упадёт на коннекте
@@ -721,6 +742,261 @@ class TestGetSessionStoreFactory:
         reset_session_store_for_testing()
         second = get_session_store()
         assert first is not second
+
+
+# ────────────────────────────────────────────────────────────────────
+# Session backend Postgres (AUTH-04/AUTH-06 durable doctrine)
+# ────────────────────────────────────────────────────────────────────
+
+class TestPostgresSessionStoreFactory:
+    """Выбор backend фабрикой get_session_store (паритет
+    get_research_run_store/get_artifact_registry):
+
+      - CISSTAT_SESSION_BACKEND=memory -> Memory (приоритет над DSN);
+      - CISSTAT_SESSION_BACKEND=redis или REDIS_URL -> Redis (legacy);
+      - CISSTAT_SESSION_BACKEND=postgres или DATABASE_URL -> Postgres;
+      - иначе -> Memory (configured=auto).
+
+    required-режим -- fail-closed (P21/F14): тихий Memory fallback
+    ЗАПРЕЩЁН; advisory (default) -- ЯВНАЯ деградация с фиксацией
+    configured/effective/degraded в snapshot фабрик (/health/ops).
+    Неизвестное явное значение -- fail fast (опечатка конфигурации
+    не должна тихо означать memory: урок AUTH-06-OPS инцидента №2).
+    """
+
+    def setup_method(self):
+        reset_session_store_for_testing()
+
+    def teardown_method(self):
+        reset_session_store_for_testing()
+        reset_storage_diagnostics_for_testing()
+
+    def _patch_fake_postgres(self, monkeypatch, *, probe=None):
+        """Подмена from_env PostgresSessionStore: конструктор БЕЗ
+        соединения (паритет
+        test_research_runs.py::test_database_url_selects_postgres_lazily).
+        """
+        from apps.api import session_store as ss
+
+        inits = []
+
+        class _FakePostgresStore(PostgresSessionStore):
+            def __init__(self):
+                inits.append("init")
+                self._dsn = "postgresql://fake"
+
+            def ensure_schema(self):
+                pass
+
+            def readiness_probe(self):
+                return dict(probe) if probe is not None else {
+                    "ok": True,
+                    "backend": "postgres",
+                }
+
+        monkeypatch.setattr(
+            ss.PostgresSessionStore, "from_env", staticmethod(_FakePostgresStore)
+        )
+        return inits
+
+    def test_explicit_memory_wins_over_database_url(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://cisstat:test@localhost:5432/testdb")
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "memory")
+        store = get_session_store()
+        assert isinstance(store, MemorySessionStore)
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "memory"
+        assert state["effective"] == "memory"
+        assert state["degraded"] is False
+
+    def test_database_url_selects_postgres_lazily(self, monkeypatch):
+        """DATABASE_URL без явного CISSTAT_SESSION_BACKEND -> Postgres;
+        конструирование НЕ открывает соединение (ленивый контракт)."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://cisstat:test@localhost:5432/testdb")
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.delenv("CISSTAT_SESSION_BACKEND", raising=False)
+        monkeypatch.delenv("CISSTAT_STORAGE_MODE", raising=False)
+        inits = self._patch_fake_postgres(monkeypatch)
+        store = get_session_store()
+        assert isinstance(store, PostgresSessionStore)
+        assert inits == ["init"]
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "postgres"
+        assert state["degraded"] is False
+
+    def test_explicit_postgres_without_database_url(self, monkeypatch):
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgres")
+        monkeypatch.delenv("CISSTAT_STORAGE_MODE", raising=False)
+        inits = self._patch_fake_postgres(monkeypatch)
+        store = get_session_store()
+        assert isinstance(store, PostgresSessionStore)
+        assert inits == ["init"]
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "postgres"
+
+    def test_redis_url_wins_over_database_url(self, monkeypatch):
+        """Legacy-паритет: REDIS_URL продолжает выбирать Redis, даже если
+        DATABASE_URL тоже задан (runs/artifacts живут в Postgres, сессии
+        остаются в Redis до явного переключения оператором)."""
+        pytest.importorskip("fakeredis")
+        from apps.api import session_store as ss
+
+        monkeypatch.setenv("DATABASE_URL", "postgresql://cisstat:test@localhost:5432/testdb")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        monkeypatch.delenv("CISSTAT_SESSION_BACKEND", raising=False)
+        fake_client = __import__("fakeredis").FakeStrictRedis()
+        monkeypatch.setattr(
+            ss.RedisSessionStore,
+            "from_env",
+            staticmethod(lambda: ss.RedisSessionStore(client=fake_client)),
+        )
+        store = get_session_store()
+        assert isinstance(store, ss.RedisSessionStore)
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "redis"
+        assert state["effective"] == "redis"
+
+    def test_unknown_explicit_backend_fails_fast(self, monkeypatch):
+        """Опечатка в CISSTAT_SESSION_BACKEND не должна тихо означать
+        memory-auto (get_storage_mode-контракт fail fast)."""
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgrezz")
+        with pytest.raises(RuntimeError):
+            get_session_store()
+        # Singleton остался честным: после удаления опечатки фабрика
+        # стартует заново и выбирает auto->memory.
+        monkeypatch.delenv("CISSTAT_SESSION_BACKEND", raising=False)
+        store = get_session_store()
+        assert isinstance(store, MemorySessionStore)
+
+    def test_advisory_fallback_is_explicit_not_silent(self, monkeypatch):
+        """advisory (default): отказ инициализации Postgres -> ЯВНАЯ
+        деградация в Memory: configured=postgres, effective=memory,
+        degraded=True, событие fallback с безопасной причиной."""
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgres")
+        monkeypatch.delenv("CISSTAT_STORAGE_MODE", raising=False)
+        # from_env без DATABASE_URL поднимает RuntimeError -> fallback
+        store = get_session_store()
+        assert isinstance(store, MemorySessionStore)
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "memory"
+        assert state["degraded"] is True
+        assert state["reason"]
+
+    def test_required_mode_fails_closed_on_init_failure(self, monkeypatch):
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgres")
+        monkeypatch.setenv("CISSTAT_STORAGE_MODE", "required")
+        with pytest.raises(RuntimeError, match="fail-closed"):
+            get_session_store()
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "unavailable"
+        assert state["degraded"] is True
+
+    def test_required_mode_fails_closed_on_probe_failure(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://cisstat:test@localhost:5432/testdb")
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgres")
+        monkeypatch.setenv("CISSTAT_STORAGE_MODE", "required")
+        self._patch_fake_postgres(
+            monkeypatch, probe={"ok": False, "backend": "postgres", "error": "boom"}
+        )
+        with pytest.raises(RuntimeError, match="fail-closed"):
+            get_session_store()
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "unavailable"
+
+    def test_required_mode_startup_probe_ok_selects_postgres(self, monkeypatch):
+        """required + живая БД: startup-проба проходит, backend выбран."""
+        monkeypatch.setenv("DATABASE_URL", "postgresql://cisstat:test@localhost:5432/testdb")
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "postgres")
+        monkeypatch.setenv("CISSTAT_STORAGE_MODE", "required")
+        inits = self._patch_fake_postgres(monkeypatch)
+        store = get_session_store()
+        assert isinstance(store, PostgresSessionStore)
+        assert inits == ["init"]
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "postgres"
+        assert state["effective"] == "postgres"
+        assert state["degraded"] is False
+
+    def test_explicit_backend_accepts_auto_value(self, monkeypatch):
+        """CISSTAT_SESSION_BACKEND=auto -- легальный явный auto-выбор:"""
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.setenv("CISSTAT_SESSION_BACKEND", "auto")
+        store = get_session_store()
+        assert isinstance(store, MemorySessionStore)
+        state = describe_backend(COMPONENT_SESSION)
+        assert state["configured"] == "auto"
+
+
+class TestPostgresSessionStoreDdl:
+    """DDL analysis_sessions (миграция 0022): файл-дубль каталога
+    ops-контура (паттерн PROGR-5.1), паритет источников страхуется
+    без живой БД."""
+
+    def test_migration_file_exists(self):
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "apps/api/migrations/0022_session_backend_postgres.sql"
+        )
+        assert path.is_file(), "миграция 0022 обязана существовать в apps/api/migrations"
+
+    def test_migration_catalog_contains_0022(self):
+        from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
+
+        joined = "\n".join(MIGRATION_STATEMENTS)
+        assert "analysis_sessions" in joined
+        assert any(
+            name == "0022_session_backend_postgres.sql" for name, _ in MIGRATION_FILES
+        )
+
+    def test_migration_file_parity_with_catalog(self):
+        """Паритет источников DDL (нормализация пробелов): файл
+        migrations/0022_*.sql -- дубль каталога MIGRATION_FILES."""
+        from apps.api.research_runs import MIGRATION_FILES
+
+        def _norm(value: str) -> str:
+            return " ".join(value.split())
+
+        for name, statements in MIGRATION_FILES:
+            if name != "0022_session_backend_postgres.sql":
+                continue
+            text = (
+                Path(__file__).resolve().parents[2]
+                / "apps/api/migrations"
+                / name
+            ).read_text(encoding="utf-8")
+            normalized = _norm(text)
+            for statement in statements:
+                assert _norm(statement) in normalized, statement[:60]
+
+    def test_ddl_covers_contract_objects(self):
+        """DDL обязан давать: PK session_id, колонку CAS-ревизии,
+        JSONB-payload и индекс под prune по expires_at."""
+        from apps.api.research_runs import MIGRATION_STATEMENTS_0022
+
+        joined = "\n".join(MIGRATION_STATEMENTS_0022)
+        assert "CREATE TABLE IF NOT EXISTS analysis_sessions" in joined
+        assert "session_id TEXT PRIMARY KEY" in joined
+        assert "storage_revision BIGINT NOT NULL" in joined
+        assert "payload JSONB NOT NULL" in joined
+        assert "expires_at TIMESTAMPTZ NOT NULL" in joined
+        assert "CREATE INDEX IF NOT EXISTS idx_analysis_sessions_expires" in joined
 
 
 # ────────────────────────────────────────────────────────────────────

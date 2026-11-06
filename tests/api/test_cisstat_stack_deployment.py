@@ -140,6 +140,11 @@ def test_compose_api_dsn_libpq_and_fail_closed() -> None:
     assert env.get("CISSTAT_STORAGE_MODE") == "required", (
         "durable-режим fail-closed (render.yaml / docs/auth06/design.md)"
     )
+    assert env.get("CISSTAT_SESSION_BACKEND") == "postgres", (
+        "session_backend обязан быть Postgres в проде "
+        "(spec_auth_architecture §63: In-memory только тест/dev; "
+        "effective=memory в /health/ops -- кандидат v2.3 закрыт)"
+    )
     for key in (
         "CISSTAT_AUTH_CSRF_KEY",
         "CISSTAT_AUTH_MFA_KEYS",

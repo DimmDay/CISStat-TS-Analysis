@@ -1066,10 +1066,12 @@ class TestStaticCatalogs:
         # добавил 0017_pgv9_print_renditions.sql (6 ALTER/INDEX + 2 DO) --
         # каталог 17 файлов / 106 statements (96 + 10). PGV-09-FIX добавил
         # 0018_pgv9fix_print_rendition_keys.sql (1 DROP NOT NULL) --
-        # каталог 18 файлов / 107 statements (106 + 1).
-        assert len(MIGRATION_FILES) == 18
-        assert MIGRATION_FILES[-1][0] == "0018_pgv9fix_print_rendition_keys.sql"
-        assert len(MIGRATION_STATEMENTS) == 107
+        # каталог 18 файлов / 107 statements (106 + 1). V2.3 добавил
+        # 0022_session_backend_postgres.sql (таблица analysis_sessions +
+        # индекс expires_at) -- каталог 19 файлов / 109 statements.
+        assert len(MIGRATION_FILES) == 19  # V2.3: +1 (0022 session backend)
+        assert MIGRATION_FILES[-1][0] == "0022_session_backend_postgres.sql"
+        assert len(MIGRATION_STATEMENTS) == 109  # V2.3: +2 (0022)
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

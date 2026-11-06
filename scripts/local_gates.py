@@ -19,6 +19,8 @@
   auth01  (auth01.yml,   push/PR)   dependencies + registry tests + generated parity
   auth00  (auth00.yml,   push/PR)   unittest auth00 + inventory --check
   rules   (test_rules.yml, push/PR) sanity-проверка валидационных правил
+  session-postgres (test.yml + V2.3) live PG session backend: CAS/TTL/REST;
+                                     нужен disposable CISSTAT_TEST_PG_DSN
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
@@ -111,6 +113,18 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
     ("rules", "test_rules.yml", "Validation rules sanity check", [
         [sys.executable, "-c", RULES_CHECK],
     ]),
+    # V2.3 (2026-11-06): session_backend memory -> Postgres. Живой
+    # Postgres-контракт слоя 1 сессий (CAS/TTL/prune/readiness/REST-смоук
+    # /health/ops). Опциональный gate (паритет authXX-postgres): нужен
+    # disposable DSN в CISSTAT_TEST_PG_DSN; без него gate честно падает
+    # (не skip) -- пуш с «непроверенным durable» невозможен молча.
+    ("session-postgres", "test.yml (V2.3, live PG opt-in)", "Session backend Postgres: CAS/TTL/prune/health на живой БД", [
+        [sys.executable, "-c",
+         "import os; assert os.environ.get('CISSTAT_TEST_PG_DSN'), "
+         "'CISSTAT_TEST_PG_DSN обязателен (disposable Postgres DSN, паритет authXX-postgres)'"],
+        [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "-m", "pytest", "tests/api/test_session_store_postgres.py", "-v"],
+    ]),
     ("pytest", "test.yml (develop/refactor only)", "pip install + полный python -m pytest tests/", [
         [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
         [sys.executable, "-m", "pip", "install", "-r", "requirements.txt",
@@ -154,7 +168,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,pytest,jest)")
+                        help="запустить только выбранные гейты (auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--skip-install", action="store_true",
                         help="пропустить npm ci / pip install (повторные локальные прогоны)")
     parser.add_argument("--with-pytest", action="store_true",
@@ -169,6 +183,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-session-postgres", action="store_true",
+                        help="добавить V2.3 live PG проверку session backend; нужен disposable CISSTAT_TEST_PG_DSN")
     parser.add_argument("--fail-fast", action="store_true",
                         help="остановиться на первом упавшем гейте")
     parser.add_argument("--jest-workers", metavar="N", type=int, default=None,
@@ -191,6 +207,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_session_postgres:
+        excluded.add("session-postgres")
     order = [g for g in GATES if g[0] not in excluded]
     full = list(GATES)
     if args.only:
@@ -208,10 +226,10 @@ def main() -> int:
             mark = "*" if name not in excluded else " "
             print(f" {mark} {name:7s} <- {origin:32s} {description}")
         print("\n* = входит в прогон по умолчанию (push в main); "
-              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres")
+              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-session-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth06,auth06-postgres,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],

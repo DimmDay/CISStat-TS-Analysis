@@ -163,6 +163,19 @@ curl --resolve datasetup.ru:443:127.0.0.1 https://datasetup.ru/
 Критерий `/health/ops`: backend Postgres, `CISSTAT_STORAGE_MODE=required`,
 режим fail-closed (без БД сервис не стартует вовсе).
 
+V2.3 (2026-11-06): session_backend — тоже Postgres. Таблица
+`analysis_sessions` (миграция 0022, слой 1 сессий анализа
+`cisstat_session_id`) поднимается САМОСТОЯТЕЛЬНО первым коннектом
+(`ensure_schema` в required-режиме — ДО startup-пробы): отдельный
+bootstrap-шаг для неё не нужен ни на свежей, ни на существующей БД.
+Контроль:
+
+```console
+docker compose exec api curl -fsS http://127.0.0.1:8000/health/ops | \
+  python3 -c 'import json,sys; s=json.load(sys.stdin)["session_backend"]; print(s["configured"], s["effective"], s["degraded"])'
+# ожидание: postgres postgres False
+```
+
 ## 6а. Bootstrap-миграции для свежей БД (первый подъём)
 
 Нужны ТОЛЬКО если volume `pgdata` пуст (первый подъём, потеря volume,

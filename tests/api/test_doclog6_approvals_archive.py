@@ -1160,13 +1160,15 @@ class TestMigration0012:
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
         assert "0018_pgv9fix_print_rendition_keys.sql" in [n for n, _ in MIGRATION_FILES]  # PGV-09-FIX
-        assert len(MIGRATION_FILES) == 18
+        # Session backend Postgres (V2.3): +1 файл каталога (0022).
+        assert len(MIGRATION_FILES) == 19
         # DOCLOG-9 (честное обновление пина): последний файл каталога --
         # 0015; сами миграции 0012/0013 -- предпоследние (пин по имени).
         assert "0012_doclog6_approvals_archive.sql" in [n for n, _ in MIGRATION_FILES]
         # 85 (0014) + 8 statement 0015 + 3 statement 0016 (PGV-02:
-        # 1 таблица печатных ревизий + 2 индекса).
-        assert len(MIGRATION_STATEMENTS) == 107  # PGV-09-FIX: +1 (0018)
+        # 1 таблица печатных ревизий + 2 индекса); +2 (0022 session
+        # backend: таблица analysis_sessions + индекс expires_at).
+        assert len(MIGRATION_STATEMENTS) == 109  # PGV-09-FIX: +1 (0018); V2.3: +2 (0022)
 
     def test_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

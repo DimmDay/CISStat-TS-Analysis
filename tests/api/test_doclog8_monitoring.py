@@ -1264,13 +1264,13 @@ class TestStaticCatalogs:
         from apps.api.research_runs import MIGRATION_FILES, MIGRATION_STATEMENTS
 
         assert "0018_pgv9fix_print_rendition_keys.sql" in [n for n, _ in MIGRATION_FILES]  # PGV-09-FIX
-        assert len(MIGRATION_FILES) == 18
+        assert len(MIGRATION_FILES) == 19  # V2.3: +1 (0022 session backend)
         # DOCLOG-9 (честное обновление пина): последний файл каталога --
         # 0015; миграция DOCLOG-8 пинуется по имени (предпоследняя).
         assert "0014_doclog8_monitoring.sql" in [n for n, _ in MIGRATION_FILES]
         # 85 (0014) + 8 statement 0015 + 3 statement 0016 (PGV-02:
         # 1 таблица печатных ревизий + 2 индекса).
-        assert len(MIGRATION_STATEMENTS) == 107  # PGV-09-FIX: +1 (0018)
+        assert len(MIGRATION_STATEMENTS) == 109  # PGV-09-FIX: +1 (0018); V2.3: +2 (0022)
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

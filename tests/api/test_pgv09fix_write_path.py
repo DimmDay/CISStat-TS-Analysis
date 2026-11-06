@@ -1279,7 +1279,7 @@ class TestMigration0018:
 
         names = [name for name, _statements in MIGRATION_FILES]
         assert self.MIGRATION_NAME in names
-        assert len(names) == 18
+        assert len(names) == 19  # V2.3: +1 (0022 session backend)
 
     def test_migration_statements_parity(self):
         """Паритет каталога и файла (паттерн PROGR-5.1, форма теста
@@ -1303,11 +1303,23 @@ class TestMigration0018:
             assert stripped in joined, f"строка файла вне каталога: {stripped!r}"
         assert (self.MIGRATION_NAME, MIGRATION_STATEMENTS_0018) in MIGRATION_FILES
 
-    def test_full_statements_end_with_0018(self):
+    def test_full_statements_end_with_0022(self):
+        """V2.3: хвост каталога -- последняя миграция 0022 (session
+        backend Postgres); 0018 остаётся в цепочке перед ней."""
         from apps.api.research_runs import (
             MIGRATION_STATEMENTS,
             MIGRATION_STATEMENTS_0018,
+            MIGRATION_STATEMENTS_0022,
         )
 
-        tail = MIGRATION_STATEMENTS[-len(MIGRATION_STATEMENTS_0018):]
-        assert tuple(tail) == tuple(MIGRATION_STATEMENTS_0018)
+        # 0018 не вытеснена из цепочки:
+        assert tuple(
+            MIGRATION_STATEMENTS[
+                len(MIGRATION_STATEMENTS)
+                - len(MIGRATION_STATEMENTS_0022)
+                - len(MIGRATION_STATEMENTS_0018) : len(MIGRATION_STATEMENTS)
+                - len(MIGRATION_STATEMENTS_0022)
+            ]
+        ) == tuple(MIGRATION_STATEMENTS_0018)
+        tail = MIGRATION_STATEMENTS[-len(MIGRATION_STATEMENTS_0022):]
+        assert tuple(tail) == tuple(MIGRATION_STATEMENTS_0022)

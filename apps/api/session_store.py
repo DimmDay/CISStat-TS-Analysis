@@ -15,13 +15,20 @@ Context. Идентификация -- httponly cookie, а не API-ключ, п
     - save(session) -> None              # optimistic persist after mutation
     - delete(session_id) -> bool
 
-  Две реализации:
+  Три реализации (V2.3):
     - MemorySessionStore (default в dev/tests): in-memory dict, как было
-    - RedisSessionStore (production MVP): Upstash Redis free tier
+    - RedisSessionStore (legacy MVP): Upstash Redis free tier, REDIS_URL
+    - PostgresSessionStore (production, V2.3): durable-контур платформы
 
-  ВЫБОР ПО ENV:
-    - REDIS_URL задан → RedisSessionStore.from_env()
-    - иначе → MemorySessionStore()
+  ВЫБОР ПО ENV (паритет get_research_run_store / get_artifact_registry):
+    - CISSTAT_SESSION_BACKEND=memory|redis|postgres -- явный выбор;
+      неизвестное значение -- fail fast RuntimeError (опечатка не должна
+      тихо означать memory: урок инцидента AUTH-06-OPS №2);
+    - REDIS_URL задан -> RedisSessionStore.from_env() (legacy-паритет);
+    - DATABASE_URL задан -> PostgresSessionStore.from_env()
+      (доктрина spec_auth_architecture §63: PostgreSQL -- authoritative
+      durable store; In-memory только тест/dev, не production fallback);
+    - иначе -> MemorySessionStore() (configured=auto).
 
 КОНТРАКТ ПО AЛИАСИНГУ (КРИТИЧНО):
   Memory хранит ссылки -- мутации (set_dataset, set_stage) ВИДНЫ сразу.
@@ -34,9 +41,18 @@ Context. Идентификация -- httponly cookie, а не API-ключ, п
 Переключатель -- ALLOWED_ORIGINS (тот же сигнал "мы в продакшене", что и
 для CORS в main.py).
 
-TTL: 30 дней (= max_age cookie). Сессия, протухшая в Redis, при следующем
-запросе создаётся заново -- это нормально, пользователь просто потеряет
-прогресс (как и при очистке cookies в браузере).
+TTL: 30 дней (= max_age cookie). Сессия, протухшая в Redis/Postgres, при
+следующем запросе создаётся заново -- это нормально, пользователь просто
+потеряет прогресс (как и при очистке cookies в браузере).
+
+POSTGRES (V2.3, миграция 0022): одна строка на сессию -- payload JSONB
+(session_to_dict), колонка storage_revision под optimistic CAS
+(SELECT ... FOR UPDATE; паритет Redis WatchError -> SessionConflictError),
+expires_at -- скользящий TTL 30 дней, обновляется каждым save()
+(паритет Redis EX); протухшие строки логически отсутствуют и
+подчищаются ленивым delete + prune-on-save. Схема поднимается
+автоматически первым коннектом (run_migrations, ops-каталог 0001-0018
++ 0022).
 
 ОГРАНИЧЕНИЕ Upstash FREE TIER: 10MB на команду. JSON-сериализация
 DataFrame ~10K строк занимает ~1-2MB (проверено тестом
@@ -48,6 +64,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
+import time
 import uuid
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -1332,49 +1350,330 @@ class RedisSessionStore(SessionStore):
 
 
 # ────────────────────────────────────────────────────────────────────
+# PostgresSessionStore (V2.3: session_backend memory -> Postgres)
+# ────────────────────────────────────────────────────────────────────
+
+
+class PostgresSessionStore(SessionStore):
+    """Postgres-backed SessionStore (V2.3, durable-доктрина платформы).
+
+    Доктрина: spec_auth_architecture.md §63 -- «PostgreSQL --
+    authoritative durable store; Redis -- throttling/cache/leases, не
+    единственный источник»; In-memory только тест/dev, не production
+    fallback. Кандидат v2.3 из worklog11 закрыт: /health/ops
+    session_backend effective=postgres в проде (compose api:
+    CISSTAT_SESSION_BACKEND=postgres).
+
+    СХЕМА (миграция 0022, ops-каталог research_runs.run_migrations):
+      analysis_sessions(session_id PK, storage_revision, payload JSONB,
+      created_at, updated_at, expires_at) + индекс expires_at.
+      Схема поднимается автоматически первым _connect() (самомиграция)
+      и ДО startup-пробы в required-режиме (fresh DB без
+      bootstrap-контейнера стартует, не падает на UndefinedTable).
+
+    КОНКУРЕНТНОСТЬ: save() -- optimistic CAS: SELECT ... FOR UPDATE по
+    PK + сравнение storage_revision; чужой более свежий снимок --
+    SessionConflictError (паритет Redis WatchError -> SessionConflictError
+    и контракту ревизии Memory).
+
+    TTL (паритет Redis EX на каждом SET): expires_at = now() +
+    SESSION_TTL_SECONDS обновляется каждым save(); протухшая строка
+    логически отсутствует (get -> None + ленивый delete;
+    get_or_create выдаёт свежую сессию), save() протухшего снимка --
+    SessionConflictError (паритет Redis: ключ истёк -> current_revision
+    = 0). Мёртвые строки не копятся: prune-on-save удаляет все
+    expires_at <= now() (индекс idx_analysis_sessions_expires).
+
+    ДРАЙВЕР: psycopg (v3) импортируется лениво -- паритет
+    PostgresResearchRunStore/RedisSessionStore: среда без драйвера
+    просто не выбирает этот backend; импорт модуля не падает.
+    Ленивый коннект: psycopg.connect() на каждую операцию (объёмы одной
+    платформы -- не интернет-масштаб; пул -- зрелая оптимизация).
+    """
+
+    _PROBE_CONNECT_TIMEOUT_SECONDS = 3
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+        self._schema_ready = False
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def from_env() -> "PostgresSessionStore":
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            raise RuntimeError(
+                "DATABASE_URL env var is required for PostgresSessionStore. "
+                "Set it to your Postgres connection string."
+            )
+        return PostgresSessionStore(dsn=dsn)
+
+    def ensure_schema(self, conn: Any = None) -> None:
+        """Идемпотентное применение ops-миграций (0001-0018 + 0022) --
+        паритет PostgresArtifactRegistry._connect: один прогон на процесс.
+        Вызывается первым _connect() и фабрикой в required-режиме ДО
+        startup-пробы. Отказ миграции НЕ кэшируется (повтор на следующей
+        операции)."""
+        if self._schema_ready:
+            return
+        with self._lock:
+            if self._schema_ready:
+                return
+            from apps.api.research_runs import run_migrations
+
+            own_conn = conn is None
+            if own_conn:
+                import psycopg
+
+                conn = psycopg.connect(self._dsn, autocommit=False)
+            try:
+                run_migrations(conn)
+                self._schema_ready = True
+            finally:
+                if own_conn:
+                    conn.close()
+
+    def _connect(self):
+        import psycopg  # late import -- см. докстринг класса
+
+        conn = psycopg.connect(self._dsn, autocommit=False)
+        if not self._schema_ready:
+            self.ensure_schema(conn)
+        return conn
+
+    # -- AUDIT-6C: readiness-проба (паритет PostgresResearchRunStore) --
+
+    def readiness_probe(self) -> dict[str, Any]:
+        """Честная готовность Postgres: SELECT 1 + COUNT(*) от таблицы
+        сессий. Без side-эффектов (отдельное autocommit-соединение;
+        миграции проба НЕ выполняет -- их статус виден через ok=False
+        при отсутствии объектов схемы). Причина отказа -- safe_health_error
+        (класс исключения; детали в operational-логах)."""
+        import psycopg
+
+        start = time.monotonic()
+        try:
+            with psycopg.connect(
+                self._dsn,
+                autocommit=True,
+                connect_timeout=self._PROBE_CONNECT_TIMEOUT_SECONDS,
+            ) as conn, conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.execute("SELECT COUNT(*) FROM analysis_sessions")
+                cur.fetchone()
+            return {
+                "ok": True,
+                "backend": "postgres",
+                "latency_ms": round((time.monotonic() - start) * 1000, 2),
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "backend": "postgres",
+                "latency_ms": round((time.monotonic() - start) * 1000, 2),
+                "error": safe_health_error(exc),
+            }
+
+    def get(self, session_id: str) -> Optional[AnalysisSession]:
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT payload, expires_at <= now() AS expired "
+                    "FROM analysis_sessions WHERE session_id=%s",
+                    (session_id,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                if row[1]:
+                    # Протухшая строка логически отсутствует (паритет
+                    # Redis TTL): ленивый delete, следующий get_or_create
+                    # выдаёт свежую сессию.
+                    cur.execute(
+                        "DELETE FROM analysis_sessions WHERE session_id=%s",
+                        (session_id,),
+                    )
+                payload = row[0]
+            if isinstance(payload, (str, bytes, bytearray)):
+                payload = json.loads(payload)
+            return session_from_dict(payload)
+        except (
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            UnicodeDecodeError,
+        ) as e:
+            # Task 143: нечитаемый payload -- та же деградация, что и в
+            # Redis-режиме: warning + None -> get_or_create выдаёт
+            # пустую сессию; save() перезапишет мусор. Ревизия -- отдельная
+            # колонка, поэтому мусорный payload не блокирует CAS.
+            logger.warning("Failed to deserialize session %s: %s", session_id, e)
+            return None
+
+    def get_or_create(self, session_id: str) -> AnalysisSession:
+        session = self.get(session_id)
+        if session is None:
+            session = AnalysisSession(session_id=session_id)
+            # НЕ сохраняем сразу -- пустая сессия пишется только при
+            # первом save() (паритет Memory/Redis).
+        return session
+
+    def save(self, session: AnalysisSession) -> None:
+        expected_revision = int(session.storage_revision)
+        next_revision = expected_revision + 1
+        with self._connect() as conn, conn.cursor() as cur:
+            # Prune-on-save: протухшие строки логически отсутствуют
+            # (паритет авто-expiry Redis); выполняется в той же
+            # транзакции, что и CAS -- конфликт откатит и prune.
+            cur.execute("DELETE FROM analysis_sessions WHERE expires_at <= now()")
+            cur.execute(
+                "SELECT storage_revision FROM analysis_sessions "
+                "WHERE session_id=%s FOR UPDATE",
+                (session.session_id,),
+            )
+            row = cur.fetchone()
+            current_revision = row[0] if row else 0
+            if current_revision != expected_revision:
+                raise SessionConflictError(
+                    f"Stale session revision {expected_revision}; "
+                    f"current revision is {current_revision}"
+                )
+            session.touch()
+            data = session_to_dict(session)
+            data["storage_revision"] = next_revision
+            payload = json.dumps(data, default=str)
+            if row:
+                cur.execute(
+                    "UPDATE analysis_sessions SET payload=%s::jsonb, "
+                    "storage_revision=%s, updated_at=now(), "
+                    "expires_at=now() + (%s * interval '1 second') "
+                    "WHERE session_id=%s",
+                    (
+                        payload,
+                        next_revision,
+                        SESSION_TTL_SECONDS,
+                        session.session_id,
+                    ),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO analysis_sessions"
+                    "(session_id, storage_revision, payload, expires_at) "
+                    "VALUES (%s, %s, %s::jsonb, now() + (%s * interval '1 second'))",
+                    (
+                        session.session_id,
+                        next_revision,
+                        payload,
+                        SESSION_TTL_SECONDS,
+                    ),
+                )
+        # Транзакция закоммичена (psycopg with-block): ревизия снимка
+        # синхронизируется с durable-значением.
+        session.storage_revision = next_revision
+
+    def delete(self, session_id: str) -> bool:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM analysis_sessions WHERE session_id=%s",
+                (session_id,),
+            )
+            return cur.rowcount > 0
+
+
+# ────────────────────────────────────────────────────────────────────
 # Factory + singleton
 # ────────────────────────────────────────────────────────────────────
 
 _store: Optional[SessionStore] = None
 
+# Явные значения CISSTAT_SESSION_BACKEND. Неизвестное значение -- fail
+# fast (паритет get_storage_mode: опечатка конфигурации не должна тихо
+# означать memory-auto; урок инцидента AUTH-06-OPS №2).
+_VALID_SESSION_BACKENDS = ("memory", "redis", "postgres", "auto")
+
 
 def get_session_store() -> SessionStore:
     """Возвращает singleton SessionStore.
 
-    ВЫБОР БЭКЕНДА:
-      - Если задан REDIS_URL или CISSTAT_SESSION_BACKEND=redis → RedisSessionStore
-      - Иначе → MemorySessionStore (default для dev и тестов)
+    ВЫБОР БЭКЕНДА (паритет get_research_run_store / get_artifact_registry):
+      - CISSTAT_SESSION_BACKEND=memory -> Memory (приоритет над DSN --
+        это ВЫБРАННЫЙ backend, observable в snapshot как
+        configured=memory);
+      - CISSTAT_SESSION_BACKEND=redis или REDIS_URL -> RedisSessionStore
+        (legacy MVP, паритет прежнего контракта);
+      - CISSTAT_SESSION_BACKEND=postgres или DATABASE_URL ->
+        PostgresSessionStore (durable-доктрина spec_auth_architecture
+        §63; compose api: CISSTAT_SESSION_BACKEND=postgres);
+      - иначе -> MemorySessionStore (configured=auto, dev/тесты).
 
-    РЕЖИМЫ ХРАНЕНИЯ (AUDIT-6C, план §18 п.1; симметрично
+    Явное значение выбирает backend ДОРОЖЕ авто-сигналов: REDIS_URL при
+    CISSTAT_SESSION_BACKEND=postgres больше не перехватывает выбор, и
+    наоборот (explicit wins -- паритет runs-фабрики). Авто-сигнал
+    DATABASE_URL учитывается только если это Postgres-DSN (схемы
+    postgres:// / postgresql://); чужой DSN не переводит сессии в
+    postgres и не роняет advisory-старт на первом же коннекте.
+
+    РЕЖИМЫ ХРАНЕНИЯ (AUDIT-6C, план §18 п.1; P21/F14, симметрично
     get_research_run_store; CISSTAT_STORAGE_MODE):
-      - ``required``: Redis с неверной конфигурацией / недоступной БД
-        (startup probe) -- fail-closed RuntimeError, тихий Memory
-        fallback ЗАПРЕЩЁН;
+      - ``required``: Postgres/Redis с неверной конфигурацией /
+        недоступной БД (startup readiness-probe) -- fail-closed
+        RuntimeError, тихий Memory fallback ЗАПРЕЩЁН;
       - ``advisory`` (default): fallback в Memory допустим, но НЕ тихий
         -- фиксируется configured/effective/degraded + безопасная
         причина; состояние видно в /health/ops.
 
+    Startup-проба и ensure_schema выполняются ТОЛЬКО в required режиме
+    (advisory сохраняет ленивый контракт: конструирование не открывает
+    соединение; недоступность БД в advisory наблюдаема через
+    /health/ops readiness). ensure_schema в required поднимает
+    ops-миграции ДО пробы: fresh DB стартует без отдельного
+    bootstrap-контейнера для 0022.
+
     Один раз созданный экземпляр переиспользуется во всех последующих
-    вызовах (для Redis -- чтобы не открывать пул коннектов на каждый
-    запрос). Тесты могут сбросить singleton через reset_session_store_for_testing().
+    вызовах. Тесты могут сбросить singleton через
+    reset_session_store_for_testing().
     """
     global _store
     if _store is not None:
         return _store
 
     mode = get_storage_mode()
-    backend_explicit = os.environ.get("CISSTAT_SESSION_BACKEND", "").lower()
+    backend_explicit = os.environ.get("CISSTAT_SESSION_BACKEND", "").strip().lower()
     redis_url = os.environ.get("REDIS_URL", "")
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if database_url and not database_url.lower().startswith(
+        ("postgres://", "postgresql://")
+    ):
+        # Чужой/мусорный DSN (sqlalchemy-диалект, file:, sqlite:, ...)
+        # не является авто-сигналом Postgres: psycopg.connect его всё равно
+        # не возьмёт. Игнорируется ТОЛЬКО для auto-выбора; явный
+        # CISSTAT_SESSION_BACKEND=postgres с любым DSN идёт честным
+        # postgres-путём (advisory -> видимая деградация, required ->
+        # fail-closed). В лог -- только схема, без значения (T6).
+        logger.warning(
+            "DATABASE_URL scheme %r не является Postgres DSN -- для "
+            "auto-выбора session backend игнорируется",
+            database_url.split(":", 1)[0] + ":",
+        )
+        database_url = ""
 
-    if redis_url or backend_explicit == "redis":
+    if backend_explicit and backend_explicit not in _VALID_SESSION_BACKENDS:
+        raise RuntimeError(
+            f"CISSTAT_SESSION_BACKEND={backend_explicit!r} не поддерживается; "
+            f"допустимо: {'|'.join(_VALID_SESSION_BACKENDS)} "
+            "(fail fast, паритет get_storage_mode)"
+        )
+
+    if backend_explicit == "memory":
+        _store = MemorySessionStore()
+        record_backend_selected(COMPONENT_SESSION, "memory", "memory")
+    elif backend_explicit == "redis" or (not backend_explicit and redis_url):
         # AUDIT-6C: выбор backend фиксируется ДО попытки (симметрично
         # get_research_run_store) -- отказ инициализации виден в snapshot.
         record_backend_selected(COMPONENT_SESSION, "redis", "initializing")
         try:
             candidate = RedisSessionStore.from_env()
             if mode == "required":
-                # Fail-closed (P21/F14): недоступный Redis при required
-                # останавливает, а не подменяет durable cache памятью.
                 probe = candidate.readiness_probe()
                 if not probe.get("ok"):
                     reason = probe.get("error") or "readiness probe failed"
@@ -1406,6 +1705,51 @@ def get_session_store() -> SessionStore:
             )
             record_backend_fallback(
                 COMPONENT_SESSION, "redis", reason, effective="memory"
+            )
+            _store = MemorySessionStore()
+    elif backend_explicit == "postgres" or (not backend_explicit and database_url):
+        # V2.3 (durable-доктрина): выбор фиксируется ДО попытки -- отказ
+        # инициализации виден в snapshot как configured=postgres.
+        record_backend_selected(COMPONENT_SESSION, "postgres", "initializing")
+        try:
+            candidate = PostgresSessionStore.from_env()
+            if mode == "required":
+                # Схема поднимается ДО startup-пробы: fresh DB (без
+                # bootstrap-контейнера) стартует, а не падает на
+                # UndefinedTable (урок AUTH-06-OPS-PHASE1, runbook §bootstrap).
+                candidate.ensure_schema()
+                probe = candidate.readiness_probe()
+                if not probe.get("ok"):
+                    reason = probe.get("error") or "readiness probe failed"
+                    raise RuntimeError(
+                        "SessionStore: Postgres backend required, "
+                        f"но недоступен (fail-closed, P21/F14): {reason}"
+                    )
+            _store = candidate
+            record_backend_selected(COMPONENT_SESSION, "postgres", "postgres")
+            logger.info("SessionStore: PostgresSessionStore initialized (durable)")
+        except Exception as e:
+            reason = safe_error(e)
+            if mode == "required":
+                # P21/F14: тихий Memory fallback в required-режиме
+                # запрещён -- ошибка конфигурации/драйвера/миграции/БД
+                # останавливает запуск, а не подменяет долговечность
+                # памятью процесса.
+                record_backend_selected(
+                    COMPONENT_SESSION, "postgres", "unavailable",
+                    reason=reason, degraded=True,
+                )
+                raise RuntimeError(
+                    "SessionStore: Postgres backend required, "
+                    f"но инициализация не удалась (fail-closed, P21/F14): "
+                    f"{reason}"
+                ) from e
+            logger.error(
+                "SessionStore: Postgres init failed (%s), ЯВНАЯ деградация "
+                "в Memory (advisory mode; состояние в /health/ops)", reason,
+            )
+            record_backend_fallback(
+                COMPONENT_SESSION, "postgres", reason, effective="memory"
             )
             _store = MemorySessionStore()
     else:

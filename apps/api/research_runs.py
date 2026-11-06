@@ -1394,6 +1394,30 @@ MIGRATION_STATEMENTS_0018: tuple[str, ...] = (
     """,
 )
 
+# V2.3 (2026-11-06): session_backend memory -> Postgres. Слой 1 сессии
+# анализа (AnalysisSession, cookie cisstat_session_id) -- таблица
+# analysis_sessions (однострочная модель: payload JSONB + CAS-ревизия +
+# скользящий TTL expires_at 30 дней). Доктрина: spec_auth_architecture
+# §63 (PostgreSQL -- authoritative durable store; In-memory только
+# тест/dev). Реализация -- apps/api/session_store.py
+# PostgresSessionStore; выбирается CISSTAT_SESSION_BACKEND=postgres или
+# DATABASE_URL (compose api: CISSTAT_SESSION_BACKEND=postgres).
+# Файл-дубль migrations/0022_session_backend_postgres.sql.
+MIGRATION_STATEMENTS_0022: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS analysis_sessions (
+        session_id TEXT PRIMARY KEY,
+        storage_revision BIGINT NOT NULL DEFAULT 0,
+        payload JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_analysis_sessions_expires "
+    "ON analysis_sessions (expires_at)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1404,6 +1428,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0013 + MIGRATION_STATEMENTS_0014
     + MIGRATION_STATEMENTS_0015 + MIGRATION_STATEMENTS_0016
     + MIGRATION_STATEMENTS_0017 + MIGRATION_STATEMENTS_0018
+    + MIGRATION_STATEMENTS_0022
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1427,6 +1452,9 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0016_pgv2_print_documents.sql", MIGRATION_STATEMENTS_0016),
     ("0017_pgv9_print_renditions.sql", MIGRATION_STATEMENTS_0017),
     ("0018_pgv9fix_print_rendition_keys.sql", MIGRATION_STATEMENTS_0018),
+    # V2.3 (session backend Postgres): таблица analysis_sessions +
+    # индекс expires_at; файл-дубль 0022_session_backend_postgres.sql.
+    ("0022_session_backend_postgres.sql", MIGRATION_STATEMENTS_0022),
 )
 
 

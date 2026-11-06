@@ -62,6 +62,12 @@ services:
       # напрямую; SQLAlchemy-диалект postgresql+psycopg:// здесь ЗАПРЕЩЁН.
       DATABASE_URL: postgresql://cisstat:${CISSTAT_PG_PASSWORD}@postgres:5432/cisstat
       CISSTAT_STORAGE_MODE: required
+      # V2.3 (2026-11-06): session_backend memory -> Postgres (кандидат
+      # v2.3 из worklog11 закрыт). Слой 1 сессии анализа
+      # (cisstat_session_id, AnalysisSession) -- таблица analysis_sessions
+      # (миграция 0022, поднимается первым коннектом/ensure_schema).
+      # /health/ops: session_backend effective=postgres.
+      CISSTAT_SESSION_BACKEND: postgres
       CISSTAT_AUTH_CSRF_KEY: ${CISSTAT_AUTH_CSRF_KEY:?заполните CISSTAT_AUTH_CSRF_KEY в .env (openssl rand -base64 32)}
       CISSTAT_AUTH_MFA_KEYS: ${CISSTAT_AUTH_MFA_KEYS:?заполните CISSTAT_AUTH_MFA_KEYS в .env (JSON-keyring, docs/auth05/design.md)}
       CISSTAT_AUTH_MFA_ACTIVE_KEY: ${CISSTAT_AUTH_MFA_ACTIVE_KEY:?заполните CISSTAT_AUTH_MFA_ACTIVE_KEY в .env}
