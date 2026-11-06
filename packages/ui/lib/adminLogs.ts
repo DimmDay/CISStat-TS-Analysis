@@ -1,13 +1,17 @@
 import { apiFetch } from "./browserTransport";
 // packages/ui/lib/adminLogs.ts
 //
-// DOCLOG-7 (спека §14.2, §15): клиент API журналов /v1/logs.
-// Типы -- контракты роутера apps/api/routers/logs.py. Ключ передаётся
-// ТОЛЬКО заголовком X-API-Key вызова (не localStorage/cookies/URL --
-// §15.1: «API-key не переносится в URL/storage/UI диагностический
-// пакет»). Каждый клиент возвращает дискриминированный результат
-// { ok: true, data } | { ok: false, status } -- UI честно рендерит
-// негативные состояния §12.3/AC17, не бросая исключения в компоненты.
+// DOCLOG-7 (спека §14.2, §15): клиент API журналов /v1/logs. Миграция
+// AUTH-07: доступ -- named-сессия администратора (cookie через first-party
+// /api-прокси, AUTH-06); X-API-Key из браузера НЕ отправляется
+// (программный канал ключей сохранён на сервере до AUTH-10, но
+// браузерная поверхность его больше не использует -- §15.1 «API-key не
+// переносится в URL/storage/UI»). Типы -- контракты роутера
+// apps/api/routers/logs.py. Роль/scopes/grants решает СЕРВЕР
+// (resolve_effective_log_access); клиент возвращает дискриминированный
+// результат { ok: true, data } | { ok: false, status } -- UI честно
+// рендерит негативные состояния §12.3/AC17, не бросая исключения в
+// компоненты.
 
 import { getApiBase } from "./apiClient";
 
@@ -122,25 +126,14 @@ export interface GrantRecord {
 
 export type ApiResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number };
 
-// ── Заголовок авторизации (ключ НЕ персистится нигде) ───────────────
-
-function authHeaders(apiKey: string): Record<string, string> {
-  return { "X-API-Key": apiKey };
-}
+// ── Запрос (named-сессия; POST-команды -- через apiFetch с CSRF-retry) ─
 
 async function requestJson<T>(
   url: string,
-  apiKey: string,
   init?: RequestInit,
 ): Promise<ApiResult<T>> {
   try {
-    const response = await apiFetch(url, {
-      ...init,
-      headers: {
-        ...authHeaders(apiKey),
-        ...(init?.headers ?? {}),
-      },
-    });
+    const response = await apiFetch(url, init);
     if (!response.ok) {
       return { ok: false, status: response.status };
     }
@@ -153,8 +146,8 @@ async function requestJson<T>(
 
 // ── Доступ (GET /access) ─────────────────────────────────────────────
 
-export async function fetchLogAccess(apiKey: string): Promise<ApiResult<LogAccessInfo>> {
-  return requestJson<LogAccessInfo>(adminLogsApiUrl("/access"), apiKey);
+export async function fetchLogAccess(): Promise<ApiResult<LogAccessInfo>> {
+  return requestJson<LogAccessInfo>(adminLogsApiUrl("/access"));
 }
 
 // ── Потоки (query-параметры -- whitelist роутера) ────────────────────
@@ -206,27 +199,24 @@ function toSearchParams(query: object): URLSearchParams {
 }
 
 export async function fetchTelemetryLogs(
-  apiKey: string,
   query: TelemetryQuery,
 ): Promise<ApiResult<LogsPage<TelemetryLogRecord>>> {
   const qs = toSearchParams(query).toString();
-  return requestJson(adminLogsApiUrl(`/telemetry${qs ? `?${qs}` : ""}`), apiKey);
+  return requestJson(adminLogsApiUrl(`/telemetry${qs ? `?${qs}` : ""}`));
 }
 
 export async function fetchAuditLogs(
-  apiKey: string,
   query: AuditQuery,
 ): Promise<ApiResult<LogsPage<AuditLogRecord>>> {
   const qs = toSearchParams(query).toString();
-  return requestJson(adminLogsApiUrl(`/audit${qs ? `?${qs}` : ""}`), apiKey);
+  return requestJson(adminLogsApiUrl(`/audit${qs ? `?${qs}` : ""}`));
 }
 
 export async function fetchDeliveryLogs(
-  apiKey: string,
   query: DeliveryQuery,
 ): Promise<ApiResult<LogsPage<DeliveryLogRecord>>> {
   const qs = toSearchParams(query).toString();
-  return requestJson(adminLogsApiUrl(`/delivery${qs ? `?${qs}` : ""}`), apiKey);
+  return requestJson(adminLogsApiUrl(`/delivery${qs ? `?${qs}` : ""}`));
 }
 
 // ── Гранты (§14.2/§15) ───────────────────────────────────────────────
@@ -241,15 +231,14 @@ export interface GrantCreateInput {
   ttl_hours: number;
 }
 
-export async function fetchGrants(apiKey: string): Promise<ApiResult<{ grants: GrantRecord[] }>> {
-  return requestJson(adminLogsApiUrl("/grants"), apiKey);
+export async function fetchGrants(): Promise<ApiResult<{ grants: GrantRecord[] }>> {
+  return requestJson(adminLogsApiUrl("/grants"));
 }
 
 export async function createGrant(
-  apiKey: string,
   input: GrantCreateInput,
 ): Promise<ApiResult<{ grant_id: string }>> {
-  return requestJson(adminLogsApiUrl("/grants"), apiKey, {
+  return requestJson(adminLogsApiUrl("/grants"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -257,11 +246,10 @@ export async function createGrant(
 }
 
 export async function revokeGrant(
-  apiKey: string,
   grantId: string,
   reason: string,
 ): Promise<ApiResult<{ grant_id: string }>> {
-  return requestJson(adminLogsApiUrl(`/grants/${encodeURIComponent(grantId)}/revoke`), apiKey, {
+  return requestJson(adminLogsApiUrl(`/grants/${encodeURIComponent(grantId)}/revoke`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason }),
@@ -278,13 +266,12 @@ export interface BundleResult {
 }
 
 export async function exportDiagnosticBundle(
-  apiKey: string,
   body: { from: string; to: string; streams?: string[] },
 ): Promise<BundleResult | { ok: false; status: number }> {
   try {
     const response = await apiFetch(adminLogsApiUrl("/export"), {
       method: "POST",
-      headers: { ...authHeaders(apiKey), "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (!response.ok) {

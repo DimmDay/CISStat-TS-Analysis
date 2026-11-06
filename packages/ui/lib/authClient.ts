@@ -4,6 +4,7 @@ const RETURNS = new Set([
   "/",
   "/admin",
   "/admin/progress",
+  "/admin/logs",
   "/upload",
   "/validation",
   "/preprocessing",

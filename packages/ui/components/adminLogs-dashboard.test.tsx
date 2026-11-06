@@ -5,8 +5,10 @@
 // Доставка и документы), whitelist-фильтры (БЕЗ произвольного SQL/regex
 // от браузера), cursor pagination, live tail с честной паузой и счётчиком
 // пропусков, диагностический пакет с явным перечнем исключений, гранты
-// поддержки с TTL/отзывом. Ключ живёт ТОЛЬКО в стейте (паттерн
-// AdminProgressDashboard), 401/403 -- различимые честные состояния.
+// поддержки с TTL/отзывом. Миграция AUTH-07: доступ -- named-сессия
+// (cookie через first-party прокси), X-API-Key из браузера НЕ уходит;
+// справка доступа загружается при монтировании, 401/403 -- различимые
+// честные состояния.
 //
 // Оракулы на СВОИХ данных: клиенты lib/adminLogs мокаются; корпус
 // дизъюнктен серверным репо-сюитам (tests/api).
@@ -106,11 +108,8 @@ const GRANTS_PAGE: GrantsResult = {
   },
 };
 
-function typeKeyAndSubmit() {
-  const keyInput = screen.getByLabelText("API-ключ администратора");
-  fireEvent.change(keyInput, { target: { value: "d7-admin-key-1111" } });
-  fireEvent.click(screen.getByRole("button", { name: "Открыть журналы" }));
-}
+// Миграция AUTH-07: справка /v1/logs/access запрашивается при
+// монтировании -- отдельного «открытия по ключу» больше нет.
 
 describe("AdminLogsDashboard (DOCLOG-7)", () => {
   beforeEach(() => {
@@ -118,19 +117,17 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     localStorage.clear();
   });
 
-  it("401 -- честное состояние неверного ключа", async () => {
+  it("401 -- честное состояние отсутствующей/истекшей сессии", async () => {
     mocked.fetchLogAccess.mockResolvedValue({ ok: false, status: 401 });
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     expect(
-      await screen.findByText(/Неверный API-ключ/i)
+      await screen.findByText(/сессия/i)
     ).toBeInTheDocument();
   });
 
   it("403 -- различимое состояние не-админа", async () => {
     mocked.fetchLogAccess.mockResolvedValue({ ok: false, status: 403 });
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     expect(await screen.findByText(/недостаточно прав/i)).toBeInTheDocument();
   });
 
@@ -138,7 +135,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     mocked.fetchLogAccess.mockResolvedValue(ADMIN_ACCESS);
     mocked.fetchTelemetryLogs.mockResolvedValue(TELEMETRY_PAGE);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     expect(
       await screen.findByRole("tab", { name: "Технические события" })
     ).toBeInTheDocument();
@@ -154,7 +150,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     mocked.fetchLogAccess.mockResolvedValue(ADMIN_ACCESS);
     mocked.fetchTelemetryLogs.mockResolvedValue(TELEMETRY_PAGE);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     await screen.findByRole("tab", { name: "Технические события" });
     // Ни одного многострочного поля произвольного ввода (§14.2).
     expect(document.querySelector("textarea")).toBeNull();
@@ -168,12 +163,10 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     mocked.fetchLogAccess.mockResolvedValue(ADMIN_ACCESS);
     mocked.fetchTelemetryLogs.mockResolvedValue(TELEMETRY_PAGE);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     const next = await screen.findByRole("button", { name: "Следующая страница" });
     fireEvent.click(next);
     await waitFor(() =>
       expect(mocked.fetchTelemetryLogs).toHaveBeenLastCalledWith(
-        expect.anything(),
         expect.objectContaining({ cursor: "d7cursor" })
       )
     );
@@ -184,7 +177,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     mocked.fetchLogAccess.mockResolvedValue(ADMIN_ACCESS);
     mocked.fetchTelemetryLogs.mockResolvedValue(TELEMETRY_PAGE);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     const toggle = await screen.findByRole("checkbox", { name: /Live tail/i });
     fireEvent.click(toggle); // выключить -> пауза
     await screen.findByText(/Пауза: пропущено обновлений: 0/i);
@@ -203,7 +195,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
       filename: "diagnostic-d7.zip",
     } as never);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     const button = await screen.findByRole("button", {
       name: /Создать диагностический пакет/i,
     });
@@ -225,7 +216,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     });
     mocked.revokeGrant.mockResolvedValue({ ok: true, status: 200, data: { grant_id: "d7grant-1" } });
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     await screen.findByText("d7-ticket-42");
     // Создание: TTL ограничен селектом (whitelist), не свободным числом.
     fireEvent.change(screen.getByLabelText("Ticket"), {
@@ -241,7 +231,6 @@ describe("AdminLogsDashboard (DOCLOG-7)", () => {
     mocked.fetchLogAccess.mockResolvedValue(ADMIN_ACCESS);
     mocked.fetchTelemetryLogs.mockResolvedValue(TELEMETRY_PAGE);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     await screen.findByRole("tab", { name: "Технические события" });
     expect(localStorage.getItem("cisstat_admin_key")).toBeNull();
     expect(sessionStorage.length).toBe(0);

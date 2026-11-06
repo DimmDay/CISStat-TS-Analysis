@@ -2,7 +2,11 @@ import { apiFetch } from "./browserTransport";
 // packages/ui/lib/admin.ts
 //
 // Клиентский слой Admin-панели мониторинга «Прогресса» (Task PROGR-8,
-// spec_progress.md §10 + §9). Бэкенд:
+// spec_progress.md §10 + §9). Миграция AUTH-07 (spec_auth_architecture.md
+// строка 196: «Named ADMIN+MFA управляет реальными API standalone/
+// embedded; analyst/OWNER получают отказ»): панель работает под
+// named-сессией администратора (cookie __Host-cisstat_auth через
+// first-party /api-прокси, AUTH-06) -- БЕЗ ввода API-ключа в браузере.
 //
 //   GET /v1/progress/admin/overview?days=&top=
 //        -- агрегаты §10 по корпусу (запуски по статусам за период,
@@ -13,14 +17,13 @@ import { apiFetch } from "./browserTransport";
 //        -- отбор кандидатов банка кейсов (§9, алгоритмическая
 //           эвристика; суммаризация трассы -- офлайн-джоба вне сервиса).
 //
-// §10 дословно: «admin-эндпоинты должны требовать API-ключ с ролью
-// ADMIN, а не cookie -- админ заходит другим путём, чем обычный
-// аналитик». Здесь -- заголовок X-API-Key (ключ вводится в панели,
-// живёт только в стейте компонента); credentials НЕ включаются --
-// cookie-сессия аналитика к админ-эндпоинтам отношения не имеет.
-//
-// Результат различает 401 (неверный ключ) и 403 (не ADMIN) -- панель
-// показывает разные подсказки; прочие сбои -- тот же канал честной
+// §10 дословно (исторический контракт PROGR-8): админ-эндпоинты требуют
+// роль ADMIN. До AUTH-07 путь был X-API-Key из панели; AUTH-07 мигрирует
+// браузерную поверхность на named-сессию со свежим MFA (auth.py:
+// require_admin_role -- auth_session требует ADMIN + mfa_verified_at;
+// API-ключ сохранён как программный канал до AUTH-10). Роль/MFA
+// проверяются СЕРВЕРОМ; UI различает 401 (сессия истекла) и 403
+// (не ADMIN) -- разные подсказки; прочие сбои -- тот же канал честной
 // недоступности (best-effort, паттерн mentor.ts).
 
 import { progressApiUrl } from "./apiClient";
@@ -114,8 +117,8 @@ export interface CaseBankParams {
   maxSanityWarnings?: number;
 }
 
-function adminFetch<T>(url: string, apiKey: string): Promise<AdminResult<T>> {
-  return apiFetch(url, { headers: { "X-API-Key": apiKey } })
+function adminFetch<T>(url: string): Promise<AdminResult<T>> {
+  return apiFetch(url)
     .then(async (response) => {
       if (!response.ok) {
         return { ok: false, status: response.status, data: null };
@@ -127,7 +130,6 @@ function adminFetch<T>(url: string, apiKey: string): Promise<AdminResult<T>> {
 }
 
 export function fetchAdminOverview(
-  apiKey: string,
   params: AdminOverviewParams = {},
 ): Promise<AdminResult<AdminOverviewInfo>> {
   const query = new URLSearchParams();
@@ -135,12 +137,10 @@ export function fetchAdminOverview(
   query.set("top", String(params.top ?? 10));
   return adminFetch<AdminOverviewInfo>(
     progressApiUrl(`/admin/overview?${query.toString()}`),
-    apiKey,
   );
 }
 
 export function fetchCaseBankCandidates(
-  apiKey: string,
   params: CaseBankParams = {},
 ): Promise<AdminResult<CaseBankResponseInfo>> {
   const query = new URLSearchParams();
@@ -156,6 +156,5 @@ export function fetchCaseBankCandidates(
   const suffix = query.toString() ? `?${query.toString()}` : "";
   return adminFetch<CaseBankResponseInfo>(
     progressApiUrl(`/admin/case-bank/candidates${suffix}`),
-    apiKey,
   );
 }

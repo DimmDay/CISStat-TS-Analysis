@@ -278,9 +278,10 @@ export { ProgressTraceLog } from "./components/ProgressTraceLog";
 export { MentorPanel } from "./components/MentorPanel";
 export { MentorInlineWarning } from "./components/MentorInlineWarning";
 // Admin-панель мониторинга (Task PROGR-8, spec_progress.md §10 + §9):
-// агрегаты по корпусу + банк кейсов. §10 дословно: админ заходит ДРУГИМ
-// ПУТЁМ -- API-ключ с ролью ADMIN (X-API-Key), не cookie-сессия
-// аналитика; компонент самостоятелен (без AppShellProvider).
+// агрегаты по корпусу + банк кейсов. Миграция AUTH-07
+// (spec_auth_architecture.md строка 196): доступ -- named-сессия
+// администратора с MFA (AdminGate на странице; X-API-Key из браузера
+// не отправляется). Компонент самостоятелен (без AppShellProvider).
 export { AdminProgressDashboard } from "./components/AdminProgressDashboard";
 
 // DOCLOG-7 (спека §14.2/§15): «Администрирование → Журналы» -- область
@@ -290,6 +291,12 @@ export { AdminProgressDashboard } from "./components/AdminProgressDashboard";
 // Компонент самостоятелен (без AppShellProvider) -- тот же паттерн,
 // что AdminProgressDashboard.
 export { AdminLogsDashboard } from "./components/AdminLogsDashboard";
+
+// AUTH-07 «Общая админка обеих оболочек»: гейт доступа (named ADMIN-
+// сессия; analyst/OWNER получают отказ) и общий лендинг /admin --
+// используются страницами admin/* обеих оболочек.
+export { AdminGate } from "./components/AdminGate";
+export { AdminHome } from "./components/AdminHome";
 // DOCLOG-8 (§6 D12, §12): контур мониторинга -- панель сверки прогноза
 // с фактом + клиент API.
 export { MonitoringComparisonPanel } from "./components/MonitoringComparisonPanel";

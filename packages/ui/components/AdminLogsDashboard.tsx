@@ -9,9 +9,11 @@
 // Три вкладки §14.2: «Технические события» (telemetry), «Аудит доступа»
 // (security audit), «Доставка и документы» (documents/jobs).
 //
-// Ключ -- паттерн AdminProgressDashboard: вводится в панели, живёт
-// ТОЛЬКО в стейте (перезагрузка -- повторный ввод), НЕ попадает в
-// localStorage/sessionStorage/URL и уходит только в заголовке X-API-Key.
+// Миграция AUTH-07: доступ -- named-сессия администратора (cookie
+// через first-party /api-прокси); справка /v1/logs/access загружается
+// при монтировании (гейт страницы -- AdminGate). Ключ в браузере
+// НЕ вводится и НЕ хранится (ни в localStorage/sessionStorage/URL);
+// POST-команды идут через apiFetch с CSRF-retry (AUTH-06).
 //
 // §14.2 дословно:
 //  * «Без произвольного SQL/регулярных выражений от браузера к
@@ -156,11 +158,11 @@ function filtersForTab(tab: TabKey, filters: FilterState): Record<string, string
 }
 
 export function AdminLogsDashboard() {
-  // Ключ -- ТОЛЬКО в стейте (§15.1/паттерн AdminProgressDashboard).
-  const [keyInput, setKeyInput] = useState("");
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  // Миграция AUTH-07: named-сессия администратора; справка доступа --
+  // при монтировании, БЕЗ ввода ключа.
   const [access, setAccess] = useState<LogAccessInfo | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
 
   const [tab, setTab] = useState<TabKey>("telemetry");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -192,7 +194,7 @@ export function AdminLogsDashboard() {
   liveTailRef.current = liveTail;
 
   const loadStream = useCallback(
-    async (which: TabKey, key: string, cursor?: string, append = false, filterOverride?: FilterState) => {
+    async (which: TabKey, cursor?: string, append = false, filterOverride?: FilterState) => {
       setLoading(true);
       setStreamError(null);
       // H29-UIH (2026-10-27): filterOverride -- пресет «Причины отказов
@@ -202,7 +204,7 @@ export function AdminLogsDashboard() {
       const query = { ...base, limit: 50, cursor };
       let result;
       if (which === "telemetry") {
-        result = await fetchTelemetryLogs(key, query);
+        result = await fetchTelemetryLogs(query);
         if (result.ok)
           setTelemetryPage(
             append
@@ -210,7 +212,7 @@ export function AdminLogsDashboard() {
               : result.data,
           );
       } else if (which === "audit") {
-        result = await fetchAuditLogs(key, query);
+        result = await fetchAuditLogs(query);
         if (result.ok)
           setAuditPage(
             append
@@ -218,7 +220,7 @@ export function AdminLogsDashboard() {
               : result.data,
           );
       } else {
-        result = await fetchDeliveryLogs(key, query);
+        result = await fetchDeliveryLogs(query);
         if (result.ok)
           setDeliveryPage(
             append
@@ -237,60 +239,61 @@ export function AdminLogsDashboard() {
     [filters, telemetryPage, auditPage, deliveryPage],
   );
 
-  const refreshGrants = useCallback(async (key: string) => {
-    const result = await fetchGrants(key);
+  const refreshGrants = useCallback(async () => {
+    const result = await fetchGrants();
     if (!result) return; // честная деградация: список грантов недоступен
     if (result.ok) setGrants(result.data.grants);
   }, []);
 
-  const handleOpen = useCallback(async () => {
+  const openAccess = useCallback(async () => {
+    setOpening(true);
     setOpenError(null);
-    const key = keyInput;
-    if (!key.trim()) {
-      setOpenError("Введите API-ключ.");
-      return;
-    }
-    const result = await fetchLogAccess(key);
+    const result = await fetchLogAccess();
     if (!result.ok) {
       setOpenError(accessErrorText(result.status));
+      setOpening(false);
       return;
     }
-    setApiKey(key);
     setAccess(result.data);
-  }, [keyInput]);
+    setOpening(false);
+  }, []);
+
+  // Справка доступа -- при монтировании (named-сессия AUTH-07).
+  useEffect(() => {
+    void openAccess();
+  }, [openAccess]);
 
   // Первая загрузка открытой вкладки + грантов.
   useEffect(() => {
-    if (!apiKey || !access) return;
-    void loadStream(tab, apiKey);
+    if (!access) return;
+    void loadStream(tab);
     if (access.access.grants_management) {
-      void refreshGrants(apiKey);
+      void refreshGrants();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, access, tab]);
+  }, [access, tab]);
 
   // Live tail (§14.2): тик 5с; на паузе -- счётчик пропусков, без
   // скачивания истории; включён -- тихое обновление открытой вкладки.
   useEffect(() => {
-    if (!apiKey) return;
+    if (!access) return;
     const id = setInterval(() => {
       if (!liveTailRef.current) {
         setSkippedTicks((n) => n + 1);
         return;
       }
-      void loadStream(tab, apiKey);
+      void loadStream(tab);
     }, 5000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, tab, loadStream]);
+  }, [access, tab, loadStream]);
 
   const handleBundle = useCallback(async () => {
-    if (!apiKey) return;
     setBundleBusy(true);
     setBundleMessage(null);
     const to = new Date();
     const from = new Date(to.getTime() - 24 * 3600 * 1000);
-    const result = await exportDiagnosticBundle(apiKey, {
+    const result = await exportDiagnosticBundle({
       from: from.toISOString(),
       to: to.toISOString(),
     });
@@ -310,12 +313,11 @@ export function AdminLogsDashboard() {
       setBundleMessage(accessErrorText(result.status));
     }
     setBundleBusy(false);
-  }, [apiKey]);
+  }, []);
 
   const handleCreateGrant = useCallback(async () => {
-    if (!apiKey) return;
     setGrantMessage(null);
-    const result = await createGrant(apiKey, {
+    const result = await createGrant({
       ticket: grantTicket,
       purpose: grantPurpose,
       subject_id: grantSubject,
@@ -330,30 +332,29 @@ export function AdminLogsDashboard() {
       setGrantPurpose("");
       setGrantSubject("");
       setGrantRun("");
-      void refreshGrants(apiKey);
+      void refreshGrants();
     } else {
       setGrantMessage(grantErrorText(result.status));
     }
-  }, [apiKey, grantTicket, grantPurpose, grantSubject, grantTenant, grantRun, grantScopes, grantTtl, refreshGrants]);
+  }, [grantTicket, grantPurpose, grantSubject, grantTenant, grantRun, grantScopes, grantTtl, refreshGrants]);
 
   const handleRevoke = useCallback(
     async (grantId: string) => {
-      if (!apiKey) return;
       setGrantMessage(null);
-      const result = await revokeGrant(apiKey, grantId, revokeReason);
+      const result = await revokeGrant(grantId, revokeReason);
       if (result.ok) {
         setGrantMessage("Грант отозван.");
         setRevokeReason("");
-        void refreshGrants(apiKey);
+        void refreshGrants();
       } else {
         setGrantMessage(grantErrorText(result.status));
       }
     },
-    [apiKey, revokeReason, refreshGrants],
+    [revokeReason, refreshGrants],
   );
 
-  // ── Гейт: ввод ключа ──────────────────────────────────────────────
-  if (!apiKey || !access) {
+  // ── Гейт: справка доступа (named-сессия, AUTH-07) ─────────────────
+  if (!access) {
     return (
       <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
@@ -361,31 +362,28 @@ export function AdminLogsDashboard() {
         </h2>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
           Журналы и поддержка (DOCLOG-7, §14.2): технические события, аудит
-          доступа, доставка и документы. Ключ живёт только в стейте вкладки
-          и не сохраняется.
+          доступа, доставка и документы. Доступ -- личный вход
+          администратора (named-сессия с MFA, AUTH-07); ключи в браузере
+          не вводятся и не хранятся.
         </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <Field label="API-ключ администратора">
-            <input
-              type="password"
-              className={inputClass}
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              autoComplete="off"
-            />
-          </Field>
-          <button
-            type="button"
-            onClick={handleOpen}
-            className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
-          >
-            Открыть журналы
-          </button>
-        </div>
-        {openError && (
-          <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
-            {openError}
+        {opening && (
+          <p role="status" className="mt-2 text-sm text-neutral-500">
+            Проверка доступа к журналам…
           </p>
+        )}
+        {openError && (
+          <>
+            <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+              {openError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void openAccess()}
+              className="mt-2 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:border-neutral-500 dark:border-neutral-600 dark:text-neutral-200"
+            >
+              Проверить снова
+            </button>
+          </>
         )}
       </div>
     );
@@ -549,7 +547,7 @@ export function AdminLogsDashboard() {
                   decision: "denied",
                 };
                 setFilters(preset);
-                if (apiKey) void loadStream("audit", apiKey, undefined, false, preset);
+                void loadStream("audit", undefined, false, preset);
               }}
               className="rounded border border-brand px-3 py-1.5 text-sm text-brand hover:bg-brand-light/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-bright"
             >
@@ -558,7 +556,7 @@ export function AdminLogsDashboard() {
           )}
           <button
             type="button"
-            onClick={() => apiKey && void loadStream(tab, apiKey)}
+            onClick={() => void loadStream(tab)}
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
           >
             Обновить
@@ -668,7 +666,7 @@ export function AdminLogsDashboard() {
         {activePage?.next_cursor && (
           <button
             type="button"
-            onClick={() => apiKey && void loadStream(tab, apiKey, activePage.next_cursor ?? undefined, true)}
+            onClick={() => void loadStream(tab, activePage.next_cursor ?? undefined, true)}
             className="mt-2 rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
           >
             Следующая страница
@@ -872,7 +870,7 @@ function mergePage(prev: AnyLogsPage | null, next: AnyLogsPage): AnyLogsPage {
 }
 
 function accessErrorText(status: number): string {
-  if (status === 401) return "Неверный API-ключ. Введите действующий ключ администратора.";
+  if (status === 401) return "Сессия не действительна или истекла. Войдите как администратор заново.";
   if (status === 403) return "Недостаточно прав: журналы доступны ADMIN-роли и грантам поддержки (§15).";
   if (status === 0) return "Сервис недоступен (сеть/offline). Повторите позже.";
   return `Ошибка ${status}: повторите позже или обратитесь к администратору.`;

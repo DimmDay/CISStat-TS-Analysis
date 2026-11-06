@@ -3,14 +3,16 @@
 // packages/ui/components/AdminProgressDashboard.tsx
 //
 // Admin-панель мониторинга «Прогресса» (Task PROGR-8, spec_progress.md
-// §10 + §9, §6.3: «AdminProgressDashboard.tsx (только Role.ADMIN)»).
+// §10 + §9, §6.3: «AdminProgressDashboard.tsx (только Role.ADMIN)»;
+// миграция AUTH-07 -- spec_auth_architecture.md строка 196).
 //
-// §10 дословно: admin-эндпоинты требуют API-ключ с ролью ADMIN, а не
-// cookie -- «админ заходит другим путём, чем обычный аналитик». Панель
-// поэтому НЕ часть cookie-оболочки аналитика: ключ вводится в панели
-// и живёт ТОЛЬКО в стейте компонента (перезагрузка страницы --
-// повторный ввод; ключ не попадает в localStorage/sessionStorage и не
-// уходит никуда, кроме заголовка X-API-Key админ-эндпоинтов).
+// AUTH-07: панель -- часть ОБЩЕЙ админки обеих оболочек; доступ --
+// named-сессия администратора (cookie через first-party /api-прокси,
+// AUTH-06), гейт страницы -- AdminGate. X-API-Key из браузера больше
+// НЕ отправляется: серверная гвард require_admin_role (auth.py)
+// принимает named-сессию с ролью ADMIN и верифицированным MFA
+// (mfa_verified_at), API-ключ сохранён как программный канал до AUTH-10.
+// Панель не вводит и не хранит никаких ключей.
 //
 // Состав §10 (агрегаты по корпусу, без содержимого датасетов):
 //   * запуски по статусам за период + всего;
@@ -25,9 +27,9 @@
 //
 // Пустой корпус -- честные нули с пояснением: старт этапа -- по
 // накоплении данных, кодом не гейтится (приёмка plan_progress.md).
-// 401/403 -- различимые подсказки (неверный ключ / не роль ADMIN).
+// 401/403 -- различимые подсказки (сессия истекла / роль не ADMIN).
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   fetchAdminOverview,
   fetchCaseBankCandidates,
@@ -82,17 +84,16 @@ const EMPTY_OVERVIEW: AdminOverviewInfo = {
 };
 
 export function AdminProgressDashboard() {
-  const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [overview, setOverview] = useState<AdminOverviewInfo | null>(null);
   const [caseBank, setCaseBank] = useState<CaseBankResponseInfo | null>(null);
 
-  const load = useCallback(async (key: string) => {
+  const load = useCallback(async () => {
     setLoading(true);
     setErrorStatus(null);
-    const overviewResult = await fetchAdminOverview(key);
-    const caseBankResult = await fetchCaseBankCandidates(key);
+    const overviewResult = await fetchAdminOverview();
+    const caseBankResult = await fetchCaseBankCandidates();
     if (overviewResult.ok && overviewResult.data) {
       setOverview(overviewResult.data);
       setCaseBank(caseBankResult.ok && caseBankResult.data ? caseBankResult.data : null);
@@ -104,9 +105,11 @@ export function AdminProgressDashboard() {
     setLoading(false);
   }, []);
 
-  const handleSubmit = () => {
-    if (apiKey.trim()) void load(apiKey.trim());
-  };
+  // Named-сессия администратора (AUTH-07): данные загружаются сразу
+  // при монтировании; гейт доступа -- AdminGate на странице.
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const isEmptyCorpus =
     overview !== null && overview.runs_total_all_time === 0;
@@ -122,54 +125,31 @@ export function AdminProgressDashboard() {
         </h2>
         <p className="mt-1 text-xs text-neutral-500">
           Агрегаты микросервиса «Прогресс» по корпусу запусков (§10) и
-          отбор кандидатов банка кейсов (§9). Доступ -- API-ключ с ролью
-          ADMIN (не cookie-сессия аналитика); ключ живёт только в этой
-          вкладке и не сохраняется.
+          отбор кандидатов банка кейсов (§9). Доступ -- личный вход
+          администратора (named-сессия с MFA, AUTH-07); никакие ключи
+          в браузере не вводятся и не хранятся.
         </p>
       </header>
 
-      <form
-        className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          handleSubmit();
-        }}
-      >
-        <label className="text-xs font-medium text-neutral-700" htmlFor="admin-api-key">
-          API-ключ администратора
-        </label>
-        <input
-          id="admin-api-key"
-          type="password"
-          aria-label="API-ключ администратора"
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-          className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm"
-          autoComplete="off"
-        />
-        <button
-          type="submit"
-          className="rounded bg-brand px-3 py-1.5 text-sm font-semibold text-white"
-        >
-          Загрузить
-        </button>
-        {overview !== null && (
+      {overview !== null && (
+        <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => void load(apiKey.trim())}
+            onClick={() => void load()}
             disabled={loading}
             className="text-xs text-neutral-500 hover:text-neutral-900 disabled:text-neutral-300"
           >
             Обновить
           </button>
-        )}
-      </form>
+        </div>
+      )}
 
       {errorStatus !== null && (
         <div role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
-          {errorStatus === 401 && "Неверный API-ключ. Проверьте значение ключа."}
+          {errorStatus === 401 &&
+            "Сессия не действительна или истекла. Войдите как администратор заново."}
           {errorStatus === 403 &&
-            "Требуется роль ADMIN: этот ключ не администратора платформы."}
+            "Доступ закрыт: панель требует роли «администратор платформы» (named-сессия с MFA)."}
           {errorStatus !== 401 &&
             errorStatus !== 403 &&
             "Сервис недоступен; попробуйте обновить позже."}

@@ -47,7 +47,7 @@ from apps.api.admin_logs import (
     query_telemetry,
     resolve_effective_log_access,
 )
-from apps.api.auth import get_current_principal
+from apps.api.auth import resolve_request_principal
 from apps.api.plans import AuthenticatedPrincipal
 from apps.api.security_audit import (
     ACTION_DOWNLOAD_REQUESTED,
@@ -138,10 +138,11 @@ def _resolve_access(principal: Any) -> EffectiveLogAccess:
 def _principal_or_401(
     x_api_key: Optional[str], request: Request,
 ) -> Any:
-    """401 на отсутствующий/неверный ключ (§15.1: вход -- действующий
-    API-key adapter; Header(...) FastAPI вернул бы 422 на отсутствие --
-    для админ-области честнее различимый 401)."""
-    return get_current_principal(request=request, x_api_key=x_api_key)
+    """401 на отсутствующую/неверную аутентификацию (§15.1: вход --
+    named-сессия (AUTH-07) либо действующий API-key adapter; Header(...)
+    FastAPI вернул бы 422 на отсутствие -- для админ-области честнее
+    различимый 401). Роль/scopes/grants решают выше (§15.1 сохранён)."""
+    return resolve_request_principal(request=request, x_api_key=x_api_key)
 
 
 @router.get("/access")

@@ -101,11 +101,8 @@ const DENIED_PAGE = {
   },
 };
 
-function typeKeyAndSubmit() {
-  const keyInput = screen.getByLabelText("API-ключ администратора");
-  fireEvent.change(keyInput, { target: { value: "d8-admin-key-1111" } });
-  fireEvent.click(screen.getByRole("button", { name: "Открыть журналы" }));
-}
+// Миграция AUTH-07: справка /v1/logs/access запрашивается при
+// монтировании -- отдельного «открытия по ключу» больше нет.
 
 // Начальная вкладка панели -- telemetry: при открытии она всегда
 // загружается (эффект первой загрузки); сюита целит вкладку audit.
@@ -136,7 +133,6 @@ describe("AdminLogsDashboard — admin-вью audit-причин (H29/UIH)", () 
     mocked.fetchTelemetryLogs.mockResolvedValue(EMPTY_TELEMETRY as never);
     mocked.fetchAuditLogs.mockResolvedValue(DENIED_PAGE as never);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     fireEvent.click(await screen.findByRole("tab", { name: "Аудит доступа" }));
 
     expect(await screen.findByText(/foreign_session/)).toBeInTheDocument();
@@ -148,7 +144,6 @@ describe("AdminLogsDashboard — admin-вью audit-причин (H29/UIH)", () 
     mocked.fetchTelemetryLogs.mockResolvedValue(EMPTY_TELEMETRY as never);
     mocked.fetchAuditLogs.mockResolvedValue(DENIED_PAGE as never);
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     fireEvent.click(await screen.findByRole("tab", { name: "Аудит доступа" }));
     await screen.findByText(/foreign_session/);
 
@@ -157,7 +152,6 @@ describe("AdminLogsDashboard — admin-вью audit-причин (H29/UIH)", () 
 
     await waitFor(() => {
       expect(mocked.fetchAuditLogs).toHaveBeenLastCalledWith(
-        expect.anything(),
         expect.objectContaining({
           action: "run_access_denied",
           decision: "denied",
@@ -178,7 +172,6 @@ describe("AdminLogsDashboard — admin-вью audit-причин (H29/UIH)", () 
       data: { records: [], next_cursor: null, meta: { stream: "telemetry", count: 0, limit: 50, retention_horizon_days: 30, effective_scope: "unrestricted" } },
     });
     render(<AdminLogsDashboard />);
-    typeKeyAndSubmit();
     await screen.findByRole("tab", { name: "Технические события" });
     expect(
       screen.queryByRole("button", { name: "Причины отказов доступа" }),

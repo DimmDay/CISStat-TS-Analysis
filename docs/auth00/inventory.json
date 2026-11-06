@@ -8,7 +8,7 @@
     "internal_operation": 8,
     "legacy_authority": 1,
     "legacy_widget": 250,
-    "page": 29,
+    "page": 34,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
@@ -135,7 +135,7 @@
       ]
     },
     "admin.key": {
-      "observed": "AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet.",
+      "observed": "AUTH-03 shared request context with AUTH-07 migration: named admin session (auth_session) requires platform_role=admin AND mfa_verified_at (403 admin_role_required/mfa_required otherwise); ADMIN API-key stays as programmatic channel until AUTH-10; missing/invalid credential 401, unavailable authority 503.",
       "target": "Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive.",
       "follow_up": [
         "AUTH-03",
@@ -237,7 +237,7 @@
       ]
     },
     "ui.admin": {
-      "observed": "Only embedded /admin/progress exists; dashboard uses entered API-key in tab memory.",
+      "observed": "AUTH-07: common admin UI in both shells (/admin, /admin/progress, /admin/logs; AdminGate + session-based dashboards, no browser API-key); named session checked via /api/v1/auth/me, final role/MFA enforcement server-side.",
       "target": "Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL.",
       "follow_up": [
         "AUTH-05",
@@ -426,10 +426,10 @@
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
-    "apps/api/auth.py": "8bc89291713eaf1e715a19b91886ab85c7eeb34a3ef8ba100a8730c75482571a",
+    "apps/api/auth.py": "52ad8ffdd0a80054cb6ae0b7ac6523e2561ea4a4d15db430b05370c5ffb2022b",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "88d13650d58678bde0c89dc5bf33a110964ca2d9efe20aa81c500b3d66e805dc",
+    "apps/api/authentication/context.py": "981a9794ba91b0cde8a4a3b0e428b689d6c957623489aaae056384e1f97907d7",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -552,7 +552,7 @@
     "apps/api/routers/documentation.py": "94196421ac179a38dfcfd2028f52934a8c6a22f9073aba87f0017020fdb7ad75",
     "apps/api/routers/forecasting_session.py": "4de8d79b7457fcc5d9fd48218eba6d23ecb1d63a21220b4a79b1c17bea5483bb",
     "apps/api/routers/internal.py": "67aa1feb36294ea0b3460259e385205bea49d08a861400383986afbaf63659c4",
-    "apps/api/routers/logs.py": "682bd4fff702987422458e1c523b0696d2c272be270415e15a499635170c5d1e",
+    "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
     "apps/api/routers/modeling_session.py": "c3f89dcf3a03887b80f2da1ae810eeb600151c3a8e8b6bd74e39407737b5f0dc",
     "apps/api/routers/models.py": "8a17f480883d7ec812015f944cecc659a037684362db1a02de95acbf0b3d55c8",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
@@ -579,7 +579,9 @@
     "apps/api/visual_exports.py": "fd67b39612f1a278643eed7a2985bbfda0e807734626b017ad39f68bbb7bf732",
     "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
-    "apps/embedded/app/admin/progress/page.tsx": "e9dbb28a7081db9edd9db26ba9f5026610bb305b0b771a6c0f024ca5232c5e24",
+    "apps/embedded/app/admin/logs/page.tsx": "ba67da783aae29b8c888d33c68192b59175006bc5a2dda12cc64ae7ec24d90ff",
+    "apps/embedded/app/admin/page.tsx": "f9627f14db2aa31acf6bd2aaf02efb1fb6cc7ee2a7a04990aa5e1f6073773375",
+    "apps/embedded/app/admin/progress/page.tsx": "a59f7174c6d00b67e1aaa83158d5f691cb7d97489e499acad04fbbb06449df6e",
     "apps/embedded/app/analytics/ts-analysis/page.tsx": "62a8b7a0cf8387f971d8e190b992967b1648bb4461a41a4a5e00b367258046ab",
     "apps/embedded/app/api/v1/[...path]/route.ts": "ae286b95fb2ba083f7350ccfdc92607475b5f5d37fe651b2fc55880d37b9e0b6",
     "apps/embedded/app/eda/page.tsx": "687716fd902cb38795e9459e76ab34daa61f369d9b1e9a76a83e18ccafafc831",
@@ -597,6 +599,9 @@
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
     "apps/print-renderer/src/renderWorker.ts": "7e49879e365c24cc8a5be61852cfa5fcc96fe5990414be04ea18cc1e4f204e85",
     "apps/print-renderer/src/server.ts": "88df929772d9aae24a15ef66d7e0bb3b5b6fece75840558f7fae040e957752e5",
+    "apps/standalone/app/admin/logs/page.tsx": "1922dc56b9ecfda317a39218cdc5311536cd88c17ad090d53307de9eb62d9709",
+    "apps/standalone/app/admin/page.tsx": "4ba64edca81d46fe03b022bc8d17f61c6c1dbd6fe217465a85005d8f84f9c39a",
+    "apps/standalone/app/admin/progress/page.tsx": "be94616f98ed6388b535a9464b1d033ddb94cbde7840c11e743ba26deb89b249",
     "apps/standalone/app/api/v1/[...path]/route.ts": "ae286b95fb2ba083f7350ccfdc92607475b5f5d37fe651b2fc55880d37b9e0b6",
     "apps/standalone/app/dashboard/ts-analysis/page.tsx": "2580a0bda03d89862a7f2165489690de49583c7fc71c22e62817ed8532df5786",
     "apps/standalone/app/documentation/page.tsx": "23f066f1ae26f7fa3b6020c4118d7a0bb8847ffb4e37c41481cc24b51acb05e0",
@@ -686,10 +691,10 @@
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
     "packages/ui/lib/access-contract.generated.ts": "c026bfdee8f94e7432f1c0fa7460eca8ad36f6ddd72cabccae4d4227ec419b53",
-    "packages/ui/lib/admin.ts": "913604bf37ecc5d15b27eb8eac99cfe09951828ae32e33f6304adc1347eb54fa",
-    "packages/ui/lib/adminLogs.ts": "6ac33b29dd79a5c65d4a5cd6308cf7efa47f96129967ed165a409ed3ef2ade35",
+    "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
+    "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
-    "packages/ui/lib/authClient.ts": "41705874b79519c92eb58ba4ad6768eae97e18172c502f50afce2ce1f5cc822a",
+    "packages/ui/lib/authClient.ts": "8d1a2b50a624b700e1072d3a8f97444ab636d8ccfac853a2f285ec00e7a78b10",
     "packages/ui/lib/browserTransport.ts": "17be543b78a93cc1b312d3db10c0209f12a320f9374fc5e389db0c1bf85bf2de",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
     "packages/ui/lib/forecasting.ts": "54f203734ab135ee518a0d1f126b80936a212b033cf5a21e119652a64da50edd",
@@ -1614,7 +1619,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 147,
+          "line": 148,
           "symbol": "get_log_access"
         },
         {
@@ -1649,7 +1654,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 233,
+          "line": 234,
           "symbol": "get_audit_logs"
         },
         {
@@ -1683,7 +1688,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 275,
+          "line": 276,
           "symbol": "get_delivery_logs"
         },
         {
@@ -1717,7 +1722,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 419,
+          "line": 420,
           "symbol": "list_grants"
         },
         {
@@ -1751,7 +1756,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 191,
+          "line": 192,
           "symbol": "get_telemetry_logs"
         },
         {
@@ -6200,7 +6205,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 319,
+          "line": 320,
           "symbol": "export_logs_bundle"
         },
         {
@@ -6235,7 +6240,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 435,
+          "line": 436,
           "symbol": "create_grant"
         },
         {
@@ -6270,7 +6275,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/logs.py",
-          "line": 480,
+          "line": 481,
           "symbol": "revoke_grant"
         },
         {
@@ -15780,6 +15785,56 @@
       "stage_namespace": "service"
     },
     {
+      "id": "page:embedded:/admin",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin",
+      "operation": "ui:embedded:/admin",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/embedded/app/admin/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    {
+      "id": "page:embedded:/admin/logs",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin/logs",
+      "operation": "ui:embedded:/admin/logs",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/embedded/app/admin/logs/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    {
       "id": "page:embedded:/admin/progress",
       "kind": "page",
       "method": "GET",
@@ -16078,6 +16133,81 @@
         "navigation"
       ],
       "canonical_operation": "ui:standalone:/",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    {
+      "id": "page:standalone:/admin",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin",
+      "operation": "ui:standalone:/admin",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/admin/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    {
+      "id": "page:standalone:/admin/logs",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin/logs",
+      "operation": "ui:standalone:/admin/logs",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/admin/logs/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    {
+      "id": "page:standalone:/admin/progress",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin/progress",
+      "operation": "ui:standalone:/admin/progress",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/admin/progress/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ui.admin",
+      "stage": "admin/progress",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/progress",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
     },

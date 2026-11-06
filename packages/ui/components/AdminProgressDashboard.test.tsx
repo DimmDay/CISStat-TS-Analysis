@@ -1,19 +1,21 @@
 // packages/ui/components/AdminProgressDashboard.test.tsx
 //
-// Тесты Admin-панели мониторинга «Прогресса» (Task PROGR-8,
-// spec_progress.md §10 + §9, §6.3: «AdminProgressDashboard.tsx
-// (только Role.ADMIN)»).
+// Тесты Admin-панели мониторинга «Прогресса» (Task PROGR-8 +
+// миграция AUTH-07, spec_auth_architecture.md строка 196).
 //
 // Ключевые контракты:
-//  * §10 дословно: админ заходит ДРУГИМ ПУТЁМ -- API-ключ с ролью
-//    ADMIN (заголовок X-API-Key), НЕ cookie-сессия аналитика;
-//    ключ вводится в панели, живёт только в стейте компонента.
+//  * AUTH-07: named ADMIN+MFA-сессия (cookie, first-party /api-прокси)
+//    управляет реальными API; X-API-Key из браузера больше НЕ
+//    отправляется (программный канал -- отдельная поверхность, AUTH-10);
+//    панель не вводит и не хранит никаких ключей.
+//  * Загрузка -- автоматически при монтировании (гейт доступа --
+//    AdminGate на странице; панель честно различает 401/403 от api).
 //  * Состав §10: запуски по статусам за период, время по стадиям,
 //    топ warning/error-узлов, частоты правил §7.1, частоты
 //    sanity-предупреждений §7.2 по правилу/узлу, предпочтения
 //    Прогнозирования (§9); отбор кандидатов банка кейсов (§9).
 //  * Пустой корпус -- честные нули («не гейтится кодом»), не ошибка.
-//  * 401/403 -- различимые сообщения (неверный ключ / не админ).
+//  * 401/403 -- различимые сообщения (сессия истекла / не роль ADMIN).
 
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -74,7 +76,9 @@ const CASE_BANK = {
 };
 
 function mockFetchByUrl(handlers: Record<string, { status: number; body: unknown }>) {
-  global.fetch = jest.fn((url: string) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  global.fetch = jest.fn((url: string, init?: RequestInit) => {
+    calls.push({ url, init });
     const matched = Object.keys(handlers).find((key) => url.includes(key));
     const handler = matched ? handlers[matched] : { status: 404, body: {} };
     return Promise.resolve({
@@ -83,46 +87,39 @@ function mockFetchByUrl(handlers: Record<string, { status: number; body: unknown
       json: () => Promise.resolve(handler.body),
     });
   }) as jest.Mock;
+  return calls;
 }
 
-function submitKey(key = "admin-key-000") {
-  fireEvent.change(screen.getByLabelText("API-ключ администратора"), {
-    target: { value: key },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Загрузить" }));
+function sentAuthHeaders(calls: Array<{ init?: RequestInit }>): string[] {
+  const names: string[] = [];
+  for (const call of calls) {
+    const headers = new Headers(call.init?.headers ?? undefined);
+    for (const name of ["x-api-key", "authorization"])
+      if (headers.has(name)) names.push(name);
+  }
+  return names;
 }
 
-describe("AdminProgressDashboard", () => {
+describe("AdminProgressDashboard (AUTH-07 session)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("запрос не уходит до ввода ключа (ключ -- в стейте компонента)", () => {
-    mockFetchByUrl({});
-    render(<AdminProgressDashboard />);
-    expect(global.fetch).not.toHaveBeenCalled();
-    expect(screen.getByText(/Admin-панель мониторинга/i)).toBeInTheDocument();
-  });
-
-  it("загружает обзор и банк кейсов с X-API-Key, НЕ cookie (§10: другой путь)", async () => {
-    mockFetchByUrl({
+  it("загрузка стартует при монтировании БЕЗ X-API-Key/Authorization (cookie-сессия)", async () => {
+    const calls = mockFetchByUrl({
       "/admin/overview": { status: 200, body: OVERVIEW },
       "/admin/case-bank/candidates": { status: 200, body: CASE_BANK },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        progressApiUrl("/admin/overview?days=30&top=10"),
-        expect.objectContaining({
-          headers: { "X-API-Key": "admin-key-000" },
-        }),
-      );
+      expect(calls.length).toBe(2);
     });
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(calls.map((c) => c.url)).toEqual([
+      progressApiUrl("/admin/overview?days=30&top=10"),
       progressApiUrl("/admin/case-bank/candidates"),
-      expect.objectContaining({ headers: { "X-API-Key": "admin-key-000" } }),
-    );
+    ]);
+    expect(sentAuthHeaders(calls)).toEqual([]);
+    expect(screen.getByText(/Admin-панель мониторинга/i)).toBeInTheDocument();
   });
 
   it("рендерит агрегаты §10: статусы, время по стадиям, топ узлов, частоты правил", async () => {
@@ -131,7 +128,6 @@ describe("AdminProgressDashboard", () => {
       "/admin/case-bank/candidates": { status: 200, body: CASE_BANK },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     // Запуски по статусам за период + all-time (метка runStatusLabel).
     await waitFor(() => {
       expect(screen.getByText("Завершён")).toBeInTheDocument();
@@ -155,7 +151,6 @@ describe("AdminProgressDashboard", () => {
       "/admin/case-bank/candidates": { status: 200, body: CASE_BANK },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
       expect(screen.getByText(/RUN-AB12CD34/)).toBeInTheDocument();
     });
@@ -188,33 +183,30 @@ describe("AdminProgressDashboard", () => {
       },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
       expect(screen.getByText(/Корпус пуст/i)).toBeInTheDocument();
     });
   });
 
-  it("401 -- различимое сообщение о неверном ключе", async () => {
+  it("401 -- различимое сообщение об истекшей сессии (войти заново)", async () => {
     mockFetchByUrl({
-      "/admin/overview": { status: 401, body: { detail: "Неверный API-ключ" } },
+      "/admin/overview": { status: 401, body: { detail: { code: "authentication_required" } } },
       "/admin/case-bank/candidates": { status: 401, body: {} },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/Неверный API-ключ/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(/сессия/i);
     });
   });
 
-  it("403 -- различимое сообщение о роли (не ADMIN)", async () => {
+  it("403 -- различимое сообщение о роли (не ADMIN: analyst/OWNER получают отказ)", async () => {
     mockFetchByUrl({
-      "/admin/overview": { status: 403, body: { detail: "Требуется роль ADMIN" } },
+      "/admin/overview": { status: 403, body: { detail: { code: "admin_role_required" } } },
       "/admin/case-bank/candidates": { status: 403, body: {} },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/Требуется роль ADMIN/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(/администратор платформы/i);
     });
   });
 
@@ -224,7 +216,6 @@ describe("AdminProgressDashboard", () => {
       "/admin/case-bank/candidates": { status: 200, body: CASE_BANK },
     });
     render(<AdminProgressDashboard />);
-    submitKey();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Обновить" })).toBeEnabled();
     });

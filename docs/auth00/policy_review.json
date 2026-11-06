@@ -119,7 +119,7 @@
       ]
     },
     "admin.key": {
-      "observed": "AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet.",
+      "observed": "AUTH-03 shared request context with AUTH-07 migration: named admin session (auth_session) requires platform_role=admin AND mfa_verified_at (403 admin_role_required/mfa_required otherwise); ADMIN API-key stays as programmatic channel until AUTH-10; missing/invalid credential 401, unavailable authority 503.",
       "target": "Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive.",
       "follow_up": [
         "AUTH-03",
@@ -221,7 +221,7 @@
       ]
     },
     "ui.admin": {
-      "observed": "Only embedded /admin/progress exists; dashboard uses entered API-key in tab memory.",
+      "observed": "AUTH-07: common admin UI in both shells (/admin, /admin/progress, /admin/logs; AdminGate + session-based dashboards, no browser API-key); named session checked via /api/v1/auth/me, final role/MFA enforcement server-side.",
       "target": "Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL.",
       "follow_up": [
         "AUTH-05",
@@ -6799,6 +6799,61 @@
       ],
       "canonical_operation": "ui:embedded:/login",
       "admission": "UI never substitutes API authority; local redirects only"
+    },
+    "page:standalone:/admin": {
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:standalone:/admin/progress": {
+      "policy": "ui.admin",
+      "stage": "admin/progress",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/progress",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:standalone:/admin/logs": {
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:embedded:/admin": {
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:embedded:/admin/logs": {
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
     }
   },
   "extra_surfaces": [

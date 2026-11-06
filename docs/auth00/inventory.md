@@ -16,7 +16,7 @@
 | internal_operation | 8 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
-| page | 29 |
+| page | 34 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
@@ -29,7 +29,7 @@
 
 | Policy | Observed | Target | Follow-up |
 |---|---|---|---|
-| admin.key | AUTH-03 shared request context, key-only ADMIN compatibility; missing/invalid key 401, unavailable authority 503; no browser MFA flow yet. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
+| admin.key | AUTH-03 shared request context with AUTH-07 migration: named admin session (auth_session) requires platform_role=admin AND mfa_verified_at (403 admin_role_required/mfa_required otherwise); ADMIN API-key stays as programmatic channel until AUTH-10; missing/invalid credential 401, unavailable authority 503. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | api.key | AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
 | api.model_key | AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
 | auth.entry | AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. | Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority. | AUTH-04, AUTH-05, AUTH-06, AUTH-19 |
@@ -52,7 +52,7 @@
 | run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
 | storage.internal | Internal file/object/DB operation; content hash/path/registry checks are not user authentication. | Reach only via authorized object service; trusted roots/keys, no direct filesystem mount or public object ACL. | AUTH-09, AUTH-11, AUTH-13, AUTH-20 |
 | task.alias | Four UI application hrefs; causes has live backend data, other task views do not imply ready compute. | Canonical application-stage gate including aliases; scientific EDA Granger/DOCLOG monitoring are distinct. | AUTH-01, AUTH-11 |
-| ui.admin | Only embedded /admin/progress exists; dashboard uses entered API-key in tab memory. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
+| ui.admin | AUTH-07: common admin UI in both shells (/admin, /admin/progress, /admin/logs; AdminGate + session-based dashboards, no browser API-key); named session checked via /api/v1/auth/me, final role/MFA enforcement server-side. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
 | ui.login | AUTH-06 shared personal login/MFA/recovery and safe generated me DTO; no token URL/storage, exact local return_to, top-level login for framed context. API authority mandatory. | Named admin pages and account lifecycle remain AUTH-07/08. | AUTH-07, AUTH-08 |
 | ui.page | Page component/navigation/redirect, no common personal AuthN gate; UI is not an authority. | UI handles auth/denial/account switch; backend independently enforces operation policy. | AUTH-01, AUTH-06, AUTH-11 |
 | worker.authority | In-process worker trusts queued durable work/admission; not a browser-authenticated request. | Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication. | AUTH-03, AUTH-12, AUTH-13, AUTH-16, AUTH-20 |
@@ -85,11 +85,11 @@
 | api:GET:/v1/internal/rules/templates | apps.api.routers.internal:get_rules_templates / scientific:validation | browser.internal / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:110 |
 | api:GET:/v1/knowledge/articles | apps.api.knowledge.router:get_articles / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:143 |
 | api:GET:/v1/knowledge/glossary | apps.api.knowledge.router:get_glossary / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:203 |
-| api:GET:/v1/logs/access | apps.api.routers.logs:get_log_access / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:147 |
-| api:GET:/v1/logs/audit | apps.api.routers.logs:get_audit_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:233 |
-| api:GET:/v1/logs/delivery | apps.api.routers.logs:get_delivery_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:275 |
-| api:GET:/v1/logs/grants | apps.api.routers.logs:list_grants / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:419 |
-| api:GET:/v1/logs/telemetry | apps.api.routers.logs:get_telemetry_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:191 |
+| api:GET:/v1/logs/access | apps.api.routers.logs:get_log_access / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:148 |
+| api:GET:/v1/logs/audit | apps.api.routers.logs:get_audit_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:234 |
+| api:GET:/v1/logs/delivery | apps.api.routers.logs:get_delivery_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:276 |
+| api:GET:/v1/logs/grants | apps.api.routers.logs:list_grants / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:420 |
+| api:GET:/v1/logs/telemetry | apps.api.routers.logs:get_telemetry_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:192 |
 | api:GET:/v1/progress/admin/case-bank/candidates | apps.api.routers.progress:get_case_bank_candidates / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2547 |
 | api:GET:/v1/progress/admin/overview | apps.api.routers.progress:get_admin_overview / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2499 |
 | api:GET:/v1/progress/runs/{run_id} | apps.api.routers.progress:get_run_detail / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1283 |
@@ -212,9 +212,9 @@
 | api:POST:/v1/internal/upload/db/load | apps.api.routers.upload_db:_register.load_db_dataset / scientific:upload | browser.internal / submitted data / research session / rule namespace | apps/api/routers/upload_db.py:185 |
 | api:POST:/v1/internal/upload/db/test | apps.api.routers.upload_db:_register.test_db_connection / scientific:upload | browser.internal / submitted data / research session / rule namespace | apps/api/routers/upload_db.py:149 |
 | api:POST:/v1/learning/track | apps.api.knowledge.router:build_learning_track / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:228 |
-| api:POST:/v1/logs/export | apps.api.routers.logs:export_logs_bundle / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:319 |
-| api:POST:/v1/logs/grants | apps.api.routers.logs:create_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:435 |
-| api:POST:/v1/logs/grants/{grant_id}/revoke | apps.api.routers.logs:revoke_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:480 |
+| api:POST:/v1/logs/export | apps.api.routers.logs:export_logs_bundle / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:320 |
+| api:POST:/v1/logs/grants | apps.api.routers.logs:create_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:436 |
+| api:POST:/v1/logs/grants/{grant_id}/revoke | apps.api.routers.logs:revoke_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:481 |
 | api:POST:/v1/models/backtest | apps.api.routers.models:run_backtest / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:623 |
 | api:POST:/v1/models/candidates | apps.api.routers.models:get_candidates / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:100 |
 | api:POST:/v1/models/diagnostics | apps.api.routers.diagnostics:run_diagnostics / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/diagnostics.py:204 |
@@ -588,6 +588,8 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | page:embedded:/ | ui:embedded:/ / service:platform | ui.page / UI navigation only | apps/embedded/app/page.tsx:1 |
+| page:embedded:/admin | ui:embedded:/admin / service:admin | ui.admin / UI navigation only | apps/embedded/app/admin/page.tsx:1 |
+| page:embedded:/admin/logs | ui:embedded:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/embedded/app/admin/logs/page.tsx:1 |
 | page:embedded:/admin/progress | ui:embedded:/admin/progress / service:admin/progress | ui.admin / UI navigation only | apps/embedded/app/admin/progress/page.tsx:1 |
 | page:embedded:/analytics/ts-analysis | ui:embedded:/analytics/ts-analysis / service:analytics/ts-analysis | ui.page / UI navigation only | apps/embedded/app/analytics/ts-analysis/page.tsx:1 |
 | page:embedded:/eda | ui:embedded:/eda / scientific:eda | ui.page / UI navigation only | apps/embedded/app/eda/page.tsx:1 |
@@ -600,6 +602,9 @@
 | page:embedded:/upload | ui:embedded:/upload / scientific:upload | ui.page / UI navigation only | apps/embedded/app/upload/page.tsx:1 |
 | page:embedded:/validation | ui:embedded:/validation / scientific:validation | ui.page / UI navigation only | apps/embedded/app/validation/page.tsx:1 |
 | page:standalone:/ | ui:standalone:/ / service:platform | ui.page / UI navigation only | apps/standalone/app/page.tsx:1 |
+| page:standalone:/admin | ui:standalone:/admin / service:admin | ui.admin / UI navigation only | apps/standalone/app/admin/page.tsx:1 |
+| page:standalone:/admin/logs | ui:standalone:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/standalone/app/admin/logs/page.tsx:1 |
+| page:standalone:/admin/progress | ui:standalone:/admin/progress / service:admin/progress | ui.admin / UI navigation only | apps/standalone/app/admin/progress/page.tsx:1 |
 | page:standalone:/dashboard/ts-analysis | ui:standalone:/dashboard/ts-analysis / service:dashboard/ts-analysis | ui.page / UI navigation only | apps/standalone/app/dashboard/ts-analysis/page.tsx:1 |
 | page:standalone:/documentation | ui:standalone:/documentation / service:documentation | ui.page / UI navigation only | apps/standalone/app/documentation/page.tsx:1 |
 | page:standalone:/eda | ui:standalone:/eda / scientific:eda | ui.page / UI navigation only | apps/standalone/app/eda/page.tsx:1 |
