@@ -11,9 +11,18 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 import os
-import resource
 import sys
 from typing import Any, Literal, Mapping, Sequence
+
+try:
+    # Unix-only stdlib (Linux/macOS): peak-RSS бюджет джоб. На Windows
+    # модуля нет: CI auth07.yml первым начал импортировать apps.api.main
+    # на windows-2025 и падал ModuleNotFoundError ещё на collection
+    # тестов (инцидент AUTH-07-HOTFIX2). Условный импорт -- контракт
+    # windows-паритета: приложение обязано импортироваться на любой ОС.
+    import resource  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover -- Windows-раннер
+    resource = None  # type: ignore[assignment]
 
 
 MODEL_JOB_CONTRACT_VERSION = "model-job-v1"
@@ -155,7 +164,17 @@ def deadline_expired(job: Mapping[str, Any]) -> bool:
 
 
 def process_memory_mb() -> float:
-    """Return peak RSS in MiB (macOS reports bytes, Linux reports KiB)."""
+    """Peak RSS в MiB; 0.0 на платформах без ``resource`` (Windows).
+
+    ru_maxrss: macOS сообщает байты, Linux -- KiB. На Windows модуль
+    resource недоступен, поэтому возвращаем 0.0: бюджетная проверка
+    памяти в modeling_session деградирует в no-op (0.0 всегда ниже
+    лимита) вместо падения импорта всего приложения. Целевая среда
+    исполнения джоб -- Linux (VM datasetup.ru); Windows -- только
+    CI-раннер контрактов.
+    """
+    if resource is None:
+        return 0.0
     peak = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     return peak / (1024.0 * 1024.0) if sys.platform == "darwin" else peak / 1024.0
 

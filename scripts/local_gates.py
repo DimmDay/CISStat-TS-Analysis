@@ -23,6 +23,12 @@
                                      (класс инцидента AUTH-07-HOTFIX1: файл
                                      на диске, но скрыт .gitignore из коммита)
   auth07  (auth07.yml,   push/PR)   named-session admin / MFA / logs contracts
+                                     + windows-паритет (windows_parity.py):
+                                     тот же pytest с блокировкой Unix-only
+                                     stdlib (resource и др.) -- ловит класс
+                                     инцидента AUTH-07-HOTFIX2 «локально
+                                     зелено, на windows-2025
+                                     ModuleNotFoundError на collection»
   rules   (test_rules.yml, push/PR) sanity-проверка валидационных правил
   session-postgres (test.yml + V2.3) live PG session backend: CAS/TTL/REST;
                                      нужен disposable CISSTAT_TEST_PG_DSN
@@ -72,10 +78,17 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
     # Паритет auth07.yml (ubuntu + windows): pytest tests/api — контракт
     # require_admin_role (роль+MFA), программный канал API-ключей,
     # logs-роутер; Postgres не нужен (фейки через app.state).
-    ("auth07", "auth07.yml contracts", "AUTH-07 admin named-session / MFA / logs contracts", [
+    # Шаг 2 (AUTH-07-HOTFIX2): windows-паритет — этот же тест под
+    # блокировкой Unix-only stdlib (import resource -> ImportError, как
+    # на windows-2025). Без шага класс инцидента «локально зелено,
+    # CI красно на Windows» (ModuleNotFoundError на collection) не
+    # ловится до пуша.
+    ("auth07", "auth07.yml contracts", "AUTH-07 admin named-session / MFA / logs + windows-паритет", [
         [sys.executable,"-m","pip","install","-r","apps/api/requirements.txt",
          "-r","requirements-dev.txt"],
         [sys.executable,"-m","pytest","tests/api/test_auth07_admin_sessions.py","-v"],
+        [sys.executable,"scripts/windows_parity.py",
+         "tests/api/test_auth07_admin_sessions.py","-v"],
     ]),
     ("auth05", "auth05.yml contracts", "AUTH-05 MFA / bootstrap / recovery contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth05/requirements.txt"],

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +15,38 @@ from apps.api.model_jobs import (
     job_signature,
     resource_policy_for,
 )
+
+_MODEL_JOBS_PATH = (
+    Path(__file__).resolve().parents[2] / "apps" / "api" / "model_jobs.py"
+)
+_MISSING = object()
+
+
+def _import_model_jobs_without_resource():
+    """Импортировать СВЕЖИЙ экземпляр model_jobs с недоступным resource.
+
+    sys.modules["resource"] = None заставляет ``import resource``
+    поднимать ImportError -- ровно то, что происходит на Windows, где
+    модуля нет вовсе (ModuleNotFoundError -- подкласс ImportError).
+    Глобальный apps.api.model_jobs не трогаем: экземпляр живёт под
+    временным именем и удаляется из sys.modules после проверки.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "model_jobs_windows_parity", _MODEL_JOBS_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    saved = sys.modules.get("resource", _MISSING)
+    sys.modules["resource"] = None
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if saved is _MISSING:
+            sys.modules.pop("resource", None)
+        else:
+            sys.modules["resource"] = saved
+    sys.modules.pop("model_jobs_windows_parity", None)
+    return module
 
 
 def test_dependency_groups_and_resource_policies_cover_future_model_families() -> None:
@@ -72,3 +107,50 @@ def test_gpu_runtime_uses_explicit_lazy_deploy_signal(monkeypatch) -> None:
     assert gpu_runtime_available() is False
     monkeypatch.setenv("CISSTAT_GPU_AVAILABLE", "true")
     assert gpu_runtime_available() is True
+
+
+# --- Windows-паритет (AUTH-07-HOTFIX2, 2026-11-06) -------------------------
+# CI auth07.yml первым начал импортировать apps.api.main на windows-2025:
+# top-level `import resource` в model_jobs.py падал ModuleNotFoundError
+# ещё на collection тестов, локальные же гейты (Linux) были зелёными.
+# Контракт: модуль job-контрактов обязан импортироваться на любой ОС.
+
+
+def test_model_jobs_imports_without_unix_resource_module() -> None:
+    module = _import_model_jobs_without_resource()
+
+    assert module.resource is None
+    assert module.MODEL_JOB_CONTRACT_VERSION == MODEL_JOB_CONTRACT_VERSION
+
+
+def test_process_memory_mb_degrades_to_zero_without_resource_module() -> None:
+    module = _import_model_jobs_without_resource()
+
+    # Честная деградация: без resource пик RSS неизмерим, бюджетная
+    # проверка памяти в modeling_session превращается в no-op (0.0 ниже
+    # любого лимита), а не в падение импорта всего приложения.
+    assert module.process_memory_mb() == 0.0
+
+
+def test_contract_surface_survives_windows_import(monkeypatch) -> None:
+    monkeypatch.delenv("CISSTAT_GPU_AVAILABLE", raising=False)
+    module = _import_model_jobs_without_resource()
+
+    assert set(module.dependency_group_manifest()) == {
+        "classical", "ml", "volatility", "neural",
+    }
+    assert module.gpu_runtime_available() is False
+    policy = module.resource_policy_for(
+        {"memory_class": "low", "gpu": "unsupported", "cpu": "required"},
+    )
+    assert policy["memory_limit_mb"] == 512
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="проверка только для Unix")
+def test_process_memory_mb_reports_peak_rss_on_unix() -> None:
+    # Обратная сторона контракта: на платформах С resource функция
+    # обязана измерять реальный пик RSS, а не возвращать заглушку.
+    from apps.api import model_jobs as live
+
+    assert live.resource is not None
+    assert live.process_memory_mb() > 0.0

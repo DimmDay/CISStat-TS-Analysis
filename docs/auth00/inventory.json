@@ -511,7 +511,7 @@
     "apps/api/model_impls/var.py": "926567fbb885293198774b7bb43f4a6e94cd205e5a314265f2e663b1affa94b6",
     "apps/api/model_impls/vecm.py": "17d4778e63dcfeda116b1ae0e2ceb2c7f4c003ddf2f7a11f1c7e5508d43a89ce",
     "apps/api/model_impls/xgboost.py": "04c56ac709031ddb40d97aa083b0e868561f571a0b708c309f74692f813c65c7",
-    "apps/api/model_jobs.py": "04d4b40f5a785c74c7abb9a302be684e7793d37a90af261e811d74a372094e28",
+    "apps/api/model_jobs.py": "c5d51bffae7fc8d1585c3a9b9449914b65bf174dcb11cf8866591033d9c48b2b",
     "apps/api/model_readiness.py": "a75e46728be0782288a54f58581872df018852cb4d03c2646a32d33d62ffe746",
     "apps/api/modeling_comparison.py": "f3bdb473e933c42d0be80a4178f9dd6466b7b917c050fad16cc420a90baae42f",
     "apps/api/modeling_selection.py": "0b7f74e6764b74b4857a4b8306454e64622e268e67e37deef8127aaf3488c760",
