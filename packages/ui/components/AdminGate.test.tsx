@@ -44,6 +44,20 @@ function session(
     auth_session_id: "sess-g1aaaaaaaaaaaaaa",
     auth_time: "2026-11-06T09:00:00+00:00",
     mfa_verified_at: "2026-11-06T09:00:01+00:00",
+    // AUTH-08: admin permission is independent of this starter entitlement.
+    account_plan: "starter" as const,
+    account_type: "multi" as const,
+    entitlement_version: 1,
+    plan_expires_at: null,
+    capabilities: {
+      registry_version: "authz-registry/1" as const, capabilities_version: 2 as const,
+      can_run_baseline_models: true, can_tune_models: false, can_train_custom_models: false,
+      restricted_stage_ids: [],
+      baseline_limits: { max_rows: 50000, max_folds: 5, max_horizon: 48, max_seasonal_period: 366, max_models: 3 },
+      can_train_models: false, can_use_api: true, can_save_history: true, can_upload_own_data: true,
+      max_dataset_rows: 50000, max_api_calls_per_month: 1000,
+      max_analyses_total: null, trial_days: null, watermark_exports: false,
+    },
   };
 }
 

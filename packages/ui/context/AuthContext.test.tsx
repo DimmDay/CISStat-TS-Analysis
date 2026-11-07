@@ -33,6 +33,25 @@ function Probe() {
     </>
   );
 }
+test("focus applies downgraded server caps under the same SID and invalidates old caches", async () => {
+  const raw = { registry_version: "authz-registry/1", capabilities_version: 2,
+    can_run_baseline_models: true, can_tune_models: true, can_train_custom_models: true,
+    restricted_stage_ids: [], baseline_limits: { max_rows: 50000, max_folds: 5, max_horizon: 48, max_seasonal_period: 366, max_models: 3 },
+    can_train_models: true, can_use_api: true, can_save_history: true, can_upload_own_data: true,
+    max_dataset_rows: null, max_api_calls_per_month: 50000, max_analyses_total: null, trial_days: null, watermark_exports: false };
+  function CapsProbe() {
+    const auth = useAuth();
+    return <output>{auth.session?.capabilities?.can_tune_models ? "tuning" : "baseline"}</output>;
+  }
+  me.mockResolvedValueOnce({ ...session, entitlement_version: 10, capabilities: raw });
+  const reload = jest.fn();
+  render(<AuthProvider onExternalSessionChange={reload}><CapsProbe /></AuthProvider>);
+  await screen.findByText("tuning");
+  me.mockResolvedValueOnce({ ...session, entitlement_version: 11, capabilities: { ...raw, can_tune_models: false } });
+  fireEvent(window, new Event("focus"));
+  await screen.findByText("baseline");
+  expect(reload).toHaveBeenCalledTimes(1);
+});
 beforeEach(() => jest.clearAllMocks());
 test("stale me cannot resurrect logged out identity", async () => {
   let resolve!: (v: unknown) => void;

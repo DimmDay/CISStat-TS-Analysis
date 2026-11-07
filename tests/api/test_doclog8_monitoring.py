@@ -1311,7 +1311,9 @@ class TestStaticCatalogs:
         # producer→artifact промоушена (акт C03, §9.3); 28 + 1 = 29.
         # AUTH-04 adds two mandatory session/password mutation actions;
         # AUTH-05 adds one mandatory MFA/bootstrap/recovery action.
-        assert len(security_audit.AUDIT_ACTIONS) == 32
+        # AUTH-08: two mandatory Account/membership lifecycle actions.
+        assert len(security_audit.AUDIT_ACTIONS) == 34
+        assert {"auth_account_changed", "auth_membership_changed"} <= security_audit.AUDIT_ACTIONS
         assert {"auth_session_changed","auth_password_changed","auth_mfa_changed"} <= security_audit.AUDIT_ACTIONS
 
     def test_routes_registered(self):

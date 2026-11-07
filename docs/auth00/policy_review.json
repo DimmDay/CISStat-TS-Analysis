@@ -1,5 +1,5 @@
 {
-  "baseline": "8e8f747b376c9b09ec7406996dec2374dc1fdf54",
+  "baseline": "76eb8dba1773442794b30eb5907ff0f837b01d5d",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -41,7 +41,7 @@
       ]
     },
     "api.model_key": {
-      "observed": "AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11.",
+      "observed": "AUTH-08 durable Account-effective capabilities from current RequestContext; platform role never upgrades a bound Account. Unbound ENV staff adapter remains until AUTH-10. Existing can_train_models guards retained; comprehensive operation/object/budget admission remains AUTH-09/11/12.",
       "target": "Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation.",
       "follow_up": [
         "AUTH-01",
@@ -299,7 +299,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback.",
+      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -315,7 +315,7 @@
       ]
     },
     "auth.entry": {
-      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA.",
+      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. AUTH-08 selects only active, unexpired Accounts and rechecks half-open Account expiry in session/MFA verification.",
       "target": "Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority.",
       "follow_up": [
         "AUTH-04",
@@ -331,7 +331,7 @@
       ]
     },
     "auth.session": {
-      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices.",
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade.",
       "target": "Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20.",
       "follow_up": [
         "AUTH-04",
@@ -366,7 +366,7 @@
       ]
     },
     "auth.mfa.session": {
-      "observed": "AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof.",
+      "observed": "AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade.",
       "target": "Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions.",
       "follow_up": [
         "AUTH-07"
@@ -6854,6 +6854,19 @@
       "canonical_operation": "ui:embedded:/admin/logs",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
+    },
+    "auth.account.operator": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "accounts.lifecycle.operator",
+      "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
     }
   },
   "extra_surfaces": [
@@ -7192,6 +7205,25 @@
           "symbol": "main"
         }
       ]
+    },
+    {
+      "id": "auth.account.operator",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "local interactive CLI",
+      "operation": "accounts.lifecycle.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth08/manage_account.py",
+          "line": 14,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/accounts/lifecycle.py",
+          "line": 82,
+          "symbol": "AccountLifecycle"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -7328,6 +7360,10 @@
     "apps/embedded/app/api/v1/[...path]/route.ts",
     "apps/embedded/app/login/page.tsx",
     "apps/embedded/app/layout.tsx",
-    "apps/embedded/next.config.mjs"
+    "apps/embedded/next.config.mjs",
+    "apps/api/accounts/entitlements.py",
+    "apps/api/accounts/lifecycle.py",
+    "docs/auth08/design.md",
+    "scripts/auth08/manage_account.py"
   ]
 }

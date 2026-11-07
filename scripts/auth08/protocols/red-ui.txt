@@ -1,0 +1,29 @@
+FAIL packages/ui/context/AuthContext.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/context/AuthContext.test.tsx[0m:[93m45[0m:[93m35[0m - [91merror[0m[90m TS2339: [0mProperty 'capabilities' does not exist on type 'AuthMeResponseDTO'.
+
+    [7m45[0m     return <output>{auth.session?.capabilities?.can_tune_models ? "tuning" : "baseline"}</output>;
+    [7m  [0m [91m                                  ~~~~~~~~~~~~[0m
+
+FAIL packages/ui/lib/authClient.test.ts
+  ● Test suite failed to run
+
+    [96mpackages/ui/lib/authClient.test.ts[0m:[93m43[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'capabilities' does not exist on type 'AuthMeResponseDTO'.
+
+    [7m43[0m   expect(session?.capabilities.can_tune_models).toBe(false);
+    [7m  [0m [91m                  ~~~~~~~~~~~~[0m
+    [96mpackages/ui/lib/authClient.test.ts[0m:[93m44[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'account_plan' does not exist on type 'AuthMeResponseDTO'.
+
+    [7m44[0m   expect(session?.account_plan).toBe("demo");
+    [7m  [0m [91m                  ~~~~~~~~~~~~[0m
+    [96mpackages/ui/lib/authClient.test.ts[0m:[93m45[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'entitlement_version' does not exist on type 'AuthMeResponseDTO'.
+
+    [7m45[0m   expect(session?.entitlement_version).toBe(9);
+    [7m  [0m [91m                  ~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 2 failed, 2 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        2.145 s
+Ran all test suites matching packages/ui/lib/authClient.test.ts|packages/ui/context/AuthContext.test.tsx.

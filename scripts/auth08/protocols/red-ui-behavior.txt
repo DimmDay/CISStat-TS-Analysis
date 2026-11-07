@@ -1,0 +1,56 @@
+FAIL packages/ui/context/AuthContext.test.tsx
+  ● focus applies downgraded server caps under the same SID and invalidates old caches
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      52 |   fireEvent(window, new Event("focus"));
+      53 |   await screen.findByText("baseline");
+    > 54 |   expect(reload).toHaveBeenCalledTimes(1);
+         |                  ^
+      55 | });
+      56 | beforeEach(() => jest.clearAllMocks());
+      57 | test("stale me cannot resurrect logged out identity", async () => {
+
+      at Object.<anonymous> (packages/ui/context/AuthContext.test.tsx:54:18)
+
+FAIL packages/ui/lib/authClient.test.ts
+  ● me projects safe fields; 503 is unavailable, only 401 is anonymous
+
+    TypeError: Cannot read properties of undefined (reading 'can_tune_models')
+
+      41 |   expect(await authMe()).not.toHaveProperty("token");
+      42 |   const session = await authMe();
+    > 43 |   expect(session?.capabilities.can_tune_models).toBe(false);
+         |                               ^
+      44 |   expect(session?.account_plan).toBe("demo");
+      45 |   expect(session?.entitlement_version).toBe(9);
+      46 |   (global.fetch as jest.Mock).mockResolvedValue({
+
+      at Object.<anonymous> (packages/ui/lib/authClient.test.ts:43:31)
+
+  ● me refuses missing or unsupported effective capabilities instead of role fallback
+
+    expect(received).rejects.toBeInstanceOf()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"account_id": "account", "auth_method": "auth_session", "auth_session_id": undefined, "auth_time": undefined, "membership_role": undefined, "mfa_verified_at": undefined, "role": "admin", "subject_id": "person", "tenant_id": undefined}
+
+      61 |       entitlement_version: 9, plan_expires_at: null, capabilities,
+      62 |     }) });
+    > 63 |     await expect(authMe()).rejects.toBeInstanceOf(AuthFailure);
+         |           ^
+      64 |   }
+      65 | });
+      66 |
+
+      at expect (node_modules/expect/build/index.js:2116:15)
+      at Object.<anonymous> (packages/ui/lib/authClient.test.ts:63:11)
+
+Test Suites: 2 failed, 2 total
+Tests:       3 failed, 4 passed, 7 total
+Snapshots:   0 total
+Time:        2.384 s
+Ran all test suites matching packages/ui/lib/authClient.test.ts|packages/ui/context/AuthContext.test.tsx.

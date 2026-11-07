@@ -1,0 +1,79 @@
+test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) ... 
+  test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) (role='admin') ... FAIL
+  test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) (role='internal_analyst') ... FAIL
+/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py:31: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back) ... FAIL
+test_downgrade_next_resolution_and_no_shared_mutable_caps (test_auth08_entitlements.AccountEntitlementTests.test_downgrade_next_resolution_and_no_shared_mutable_caps) ... ok
+test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed) ... ERROR
+test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission) ... ERROR
+test_legacy_adapter_is_explicitly_preserved (test_auth08_entitlements.AccountEntitlementTests.test_legacy_adapter_is_explicitly_preserved) ... ok
+test_no_dsn_runner_and_noninteractive_writer_fail (test_auth08_entitlements.AccountEntitlementTests.test_no_dsn_runner_and_noninteractive_writer_fail) ... ok
+test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner) ... ERROR
+test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets) ... ERROR
+
+======================================================================
+ERROR: test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 57, in test_exact_expiry_and_unknown_plan_fail_closed
+    from apps.api.accounts.entitlements import account_is_active
+ModuleNotFoundError: No module named 'apps.api.accounts.entitlements'
+
+======================================================================
+ERROR: test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 37, in test_internal_is_account_entitlement_not_admin_permission
+    self.assertTrue(ctx.as_principal().capabilities.can_tune_models)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/apps/api/plans.py", line 193, in capabilities
+    raise ValueError(f"У роли {self.role} нет плана, но capabilities запрошены без явного плана")
+ValueError: У роли Role.EXTERNAL_USER нет плана, но capabilities запрошены без явного плана
+
+======================================================================
+ERROR: test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 103, in test_patch_input_is_strict_and_cannot_edit_seats_or_owner
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 95, in test_real_me_returns_account_effective_dto_without_secrets
+    self.assertEqual(data["account_plan"], "starter")
+                     ~~~~^^^^^^^^^^^^^^^^
+KeyError: 'account_plan'
+
+======================================================================
+FAIL: test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) (role='admin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 30, in test_admin_and_staff_do_not_upgrade_account_plan
+    self.assertFalse(caps.can_tune_models)
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) (role='internal_analyst')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 30, in test_admin_and_staff_do_not_upgrade_account_plan
+    self.assertFalse(caps.can_tune_models)
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py", line 75, in test_bound_principal_without_effective_projection_never_role_falls_back
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.097s
+
+FAILED (failures=3, errors=4)

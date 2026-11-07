@@ -200,12 +200,15 @@ class MfaService(SessionService):
         ):
             auth_error(401, "invalid_credential")
         member = c.execute(
-            """SELECT 1 FROM auth_memberships m JOIN auth_accounts a USING(account_id)
+            """SELECT a.status,a.plan_expires_at FROM auth_memberships m JOIN auth_accounts a USING(account_id)
             WHERE m.subject_id=%s AND m.account_id=%s AND m.status='active' AND a.status='active' """,
             (row["subject_id"], row["account_id"]),
         ).fetchone()
         if not member:
             auth_error(401, "invalid_credential")
+        from apps.api.accounts.entitlements import account_is_active
+        if not account_is_active(member, now=now):
+            auth_error(403, "account_expired")
         if row["session_id"] is not None:
             if session_token is None:
                 auth_error(401, "invalid_credential")

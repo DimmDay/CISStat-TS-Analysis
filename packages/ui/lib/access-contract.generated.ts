@@ -19,6 +19,11 @@ export type AuthMeResponseDTO = {
   auth_session_id: string;
   auth_time: string;
   mfa_verified_at: string | null;
+  account_plan: "demo" | "starter" | "professional" | "enterprise" | "internal";
+  account_type: "mono" | "multi";
+  plan_expires_at: string | null;
+  entitlement_version: number;
+  capabilities: CapabilitiesDTO;
 };
 
 export type BaselineLimitsDTO = {

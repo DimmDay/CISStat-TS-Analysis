@@ -1,4 +1,5 @@
 import type { AuthMeResponseDTO } from "./access-contract.generated";
+import { capabilitiesFromDTO } from "./access-contract.generated";
 import { apiFetch, csrfProof, AUTH_PREFIX } from "./browserTransport";
 const RETURNS = new Set([
   "/",
@@ -42,6 +43,8 @@ const messages: Record<string, string> = {
   mfa_required:
     "Для этой учётной записи требуется настройка MFA через администратора.",
   password_policy: "Пароль не соответствует политике безопасности.",
+  account_expired: "Срок доступа аккаунта истёк. Обратитесь к владельцу или администратору.",
+  account_access_denied: "Доступ к аккаунту запрещён. Обратитесь к владельцу или администратору.",
 };
 export class AuthFailure extends Error {
   constructor(
@@ -76,9 +79,19 @@ export async function authMe(
     !data ||
     data.auth_method !== "auth_session" ||
     typeof data.subject_id !== "string" ||
-    typeof data.account_id !== "string"
+    typeof data.account_id !== "string" ||
+    !["demo", "starter", "professional", "enterprise", "internal"].includes(data.account_plan) ||
+    !["mono", "multi"].includes(data.account_type) ||
+    !Number.isSafeInteger(data.entitlement_version) || data.entitlement_version < 1 ||
+    !data.capabilities
   )
     throw new AuthFailure(503, "auth_unavailable");
+  try {
+    // Version guard plus generated projection. No role-to-plan inference.
+    capabilitiesFromDTO(data.capabilities);
+  } catch {
+    throw new AuthFailure(503, "auth_unavailable");
+  }
   const keys = [
     "subject_id",
     "account_id",
@@ -89,6 +102,11 @@ export async function authMe(
     "auth_session_id",
     "auth_time",
     "mfa_verified_at",
+    "account_plan",
+    "account_type",
+    "plan_expires_at",
+    "entitlement_version",
+    "capabilities",
   ] as const;
   return Object.fromEntries(keys.map((key) => [key, data[key]])) as AuthSession;
 }

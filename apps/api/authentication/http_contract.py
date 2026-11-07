@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
-from apps.api.plans import Role
+from apps.api.plans import Capabilities, Role
 
 
 class AuthMeResponse(BaseModel):
@@ -19,3 +19,8 @@ class AuthMeResponse(BaseModel):
     auth_session_id: UUID
     auth_time: AwareDatetime
     mfa_verified_at: AwareDatetime | None
+    account_plan: Literal["demo", "starter", "professional", "enterprise", "internal"]
+    account_type: Literal["mono", "multi"]
+    plan_expires_at: AwareDatetime | None
+    entitlement_version: int
+    capabilities: Capabilities

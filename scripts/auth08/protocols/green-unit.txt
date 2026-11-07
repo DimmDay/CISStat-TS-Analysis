@@ -1,0 +1,16 @@
+test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) ... /workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py:31: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back) ... ok
+test_downgrade_next_resolution_and_no_shared_mutable_caps (test_auth08_entitlements.AccountEntitlementTests.test_downgrade_next_resolution_and_no_shared_mutable_caps) ... ok
+test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed) ... ok
+test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission) ... ok
+test_legacy_adapter_is_explicitly_preserved (test_auth08_entitlements.AccountEntitlementTests.test_legacy_adapter_is_explicitly_preserved) ... ok
+test_no_dsn_runner_and_noninteractive_writer_fail (test_auth08_entitlements.AccountEntitlementTests.test_no_dsn_runner_and_noninteractive_writer_fail) ... ok
+test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner) ... ok
+test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.164s
+
+OK

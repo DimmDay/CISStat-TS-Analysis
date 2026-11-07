@@ -1,11 +1,11 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "8e8f747b376c9b09ec7406996dec2374dc1fdf54",
+  "baseline": "76eb8dba1773442794b30eb5907ff0f837b01d5d",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
     "api": 234,
     "framework": 8,
-    "internal_operation": 8,
+    "internal_operation": 9,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
@@ -57,7 +57,7 @@
       ]
     },
     "api.model_key": {
-      "observed": "AUTH-03 safe principal from unified RequestContext; legacy can_train_models still guards candidates/backtest/diagnostics. Account-aware operation admission remains AUTH-08/11.",
+      "observed": "AUTH-08 durable Account-effective capabilities from current RequestContext; platform role never upgrades a bound Account. Unbound ENV staff adapter remains until AUTH-10. Existing can_train_models guards retained; comprehensive operation/object/budget admission remains AUTH-09/11/12.",
       "target": "Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation.",
       "follow_up": [
         "AUTH-01",
@@ -315,7 +315,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02/04 PostgreSQL repositories, explicit 0019/0020 schemas; session/password/epoch/rate/audit intent UoW. Bounded outbox replay into existing audit sink, no memory auth fallback.",
+      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -331,7 +331,7 @@
       ]
     },
     "auth.entry": {
-      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA.",
+      "observed": "AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. AUTH-08 selects only active, unexpired Accounts and rechecks half-open Account expiry in session/MFA verification.",
       "target": "Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority.",
       "follow_up": [
         "AUTH-04",
@@ -347,7 +347,7 @@
       ]
     },
     "auth.session": {
-      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices.",
+      "observed": "AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade.",
       "target": "Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20.",
       "follow_up": [
         "AUTH-04",
@@ -382,7 +382,7 @@
       ]
     },
     "auth.mfa.session": {
-      "observed": "AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof.",
+      "observed": "AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade.",
       "target": "Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions.",
       "follow_up": [
         "AUTH-07"
@@ -421,21 +421,23 @@
     "apps/api/access_registry.py": "40c0254423d2bc73d9755357bf0f96d54f3fcccce35a22077f6e867e4aa3d6e3",
     "apps/api/access_registry.v1.json": "d97162de0ff4f0b65e303f301e1156fd36aca33aea41231d9c3ebdf85420dc39",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
+    "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
+    "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
     "apps/api/accounts/models.py": "4a3dfb8fdd135bd2b8bff0259a0baff396a262c2485d655c3be310a354587b4a",
-    "apps/api/accounts/repository.py": "53010414c2ee5f2aa73a944785928e924a724316cf461135c3d6a38732633de4",
+    "apps/api/accounts/repository.py": "b9eed272454419f0e1a969f3c3dd7cd6f3ed586efa2889de743217b81c621a76",
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
     "apps/api/auth.py": "52ad8ffdd0a80054cb6ae0b7ac6523e2561ea4a4d15db430b05370c5ffb2022b",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "981a9794ba91b0cde8a4a3b0e428b689d6c957623489aaae056384e1f97907d7",
+    "apps/api/authentication/context.py": "de1c2ec6ef2b6103131964e62e714a255c453e61adb42cefa52ff39f185d8ca5",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
-    "apps/api/authentication/http_contract.py": "add7fd4ae9134915393fd6a7f44f0f78a45586745ce706c128bc0209878ed3b9",
+    "apps/api/authentication/http_contract.py": "462f27a1239b7b9f1f48b2ecf5de82dd766fc37e065c7723655355d41ef0bd17",
     "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
-    "apps/api/authentication/mfa.py": "5f842fc32855ba15088d32d91f3252fa0005258079bf4eeeae425ad965a67f50",
+    "apps/api/authentication/mfa.py": "adc638cbb055d4752f5a24e375bf69f3fb33c4213c441f45f7b77bf2c14e70f0",
     "apps/api/authentication/mfa_crypto.py": "00fd2fb8800fc137a474e3d47caa48c3ef8a2d8cd28d1a6194c73bf8d3c260ba",
     "apps/api/authentication/mfa_migrations.py": "a384543fe964e8fc7eb370b3b5174cbca4a35fba336d518cc1e3cec60f068497",
     "apps/api/authentication/migrations.py": "80886b95e42417e5a259ea9989d709cc66e9159010562af24d45385c5e5c86ae",
@@ -443,7 +445,7 @@
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
-    "apps/api/authentication/sessions.py": "cdf6fa906bbd391d7875abbf749580a9d64e982b30c34824e307c987349a1799",
+    "apps/api/authentication/sessions.py": "3926e110974fb663f31415eb8369dbd895171cae2ddfa66d6170853fa3d470cd",
     "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
     "apps/api/backtesting.py": "d6199c4b7f88220dd13c54e0df5341961ccf14035eebc160c09c2e9f6315c841",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
@@ -525,7 +527,7 @@
     "apps/api/passport_checkpoints.py": "88a96b7f1976e1c1cbe1ac4dd63e56470bee9214365063c566fd613e6d79fd8a",
     "apps/api/passport_comparison.py": "eeaad8c295300370b6808d811dfff1937f6cda4cd8aadf75e1618ea257a8c425",
     "apps/api/passport_history.py": "3bc321f6de12fe9c98186c29851dd8462b882bc055e1551f4f90546bcdf4699d",
-    "apps/api/plans.py": "31f67617d128ca0a5abfb4ab6793021d46ea4d17fd71e55639a9942517372b3c",
+    "apps/api/plans.py": "ef91f6dbdbef412d4422432d5da85a24c22fa5086fdf4df26a0ec8cf1a23caea",
     "apps/api/png_renderer_client.py": "347e757a6b8e02329de2e23187f7af28d5c274cfc5a0db62b25c1a4efeccc9c4",
     "apps/api/preprocessing_decomposition.py": "1dfc0f30dc8c5949aa3dce7e64a14147b661fe3284ff9d68497479e6b3e43a37",
     "apps/api/preprocessing_feature_engineering.py": "f65918aa845b1e87b676cd5a9458dc9dc710a600aa4cb16dbf034c7efaee078b",
@@ -545,7 +547,7 @@
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
     "apps/api/research_runs.py": "358887a4296b7feca02f260f3f5ab86612837c8c7420ba1735d49232d06cc46a",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "apps/api/routers/authentication.py": "a1538ac6e8efdbed240cd5d0c075940134e6b6f71b7328474dcbefe0960d2a93",
+    "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
     "apps/api/routers/diagnostics.py": "a6a4061cace32805fef524041a420e72a3144793ad0b589310aa2cd35953f2b6",
     "apps/api/routers/diagnostics_internal.py": "928558b5b09a56ca2a9d815d64e9db9e0ddee35ebfd06250c97a349a570e44a0",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
@@ -562,7 +564,7 @@
     "apps/api/routers/tasks_session.py": "6478e9df66721b7fc66ed5ea7a2edc8e1694edfe6305f1ad0baf0e54c6bf2a46",
     "apps/api/routers/upload_db.py": "a0679c9e9220ce935a4b555327f8c25e444750b4190403f9f1432018aa0e7a4d",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
-    "apps/api/security_audit.py": "7622cbd07f12e138df6b1e2a81324dde00203f6c70a35e4904bf1d286c6d0811",
+    "apps/api/security_audit.py": "7460bf1ac5d1003e6ba2f5f8ead9ca6149a01d10c421eb19745f44397c0efe43",
     "apps/api/session_store.py": "d1d9bfead6fb7d88ad3fa3f11cb93c995c24d794f38dc2e935657b6dc570e148",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "ed37a44ba8f32cfc1bf798d65c5ec2603e2cd7944b166f01b7df19a3f29b718d",
@@ -627,12 +629,13 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "f13ae0514ca69f2ed7d15e400761058897428040c269bed1502c54d446ce5cfe",
+    "docs/auth01/openapi.json": "b6def0bd71fd5fc45cd6c175928156db290a4601274d61dd24942a786497f6b1",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
     "docs/auth05/design.md": "c57d9f99880fad324002a437fc00fea78ccf73db06db1d68222ee07659299684",
     "docs/auth06/design.md": "1906ee39876660f3f00bb422fb464f10b28713a30977e0dfb6259ea090f4ec59",
+    "docs/auth08/design.md": "00c6bc4a7ef1c4bf5452c8436ab24387d894485769eafabf694f794007ee4ad8",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -687,20 +690,20 @@
     "packages/ui/components/ValidationUniquenessOverview.tsx": "4817f17a5c26f2ef09076f3b9c5660554092e620a8c2bc1cebed6e7c68b381a5",
     "packages/ui/components/ValidationUniquenessPipeline.tsx": "d9852407d50e21528dffe551f227e55ceb4b6b11d56ad451c080a96cbdc19cee",
     "packages/ui/context/AppShellContext.tsx": "894aa5dc3394b2423dcc9de7a0e5efde4bec629a2b2038fa5f617ababed14dd8",
-    "packages/ui/context/AuthContext.tsx": "6af414d703547362db3c2d3c204aa17dbab2063b824b701e945cbd136b745694",
+    "packages/ui/context/AuthContext.tsx": "5967def62a7d478e420564f612ac9f74ac0449cf5ce89101772a25e815cc7347",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "c026bfdee8f94e7432f1c0fa7460eca8ad36f6ddd72cabccae4d4227ec419b53",
+    "packages/ui/lib/access-contract.generated.ts": "a6a3985552852a6ff2ba9ba54bc367819fb5713d38469ad286358a2f83819e7d",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
-    "packages/ui/lib/authClient.ts": "8d1a2b50a624b700e1072d3a8f97444ab636d8ccfac853a2f285ec00e7a78b10",
+    "packages/ui/lib/authClient.ts": "4bd29aaab7448ade3980037287c6192648f3675b0f8fc80234c8a1557c6b1b3e",
     "packages/ui/lib/browserTransport.ts": "17be543b78a93cc1b312d3db10c0209f12a320f9374fc5e389db0c1bf85bf2de",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
     "packages/ui/lib/forecasting.ts": "54f203734ab135ee518a0d1f126b80936a212b033cf5a21e119652a64da50edd",
     "packages/ui/lib/mentor.ts": "be9e0e4d85bc089eaa164d3f3a240cef804e603f2646f598f42d2bbb16b8eff5",
     "packages/ui/lib/monitoring.ts": "177e44ab9147054e4f25489ac5f85864d09c327d45c93bd75056282289ab8f6f",
-    "packages/ui/lib/plans.ts": "732fd6cff623d91b53d784d78c33e0b46cc53b8381c223b438d7e937c93acd94",
+    "packages/ui/lib/plans.ts": "b4f400ac01e99ae323c14f9292d513b41677fa3853d6c5dd05ebd3496b579587",
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
@@ -710,6 +713,7 @@
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
     "scripts/auth02/rollback_0019.sql": "3bd9ec18f1fdea3e28c7d5b12437b9d0aeb2d7bf7a9f271dc6593bb4fbdecdcd",
     "scripts/auth05/bootstrap.py": "be75f9ef612067420d898ec5233903bdf626402a2b7274f95bcf5447d68ecbe6",
+    "scripts/auth08/manage_account.py": "cc3cb9374f67f3c066974e7e984f9d81384f60b91fc5afdb19bf92208e24b0ab",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -924,7 +928,8 @@
       ],
       "dependencies": [],
       "direct_guard_mentions": [
-        "_session"
+        "_session",
+        "ctx.as_principal"
       ],
       "id": "api:GET:/v1/auth/me",
       "discovery": "automatic",
@@ -947,7 +952,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 214,
+          "line": 220,
           "symbol": "sessions"
         },
         {
@@ -4916,7 +4921,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 222,
+          "line": 228,
           "symbol": "logout"
         },
         {
@@ -4950,7 +4955,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 280,
+          "line": 286,
           "symbol": "mfa_enroll"
         },
         {
@@ -4981,7 +4986,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 325,
+          "line": 331,
           "symbol": "mfa_replace"
         },
         {
@@ -5016,7 +5021,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 293,
+          "line": 299,
           "symbol": "mfa_verify"
         },
         {
@@ -5051,7 +5056,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 248,
+          "line": 254,
           "symbol": "change_password"
         },
         {
@@ -5086,7 +5091,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 338,
+          "line": 344,
           "symbol": "recovery"
         },
         {
@@ -5118,7 +5123,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 350,
+          "line": 356,
           "symbol": "recovery_rotate"
         },
         {
@@ -5152,7 +5157,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 229,
+          "line": 235,
           "symbol": "revoke_all"
         },
         {
@@ -5187,7 +5192,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 238,
+          "line": 244,
           "symbol": "revoke"
         },
         {
@@ -5221,7 +5226,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 311,
+          "line": 317,
           "symbol": "step_up"
         },
         {
@@ -9287,6 +9292,37 @@
       ],
       "canonical_operation": "public.asset",
       "admission": "explicit public asset allowlist"
+    },
+    {
+      "id": "auth.account.operator",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "local interactive CLI",
+      "operation": "accounts.lifecycle.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth08/manage_account.py",
+          "line": 14,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/accounts/lifecycle.py",
+          "line": 82,
+          "symbol": "AccountLifecycle"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "accounts.lifecycle.operator",
+      "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
     },
     {
       "id": "auth.audit.publish",

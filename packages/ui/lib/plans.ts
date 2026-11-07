@@ -8,7 +8,8 @@ export { ACCESS_REGISTRY, PLAN_DEFINITIONS, REGISTRY_VERSION, capabilitiesFromDT
 export type { PlanName, Role, CapabilitiesDTO, OperationId } from "./access-contract.generated";
 export type Capabilities = CapabilitiesUX;
 
-/** Legacy UX adapter. Account-effective capabilities come from AUTH-08/me.
+/** Legacy UX adapter for unbound keys/catalog previews only.
+ * Named sessions use session.capabilities from AUTH-08/me through capabilitiesFromDTO.
  * Never use the role argument to authorize admin, object or billing access.
  */
 export function getCapabilities(role: Role, plan: PlanName | null): Capabilities {

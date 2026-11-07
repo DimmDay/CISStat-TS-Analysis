@@ -1,0 +1,10 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_closed_account_not_selected (test_auth06_transport.AccountSelectionTests.test_closed_account_not_selected) ... ok
+test_only_own_accounts_offered_without_session (test_auth06_transport.AccountSelectionTests.test_only_own_accounts_offered_without_session) ... ok
+test_single_account_auto_selected (test_auth06_transport.AccountSelectionTests.test_single_account_auto_selected) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.054s
+
+OK
+AUTH-06 two-origin HTTPS -> shared handler -> actual auth API -> PostgreSQL PASS; not Next/browser certification

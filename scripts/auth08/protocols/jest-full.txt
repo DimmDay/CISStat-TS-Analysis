@@ -1,0 +1,67 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:ci
+> jest --ci --maxWorkers=2 --json --outputFile=jest-results.json --maxWorkers=1
+
+FAIL packages/ui/components/AdminGate.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m60[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m60[0m     mocked.authMe.mockResolvedValue(session("admin"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m85[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m85[0m     mocked.authMe.mockResolvedValue(session("internal_analyst"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m97[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m97[0m     mocked.authMe.mockResolvedValue(session("external_user", "owner"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m112[0m:[93m30[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m112[0m       .mockResolvedValueOnce(session("admin"));
+    [7m   [0m [91m                             ~~~~~~~~~~~~~~~~[0m
+
+
+Summary of all failing tests
+FAIL packages/ui/components/AdminGate.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m60[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m60[0m     mocked.authMe.mockResolvedValue(session("admin"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m85[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m85[0m     mocked.authMe.mockResolvedValue(session("internal_analyst"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m97[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m97[0m     mocked.authMe.mockResolvedValue(session("external_user", "owner"));
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/AdminGate.test.tsx[0m:[93m112[0m:[93m30[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is not assignable to parameter of type 'AuthMeResponseDTO | Promise<AuthMeResponseDTO>'.
+      Type '{ subject_id: string; account_id: string; tenant_id: string; membership_role: "owner" | "member"; role: "admin" | "internal_analyst" | "external_user"; auth_method: "auth_session"; auth_session_id: string; auth_time: string; mfa_verified_at: string; }' is missing the following properties from type 'AuthMeResponseDTO': account_plan, account_type, plan_expires_at, entitlement_version, capabilities
+
+    [7m112[0m       .mockResolvedValueOnce(session("admin"));
+    [7m   [0m [91m                             ~~~~~~~~~~~~~~~~[0m
+
+
+Test Suites: 1 failed, 1 skipped, 251 passed, 252 of 253 total
+Tests:       2 skipped, 2825 passed, 2827 total
+Snapshots:   0 total
+Time:        98.14 s
+Ran all test suites.
+Test results written to: jest-results.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

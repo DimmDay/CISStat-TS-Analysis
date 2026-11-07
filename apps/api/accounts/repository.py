@@ -2,6 +2,8 @@ from uuid import uuid4
 from .models import Account, Membership
 from apps.api.authentication.errors import RecordNotFound, VersionConflict
 
+UNSET = object()
+
 
 class AccountRepository:
     def __init__(self, connection):
@@ -69,17 +71,20 @@ class AccountRepository:
         account_type=None,
         plan=None,
         status=None,
-        seats=None
+        seats=None,
+        plan_expires_at=UNSET,
     ):
         current = self._lock(account_id, expected_version)
         row = self.connection.execute(
             """UPDATE auth_accounts SET account_type=%s,plan=%s,status=%s,seats=%s,
-            entitlement_version=entitlement_version+1,updated_at=now() WHERE account_id=%s RETURNING *""",
+            plan_expires_at=%s,entitlement_version=entitlement_version+1,
+            updated_at=now() WHERE account_id=%s RETURNING *""",
             (
                 account_type if account_type is not None else current["account_type"],
                 plan if plan is not None else current["plan"],
                 status if status is not None else current["status"],
                 seats if seats is not None else current["seats"],
+                current["plan_expires_at"] if plan_expires_at is UNSET else plan_expires_at,
                 account_id,
             ),
         ).fetchone()

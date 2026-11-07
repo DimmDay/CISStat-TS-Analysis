@@ -107,8 +107,12 @@ ACTION_ARTIFACT_PROMOTION_FAILED = "artifact_promotion_failed"
 ACTION_AUTH_SESSION_CHANGED = "auth_session_changed"
 ACTION_AUTH_PASSWORD_CHANGED = "auth_password_changed"
 ACTION_AUTH_MFA_CHANGED = "auth_mfa_changed"
+ACTION_AUTH_ACCOUNT_CHANGED = "auth_account_changed"
+ACTION_AUTH_MEMBERSHIP_CHANGED = "auth_membership_changed"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
+    ACTION_AUTH_ACCOUNT_CHANGED,
+    ACTION_AUTH_MEMBERSHIP_CHANGED,
     ACTION_AUTH_SESSION_CHANGED,
     ACTION_AUTH_PASSWORD_CHANGED,
     ACTION_AUTH_MFA_CHANGED,
@@ -146,6 +150,8 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
 # Классы обязательности: mandatory -- fail-closed (AC11: publication/
 # approval/выдача защищённых данных), standard -- durable best-effort.
 AUDIT_REQUIREMENTS: dict[str, str] = {
+    ACTION_AUTH_ACCOUNT_CHANGED: "mandatory",
+    ACTION_AUTH_MEMBERSHIP_CHANGED: "mandatory",
     ACTION_AUTH_SESSION_CHANGED: "mandatory",
     ACTION_AUTH_PASSWORD_CHANGED: "mandatory",
     ACTION_AUTH_MFA_CHANGED: "mandatory",

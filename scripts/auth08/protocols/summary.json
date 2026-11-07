@@ -1,0 +1,47 @@
+{
+  "base": "76eb8dba1773442794b30eb5907ff0f837b01d5d",
+  "account_unit_tests": 10,
+  "native_postgres": "16.2",
+  "account_sql_http_fault_tests": 24,
+  "native_auth_regression_tests": 117,
+  "jest": {
+    "numPassedTests": 2831,
+    "numFailedTests": 0,
+    "numPendingTests": 2,
+    "numPassedTestSuites": 252,
+    "numPendingTestSuites": 1
+  },
+  "production_next_builds": {
+    "embedded": "PASS",
+    "standalone": "PASS"
+  },
+  "typecheck_both": "PASS",
+  "renderer_build": "PASS",
+  "routes": {
+    "http": 234,
+    "pages": 34,
+    "registry_bindings": 238,
+    "inventory_entries": 565,
+    "new_http": [],
+    "new_manual_boundary": [
+      "auth.account.operator"
+    ],
+    "head_discovery_parity": 540
+  },
+  "targeted_api_regression": {
+    "target_passed": 157,
+    "baseline_passed": 157,
+    "same_failures": [
+      "test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present",
+      "test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered"
+    ]
+  },
+  "not_executed_here": [
+    "remote CI",
+    "native PostgreSQL 18",
+    "native Windows 2025",
+    "Docker image build",
+    "production VM install",
+    "full scientific pytest certification"
+  ]
+}

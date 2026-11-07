@@ -1,0 +1,607 @@
+I001 [*] Import block is un-sorted or un-formatted
+ --> apps/api/accounts/entitlements.py:2:1
+  |
+1 |   """AUTH-08 Account policy. No role, browser clock or cached cookie plan."""
+2 | / from datetime import datetime, timezone
+3 | | from collections.abc import Mapping
+4 | |
+5 | | from apps.api.plans import INTERNAL_CAPABILITIES, PLAN_DEFINITIONS, PlanName
+  | |____________________________________________________________________________^
+help: Organize imports
+  |
+1 | """AUTH-08 Account policy. No role, browser clock or cached cookie plan."""
+2 + from collections.abc import Mapping
+3 | from datetime import datetime, timezone
+  - from collections.abc import Mapping
+4 |
+  |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> apps/api/accounts/entitlements.py:10:52
+   |
+ 8 | def account_is_active(account, *, now=None):
+ 9 |     """Half-open lifetime; missing/malformed persisted attributes fail closed."""
+10 |     now = now if now is not None else datetime.now(timezone.utc)
+   |                                                    ^^^^^^^^^^^^
+11 |     if now.tzinfo is None:
+12 |         raise ValueError("aware account clock required")
+   |
+help: Convert to `datetime.UTC` alias
+   |
+1  | """AUTH-08 Account policy. No role, browser clock or cached cookie plan."""
+   - from datetime import datetime, timezone
+2  + from datetime import datetime, timezone, UTC
+3  | from collections.abc import Mapping
+--------------------------------------------------------------------------------
+9  |     """Half-open lifetime; missing/malformed persisted attributes fail closed."""
+   -     now = now if now is not None else datetime.now(timezone.utc)
+10 +     now = now if now is not None else datetime.now(UTC)
+11 |     if now.tzinfo is None:
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> apps/api/accounts/lifecycle.py:7:1
+   |
+ 5 |   All state, scoped invalidation and audit intent commit or roll back together.
+ 6 |   """
+ 7 | / from datetime import datetime, timezone
+ 8 | | import json
+ 9 | | from uuid import UUID
+10 | |
+11 | | from pydantic import AwareDatetime, BaseModel, ConfigDict, model_validator
+12 | | from typing import Literal
+13 | |
+14 | | from apps.api.authentication.errors import RecordNotFound, RepositoryConflict
+15 | | from apps.api.authentication.mfa_migrations import check_schema
+16 | | from apps.api.authentication.storage import PostgresAccessStore
+17 | | from .entitlements import account_is_active
+18 | | from .models import Account
+   | |___________________________^
+help: Organize imports
+   |
+6  | """
+7  + import json
+8  | from datetime import datetime, timezone
+   - import json
+9  + from typing import Literal
+10 | from uuid import UUID
+11 |
+12 | from pydantic import AwareDatetime, BaseModel, ConfigDict, model_validator
+   - from typing import Literal
+13 |
+14 | from apps.api.authentication.errors import RecordNotFound, RepositoryConflict
+15 | from apps.api.authentication.mfa_migrations import check_schema
+16 | from apps.api.authentication.storage import PostgresAccessStore
+17 +
+18 | from .entitlements import account_is_active
+   |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> apps/api/accounts/lifecycle.py:77:33
+   |
+75 |         if value.tzinfo is None:
+76 |             raise ValueError("aware account clock required")
+77 |         return value.astimezone(timezone.utc)
+   |                                 ^^^^^^^^^^^^
+78 |
+79 |     @staticmethod
+   |
+help: Convert to `datetime.UTC` alias
+   |
+6  | """
+   - from datetime import datetime, timezone
+7  + from datetime import datetime, timezone, UTC
+8  | import json
+--------------------------------------------------------------------------------
+76 |             raise ValueError("aware account clock required")
+   -         return value.astimezone(timezone.utc)
+77 +         return value.astimezone(UTC)
+78 |
+   |
+
+TRY004 Prefer `TypeError` exception for invalid type
+   --> apps/api/accounts/lifecycle.py:101:13
+    |
+ 99 |         account_id = self._validate(account_id, expected_version, reason)
+100 |         if not isinstance(change, AccountChange):
+101 |             raise ValueError("validated AccountChange required")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+102 |         # Revalidate even a model_construct() object at the trusted boundary.
+103 |         patch = change.model_dump(exclude_unset=True)
+    |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth08/manage_account.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Trusted local operator CLI. Never mounted in HTTP; DSN comes from environment."""
+3 | import argparse
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> scripts/auth08/manage_account.py:3:1
+  |
+1 |   #!/usr/bin/env python3
+2 |   """Trusted local operator CLI. Never mounted in HTTP; DSN comes from environment."""
+3 | / import argparse
+4 | | import json
+5 | | from pathlib import Path
+6 | | import sys
+7 | | from uuid import UUID
+  | |_____________________^
+8 |
+9 |   ROOT = Path(__file__).resolve().parents[2]
+  |
+help: Organize imports
+  |
+4 | import json
+5 + import sys
+6 | from pathlib import Path
+  - import sys
+7 | from uuid import UUID
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> scripts/auth08/manage_account.py:29:9
+   |
+27 |               parser.error("--expected-version and --reason required")
+28 |       try:
+29 | /         from apps.api.authentication.storage import PostgresAccessStore
+30 | |         from apps.api.accounts.lifecycle import AccountLifecycle, AccountChange
+   | |_______________________________________________________________________________^
+31 |           store = PostgresAccessStore.from_env()
+32 |           if args.operation == "show":
+   |
+help: Organize imports
+   |
+28 |     try:
+29 +         from apps.api.accounts.lifecycle import AccountChange, AccountLifecycle
+30 |         from apps.api.authentication.storage import PostgresAccessStore
+   -         from apps.api.accounts.lifecycle import AccountLifecycle, AccountChange
+31 |         store = PostgresAccessStore.from_env()
+   |
+
+C408 Unnecessary `dict()` call (rewrite as a literal)
+  --> scripts/auth08/manage_account.py:61:22
+   |
+59 |                 return 2
+60 |             service = AccountLifecycle(store=store)
+61 |             common = dict(expected_version=args.expected_version, reason=args.reason)
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+62 |             result = (service.change(args.account_id, change=change, **common)
+63 |                       if args.operation == "apply" else service.membership(
+   |
+help: Rewrite as a literal
+   |
+60 |             service = AccountLifecycle(store=store)
+   -             common = dict(expected_version=args.expected_version, reason=args.reason)
+61 +             common = {"expected_version": args.expected_version, "reason": args.reason}
+62 |             result = (service.change(args.account_id, change=change, **common)
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+BLE001 Do not catch blind exception: `Exception`
+  --> scripts/auth08/manage_account.py:68:12
+   |
+66 |         print(json.dumps(result, ensure_ascii=False, indent=2))
+67 |         return 0
+68 |     except Exception as exc:
+   |            ^^^^^^^^^
+69 |         from apps.api.authentication.errors import (VersionConflict, RepositoryConflict,
+70 |             RecordNotFound, AuthStoreUnavailable, AuthSchemaNotReady)
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> scripts/auth08/manage_account.py:69:9
+   |
+67 |           return 0
+68 |       except Exception as exc:
+69 | /         from apps.api.authentication.errors import (VersionConflict, RepositoryConflict,
+70 | |             RecordNotFound, AuthStoreUnavailable, AuthSchemaNotReady)
+   | |_____________________________________________________________________^
+71 |           code = {VersionConflict: "auth_version_conflict", RepositoryConflict: "account_constraint_violation",
+72 |                   RecordNotFound: "account_not_found", AuthStoreUnavailable: "auth_store_unavailable",
+   |
+help: Organize imports
+   |
+68 |     except Exception as exc:
+   -         from apps.api.authentication.errors import (VersionConflict, RepositoryConflict,
+   -             RecordNotFound, AuthStoreUnavailable, AuthSchemaNotReady)
+69 +         from apps.api.authentication.errors import (
+70 +             AuthSchemaNotReady,
+71 +             AuthStoreUnavailable,
+72 +             RecordNotFound,
+73 +             RepositoryConflict,
+74 +             VersionConflict,
+75 +         )
+76 |         code = {VersionConflict: "auth_version_conflict", RepositoryConflict: "account_constraint_violation",
+   |
+
+EXE001 Shebang is present but file is not executable
+ --> scripts/auth08/verify_postgres.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Mandatory native PostgreSQL gate: missing DSN or skips is not a PASS."""
+3 | import os
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> scripts/auth08/verify_postgres.py:3:1
+  |
+1 |   #!/usr/bin/env python3
+2 |   """Mandatory native PostgreSQL gate: missing DSN or skips is not a PASS."""
+3 | / import os
+4 | | from pathlib import Path
+5 | | import sys
+6 | | import unittest
+  | |_______________^
+7 |
+8 |   ROOT = Path(__file__).resolve().parents[2]
+  |
+help: Organize imports
+  |
+3 | import os
+  - from pathlib import Path
+4 | import sys
+5 | import unittest
+6 + from pathlib import Path
+7 |
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/integration/test_auth08_accounts.py:2:1
+   |
+ 1 |   """AUTH-08 live PostgreSQL: lifecycle/CAS/audit/HTTP; no memory authority."""
+ 2 | / from concurrent.futures import ThreadPoolExecutor
+ 3 | | from datetime import timedelta
+ 4 | | import os
+ 5 | | import unittest
+ 6 | | from unittest.mock import patch
+ 7 | |
+ 8 | | from fastapi import HTTPException
+ 9 | | from tests.integration import test_auth04_sessions as previous
+   | |______________________________________________________________^
+10 |   ORIGIN = previous.ORIGIN
+11 |   from apps.api.authentication.context import resolve_verified_context
+   |
+help: Organize imports
+   |
+1  | """AUTH-08 live PostgreSQL: lifecycle/CAS/audit/HTTP; no memory authority."""
+2  + import os
+3  + import unittest
+4  | from concurrent.futures import ThreadPoolExecutor
+5  | from datetime import timedelta
+   - import os
+   - import unittest
+6  | from unittest.mock import patch
+7  |
+8  | from fastapi import HTTPException
+9  +
+10 | from tests.integration import test_auth04_sessions as previous
+11 +
+12 | ORIGIN = previous.ORIGIN
+   |
+
+F401 [*] `fastapi.HTTPException` imported but unused
+  --> tests/integration/test_auth08_accounts.py:8:21
+   |
+ 6 | from unittest.mock import patch
+ 7 |
+ 8 | from fastapi import HTTPException
+   |                     ^^^^^^^^^^^^^
+ 9 | from tests.integration import test_auth04_sessions as previous
+10 | ORIGIN = previous.ORIGIN
+   |
+help: Remove unused import: `fastapi.HTTPException`
+  |
+7 |
+  - from fastapi import HTTPException
+8 | from tests.integration import test_auth04_sessions as previous
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/integration/test_auth08_accounts.py:70:9
+   |
+69 |       def test_actual_me_same_cookie_projects_downgrade(self):
+70 | /         from fastapi import FastAPI
+71 | |         from fastapi.testclient import TestClient
+72 | |         from apps.api.routers.authentication import router
+   | |__________________________________________________________^
+73 |           app = FastAPI()
+74 |           app.state.auth_access_store = self.store
+   |
+help: Organize imports
+   |
+71 |         from fastapi.testclient import TestClient
+72 +
+73 |         from apps.api.routers.authentication import router
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/integration/test_auth08_accounts.py:93:9
+   |
+92 |       def test_capability_dependency_reads_downgrade_on_next_http_request(self):
+93 | /         from fastapi import Depends, FastAPI
+94 | |         from fastapi.testclient import TestClient
+95 | |         from types import SimpleNamespace
+96 | |         from apps.api.auth import require_capability
+97 | |         from apps.api.authentication.context import VerifiedCredential
+   | |______________________________________________________________________^
+98 |           app = FastAPI()
+99 |           app.state.auth_access_store = self.store
+   |
+help: Organize imports
+   |
+92 |     def test_capability_dependency_reads_downgrade_on_next_http_request(self):
+93 +         from types import SimpleNamespace
+94 +
+95 |         from fastapi import Depends, FastAPI
+96 |         from fastapi.testclient import TestClient
+   -         from types import SimpleNamespace
+97 +
+98 |         from apps.api.auth import require_capability
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/integration/test_auth08_accounts.py:232:9
+    |
+231 |       def test_two_writers_one_wins_cas(self):
+232 | /         from apps.api.accounts.lifecycle import AccountChange
+233 | |         from threading import Barrier
+    | |_____________________________________^
+234 |           start = Barrier(2)
+235 |           version = self.current().entitlement_version
+    |
+help: Organize imports
+    |
+231 |     def test_two_writers_one_wins_cas(self):
+    -         from apps.api.accounts.lifecycle import AccountChange
+232 |         from threading import Barrier
+233 +
+234 +         from apps.api.accounts.lifecycle import AccountChange
+235 |         start = Barrier(2)
+    |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/integration/test_auth08_accounts.py:303:9
+    |
+301 |           token = self.login().token
+302 |           before = self.current()
+303 | /         with patch("apps.api.accounts.lifecycle.enqueue_audit", side_effect=RuntimeError("fault")):
+304 | |             with self.assertRaises(RuntimeError):
+    | |_________________________________________________^
+305 |                   self.change(status="suspended")
+306 |           self.assertEqual(self.current(), before)
+    |
+help: Combine `with` statements
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/integration/test_auth08_accounts.py:314:9
+    |
+312 |           self.service.set_password(member.subject_id, "member08", PASS)
+313 |           token = self.service.login("member08", PASS, self.account.account_id, origin=ORIGIN).token
+314 | /         with patch("apps.api.accounts.lifecycle.enqueue_audit", side_effect=RuntimeError("fault")):
+315 | |             with self.assertRaises(RuntimeError):
+    | |_________________________________________________^
+316 |                   self.member_status(member.subject_id, "revoked")
+317 |           self.service.verify(token)
+    |
+help: Combine `with` statements
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/integration/test_auth08_accounts.py:330:9
+    |
+329 |     def test_context_reloaded_in_fresh_process(self):
+330 |         import json, subprocess, sys
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+331 |         self.change(plan="starter")
+332 |         code = """import json,os
+    |
+help: Organize imports
+    |
+329 |     def test_context_reloaded_in_fresh_process(self):
+    -         import json, subprocess, sys
+330 +         import json
+331 +         import subprocess
+332 +         import sys
+333 |         self.change(plan="starter")
+    |
+
+PLW1510 `subprocess.run` without explicit `check` argument
+   --> tests/integration/test_auth08_accounts.py:338:18
+    |
+336 | print(json.dumps(ctx.as_principal().capabilities.model_dump(mode='json')))
+337 | """
+338 |         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+    |                  ^^^^^^^^^^^^^^
+339 |             env={**os.environ, "A08_SUBJECT": str(self.owner.subject_id),
+340 |                  "A08_ACCOUNT": str(self.account.account_id), "A08_SCHEMA": self.schema})
+    |
+help: Add explicit `check=False`
+    |
+337 | """
+    -         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+338 +         result = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True,
+339 |             env={**os.environ, "A08_SUBJECT": str(self.owner.subject_id),
+    |
+note: This suggestion may be incorrect or produce invalid syntax. It requires manual review and cannot be applied automatically
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/unit/test_auth08_entitlements.py:2:1
+   |
+ 1 |   """AUTH-08: Account authority, expiry, role separation and real me projection."""
+ 2 | / from datetime import datetime, timedelta, timezone
+ 3 | | import unittest
+ 4 | | from unittest.mock import patch
+ 5 | |
+ 6 | | from fastapi import FastAPI, HTTPException
+ 7 | | from fastapi.testclient import TestClient
+ 8 | | from tests.unit.test_auth03_context import FakeAuthority
+ 9 | | from apps.api.authentication.context import resolve_verified_context
+10 | | from apps.api.plans import AuthenticatedPrincipal, Role
+   | |_______________________________________________________^
+11 |
+12 |   NOW = datetime(2026, 11, 7, 12, tzinfo=timezone.utc)
+   |
+help: Organize imports
+   |
+1  | """AUTH-08: Account authority, expiry, role separation and real me projection."""
+2  + import unittest
+3  | from datetime import datetime, timedelta, timezone
+   - import unittest
+4  | from unittest.mock import patch
+5  |
+6  | from fastapi import FastAPI, HTTPException
+7  | from fastapi.testclient import TestClient
+   - from tests.unit.test_auth03_context import FakeAuthority
+8  +
+9  | from apps.api.authentication.context import resolve_verified_context
+10 | from apps.api.plans import AuthenticatedPrincipal, Role
+11 + from tests.unit.test_auth03_context import FakeAuthority
+12 |
+   |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> tests/unit/test_auth08_entitlements.py:12:40
+   |
+10 | from apps.api.plans import AuthenticatedPrincipal, Role
+11 |
+12 | NOW = datetime(2026, 11, 7, 12, tzinfo=timezone.utc)
+   |                                        ^^^^^^^^^^^^
+help: Convert to `datetime.UTC` alias
+   |
+1  | """AUTH-08: Account authority, expiry, role separation and real me projection."""
+   - from datetime import datetime, timedelta, timezone
+2  + from datetime import datetime, timedelta, timezone, UTC
+3  | import unittest
+--------------------------------------------------------------------------------
+11 |
+   - NOW = datetime(2026, 11, 7, 12, tzinfo=timezone.utc)
+12 + NOW = datetime(2026, 11, 7, 12, tzinfo=UTC)
+13 |
+   |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> tests/unit/test_auth08_entitlements.py:62:42
+   |
+60 |         self.assertFalse(account_is_active(a, now=NOW))
+61 |         self.assertFalse(account_is_active(a, now=NOW + timedelta(microseconds=1)))
+62 |         a.plan_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+   |                                          ^^^^^^^^^^^^
+63 |         with self.assertRaises(HTTPException) as caught:
+64 |             self.context()
+   |
+help: Convert to `datetime.UTC` alias
+   |
+1  | """AUTH-08: Account authority, expiry, role separation and real me projection."""
+   - from datetime import datetime, timedelta, timezone
+2  + from datetime import datetime, timedelta, timezone, UTC
+3  | import unittest
+--------------------------------------------------------------------------------
+61 |         self.assertFalse(account_is_active(a, now=NOW + timedelta(microseconds=1)))
+   -         a.plan_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+62 +         a.plan_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+63 |         with self.assertRaises(HTTPException) as caught:
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/unit/test_auth08_entitlements.py:102:9
+    |
+101 |       def test_patch_input_is_strict_and_cannot_edit_seats_or_owner(self):
+102 | /         from apps.api.accounts.lifecycle import AccountChange
+103 | |         from pydantic import ValidationError
+    | |____________________________________________^
+104 |           for body in ({}, {"seats": 100}, {"plan": "invalid"}, {"plan": None},
+105 |                        {"account_type": "mono"}, {"plan_expires_at": "2026-11-07T00:00:00"}):
+    |
+help: Organize imports
+    |
+101 |     def test_patch_input_is_strict_and_cannot_edit_seats_or_owner(self):
+    -         from apps.api.accounts.lifecycle import AccountChange
+102 |         from pydantic import ValidationError
+103 +
+104 +         from apps.api.accounts.lifecycle import AccountChange
+105 |         for body in ({}, {"seats": 100}, {"plan": "invalid"}, {"plan": None},
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/unit/test_auth08_entitlements.py:111:9
+    |
+110 |     def test_no_dsn_runner_and_noninteractive_writer_fail(self):
+111 |         import os, subprocess, sys
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+112 |         env = dict(os.environ)
+113 |         env.pop("CISSTAT_AUTH_TEST_DSN", None)
+    |
+help: Organize imports
+    |
+110 |     def test_no_dsn_runner_and_noninteractive_writer_fail(self):
+    -         import os, subprocess, sys
+111 +         import os
+112 +         import subprocess
+113 +         import sys
+114 |         env = dict(os.environ)
+    |
+
+PLW1510 `subprocess.run` without explicit `check` argument
+   --> tests/unit/test_auth08_entitlements.py:114:13
+    |
+112 |         env = dict(os.environ)
+113 |         env.pop("CISSTAT_AUTH_TEST_DSN", None)
+114 |         r = subprocess.run([sys.executable, "scripts/auth08/verify_postgres.py"],
+    |             ^^^^^^^^^^^^^^
+115 |                            env=env, capture_output=True, text=True)
+116 |         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+    |
+help: Add explicit `check=False`
+    |
+114 |         r = subprocess.run([sys.executable, "scripts/auth08/verify_postgres.py"],
+    -                            env=env, capture_output=True, text=True)
+115 +                            check=False, env=env, capture_output=True, text=True)
+116 |         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+    |
+note: This suggestion may be incorrect or produce invalid syntax. It requires manual review and cannot be applied automatically
+
+PLW1510 `subprocess.run` without explicit `check` argument
+   --> tests/unit/test_auth08_entitlements.py:117:13
+    |
+115 |                            env=env, capture_output=True, text=True)
+116 |         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+117 |         r = subprocess.run([sys.executable, "scripts/auth08/manage_account.py", "apply",
+    |             ^^^^^^^^^^^^^^
+118 |                             str(self.store.account), "--expected-version", "12",
+119 |                             "--change", '{"plan":"demo"}', "--reason", "test"],
+    |
+help: Add explicit `check=False`
+    |
+119 |                             "--change", '{"plan":"demo"}', "--reason", "test"],
+    -                            input="", capture_output=True, text=True)
+120 +                            check=False, input="", capture_output=True, text=True)
+121 |         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+    |
+note: This suggestion may be incorrect or produce invalid syntax. It requires manual review and cannot be applied automatically
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/unit/test_auth08_entitlements.py:126:9
+    |
+125 |       def test_lifecycle_actions_are_mandatory_and_operator_cli_in_image(self):
+126 | /         from apps.api.security_audit import AUDIT_REQUIREMENTS
+127 | |         from pathlib import Path
+    | |________________________________^
+128 |           for action in ("auth_account_changed", "auth_membership_changed"):
+129 |               self.assertEqual(AUDIT_REQUIREMENTS[action], "mandatory")
+    |
+help: Organize imports
+    |
+125 |     def test_lifecycle_actions_are_mandatory_and_operator_cli_in_image(self):
+    -         from apps.api.security_audit import AUDIT_REQUIREMENTS
+126 |         from pathlib import Path
+127 +
+128 +         from apps.api.security_audit import AUDIT_REQUIREMENTS
+129 |         for action in ("auth_account_changed", "auth_membership_changed"):
+    |
+
+Found 30 errors.
+[*] 20 fixable with `--fix` (1 unsafe fix available with `--fix --unsafe-fixes`).

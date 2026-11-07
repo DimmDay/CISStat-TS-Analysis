@@ -1,0 +1,210 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_audit_failure_rolls_back_account_and_session_revoke (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_account_and_session_revoke) ... ERROR
+test_audit_failure_rolls_back_membership_and_sid (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_membership_and_sid) ... ERROR
+test_closed_terminal_and_no_delete_of_history_or_credentials (test_auth08_accounts.AccountSQLTests.test_closed_terminal_and_no_delete_of_history_or_credentials) ... ERROR
+test_context_reloaded_in_fresh_process (test_auth08_accounts.AccountSQLTests.test_context_reloaded_in_fresh_process) ... ERROR
+test_exact_expiry_blocks_session_and_password_login (test_auth08_accounts.AccountSQLTests.test_exact_expiry_blocks_session_and_password_login) ... ERROR
+test_expired_account_not_in_multi_account_choices (test_auth08_accounts.AccountSQLTests.test_expired_account_not_in_multi_account_choices) ... ERROR
+test_expiry_can_be_cleared_explicitly_and_not_reset_by_login (test_auth08_accounts.AccountSQLTests.test_expiry_can_be_cleared_explicitly_and_not_reset_by_login) ... ERROR
+test_intent_existing_schema_and_noop_does_not_advance_or_audit (test_auth08_accounts.AccountSQLTests.test_intent_existing_schema_and_noop_does_not_advance_or_audit) ... ERROR
+test_last_owner_cannot_be_revoked_even_when_suspended (test_auth08_accounts.AccountSQLTests.test_last_owner_cannot_be_revoked_even_when_suspended) ... ERROR
+test_mono_to_multi_keeps_ids_and_capacity (test_auth08_accounts.AccountSQLTests.test_mono_to_multi_keeps_ids_and_capacity) ... ERROR
+test_plan_change_visible_with_original_sid_and_no_relogin (test_auth08_accounts.AccountSQLTests.test_plan_change_visible_with_original_sid_and_no_relogin) ... ERROR
+test_restore_into_mono_cannot_add_second_member (test_auth08_accounts.AccountSQLTests.test_restore_into_mono_cannot_add_second_member) ... ERROR
+test_restore_must_respect_seat_capacity (test_auth08_accounts.AccountSQLTests.test_restore_must_respect_seat_capacity) ... ERROR
+test_revoke_is_account_scoped_and_restore_does_not_revive_sid (test_auth08_accounts.AccountSQLTests.test_revoke_is_account_scoped_and_restore_does_not_revive_sid) ... ERROR
+test_stale_expected_version_rejects_and_leaves_no_intent (test_auth08_accounts.AccountSQLTests.test_stale_expected_version_rejects_and_leaves_no_intent) ... ERROR
+test_suspend_resume_does_not_resurrect_old_sid (test_auth08_accounts.AccountSQLTests.test_suspend_resume_does_not_resurrect_old_sid) ... ERROR
+test_two_writers_one_wins_cas (test_auth08_accounts.AccountSQLTests.test_two_writers_one_wins_cas) ... ERROR
+
+======================================================================
+ERROR: test_audit_failure_rolls_back_account_and_session_revoke (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_account_and_session_revoke)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 190, in test_audit_failure_rolls_back_account_and_session_revoke
+    with patch("apps.api.accounts.lifecycle.enqueue_audit", side_effect=RuntimeError("fault")):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pkgutil.py", line 528, in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'apps.api.accounts' has no attribute 'lifecycle'
+
+======================================================================
+ERROR: test_audit_failure_rolls_back_membership_and_sid (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_membership_and_sid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 201, in test_audit_failure_rolls_back_membership_and_sid
+    with patch("apps.api.accounts.lifecycle.enqueue_audit", side_effect=RuntimeError("fault")):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pkgutil.py", line 528, in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'apps.api.accounts' has no attribute 'lifecycle'
+
+======================================================================
+ERROR: test_closed_terminal_and_no_delete_of_history_or_credentials (test_auth08_accounts.AccountSQLTests.test_closed_terminal_and_no_delete_of_history_or_credentials)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 103, in test_closed_terminal_and_no_delete_of_history_or_credentials
+    self.change(status="closed")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_context_reloaded_in_fresh_process (test_auth08_accounts.AccountSQLTests.test_context_reloaded_in_fresh_process)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 218, in test_context_reloaded_in_fresh_process
+    self.change(plan="starter")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_exact_expiry_blocks_session_and_password_login (test_auth08_accounts.AccountSQLTests.test_exact_expiry_blocks_session_and_password_login)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 71, in test_exact_expiry_blocks_session_and_password_login
+    self.change(plan_expires_at=self.now + timedelta(seconds=1))
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_expired_account_not_in_multi_account_choices (test_auth08_accounts.AccountSQLTests.test_expired_account_not_in_multi_account_choices)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 80, in test_expired_account_not_in_multi_account_choices
+    self.change(plan_expires_at=self.now)
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_expiry_can_be_cleared_explicitly_and_not_reset_by_login (test_auth08_accounts.AccountSQLTests.test_expiry_can_be_cleared_explicitly_and_not_reset_by_login)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 87, in test_expiry_can_be_cleared_explicitly_and_not_reset_by_login
+    self.change(plan_expires_at=deadline)
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_intent_existing_schema_and_noop_does_not_advance_or_audit (test_auth08_accounts.AccountSQLTests.test_intent_existing_schema_and_noop_does_not_advance_or_audit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 207, in test_intent_existing_schema_and_noop_does_not_advance_or_audit
+    result = self.change(plan="starter")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_last_owner_cannot_be_revoked_even_when_suspended (test_auth08_accounts.AccountSQLTests.test_last_owner_cannot_be_revoked_even_when_suspended)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 120, in test_last_owner_cannot_be_revoked_even_when_suspended
+    self.change(status=state)
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_mono_to_multi_keeps_ids_and_capacity (test_auth08_accounts.AccountSQLTests.test_mono_to_multi_keeps_ids_and_capacity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 112, in test_mono_to_multi_keeps_ids_and_capacity
+    after = self.change(account_type="multi")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_plan_change_visible_with_original_sid_and_no_relogin (test_auth08_accounts.AccountSQLTests.test_plan_change_visible_with_original_sid_and_no_relogin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 60, in test_plan_change_visible_with_original_sid_and_no_relogin
+    self.change(plan="professional")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_restore_into_mono_cannot_add_second_member (test_auth08_accounts.AccountSQLTests.test_restore_into_mono_cannot_add_second_member)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 153, in test_restore_into_mono_cannot_add_second_member
+    self.member_status(member.subject_id, "revoked")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 40, in member_status
+    return self.lifecycle().membership(self.account.account_id, subject,
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 26, in lifecycle
+    from apps.api.accounts.lifecycle import AccountLifecycle
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_restore_must_respect_seat_capacity (test_auth08_accounts.AccountSQLTests.test_restore_must_respect_seat_capacity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 144, in test_restore_must_respect_seat_capacity
+    self.member_status(member.subject_id, "revoked")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 40, in member_status
+    return self.lifecycle().membership(self.account.account_id, subject,
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 26, in lifecycle
+    from apps.api.accounts.lifecycle import AccountLifecycle
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_revoke_is_account_scoped_and_restore_does_not_revive_sid (test_auth08_accounts.AccountSQLTests.test_revoke_is_account_scoped_and_restore_does_not_revive_sid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 134, in test_revoke_is_account_scoped_and_restore_does_not_revive_sid
+    self.member_status(member.subject_id, "revoked")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 40, in member_status
+    return self.lifecycle().membership(self.account.account_id, subject,
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 26, in lifecycle
+    from apps.api.accounts.lifecycle import AccountLifecycle
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_stale_expected_version_rejects_and_leaves_no_intent (test_auth08_accounts.AccountSQLTests.test_stale_expected_version_rejects_and_leaves_no_intent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 162, in test_stale_expected_version_rejects_and_leaves_no_intent
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_suspend_resume_does_not_resurrect_old_sid (test_auth08_accounts.AccountSQLTests.test_suspend_resume_does_not_resurrect_old_sid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 95, in test_suspend_resume_does_not_resurrect_old_sid
+    self.change(status="suspended")
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 34, in change
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+======================================================================
+ERROR: test_two_writers_one_wins_cas (test_auth08_accounts.AccountSQLTests.test_two_writers_one_wins_cas)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/auth08-base/tests/integration/test_auth08_accounts.py", line 174, in test_two_writers_one_wins_cas
+    from apps.api.accounts.lifecycle import AccountChange
+ModuleNotFoundError: No module named 'apps.api.accounts.lifecycle'
+
+----------------------------------------------------------------------
+Ran 17 tests in 6.101s
+
+FAILED (errors=17)

@@ -1,0 +1,11 @@
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/scripts/auth05/check_routes.py", line 45, in <module>
+    main()
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/scripts/auth05/check_routes.py", line 15, in main
+    report = check()
+             ^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 416, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json

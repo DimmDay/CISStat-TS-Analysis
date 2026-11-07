@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/auth08-base
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.8, syrupy-6.1.1, cov-7.1.0, platformdirs-4.14.5, xdist-3.8.0, anyio-4.14.2
+collected 159 items
+
+tests/api/test_auth07_admin_sessions.py ...........                      [  6%]
+tests/api/test_admin_progress_api.py .......................             [ 21%]
+tests/api/test_doclog7_logs_support.py ................................. [ 42%]
+F....                                                                    [ 45%]
+tests/api/test_doclog8_monitoring.py ................................... [ 67%]
+...........................F                                             [ 84%]
+tests/api/test_cisstat_stack_deployment.py .................             [ 95%]
+tests/unit/test_auth.py .......                                          [100%]
+
+=================================== FAILURES ===================================
+____________________ TestStaticCatalogs.test_routes_present ____________________
+tests/api/test_doclog7_logs_support.py:840: in test_routes_present
+    assert path in paths, path
+E   AssertionError: /v1/logs/access
+E   assert '/v1/logs/access' in {'', '/docs', '/docs/oauth2-redirect', '/health', '/health/ops', '/openapi.json', ...}
+__________________ TestStaticCatalogs.test_routes_registered ___________________
+tests/api/test_doclog8_monitoring.py:1326: in test_routes_registered
+    assert (
+E   AssertionError: assert '/v1/documentation/runs/{run_id}/monitoring/actuals' in set()
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present
+FAILED tests/api/test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered
+=================== 2 failed, 157 passed, 1 warning in 4.81s ===================

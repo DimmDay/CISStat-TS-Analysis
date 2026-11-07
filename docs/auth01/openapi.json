@@ -109,6 +109,44 @@
               }
             ],
             "title": "Mfa Verified At"
+          },
+          "account_plan": {
+            "enum": [
+              "demo",
+              "starter",
+              "professional",
+              "enterprise",
+              "internal"
+            ],
+            "title": "Account Plan",
+            "type": "string"
+          },
+          "account_type": {
+            "enum": [
+              "mono",
+              "multi"
+            ],
+            "title": "Account Type",
+            "type": "string"
+          },
+          "plan_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Expires At"
+          },
+          "entitlement_version": {
+            "title": "Entitlement Version",
+            "type": "integer"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
           }
         },
         "required": [
@@ -120,7 +158,12 @@
           "auth_method",
           "auth_session_id",
           "auth_time",
-          "mfa_verified_at"
+          "mfa_verified_at",
+          "account_plan",
+          "account_type",
+          "plan_expires_at",
+          "entitlement_version",
+          "capabilities"
         ],
         "title": "AuthMeResponse",
         "type": "object"

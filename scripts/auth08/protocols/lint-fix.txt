@@ -1,0 +1,12 @@
+apps/api/accounts/lifecycle.py:102:13: TRY004 Prefer `TypeError` exception for invalid type
+scripts/auth08/manage_account.py:1:1: EXE001 Shebang is present but file is not executable
+scripts/auth08/manage_account.py:61:22: C408 Unnecessary `dict()` call (rewrite as a literal)
+scripts/auth08/manage_account.py:68:12: BLE001 Do not catch blind exception: `Exception`
+scripts/auth08/verify_postgres.py:1:1: EXE001 Shebang is present but file is not executable
+tests/integration/test_auth08_accounts.py:307:9: SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+tests/integration/test_auth08_accounts.py:318:9: SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+tests/integration/test_auth08_accounts.py:344:18: PLW1510 `subprocess.run` without explicit `check` argument
+tests/unit/test_auth08_entitlements.py:118:13: PLW1510 `subprocess.run` without explicit `check` argument
+tests/unit/test_auth08_entitlements.py:121:13: PLW1510 `subprocess.run` without explicit `check` argument
+Found 34 errors (24 fixed, 10 remaining).
+1 unsafe fix available with `--fix --unsafe-fixes`.

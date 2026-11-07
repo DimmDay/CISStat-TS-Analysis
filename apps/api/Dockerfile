@@ -118,6 +118,9 @@ COPY shared/ ./shared/
 # (~330 КБ, операторская поверхность README §7), не весь scripts/
 # (~43 МБ корпусов сертификаций) -- образ не раздувается.
 COPY scripts/auth05/ ./scripts/auth05/
+# AUTH-08: durable Account lifecycle is an operator-only command, not HTTP.
+COPY scripts/auth08/manage_account.py ./scripts/auth08/manage_account.py
+RUN python -c "from pathlib import Path; assert Path('scripts/auth08/manage_account.py').is_file(); from apps.api.accounts.lifecycle import AccountLifecycle; print('auth08 operator command OK')"
 
 # Fail-closed гвард (философия DEPLOY-1): без операторской тройки образ
 # не собирается, а не молча возвращает к docker cp в runtime.

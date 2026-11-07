@@ -1,0 +1,5 @@
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        2.592 s
+Ran all test suites matching packages/ui/components/AdminGate.test.tsx.

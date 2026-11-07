@@ -43,6 +43,7 @@ export function AuthProvider({
                   session.subject_id,
                   session.account_id,
                   session.auth_session_id,
+                  session.entitlement_version,
                 ].join(":")
               : "anonymous",
             changed =

@@ -191,7 +191,7 @@ def _authenticated(response, result):
 @router.get("/me", response_model=AuthMeResponse)
 def me(request: Request):
     ctx = _session(request)
-    return {
+    result = {
         key: (
             getattr(ctx, key).isoformat()
             if key in ("auth_time", "mfa_verified_at") and getattr(ctx, key)
@@ -207,8 +207,14 @@ def me(request: Request):
             "auth_session_id",
             "auth_time",
             "mfa_verified_at",
+            "account_plan",
+            "account_type",
+            "plan_expires_at",
+            "entitlement_version",
         )
     }
+    result["capabilities"] = ctx.as_principal().capabilities
+    return result
 
 
 @router.get("/sessions")

@@ -13,8 +13,8 @@
                  а не сама роль или само имя плана.
 
 PLAN_DEFINITIONS -- источник аналитических возможностей; access_registry.py
-проверяет известную операцию/этап. Accounts/grants/object/budget enforcement
-подключаются отдельно (AUTH-08/11/12). can_train_models -- legacy v1 adapter.
+проверяет известную операцию/этап. AUTH-08 резолвит effective caps из Account;
+grants/object/budget enforcement — AUTH-09/11/12. can_train_models -- legacy v1 adapter.
 """
 from __future__ import annotations
 
@@ -147,8 +147,8 @@ PLAN_DEFINITIONS: dict[PlanName, Capabilities] = {
 }
 
 
-# Explicit legacy staff adapter. Account INTERNAL entitlement moves to AUTH-08;
-# this is analytical capability only, never admin/object/tenant authorization.
+# Explicit Account INTERNAL entitlement (AUTH-08); also used by the unbound
+# legacy staff adapter until AUTH-10. Never admin/object/tenant authorization.
 INTERNAL_CAPABILITIES = Capabilities(
     can_run_baseline_models=True, can_tune_models=True, can_train_custom_models=True,
     can_train_models=True, can_use_api=True, can_save_history=True, can_upload_own_data=True,
@@ -174,7 +174,9 @@ class AuthenticatedPrincipal(BaseModel):
     """
     principal_id: str
     role: Role
-    plan: Optional[PlanName] = None  # None для admin/internal_analyst -- у них нет тарифа как такового
+    # Compatibility projection of the current commercial Account; INTERNAL is
+    # represented by account_capabilities, not a commercial PlanName.
+    plan: Optional[PlanName] = None
     # ── DOCLOG-0: аддитивная идентичность (None = честное отсутствие) ──
     subject_id: Optional[str] = None
     tenant_id: Optional[str] = None
@@ -184,9 +186,18 @@ class AuthenticatedPrincipal(BaseModel):
     credential_id: Optional[str] = None
     auth_method: Optional[str] = None
     entitlement_version: Optional[int] = None
+    # AUTH-08: server-only projection from the current Account. Excluded from
+    # arbitrary principal serialization; me has an explicit public DTO.
+    account_capabilities: Optional[Capabilities] = Field(default=None, exclude=True, repr=False)
 
     @property
     def capabilities(self) -> Capabilities:
+        if self.account_id is not None:
+            if self.account_capabilities is None or self.entitlement_version is None:
+                raise ValueError("Account-effective capabilities required")
+            return self.account_capabilities.model_copy(deep=True)
+        # Explicit unbound ENV compatibility only. A durable Account never
+        # falls through to this role-based legacy adapter.
         if self.role in (Role.ADMIN, Role.INTERNAL_ANALYST):
             return INTERNAL_CAPABILITIES.model_copy(deep=True)
         if self.plan is None:

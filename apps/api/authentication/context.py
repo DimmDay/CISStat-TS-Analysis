@@ -5,12 +5,12 @@ This module authenticates/resolves context, not object/capability/CU policy.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Protocol
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
-from apps.api.plans import AuthenticatedPrincipal, PlanName, Role
+from apps.api.plans import AuthenticatedPrincipal, Capabilities, PlanName, Role
 from .errors import AuthSchemaNotReady, AuthStoreUnavailable
 
 
@@ -54,6 +54,10 @@ class RequestContext:
     entitlement_version: int | None = None
     role: Role | None = None
     plan: PlanName | None = None
+    account_plan: str | None = None
+    account_type: str | None = None
+    plan_expires_at: datetime | None = None
+    account_capabilities: Capabilities | None = field(default=None, repr=False, compare=False)
     scopes: frozenset[str] = field(default_factory=frozenset)
     platform_permissions: frozenset[str] = field(default_factory=frozenset)
     auth_time: datetime | None = None
@@ -102,6 +106,8 @@ class RequestContext:
             credential_id=self.credential_id,
             auth_method=self.auth_method,
             entitlement_version=self.entitlement_version,
+            account_capabilities=self.account_capabilities.model_copy(deep=True)
+            if self.account_capabilities is not None else None,
         )
 
 
@@ -113,6 +119,7 @@ _MESSAGES = {
     "durable_binding_required": "Требуется подтверждённая привязка учётных данных",
     "account_required": "Требуется привязка к аккаунту",
     "account_access_denied": "Доступ к аккаунту запрещён",
+    "account_expired": "Срок доступа аккаунта истёк; обратитесь к владельцу или администратору",
     "password_policy": "Пароль: от 15 символов, до 1024 байт; распространённые пароли запрещены",
     "too_many_attempts": "Слишком много попыток; повторите позже",
     "csrf_invalid": "Проверка источника запроса не пройдена",
@@ -226,9 +233,13 @@ def resolve_verified_context(evidence, *, store=None, request_id=""):
             )
             if membership is None:
                 auth_error(403, "account_access_denied", request_id)
+            from apps.api.accounts.entitlements import account_is_active, account_capabilities
+
+            now = datetime.now(timezone.utc)
+            if not account_is_active(account, now=now):
+                auth_error(403, "account_expired", request_id)
             role = Role(identity.platform_role)
-            # Internal is an Account entitlement, not a commercial PlanName.
-            # Effective caps resolution is AUTH-08, not inferred from OWNER.
+            # INTERNAL is Account authority, not a role-based upgrade.
             plan = PlanName(account.plan) if account.plan != "internal" else None
             return RequestContext(
                 subject_id=str(subject_id),
@@ -239,6 +250,10 @@ def resolve_verified_context(evidence, *, store=None, request_id=""):
                 entitlement_version=account.entitlement_version,
                 role=role,
                 plan=plan,
+                account_plan=account.plan,
+                account_type=account.account_type,
+                plan_expires_at=account.plan_expires_at,
+                account_capabilities=account_capabilities(account, now=now),
                 scopes=evidence.scopes,
                 platform_permissions=frozenset({"platform.admin"})
                 if role == Role.ADMIN

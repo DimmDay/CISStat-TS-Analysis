@@ -286,10 +286,12 @@ class SessionService:
             ):
                 auth_error(401, "invalid_credential")
             if account_id is None:
+                from apps.api.accounts.entitlements import account_is_active
+                selection_now = self._now(c)
                 available = [
                     a
                     for a in tx.accounts.for_subject(u["subject_id"])
-                    if a.status == "active"
+                    if account_is_active(a, now=selection_now)
                 ]
                 if len(available) > 1:
                     names = {"mono": "Личный", "multi": "Командный"}
@@ -321,6 +323,9 @@ class SessionService:
                 )
             ):
                 auth_error(403, "account_access_denied")
+            from apps.api.accounts.entitlements import account_is_active
+            if not account_is_active(a, now=self._now(c)):
+                auth_error(403, "account_expired")
             epoch = self._epoch(c, u["subject_id"])
             now = self._now(c)
             if rehash:
@@ -430,6 +435,9 @@ class SessionService:
         ).fetchone()
         if not account:
             auth_error(401, "invalid_credential")
+        from apps.api.accounts.entitlements import account_is_active
+        if not account_is_active(account, now=now):
+            auth_error(403, "account_expired")
         from .mfa import session_mfa
 
         session_mfa(c, row, required=u["platform_role"] == "admin")

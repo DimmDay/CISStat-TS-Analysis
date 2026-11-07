@@ -1,0 +1,27 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_actual_sql_audit_insert_failure_rolls_back_everything (test_auth08_accounts.AccountSQLTests.test_actual_sql_audit_insert_failure_rolls_back_everything) ... ok
+test_audit_failure_rolls_back_account_and_session_revoke (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_account_and_session_revoke) ... ok
+test_audit_failure_rolls_back_membership_and_sid (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_membership_and_sid) ... ok
+test_bound_admin_in_low_plan_has_admin_permission_but_no_tuning (test_auth08_accounts.AccountSQLTests.test_bound_admin_in_low_plan_has_admin_permission_but_no_tuning) ... ok
+test_closed_terminal_and_no_delete_of_history_or_credentials (test_auth08_accounts.AccountSQLTests.test_closed_terminal_and_no_delete_of_history_or_credentials) ... ok
+test_context_reloaded_in_fresh_process (test_auth08_accounts.AccountSQLTests.test_context_reloaded_in_fresh_process) ... ok
+test_exact_expiry_blocks_session_and_password_login (test_auth08_accounts.AccountSQLTests.test_exact_expiry_blocks_session_and_password_login) ... ok
+test_expired_account_not_in_multi_account_choices (test_auth08_accounts.AccountSQLTests.test_expired_account_not_in_multi_account_choices) ... ok
+test_expiry_blocks_inflight_mfa_challenge_and_resume_consumes_it (test_auth08_accounts.AccountSQLTests.test_expiry_blocks_inflight_mfa_challenge_and_resume_consumes_it) ... ok
+test_expiry_can_be_cleared_explicitly_and_not_reset_by_login (test_auth08_accounts.AccountSQLTests.test_expiry_can_be_cleared_explicitly_and_not_reset_by_login) ... ok
+test_intent_existing_schema_and_noop_does_not_advance_or_audit (test_auth08_accounts.AccountSQLTests.test_intent_existing_schema_and_noop_does_not_advance_or_audit) ... ok
+test_last_owner_cannot_be_revoked_even_when_suspended (test_auth08_accounts.AccountSQLTests.test_last_owner_cannot_be_revoked_even_when_suspended) ... ok
+test_mono_to_multi_keeps_ids_and_capacity (test_auth08_accounts.AccountSQLTests.test_mono_to_multi_keeps_ids_and_capacity) ... ok
+test_plan_change_visible_with_original_sid_and_no_relogin (test_auth08_accounts.AccountSQLTests.test_plan_change_visible_with_original_sid_and_no_relogin) ... ok
+test_restore_into_mono_cannot_add_second_member (test_auth08_accounts.AccountSQLTests.test_restore_into_mono_cannot_add_second_member) ... ok
+test_restore_must_respect_seat_capacity (test_auth08_accounts.AccountSQLTests.test_restore_must_respect_seat_capacity) ... ok
+test_revoke_is_account_scoped_and_restore_does_not_revive_sid (test_auth08_accounts.AccountSQLTests.test_revoke_is_account_scoped_and_restore_does_not_revive_sid) ... ok
+test_stale_expected_version_rejects_and_leaves_no_intent (test_auth08_accounts.AccountSQLTests.test_stale_expected_version_rejects_and_leaves_no_intent) ... ok
+test_suspend_resume_does_not_resurrect_old_sid (test_auth08_accounts.AccountSQLTests.test_suspend_resume_does_not_resurrect_old_sid) ... ok
+test_suspended_or_expired_account_cannot_restore_membership (test_auth08_accounts.AccountSQLTests.test_suspended_or_expired_account_cannot_restore_membership) ... ok
+test_two_writers_one_wins_cas (test_auth08_accounts.AccountSQLTests.test_two_writers_one_wins_cas) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 10.030s
+
+OK

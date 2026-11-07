@@ -62,6 +62,8 @@ class FakeAuthority:
             status="active",
             plan="starter",
             entitlement_version=12,
+            account_type="mono",
+            plan_expires_at=None,
         )
         self.member = SimpleNamespace(
             subject_id=self.subject,

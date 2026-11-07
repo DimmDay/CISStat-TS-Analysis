@@ -1,0 +1,18 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_restore_also_fences_sessions_from_low_level_legacy_revoke (tests.integration.test_auth08_accounts.AccountSQLTests.test_restore_also_fences_sessions_from_low_level_legacy_revoke) ... FAIL
+
+======================================================================
+FAIL: test_restore_also_fences_sessions_from_low_level_legacy_revoke (tests.integration.test_auth08_accounts.AccountSQLTests.test_restore_also_fences_sessions_from_low_level_legacy_revoke)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/integration/test_auth08_accounts.py", line 207, in test_restore_also_fences_sessions_from_low_level_legacy_revoke
+    self.error(lambda: self.service.verify(token), 401)
+  File "/workspace/scratch/4331ff71bc24/CISStat-TS-Analysis/tests/integration/test_auth04_sessions.py", line 64, in error
+    with self.assertRaises(HTTPException) as result:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: HTTPException not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.780s
+
+FAILED (failures=1)

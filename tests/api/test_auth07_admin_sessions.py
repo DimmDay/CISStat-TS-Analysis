@@ -101,6 +101,8 @@ class _Tx:
             plan="starter",
             tenant_id="tenant-auth07",
             entitlement_version=1,
+            account_type="multi",
+            plan_expires_at=None,
         )
 
     def _memberships(self, _account_id):

@@ -1,0 +1,1 @@
+auth00 HEAD-parity: ok (540 discovery-поверхностей рабочего дерева и HEAD совпадают)
