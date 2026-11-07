@@ -1,0 +1,30 @@
+auth00 INDEX-parity: FAIL
+Reviewed worktree differs from INDEX:
+  Worktree only: api:GET:/v1/api-keys
+  Worktree only: api:POST:/v1/api-keys
+  Worktree only: api:POST:/v1/api-keys/{key_id}/revoke
+  Worktree only: api:POST:/v1/api-keys/{key_id}/rotate
+  Worktree only: auth.api_keys.operator
+  Reviewed source differs: apps/api/access_registry.py
+  Reviewed source differs: apps/api/access_registry.v1.json
+  Reviewed source differs: apps/api/auth.py
+  Reviewed source differs: apps/api/authentication/api_key_contract.py
+  Reviewed source differs: apps/api/authentication/api_key_migrations.py
+  Reviewed source differs: apps/api/authentication/api_key_policy.py
+  Reviewed source differs: apps/api/authentication/api_keys.py
+  Reviewed source differs: apps/api/authentication/context.py
+  Reviewed source differs: apps/api/authentication/sessions.py
+  Reviewed source differs: apps/api/identity.py
+  Reviewed source differs: apps/api/main.py
+  Reviewed source differs: apps/api/migrations/0024_auth10_api_keys.sql
+  Reviewed source differs: apps/api/routers/api_keys.py
+  Reviewed source differs: apps/api/security_audit.py
+  Reviewed source differs: apps/api/storage_diagnostics.py
+  Reviewed source differs: apps/api/telemetry.py
+  Reviewed source differs: docs/auth01/openapi.json
+  Reviewed source differs: packages/ui/lib/access-contract.generated.ts
+  Reviewed source differs: packages/ui/server/proxy-routes.generated.json
+  Reviewed source differs: scripts/auth10/manage_keys.py
+  Reviewed source differs: scripts/auth10/migrate.py
+  Reviewed source differs: scripts/local_gates.py
+Review files, then git add them and retry. No automatic staging or commit was performed.

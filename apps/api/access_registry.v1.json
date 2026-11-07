@@ -1799,6 +1799,38 @@
       "capability": null,
       "selector": "none",
       "authority": "external"
+    },
+    "auth.api_keys.list": {
+      "operation_id": "auth.api_keys.list",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.api_keys.issue": {
+      "operation_id": "auth.api_keys.issue",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.api_keys.rotate": {
+      "operation_id": "auth.api_keys.rotate",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
+    },
+    "auth.api_keys.revoke": {
+      "operation_id": "auth.api_keys.revoke",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
     }
   },
   "bindings": {
@@ -2756,6 +2788,22 @@
     },
     "api:POST:/v1/progress/runs/{run_id}/restore": {
       "operation_id": "platform.restore_run",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/api-keys": {
+      "operation_id": "auth.api_keys.list",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/api-keys": {
+      "operation_id": "auth.api_keys.issue",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/api-keys/{key_id}/rotate": {
+      "operation_id": "auth.api_keys.rotate",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/api-keys/{key_id}/revoke": {
+      "operation_id": "auth.api_keys.revoke",
       "programmatic_api": false
     }
   }

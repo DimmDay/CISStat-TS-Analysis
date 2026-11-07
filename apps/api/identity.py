@@ -189,6 +189,10 @@ class Scope(str, Enum):
     """Обязательные права §15. reviewer/support -- permission sets
     (scopes), не новые enum-роли (§15, точный текст)."""
 
+    API_READ = "api.read"
+    API_WRITE = "api.write"
+    API_COMPUTE = "api.compute"
+    API_DATABASE = "api.database"
     DOCUMENTATION_READ = "documentation.read"
     DOCUMENTATION_WRITE = "documentation.write"
     DOCUMENTATION_EXPORT = "documentation.export"

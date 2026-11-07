@@ -1,5 +1,5 @@
 {
-  "baseline": "c2217ec5ba38116e9da6413dc2c56794aefb89b5",
+  "baseline": "c13a52bd754f753d9a842aa84af8548af3019fed",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -25,12 +25,9 @@
       ]
     },
     "api.key": {
-      "observed": "AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet.",
+      "observed": "AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12.",
       "target": "Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets.",
       "follow_up": [
-        "AUTH-01",
-        "AUTH-03",
-        "AUTH-10",
         "AUTH-11",
         "AUTH-12"
       ],
@@ -391,6 +388,25 @@
         "T03",
         "T06",
         "T13",
+        "T15"
+      ]
+    },
+    "auth.api_keys": {
+      "observed": "AUTH-10 personal self/current Account only; named session + Origin/CSRF mutations; fresh authentication for issue/rotate; hash-only durable keys, immutable history, CAS rotation/revoke and mandatory outbox atomic. Keys cannot manage keys. Interactive trusted CLI for existing service membership.",
+      "target": "Preserve stable subject/account across rotation and terminal revoke across lifecycle changes. No scope/admin delegation beyond reviewed programmatic operations.",
+      "follow_up": [
+        "AUTH-11",
+        "AUTH-12",
+        "AUTH-17",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T04",
+        "T05",
+        "T06",
+        "T11",
         "T15"
       ]
     }
@@ -6893,6 +6909,66 @@
       ],
       "canonical_operation": "apps.api.accounts.ownership_migration:migrate_legacy_run",
       "admission": "Trusted interactive operator; explicit evidence/source/version, active Account CAS, single PostgreSQL transaction with mandatory audit; never HTTP."
+    },
+    "api:GET:/v1/api-keys": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.api_keys.list",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/api-keys": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.issue",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/api-keys/{key_id}/rotate": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.rotate",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/api-keys/{key_id}/revoke": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.revoke",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "auth.api_keys.operator": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "existing service Identity/Account membership API keys; emergency revocation",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.operator",
+      "admission": "trusted-interactive-local-operator; current authority/CAS/mandatory outbox"
     }
   },
   "extra_surfaces": [
@@ -7269,6 +7345,25 @@
           "symbol": "migrate_legacy_run"
         }
       ]
+    },
+    {
+      "id": "auth.api_keys.operator",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "interactive local API key lifecycle",
+      "operation": "auth.api_keys.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth10/manage_keys.py",
+          "line": 13,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/authentication/api_keys.py",
+          "line": 70,
+          "symbol": "APIKeyService"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -7420,6 +7515,15 @@
     "scripts/local_gates.py",
     ".github/workflows/auth00.yml",
     "tests/unit/test_auth00_precommit.py",
-    "docs/auth09/hotfix01.md"
+    "docs/auth09/hotfix01.md",
+    "apps/api/authentication/api_key_contract.py",
+    "apps/api/authentication/api_key_migrations.py",
+    "apps/api/authentication/api_key_policy.py",
+    "apps/api/authentication/api_keys.py",
+    "apps/api/migrations/0024_auth10_api_keys.sql",
+    "scripts/auth10/manage_keys.py",
+    "scripts/auth10/migrate.py",
+    "tests/unit/test_auth00_local_output.py",
+    "docs/auth10/hotfix01.md"
   ]
 }

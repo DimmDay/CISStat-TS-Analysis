@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `c2217ec5ba38116e9da6413dc2c56794aefb89b5`. Автоматически собранные входы + явная policy review.
+База: `c13a52bd754f753d9a842aa84af8548af3019fed`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -11,9 +11,9 @@
 
 | Вид | Число |
 |---|---:|
-| api | 235 |
+| api | 239 |
 | framework | 8 |
-| internal_operation | 10 |
+| internal_operation | 11 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 34 |
@@ -30,8 +30,9 @@
 | Policy | Observed | Target | Follow-up |
 |---|---|---|---|
 | admin.key | AUTH-03 shared request context with AUTH-07 migration: named admin session (auth_session) requires platform_role=admin AND mfa_verified_at (403 admin_role_required/mfa_required otherwise); ADMIN API-key stays as programmatic channel until AUTH-10; missing/invalid credential 401, unavailable authority 503. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
-| api.key | AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
+| api.key | AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-11, AUTH-12 |
 | api.model_key | AUTH-08 durable Account-effective capabilities from current RequestContext; platform role never upgrades a bound Account. Unbound ENV staff adapter remains until AUTH-10. Existing can_train_models guards retained; comprehensive operation/object/budget admission remains AUTH-09/11/12. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-01, AUTH-03, AUTH-10, AUTH-11, AUTH-12 |
+| auth.api_keys | AUTH-10 personal self/current Account only; named session + Origin/CSRF mutations; fresh authentication for issue/rotate; hash-only durable keys, immutable history, CAS rotation/revoke and mandatory outbox atomic. Keys cannot manage keys. Interactive trusted CLI for existing service membership. | Preserve stable subject/account across rotation and terminal revoke across lifecycle changes. No scope/admin delegation beyond reviewed programmatic operations. | AUTH-11, AUTH-12, AUTH-17, AUTH-20 |
 | auth.entry | AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. AUTH-08 selects only active, unexpired Accounts and rechecks half-open Account expiry in session/MFA verification. | Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority. | AUTH-04, AUTH-05, AUTH-06, AUTH-19 |
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
@@ -61,8 +62,9 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:260 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:265 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:261 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:266 |
+| api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
 | api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
 | api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
 | api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
@@ -173,6 +175,9 @@
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | browser.session / session Model Card and fold importance | apps/api/routers/tasks_session.py:221 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | browser.internal / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:169 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:164 |
+| api:POST:/v1/api-keys | apps.api.routers.api_keys:issue_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:39 |
+| api:POST:/v1/api-keys/{key_id}/revoke | apps.api.routers.api_keys:revoke_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:53 |
+| api:POST:/v1/api-keys/{key_id}/rotate | apps.api.routers.api_keys:rotate_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:46 |
 | api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:150 |
 | api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
 | api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:286 |
@@ -315,6 +320,7 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | auth.account.operator | accounts.lifecycle.operator / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth08/manage_account.py:14 |
+| auth.api_keys.operator | auth.api_keys.operator / service:platform | auth.api_keys / existing service Identity/Account membership API keys; emergency revocation | scripts/auth10/manage_keys.py:13 |
 | auth.audit.publish | auth.audit.publish / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/audit_outbox.py:12 |
 | auth.mfa.bootstrap | auth.mfa.bootstrap / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | scripts/auth05/bootstrap.py:14 |
 | auth.mfa.schema.apply | auth.mfa.schema.apply / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa_migrations.py:18 |

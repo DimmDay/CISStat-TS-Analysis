@@ -179,9 +179,17 @@ def contract_openapi() -> dict:
     """
     from pydantic.json_schema import models_json_schema
     from apps.api.authentication.http_contract import AuthMeResponse
+    from apps.api.authentication.api_key_contract import (
+        KeyMetadata, KeyListResponse, IssuedKeyResponse,
+        IssueKeyBody, RotateKeyBody, VersionBody,
+    )
 
     _, schema = models_json_schema(
-        [(m, "serialization") for m in (Capabilities, AccessRegistry, ModelWorkload, FunctionalDecision, AuthMeResponse)],
+        [(m, "serialization") for m in (
+            Capabilities, AccessRegistry, ModelWorkload, FunctionalDecision,
+            AuthMeResponse, KeyMetadata, KeyListResponse, IssuedKeyResponse,
+            IssueKeyBody, RotateKeyBody, VersionBody,
+        )],
         ref_template="#/components/schemas/{model}",
     )
     return {"openapi":"3.1.0", "info":{"title":"CISStat access contract", "version":REGISTRY_VERSION},

@@ -636,8 +636,16 @@ class SessionCredentialVerifier:
         self.request = request
 
     def api_key(self, key):
+        from .api_keys import key_mode, secret_digest, service_for_request
+        from .api_key_policy import admit_request
         from .legacy import LegacyCredentialVerifier
 
+        if key_mode() == "durable" or key.startswith("csk_"):
+            secret_digest(key)  # Reject malformed credentials before opening authority.
+            evidence = service_for_request(self.request).verify(key)
+            if not getattr(self.request.state, "_auth10_principal_lookup", False):
+                admit_request(self.request, evidence)
+            return evidence
         return LegacyCredentialVerifier().api_key(key)
 
     def session(self, request):

@@ -1,0 +1,7 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+--apply exit 0 {"applied": true}
+{"ok": true, "backend": "postgres", "schema_version": "0024_auth10_api_keys", "request_mode": "durable"}
+--apply exit 0 {"applied": false}
+{"ok": true, "backend": "postgres", "schema_version": "0024_auth10_api_keys", "request_mode": "durable"}
+--check exit 0 {"ok": true, "backend": "postgres", "schema_version": "0024_auth10_api_keys", "request_mode": "durable"}
+Dockerfile AUTH-10 import/files guard: OK

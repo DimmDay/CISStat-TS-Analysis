@@ -1,0 +1,16 @@
+test_cli_and_native_runner_require_authority (test_auth10_api_keys.APIKeyUnitTests.test_cli_and_native_runner_require_authority) ... ok
+test_malformed_token_denied (test_auth10_api_keys.APIKeyUnitTests.test_malformed_token_denied) ... ok
+test_no_admin_internal_or_global_rules_delegation (test_auth10_api_keys.APIKeyUnitTests.test_no_admin_internal_or_global_rules_delegation) ... ok
+test_protected_malformed_key_rejected_before_store_creation (test_auth10_api_keys.APIKeyUnitTests.test_protected_malformed_key_rejected_before_store_creation) ... ok
+test_public_scope_gate (test_auth10_api_keys.APIKeyUnitTests.test_public_scope_gate) ... ok
+test_random_hash_only_repr (test_auth10_api_keys.APIKeyUnitTests.test_random_hash_only_repr) ... ok
+test_required_mode_cannot_enable_env (test_auth10_api_keys.APIKeyUnitTests.test_required_mode_cannot_enable_env) ... ok
+test_rotate_version_strict (test_auth10_api_keys.APIKeyUnitTests.test_rotate_version_strict) ... ok
+test_scope_enum_matches_api_contract (test_auth10_api_keys.APIKeyUnitTests.test_scope_enum_matches_api_contract) ... ok
+test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction) ... ok
+test_strict_issue_body_scope_ceiling (test_auth10_api_keys.APIKeyUnitTests.test_strict_issue_body_scope_ceiling) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.212s
+
+OK

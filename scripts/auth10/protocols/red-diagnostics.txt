@@ -1,0 +1,15 @@
+Delivery note: randomly generated test-only token masked; failure/trace preserved.
+test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction) ... FAIL
+
+======================================================================
+FAIL: test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH10/tests/unit/test_auth10_api_keys.py", line 173, in test_secret_redaction
+    self.assertNotIn(token, safe_error("failure " + token))
+AssertionError: '<synthetic-api-secret-redacted>' unexpectedly found in 'failure <synthetic-api-secret-redacted>'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+FAILED (failures=1)

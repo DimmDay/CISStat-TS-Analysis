@@ -281,7 +281,7 @@ class ContextTests(unittest.TestCase):
             self.assert_error(
                 lambda: resolve_request_context(request([("x-api-key", KEY)])),
                 401,
-                "durable_binding_required",
+                "invalid_credential",  # AUTH-10: protected ENV credentials are not accepted.
             )
 
     def test_unknown_auth_cookie_does_not_fall_back_to_research(self):
@@ -517,7 +517,7 @@ class DurableContextTests(unittest.TestCase):
         self.assertEqual(ctx.auth_method, "api_key")
         self.assertIsNone(ctx.mfa_verified_at)
 
-    def test_uuid_env_binding_reads_db_role_tenant_not_env(self):
+    def test_dev_uuid_env_binding_reads_db_role_tenant_not_env(self):
         a = self.authority
         app = FastAPI()
         app.state.auth_access_store = a
@@ -525,7 +525,9 @@ class DurableContextTests(unittest.TestCase):
             os.environ,
             {
                 "CISSTAT_API_KEYS": f"{KEY}:admin::{a.subject}:tenant-fake:documentation.read:{a.account}",
-                "CISSTAT_IDENTITY_MODE": "scoped",
+                "CISSTAT_IDENTITY_MODE": "session_scoped",
+                "CISSTAT_API_KEY_MODE": "legacy_dev",
+                "CISSTAT_STORAGE_MODE": "advisory",
             },
         ):
             ctx = resolve_request_context(request([("x-api-key", KEY)], app=app))

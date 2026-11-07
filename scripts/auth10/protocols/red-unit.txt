@@ -1,0 +1,21 @@
+test_auth10_api_keys (unittest.loader._FailedTest.test_auth10_api_keys) ... ERROR
+
+======================================================================
+ERROR: test_auth10_api_keys (unittest.loader._FailedTest.test_auth10_api_keys)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth10_api_keys
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH10/tests/unit/test_auth10_api_keys.py", line 9, in <module>
+    from apps.api.authentication.api_keys import new_secret, secret_digest, key_mode, IssuedKey
+ModuleNotFoundError: No module named 'apps.api.authentication.api_keys'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

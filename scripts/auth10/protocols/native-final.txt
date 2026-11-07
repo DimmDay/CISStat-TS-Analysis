@@ -1,0 +1,41 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_account_deadline_caps_key_expiry (test_auth10_keys.KeySQLTests.test_account_deadline_caps_key_expiry) ... ok
+test_account_suspension_scoped_and_terminal (test_auth10_keys.KeySQLTests.test_account_suspension_scoped_and_terminal) ... ok
+test_bad_key_never_falls_back_to_valid_cookie_and_conflicting_accounts (test_auth10_keys.KeySQLTests.test_bad_key_never_falls_back_to_valid_cookie_and_conflicting_accounts) ... ok
+test_cookie_mutations_csrf_origin_and_no_input_echo (test_auth10_keys.KeySQLTests.test_cookie_mutations_csrf_origin_and_no_input_echo) ... ok
+test_cross_person_and_same_person_other_account_uniform404 (test_auth10_keys.KeySQLTests.test_cross_person_and_same_person_other_account_uniform404) ... ok
+test_database_probe_and_load_gate_before_connector (test_auth10_keys.KeySQLTests.test_database_probe_and_load_gate_before_connector) ... ok
+test_expiry_exact_deadline (test_auth10_keys.KeySQLTests.test_expiry_exact_deadline) ... ok
+test_fresh_process_same_subject_and_revoke_persistence (test_auth10_keys.KeySQLTests.test_fresh_process_same_subject_and_revoke_persistence) ... ok
+test_hash_only_secret_once_safe_metadata (test_auth10_keys.KeySQLTests.test_hash_only_secret_once_safe_metadata) ... ok
+test_identity_reactivation_does_not_revive_key (test_auth10_keys.KeySQLTests.test_identity_reactivation_does_not_revive_key) ... ok
+test_issue_audit_fault_atomic (test_auth10_keys.KeySQLTests.test_issue_audit_fault_atomic) ... ok
+test_key_cannot_manage_keys_or_admin_paths (test_auth10_keys.KeySQLTests.test_key_cannot_manage_keys_or_admin_paths) ... ok
+test_key_count_bound (test_auth10_keys.KeySQLTests.test_key_count_bound) ... ok
+test_membership_revoke_races_issue_without_live_survivor (test_auth10_keys.KeySQLTests.test_membership_revoke_races_issue_without_live_survivor) ... ok
+test_membership_revoke_restore_does_not_revive_key (test_auth10_keys.KeySQLTests.test_membership_revoke_restore_does_not_revive_key) ... ok
+test_migration_idempotence_and_checksum_fail_closed (test_auth10_keys.KeySQLTests.test_migration_idempotence_and_checksum_fail_closed) ... ok
+test_plan_disabled_issue_and_rotation (test_auth10_keys.KeySQLTests.test_plan_disabled_issue_and_rotation) ... ok
+test_programmatic_scope_and_current_subject (test_auth10_keys.KeySQLTests.test_programmatic_scope_and_current_subject) ... ok
+test_readiness_guard_drop_fail_closed (test_auth10_keys.KeySQLTests.test_readiness_guard_drop_fail_closed) ... ok
+test_recent_auth_required_while_session_is_active (test_auth10_keys.KeySQLTests.test_recent_auth_required_while_session_is_active) ... ok
+test_required_env_removal_no_revocation_resurrection (test_auth10_keys.KeySQLTests.test_required_env_removal_no_revocation_resurrection) ... ok
+test_revoke_audit_fault_keeps_old_key (test_auth10_keys.KeySQLTests.test_revoke_audit_fault_keeps_old_key) ... ok
+test_revoke_rotation_race (test_auth10_keys.KeySQLTests.test_revoke_rotation_race) ... ok
+test_revoke_terminal_and_no_secret_recovery (test_auth10_keys.KeySQLTests.test_revoke_terminal_and_no_secret_recovery) ... ok
+test_rotation_audit_fault_keeps_old_key (test_auth10_keys.KeySQLTests.test_rotation_audit_fault_keeps_old_key) ... ok
+test_rotation_cannot_widen_scope (test_auth10_keys.KeySQLTests.test_rotation_cannot_widen_scope) ... ok
+test_rotation_stable_identity_expiry_and_old_invalid (test_auth10_keys.KeySQLTests.test_rotation_stable_identity_expiry_and_old_invalid) ... ok
+test_runtime_capability_reloaded_without_key_cache (test_auth10_keys.KeySQLTests.test_runtime_capability_reloaded_without_key_cache) ... ok
+test_service_key_operator_requires_existing_service_membership (test_auth10_keys.KeySQLTests.test_service_key_operator_requires_existing_service_membership) ... ok
+test_sql_immutable_history_and_no_reactivation (test_auth10_keys.KeySQLTests.test_sql_immutable_history_and_no_reactivation) ... ok
+test_suspend_races_issue_without_live_survivor (test_auth10_keys.KeySQLTests.test_suspend_races_issue_without_live_survivor) ... ok
+test_two_rotations_one_winner (test_auth10_keys.KeySQLTests.test_two_rotations_one_winner) ... ok
+test_upload_ownership_survives_key_rotation (test_auth10_keys.KeySQLTests.test_upload_ownership_survives_key_rotation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a08664ed0bbd4254b2f1eb9d5832fe7c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-D2971E8A operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+
+----------------------------------------------------------------------
+Ran 33 tests in 108.625s
+
+OK

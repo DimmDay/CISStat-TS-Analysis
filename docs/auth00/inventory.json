@@ -1,11 +1,11 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "c2217ec5ba38116e9da6413dc2c56794aefb89b5",
+  "baseline": "c13a52bd754f753d9a842aa84af8548af3019fed",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 235,
+    "api": 239,
     "framework": 8,
-    "internal_operation": 10,
+    "internal_operation": 11,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
@@ -41,12 +41,9 @@
       ]
     },
     "api.key": {
-      "observed": "AUTH-03 get_current_principal/require_api_key project one RequestContext; legacy ENV or verified UUID Account binding; invalid/presented credential never falls back to cookie. No can_use_api/CU admission yet.",
+      "observed": "AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12.",
       "target": "Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets.",
       "follow_up": [
-        "AUTH-01",
-        "AUTH-03",
-        "AUTH-10",
         "AUTH-11",
         "AUTH-12"
       ],
@@ -409,6 +406,25 @@
         "T13",
         "T15"
       ]
+    },
+    "auth.api_keys": {
+      "observed": "AUTH-10 personal self/current Account only; named session + Origin/CSRF mutations; fresh authentication for issue/rotate; hash-only durable keys, immutable history, CAS rotation/revoke and mandatory outbox atomic. Keys cannot manage keys. Interactive trusted CLI for existing service membership.",
+      "target": "Preserve stable subject/account across rotation and terminal revoke across lifecycle changes. No scope/admin delegation beyond reviewed programmatic operations.",
+      "follow_up": [
+        "AUTH-11",
+        "AUTH-12",
+        "AUTH-17",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T04",
+        "T05",
+        "T06",
+        "T11",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -419,8 +435,8 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "apps/api/access_registry.py": "40c0254423d2bc73d9755357bf0f96d54f3fcccce35a22077f6e867e4aa3d6e3",
-    "apps/api/access_registry.v1.json": "1f5ead513a046a0ab0fbabd43e9a1d5ea364bbcf84e70a744f398bbd39d7de9b",
+    "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
+    "apps/api/access_registry.v1.json": "2d837da6035661290ded6cca915b973a2a336da6f34e17f49fd6d80525f0fcbe",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -430,10 +446,14 @@
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
-    "apps/api/auth.py": "52ad8ffdd0a80054cb6ae0b7ac6523e2561ea4a4d15db430b05370c5ffb2022b",
+    "apps/api/auth.py": "22a296d69861b506210c67764b8a9d69de7011acf40fb0c2dcda6b7a09c4187a",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
+    "apps/api/authentication/api_key_contract.py": "1ff52f40a941b76fd5f55cd9689cb8b511d6d971926b5fed486534142a9e1107",
+    "apps/api/authentication/api_key_migrations.py": "287d1c0a625de8171651f9239c0b85be55408df3d4b6f0418ebaadb99d707484",
+    "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
+    "apps/api/authentication/api_keys.py": "ab48d3763d97a197deaf13f25b97b804a3da815dcea6ee3bb022f12465ac484b",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "e8a23d7def784d9befb038bf9dfba00e1989e41687d66cec29ce17b95acdeb9f",
+    "apps/api/authentication/context.py": "2d584b3fc6897ed1595bf5dc84401dc8393bfd6426e256f9f81799c7bd7af230",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -447,7 +467,7 @@
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
-    "apps/api/authentication/sessions.py": "3926e110974fb663f31415eb8369dbd895171cae2ddfa66d6170853fa3d470cd",
+    "apps/api/authentication/sessions.py": "7096dffca6a96a31d99c7d54829aaf0e25215a5cf517147381a0428fcf75cb8c",
     "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
     "apps/api/backtesting.py": "d6199c4b7f88220dd13c54e0df5341961ccf14035eebc160c09c2e9f6315c841",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
@@ -478,17 +498,18 @@
     "apps/api/forecasting.py": "265485a8a6697dd42a0393392a55b3d9a50f05eba032bbad597b01456f49e43b",
     "apps/api/forecasting_contract.py": "7b26e55fe16d83f3c2ed6e829437195433c2eb2e141e820ab8e619ce5559284a",
     "apps/api/format_correction.py": "441792d0e61f2b6b0320102c9cd791004a45eef1e3ec7640f0f1dd88c3c074c3",
-    "apps/api/identity.py": "c28f8df207c75f0d51de81c1bf4b26a0fea122537cd034ab720ee0da31d7aeaf",
+    "apps/api/identity.py": "4ce52abf874ba8b8125299ec1642bf989e2f1c462210d56ccefa5a535629ab90",
     "apps/api/inclusion_correction.py": "7e1cd2d35748a8472b066bbb81a3687521af87d4c50aff4347985af20fe26018",
     "apps/api/knowledge/__init__.py": "9caf4568ad76d245cd199a746d5d0c0c213260557719915b4b39e916ff8b028c",
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "5fe48c5fc141cb3d808643342ad2afae456cbbed017e041d697ac77f27d638f7",
+    "apps/api/main.py": "95db4860d99d7fdf59b6c18d047dabe202895f219221577c1701047d31eb0b8e",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
     "apps/api/migrations/0023_auth09_account_ownership.sql": "7abebc73b3f371b6cebb393f1a317fe8f7ad9eda8ad5c3f79915453dcac53e01",
+    "apps/api/migrations/0024_auth10_api_keys.sql": "bc3dcd29e5dfa60a94845d0e211534f224ea9aa7f7aa5ddd242e3a5f90e036b1",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -551,6 +572,7 @@
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
     "apps/api/research_runs.py": "9df9e4b860f94fc0f77a15e77706daf047ff2b9bef56d03e60e30ebc83d78c39",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
     "apps/api/routers/diagnostics.py": "a6a4061cace32805fef524041a420e72a3144793ad0b589310aa2cd35953f2b6",
     "apps/api/routers/diagnostics_internal.py": "928558b5b09a56ca2a9d815d64e9db9e0ddee35ebfd06250c97a349a570e44a0",
@@ -568,13 +590,13 @@
     "apps/api/routers/tasks_session.py": "6478e9df66721b7fc66ed5ea7a2edc8e1694edfe6305f1ad0baf0e54c6bf2a46",
     "apps/api/routers/upload_db.py": "a0679c9e9220ce935a4b555327f8c25e444750b4190403f9f1432018aa0e7a4d",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
-    "apps/api/security_audit.py": "9dc7851d040353f024233b5ebb3479df15febc686dc447df4151d644772f967a",
+    "apps/api/security_audit.py": "33e31b656372d84bf75a159fb630aaf973f31ccffb4c238e85164d73a3e9eaed",
     "apps/api/session_store.py": "e4a354a8e1df66de43d2317ff26e490a042303fb8badfce36e530cf1f5f5fa81",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
-    "apps/api/storage_diagnostics.py": "ed37a44ba8f32cfc1bf798d65c5ec2603e2cd7944b166f01b7df19a3f29b718d",
+    "apps/api/storage_diagnostics.py": "3e210135b57c29975dff928310d8b3473fcebfa69a9324b2b011e601eaaa9af1",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
     "apps/api/target_column_rule.py": "3a503622feb1b36af3e27bae2e2b7f7b36ce9b75f34a98dc965380f5e5d0fde2",
-    "apps/api/telemetry.py": "58e9aafadcf79f40b0d41b6b417526e42c367dd68933d5257354641303a3d44b",
+    "apps/api/telemetry.py": "04039acf749a9fd86a8bd06e5c201e0096b87e89da4c20c9df0527c2b97fc7ef",
     "apps/api/text_quality_correction.py": "eb7ffcfa5a515f06d734e5c952b78e6a278f6f9f301ee4dfebc9384f6d82682c",
     "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
     "apps/api/trace_hook.py": "9602855e297297756e4f4378c0b6f782ee0b83f6495f2bc21d736622cf35fb93",
@@ -633,7 +655,7 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "793ffabf1f171225962d2ec13a27ff619154028623588051e60c75e4a6f24892",
+    "docs/auth01/openapi.json": "64786edc5243a90fa2179851be54c518ef987cb302b637136e5e5ec4d9ad7ac0",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -642,6 +664,7 @@
     "docs/auth08/design.md": "00c6bc4a7ef1c4bf5452c8436ab24387d894485769eafabf694f794007ee4ad8",
     "docs/auth09/design.md": "e85652b96c357c63702118bacc805ed699e66573f873475c7e605764fd55aafe",
     "docs/auth09/hotfix01.md": "774e1569b70d0ace6cff3f7996f5b7fef091d55a10bd442dccb1dd65291b2a5a",
+    "docs/auth10/hotfix01.md": "02328d7d41e8ca21cea09836c5c684c243e0891ffc2d870010bccb5a3f8bd92f",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -699,7 +722,7 @@
     "packages/ui/context/AuthContext.tsx": "5967def62a7d478e420564f612ac9f74ac0449cf5ce89101772a25e815cc7347",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "31e979480e01a4f17e0baa11cb9904ab64aeb85b5bdd481dd31392e5d5070429",
+    "packages/ui/lib/access-contract.generated.ts": "092e06607f0e50858de66a36f9bd2663763d01a9bda3c0671e9a22d3cd9ba6aa",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
@@ -715,7 +738,7 @@
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "91e48aa3c54459440dbf246b8c7c4e297ec14a3fb97c29f1b1b3c36261428236",
-    "packages/ui/server/proxy-routes.generated.json": "71ad56e6174cf58a2146a1a4391e8965baff39fbbed38b338cc33c70476b8f37",
+    "packages/ui/server/proxy-routes.generated.json": "5a841c75bdce2480e19f482c89a02ab0464e2c7ff3fa4bc518d69a0a7ab0e04d",
     "scripts/auth00/check_committed.py": "fd71630572a5ba67d2b43cc34c124c5f41941a6a85c0b695be70a1bc3db070e2",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -723,10 +746,13 @@
     "scripts/auth05/bootstrap.py": "be75f9ef612067420d898ec5233903bdf626402a2b7274f95bcf5447d68ecbe6",
     "scripts/auth08/manage_account.py": "cc3cb9374f67f3c066974e7e984f9d81384f60b91fc5afdb19bf92208e24b0ab",
     "scripts/auth09/migrate_ownership.py": "401e5b9b77b72e4c253d457f34fb39eae1c73fa37f4b27608e86220bd141f4af",
-    "scripts/local_gates.py": "5032055d5668549b796dc6769c8ae28c88b26fe6e5ab507c487d872cc0bdb020",
+    "scripts/auth10/manage_keys.py": "7afe7c4671c53c41e90396061c4bb2a79f52e12ad6d59d23d8831dd03c9f0bce",
+    "scripts/auth10/migrate.py": "e434ae441f266f032cf75273d68a694bcd815dfe741194fddd1c69400852a4a1",
+    "scripts/local_gates.py": "c9180ecf3216186e78689086f2b45d864628ee6090134313152a4cbe0271cb33",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
+    "tests/unit/test_auth00_local_output.py": "2ee57bcad7bbf19ed57bf0356ea5a8de54ed4c122266bbf98f2986fb8c7a6e57",
     "tests/unit/test_auth00_precommit.py": "2d7955f3d9f4df49a2c0db33795b74465bc5f23c57cce67390d3a1698a846c15",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
@@ -791,7 +817,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 261,
           "symbol": "health"
         }
       ],
@@ -817,7 +843,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 265,
+          "line": 266,
           "symbol": "health_ops"
         }
       ],
@@ -888,6 +914,37 @@
       "canonical_operation": "fastapi:redoc_url",
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/api-keys",
+      "operation": "apps.api.routers.api_keys:list_api_keys",
+      "evidence": [
+        {
+          "source": "apps/api/routers/api_keys.py",
+          "line": 33,
+          "symbol": "list_api_keys"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:GET:/v1/api-keys",
+      "discovery": "automatic",
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.api_keys.list",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
     },
     {
       "kind": "api",
@@ -4889,6 +4946,102 @@
         "T10",
         "T16"
       ]
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/api-keys",
+      "operation": "apps.api.routers.api_keys:issue_api_key",
+      "evidence": [
+        {
+          "source": "apps/api/routers/api_keys.py",
+          "line": 39,
+          "symbol": "issue_api_key"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:POST:/v1/api-keys",
+      "discovery": "automatic",
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.issue",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/api-keys/{key_id}/revoke",
+      "operation": "apps.api.routers.api_keys:revoke_api_key",
+      "evidence": [
+        {
+          "source": "apps/api/routers/api_keys.py",
+          "line": 53,
+          "symbol": "revoke_api_key"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:POST:/v1/api-keys/{key_id}/revoke",
+      "discovery": "automatic",
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.revoke",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/api-keys/{key_id}/rotate",
+      "operation": "apps.api.routers.api_keys:rotate_api_key",
+      "evidence": [
+        {
+          "source": "apps/api/routers/api_keys.py",
+          "line": 46,
+          "symbol": "rotate_api_key"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:POST:/v1/api-keys/{key_id}/rotate",
+      "discovery": "automatic",
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.rotate",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
     },
     {
       "kind": "api",
@@ -9378,6 +9531,37 @@
       ],
       "canonical_operation": "accounts.lifecycle.operator",
       "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
+    },
+    {
+      "id": "auth.api_keys.operator",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "interactive local API key lifecycle",
+      "operation": "auth.api_keys.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth10/manage_keys.py",
+          "line": 13,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/authentication/api_keys.py",
+          "line": 70,
+          "symbol": "APIKeyService"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "existing service Identity/Account membership API keys; emergency revocation",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.operator",
+      "admission": "trusted-interactive-local-operator; current authority/CAS/mandatory outbox"
     },
     {
       "id": "auth.audit.publish",

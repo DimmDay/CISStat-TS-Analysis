@@ -137,13 +137,14 @@ class TestIdentityValidity:
 class TestScopeCatalog:
     """Обязательные права (§15, таблица): documentation.read/write/
     export/approve/publish, artifact.data.read, logs.read/export,
-    audit.read, support.grant, policy.admin -- РОВНО этот каталог;
+    audit.read, support.grant, policy.admin и AUTH-10 api.* -- точный каталог;
     reviewer/support -- permission sets (scopes), не новые enum-роли."""
 
-    def test_scope_catalog_contains_required_ten(self):
+    def test_scope_catalog_contains_documentation_and_api_scopes(self):
         from apps.api.identity import ALL_SCOPES, Scope
 
         expected = {
+            "api.read", "api.write", "api.compute", "api.database",
             "documentation.read",
             "documentation.write",
             "documentation.export",

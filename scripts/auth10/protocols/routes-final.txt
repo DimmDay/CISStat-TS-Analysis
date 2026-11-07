@@ -1,0 +1,6 @@
+{"status": "ok", "counts": {"api": 239, "framework": 8, "internal_operation": 11, "legacy_authority": 1, "legacy_widget": 250, "page": 34, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 10, "task_alias": 4, "transport": 2, "worker": 6}, "entries": 572}
+AUTH-01 generated OpenAPI/TS parity OK
+{"status": "ok", "api_routes": 239}
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 239, "inventory_api": 239, "registry_bindings": 243, "inventory_entries": 572, "added": [], "missing": []}

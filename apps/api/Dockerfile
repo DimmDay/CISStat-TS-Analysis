@@ -122,6 +122,10 @@ COPY scripts/auth05/ ./scripts/auth05/
 # AUTH-09 local operator; not an HTTP endpoint.
 COPY scripts/auth09/migrate_ownership.py ./scripts/auth09/migrate_ownership.py
 RUN python -c "from pathlib import Path; assert Path('scripts/auth09/migrate_ownership.py').is_file(); from apps.api.accounts.ownership_migration import migrate_legacy_run; print('auth09 operator OK')"
+# AUTH-10 explicit migration and interactive service-key operations.
+COPY scripts/auth10/migrate.py ./scripts/auth10/migrate.py
+COPY scripts/auth10/manage_keys.py ./scripts/auth10/manage_keys.py
+RUN python -c "from pathlib import Path; from apps.api.authentication.api_keys import APIKeyService; from apps.api.authentication.api_key_migrations import check_schema; assert Path('scripts/auth10/migrate.py').is_file(); assert Path('scripts/auth10/manage_keys.py').is_file(); print('auth10 operator imports OK')"
 COPY scripts/auth08/manage_account.py ./scripts/auth08/manage_account.py
 RUN python -c "from pathlib import Path; assert Path('scripts/auth08/manage_account.py').is_file(); from apps.api.accounts.lifecycle import AccountLifecycle; print('auth08 operator command OK')"
 

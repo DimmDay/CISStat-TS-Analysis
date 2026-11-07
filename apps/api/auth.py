@@ -32,10 +32,18 @@ def _parse_key_registry() -> dict[str, AuthenticatedPrincipal]:
 
 
 def resolve_principal_for_key(key: str) -> Optional[AuthenticatedPrincipal]:
-    """Legacy lookup, authoritative for durable bindings, None for unknown key."""
-    if not key or key not in _parse_key_registry():
+    """Identity-only lookup. HTTP admission is checked on the real request."""
+    if not key:
         return None
-    return get_current_principal(x_api_key=key)
+    from apps.api.authentication.api_keys import key_mode
+    if not key.startswith("csk_") and key_mode() == "legacy_dev" and key not in _parse_key_registry():
+        return None
+    try:
+        return get_current_principal(x_api_key=key)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
 
 
 def get_current_principal(
@@ -67,6 +75,7 @@ def get_current_principal(
                 "headers": headers,
             }
         )
+        request.state._auth10_principal_lookup = True
     context = resolve_request_context(request)
     if context.auth_method not in ("api_key", "legacy_api_key"):
         auth_error(401, "authentication_required", context.request_id)

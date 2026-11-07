@@ -414,6 +414,180 @@
         "title": "FunctionalDecision",
         "type": "object"
       },
+      "IssueKeyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "expires_in_days": {
+            "maximum": 365,
+            "minimum": 1,
+            "title": "Expires In Days",
+            "type": "integer"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "api.read",
+                "api.write",
+                "api.compute",
+                "api.database"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "expires_in_days",
+          "scopes"
+        ],
+        "title": "IssueKeyBody",
+        "type": "object"
+      },
+      "IssuedKeyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "key": {
+            "$ref": "#/components/schemas/KeyMetadata"
+          }
+        },
+        "required": [
+          "secret",
+          "key"
+        ],
+        "title": "IssuedKeyResponse",
+        "type": "object"
+      },
+      "KeyListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KeyMetadata"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "truncated"
+        ],
+        "title": "KeyListResponse",
+        "type": "object"
+      },
+      "KeyMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "key_id": {
+            "format": "uuid",
+            "title": "Key Id",
+            "type": "string"
+          },
+          "family_id": {
+            "format": "uuid",
+            "title": "Family Id",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "api.read",
+                "api.write",
+                "api.compute",
+                "api.database"
+              ],
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "replaced_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaced By"
+          }
+        },
+        "required": [
+          "key_id",
+          "family_id",
+          "subject_id",
+          "account_id",
+          "label",
+          "scopes",
+          "version",
+          "created_at",
+          "expires_at",
+          "revoked_at",
+          "replaced_by"
+        ],
+        "title": "KeyMetadata",
+        "type": "object"
+      },
       "ModelWorkload": {
         "additionalProperties": false,
         "properties": {
@@ -539,6 +713,44 @@
         "title": "Role",
         "type": "string"
       },
+      "RotateKeyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "api.read",
+                    "api.write",
+                    "api.compute",
+                    "api.database"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 4,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scopes"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "RotateKeyBody",
+        "type": "object"
+      },
       "StageDefinition": {
         "additionalProperties": false,
         "properties": {
@@ -561,6 +773,21 @@
           "stage_id"
         ],
         "title": "StageDefinition",
+        "type": "object"
+      },
+      "VersionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "VersionBody",
         "type": "object"
       }
     }
@@ -2366,6 +2593,38 @@
         "capability": null,
         "selector": "none",
         "authority": "external"
+      },
+      "auth.api_keys.list": {
+        "operation_id": "auth.api_keys.list",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.api_keys.issue": {
+        "operation_id": "auth.api_keys.issue",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.api_keys.rotate": {
+        "operation_id": "auth.api_keys.rotate",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.api_keys.revoke": {
+        "operation_id": "auth.api_keys.revoke",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
       }
     },
     "bindings": {
@@ -3323,6 +3582,22 @@
       },
       "api:POST:/v1/progress/runs/{run_id}/restore": {
         "operation_id": "platform.restore_run",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/api-keys": {
+        "operation_id": "auth.api_keys.list",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/api-keys": {
+        "operation_id": "auth.api_keys.issue",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/api-keys/{key_id}/rotate": {
+        "operation_id": "auth.api_keys.rotate",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/api-keys/{key_id}/revoke": {
+        "operation_id": "auth.api_keys.revoke",
         "programmatic_api": false
       }
     }

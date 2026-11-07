@@ -9,6 +9,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/api-keys"
+  },
+  {
+    "method": "GET",
     "path": "/v1/auth/csrf"
   },
   {
@@ -446,6 +450,18 @@
   {
     "method": "PATCH",
     "path": "/v1/public/rules/update"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys/{key_id}/revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys/{key_id}/rotate"
   },
   {
     "method": "POST",

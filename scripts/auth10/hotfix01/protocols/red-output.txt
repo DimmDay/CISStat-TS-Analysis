@@ -1,0 +1,38 @@
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... FAIL
+test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ERROR
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ERROR
+
+======================================================================
+ERROR: test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH10-HOTFIX01/tests/unit/test_auth00_local_output.py", line 37, in test_failed_step_and_unicode_output_saved_without_losing_exit
+    ok, _ = mod.run_gate("auth00", [command], True, failed)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: run_gate() takes 3 positional arguments but 4 were given
+
+======================================================================
+ERROR: test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH10-HOTFIX01/tests/unit/test_auth00_local_output.py", line 53, in test_passed_auth00_log_contains_all_steps
+    ok, _ = mod.run_gate("auth00", commands, True, failed)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: run_gate() takes 3 positional arguments but 4 were given
+
+======================================================================
+FAIL: test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH10-HOTFIX01/tests/unit/test_auth00_local_output.py", line 27, in test_auth00_checks_prepared_snapshot_before_slow_unit_suite
+    self.assertEqual(commands[0][1], "scripts/auth00/check_committed.py")
+AssertionError: '-m' != 'scripts/auth00/check_committed.py'
+- -m
++ scripts/auth00/check_committed.py
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.027s
+
+FAILED (failures=1, errors=2)

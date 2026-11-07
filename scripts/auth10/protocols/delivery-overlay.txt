@@ -1,0 +1,195 @@
+Локальные гейты (база c13a52b, AUTH-00 target=INDEX): auth10, auth01, auth00
+
+=== ГЕЙТ auth10 (auth10.yml contracts) — AUTH-10 durable API keys / scope / operator contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth10*.py -v
+test_cli_and_native_runner_require_authority (test_auth10_api_keys.APIKeyUnitTests.test_cli_and_native_runner_require_authority) ... ok
+test_malformed_token_denied (test_auth10_api_keys.APIKeyUnitTests.test_malformed_token_denied) ... ok
+test_no_admin_internal_or_global_rules_delegation (test_auth10_api_keys.APIKeyUnitTests.test_no_admin_internal_or_global_rules_delegation) ... ok
+test_protected_malformed_key_rejected_before_store_creation (test_auth10_api_keys.APIKeyUnitTests.test_protected_malformed_key_rejected_before_store_creation) ... ok
+test_public_scope_gate (test_auth10_api_keys.APIKeyUnitTests.test_public_scope_gate) ... ok
+test_random_hash_only_repr (test_auth10_api_keys.APIKeyUnitTests.test_random_hash_only_repr) ... ok
+test_required_mode_cannot_enable_env (test_auth10_api_keys.APIKeyUnitTests.test_required_mode_cannot_enable_env) ... ok
+test_rotate_version_strict (test_auth10_api_keys.APIKeyUnitTests.test_rotate_version_strict) ... ok
+test_scope_enum_matches_api_contract (test_auth10_api_keys.APIKeyUnitTests.test_scope_enum_matches_api_contract) ... ok
+test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction) ... ok
+test_strict_issue_body_scope_ceiling (test_auth10_api_keys.APIKeyUnitTests.test_strict_issue_body_scope_ceiling) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.263s
+
+OK
+--- auth10: PASS (0.9 c)
+
+=== ГЕЙТ auth01 (auth01.yml) — AUTH-01 registry / OpenAPI / generated TS parity
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth01_registry.py -v
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.710s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python scripts/auth01/windows_locale_check.py
+AUTH-01 Path.read_text default encoding=cp1251
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.829s
+
+OK
+AUTH-01 Path.read_text default encoding=cp1252
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.579s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python scripts/auth01/generate.py --check
+AUTH-01 generated OpenAPI/TS parity OK
+--- auth01: PASS (3.2 c)
+
+=== ГЕЙТ auth00 (auth00.yml) — AUTH-00 inventory + Git snapshot parity (default INDEX)
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+test_auth06_migration_manifest_contains_only_application_sources (test_auth00_inventory.InventoryTests.test_auth06_migration_manifest_contains_only_application_sources) ... ok
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... ok
+test_changed_next_proxy_requires_review (test_auth00_inventory.InventoryTests.test_changed_next_proxy_requires_review) ... ok
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_foreign_asgi_root_requires_review (test_auth00_inventory.InventoryTests.test_foreign_asgi_root_requires_review) ... ok
+test_foreign_http_server_requires_review (test_auth00_inventory.InventoryTests.test_foreign_http_server_requires_review) ... ok
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... ok
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_installed_typescript_does_not_change_repository_inventory (test_auth00_inventory.InventoryTests.test_installed_typescript_does_not_change_repository_inventory) ... ok
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... ok
+test_manual_extra_cannot_invent_an_http_route (test_auth00_inventory.InventoryTests.test_manual_extra_cannot_invent_an_http_route) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_policy_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_policy_threat_reference_must_exist) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ok
+test_review_cannot_overwrite_a_discovered_path (test_auth00_inventory.InventoryTests.test_review_cannot_overwrite_a_discovered_path) ... ok
+test_reviewed_application_source_change_still_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_reviewed_application_source_change_still_invalidates_snapshot) ... ok
+test_reviewed_dependency_sources_require_catalogue_correction (test_auth00_inventory.InventoryTests.test_reviewed_dependency_sources_require_catalogue_correction) ... ok
+test_reviewed_password_blocklist_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_password_blocklist_fingerprint_is_checkout_portable) ... ok
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+test_shared_next_proxy_discovery (test_auth00_inventory.InventoryTests.test_shared_next_proxy_discovery) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+test_crlf_worktree_matches_lf_index (test_auth00_precommit.PrecommitTests.test_crlf_worktree_matches_lf_index) ... ok
+test_empty_index_is_not_pass (test_auth00_precommit.PrecommitTests.test_empty_index_is_not_pass) ... ok
+test_head_does_not_silently_fall_back_to_index (test_auth00_precommit.PrecommitTests.test_head_does_not_silently_fall_back_to_index) ... ok
+test_ignored_page_still_blocks_pass (test_auth00_precommit.PrecommitTests.test_ignored_page_still_blocks_pass) ... ok
+test_local_gate_target_is_explicit_and_does_not_mutate_commands (test_auth00_precommit.PrecommitTests.test_local_gate_target_is_explicit_and_does_not_mutate_commands) ... ok
+test_partially_staged_source_with_old_inventory_fails (test_auth00_precommit.PrecommitTests.test_partially_staged_source_with_old_inventory_fails) ... ok
+test_staged_before_first_commit_passes_without_changing_index (test_auth00_precommit.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... ok
+test_unstaged_guard_change_with_same_routes_fails (test_auth00_precommit.PrecommitTests.test_unstaged_guard_change_with_same_routes_fails) ... ok
+test_untracked_reviewed_helper_cannot_be_left_out (test_auth00_precommit.PrecommitTests.test_untracked_reviewed_helper_cannot_be_left_out) ... ok
+
+----------------------------------------------------------------------
+Ran 44 tests in 46.980s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 239, "framework": 8, "internal_operation": 11, "legacy_authority": 1, "legacy_widget": 250, "page": 34, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 10, "task_alias": 4, "transport": 2, "worker": 6}, "entries": 572}
+    $ /workspace/scratch/4331ff71bc24/AUTH10-zip-overlay/../auth09-venv/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (545 discovery surfaces; full reviewed inventory/source parity)
+--- auth00: PASS (67.0 c)
+
+=== СВОДКА ===
+  PASS  auth10      0.9 c
+  PASS  auth01      3.2 c
+  PASS  auth00     67.0 c
+
+ИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: auth10 (нужны соответствующие --with-authXX-postgres; native CI отдельно)
+{"status": "ok", "api_routes": 239}
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 239, "inventory_api": 239, "registry_bindings": 243, "inventory_entries": 572, "added": [], "missing": []}

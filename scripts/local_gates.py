@@ -30,6 +30,8 @@
                                      инцидента AUTH-07-HOTFIX2 «локально
                                      зелено, на windows-2025
                                      ModuleNotFoundError на collection»
+  auth10  (auth10.yml, push/PR)    Durable API keys / scopes / operator
+  auth10-postgres (auth10.yml)    native PG rotation / lifecycle / audit rollback
   auth09  (auth09.yml, push/PR)    Object ownership / legacy migration
   auth09-postgres (auth09.yml)    native PG ownership / restore / audit rollback
   auth08  (auth08.yml, push/PR)    Account entitlements / lifecycle / me contracts
@@ -40,7 +42,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -50,6 +52,7 @@ Stdlib only; ничего не коммитит и не пушит (AGENTS.md)."
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -67,6 +70,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth10", "auth10.yml contracts", "AUTH-10 durable API keys / scope / operator contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth10/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth10*.py", "-v"],
+    ]),
+    ("auth10-postgres", "auth10.yml postgres", "AUTH-10 native PostgreSQL rotation / revoke / audit fault", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth10/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth10/verify_postgres.py"],
+    ]),
     ("auth09", "auth09.yml contracts", "AUTH-09 Object ownership / operator / legacy migration", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth09/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth09*.py", "-v"],
@@ -155,11 +166,13 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
         [sys.executable, "scripts/auth01/generate.py", "--check"],
     ]),
     ("auth00", "auth00.yml", "AUTH-00 inventory + Git snapshot parity (default INDEX)", [
+        # Fail early with an actionable snapshot mismatch before the slow suite.
+        # No automatic staging: INDEX after explicit git add; HEAD before push.
+        [sys.executable, "scripts/auth00/check_committed.py"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit",
          "-p", "test_auth00*.py", "-v"],
         [sys.executable, "scripts/auth00/inventory.py", "--check"],
-        # AUTH-09-HOTFIX01: precommit uses the explicitly staged snapshot.
-        # HEAD remains available for pre-push. Both validate full source parity.
+        # Keep the final parity fence if sources change during the unit suite.
         [sys.executable, "scripts/auth00/check_committed.py"],
     ]),
     ("rules", "test_rules.yml", "Validation rules sanity check", [
@@ -172,8 +185,8 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
     # (не skip) -- пуш с «непроверенным durable» невозможен молча.
     ("session-postgres", "test.yml (V2.3, live PG opt-in)", "Session backend Postgres: CAS/TTL/prune/health на живой БД", [
         [sys.executable, "-c",
-         "import os; assert os.environ.get('CISSTAT_TEST_PG_DSN'), "
-         "'CISSTAT_TEST_PG_DSN обязателен (disposable Postgres DSN, паритет authXX-postgres)'"],
+         ("import os; assert os.environ.get('CISSTAT_TEST_PG_DSN'), "
+          "'CISSTAT_TEST_PG_DSN обязателен (disposable Postgres DSN, паритет authXX-postgres)'")],
         [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt"],
         [sys.executable, "-m", "pytest", "tests/api/test_session_store_postgres.py", "-v"],
     ]),
@@ -207,28 +220,72 @@ def prepare_commands(commands: list[list[str]], target: str) -> list[list[str]]:
             else list(command) for command in commands]
 
 
-def run_gate(name: str, commands: list[list[str]], skip_install: bool) -> tuple[bool, float]:
+def _logged_command(command: list[str], log) -> int:
+    """Keep the original exit code; console and UTF-8 file receive one stream."""
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                          errors="replace", env=env) as process:
+        for line in process.stdout:
+            log.write(line)
+            log.flush()
+            try:
+                print(line, end="", flush=True)
+            except UnicodeEncodeError:
+                # Redirected Windows consoles can still use a legacy codepage.
+                encoding = getattr(sys.stdout, "encoding", None) or "ascii"
+                print(line.encode(encoding, errors="backslashreplace").decode(encoding),
+                      end="", flush=True)
+        return process.wait()
+
+
+def run_gate(name: str, commands: list[list[str]], skip_install: bool,
+             failures: dict | None = None) -> tuple[bool, float]:
     started = time.monotonic()
-    for command in commands:
-        is_install = command[:2] == ["npm", "ci"] or command[1:3] == ["-m", "pip"]
-        if skip_install and is_install:
-            print("    (установка зависимостей пропущена: --skip-install)")
-            continue
-        if command and command[0] == "npm":
-            command = [_npm(), *command[1:]]
-        print(f"    $ {' '.join(command)}", flush=True)
-        result = subprocess.run(command, cwd=ROOT)
-        if result.returncode != 0:
-            print("    FAILED STEP (exit " + str(result.returncode) + "): " + " ".join(command), flush=True)
-            return False, time.monotonic() - started
-    return True, time.monotonic() - started
+    log = None
+    log_path = None
+    if name == "auth00":
+        log_path = ROOT / "logs/local_gates/auth00.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log = log_path.open("w", encoding="utf-8", newline="\n")
+        print("    AUTH-00 full log: " + str(log_path), flush=True)
+    try:
+        for original in commands:
+            command = list(original)
+            is_install = command[:2] == ["npm", "ci"] or command[1:3] == ["-m", "pip"]
+            if skip_install and is_install:
+                print("    (установка зависимостей пропущена: --skip-install)")
+                continue
+            if command and command[0] == "npm":
+                command = [_npm(), *command[1:]]
+            heading = "    $ " + " ".join(command)
+            print(heading, flush=True)
+            if log is not None:
+                log.write(heading + "\n")
+                log.flush()
+                code = _logged_command(command, log)
+            else:
+                code = subprocess.run(command, cwd=ROOT, check=False).returncode
+            if code:
+                detail = "    FAILED STEP (exit " + str(code) + "): " + " ".join(command)
+                print(detail, flush=True)
+                if log is not None:
+                    log.write(detail + "\n")
+                    print("    Полный вывод: " + str(log_path), flush=True)
+                if failures is not None:
+                    failures[name] = {"command": command, "log": log_path}
+                return False, time.monotonic() - started
+        return True, time.monotonic() - started
+    finally:
+        if log is not None:
+            log.close()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
+                        help="запустить только выбранные гейты (auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--auth00-target", choices=("index", "head"), default="index",
                         help="AUTH-00: index после явного git add (default), head после commit перед push")
     parser.add_argument("--skip-install", action="store_true",
@@ -245,6 +302,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth10-postgres", action="store_true",
+                        help="добавить AUTH-10 native key lifecycle; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth09-postgres", action="store_true",
                         help="добавить AUTH-09 native object/migration проверки; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth08-postgres", action="store_true",
@@ -273,6 +332,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth10_postgres:
+        excluded.add("auth10-postgres")
     if not args.with_auth09_postgres:
         excluded.add("auth09-postgres")
     if not args.with_auth08_postgres:
@@ -296,22 +357,23 @@ def main() -> int:
             mark = "*" if name not in excluded else " "
             print(f" {mark} {name:7s} <- {origin:32s} {description}")
         print("\n* = входит в прогон по умолчанию (push в main); "
-              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-session-postgres")
+              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-auth10-postgres/--with-session-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
-        cwd=ROOT, capture_output=True, text=True,
+        cwd=ROOT, capture_output=True, text=True, check=False,
     ).stdout.strip()
     names = ", ".join(g[0] for g in selected)
     print(f"Локальные гейты (база {rev}, AUTH-00 target={args.auth00_target.upper()}): {names}", flush=True)
+    failures = {}
     results: list[tuple[str, bool, float]] = []
     failed = False
     for name, origin, description, commands in selected:
         print(f"\n=== ГЕЙТ {name} ({origin}) — {description}", flush=True)
-        ok, seconds = run_gate(name, prepare_commands(commands, args.auth00_target), args.skip_install)
+        ok, seconds = run_gate(name, prepare_commands(commands, args.auth00_target), args.skip_install, failures)
         results.append((name, ok, seconds))
         print(f"--- {name}: {'PASS' if ok else 'FAIL'} ({seconds:.1f} c)", flush=True)
         if not ok and args.fail_fast:
@@ -319,9 +381,19 @@ def main() -> int:
     print("\n=== СВОДКА ===")
     for name, ok, seconds in results:
         print(f"  {'PASS' if ok else 'FAIL'}  {name:7s} {seconds:7.1f} c")
+    for name, detail in failures.items():
+        print("  FAILED STEP " + name + ": " + " ".join(detail["command"]))
+        if detail["log"]:
+            print("  Полный лог: " + str(detail["log"]))
+        if name == "auth00" and "scripts/auth00/check_committed.py" in detail["command"]:
+            print("  До commit: просмотрите изменения и явно подготовьте INDEX:")
+            print("    git add --pathspec-from-file=scripts/auth10/files.txt")
+            print("    git add --pathspec-from-file=scripts/auth10/hotfix01/files.txt")
+            print("    python scripts/local_gates.py --only auth00 --skip-install")
+            print("  После commit проверяйте HEAD: --auth00-target head. Автоматического staging нет.")
     failed = any(not ok for _, ok, _ in results)
     names_run = {name for name, _, _ in results}
-    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09")
+    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10")
                     if name in names_run and name + "-postgres" not in names_run]
     if not failed and missing_live:
         print("\nИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: "
