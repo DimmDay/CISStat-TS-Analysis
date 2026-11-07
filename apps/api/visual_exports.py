@@ -662,6 +662,7 @@ def resolve_frozen_result(
     view_id: str,
     *,
     result_ref: Optional[str] = None,
+    subject: Any = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Frozen visual_result запуска: по явному result_ref либо последний
     зафиксированный для view (durable registry, БЕЗ SessionStore/науки).
@@ -674,7 +675,7 @@ def resolve_frozen_result(
             a for a in artifacts if a.refs.get("result_ref") == result_ref
         ]
         if not artifacts:
-            artifacts = _freeze_saved_fallback(run_id, view_id, result_ref)
+            artifacts = _freeze_saved_fallback(run_id, view_id, result_ref, subject=subject)
             if not artifacts:
                 raise VisualSourceUnavailable(
                     "Frozen результат для экспорта недоступен (result_ref "
@@ -683,7 +684,7 @@ def resolve_frozen_result(
                 )
     else:
         if not artifacts:
-            artifacts = _freeze_saved_fallback(run_id, view_id, None)
+            artifacts = _freeze_saved_fallback(run_id, view_id, None, subject=subject)
         if not artifacts:
             raise VisualSourceUnavailable(
                 "Frozen результат view отсутствует в durable слое (view не "
@@ -696,7 +697,7 @@ def resolve_frozen_result(
 
 
 def _freeze_saved_fallback(
-    run_id: str, view_id: str, result_ref: Optional[str]
+    run_id: str, view_id: str, result_ref: Optional[str], *, subject: Any = None
 ) -> list[Any]:
     """Lazy transfer (§6): «первый explicit export ещё доступного
     проверенного результата» -- freeze СОХРАНЁННОГО ответа из кэша
@@ -708,7 +709,7 @@ def _freeze_saved_fallback(
 
         freeze_saved_visual(
             run_id,
-            _system_subject_for(run_id),
+            subject if subject is not None else _system_subject_for(run_id),
             view_id=view_id,
             result_ref=result_ref,
         )
@@ -724,13 +725,12 @@ def _system_subject_for(run_id: str) -> Any:
     """Субъект lazy-transfer freeze: владелец запуска (run.owner_subject)
     -- операция переносит ЕГО сохранённый ответ, авторизация проверяется
     _authorized_run'ом PGV-02 (owner-гейт)."""
-    from apps.api.artifact_store import ArtifactAccessError
     from apps.api.identity import SubjectRef
     from apps.api.research_runs import get_research_run_store
 
     run = get_research_run_store().get_run(run_id)
-    if run is None or not run.owner_subject:
-        raise ArtifactAccessError("запуск недоступен")
+    if run is None or not run.owner_subject or getattr(run, "owner_account_id", None) is not None:
+        raise VisualExportAccessDenied("запуск недоступен")
     return SubjectRef.from_session(run.session_id or "")
 
 
@@ -1188,7 +1188,7 @@ def request_visual_export(
         )
 
     result_artifact, result_payload = resolve_frozen_result(
-        run_id, view_id, result_ref=result_ref
+        run_id, view_id, result_ref=result_ref, subject=subject
     )
     payload_rec = result_payload.get("payload") or {}
     svg_digest = _screen_svg_digest(screen_svg)

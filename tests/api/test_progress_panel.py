@@ -375,23 +375,21 @@ class TestProgressTraceReadyState:
         # Пропуск чужого типа не задел соседнюю запись: узел выведен.
         assert data["node_statuses"]["forecasting/forecast_compared"] == "done"
 
-    def test_layer1_reader_does_not_need_durable_layer(self, client: TestClient):
-        """Ридер трассы -- сессионный: /trace не трогает слой 2 --
-        его 503 панель не гасит (кнопки полосы disabled -- прежняя
-        семантика PROGR-5.1); статус/чекпоинты -- отдельный запрос."""
+    def test_layer1_reader_requires_ownership_authority(self, client: TestClient):
+        """AUTH-09: durable ownership must be checked before cached science."""
         from apps.api import research_runs
 
         client.post("/v1/session/demo")
         # Слой 2 недоступен (fail-closed синглтон -- та же механика,
-        # что в тестах PROGR-5/6), но /trace обязан ответить 200.
+        # что в тестах PROGR-5/6), но /trace обязан fail closed до чтения данных.
         original = research_runs.get_research_run_store
         research_runs.get_research_run_store = lambda: (_ for _ in ()).throw(
             RuntimeError("durable layer down")
         )
         try:
             resp = client.get("/v1/progress/trace")
-            assert resp.status_code == 200
-            assert resp.json()["node_statuses"]["upload/overview"] == "done"
+            assert resp.status_code == 503
+            assert resp.json() == {"detail": "Сервис владения недоступен"}
         finally:
             research_runs.get_research_run_store = original
 

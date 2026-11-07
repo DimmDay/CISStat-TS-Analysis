@@ -1,0 +1,39 @@
+{
+  "base": "c2217ec",
+  "baseline": {
+    "failed_ids": [
+      "tests/api/test_auth06ops_recon_script.py::test_optional_live_pwsh_parse_gate",
+      "tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded",
+      "tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface",
+      "tests/api/test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present",
+      "tests/api/test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered",
+      "tests/api/test_doclog9_profiles.py::TestStaticCatalogs::test_routes_catalog",
+      "tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics",
+      "tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory",
+      "tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics",
+      "tests/api/test_p10cert_oracles.py::TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile",
+      "tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count",
+      "tests/api/test_progress_audit_c.py::TestSerializationAndCas::test_redis_cas_conflict_no_false_update"
+    ],
+    "summary": "==== 12 failed, 3338 passed, 52 skipped, 5905 warnings in 592.90s (0:09:52) ===="
+  },
+  "current": {
+    "failed_ids": [
+      "tests/api/test_auth06ops_recon_script.py::test_optional_live_pwsh_parse_gate",
+      "tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded",
+      "tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface",
+      "tests/api/test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present",
+      "tests/api/test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered",
+      "tests/api/test_doclog9_profiles.py::TestStaticCatalogs::test_routes_catalog",
+      "tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics",
+      "tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory",
+      "tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics",
+      "tests/api/test_p10cert_oracles.py::TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile",
+      "tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count",
+      "tests/api/test_progress_audit_c.py::TestSerializationAndCas::test_redis_cas_conflict_no_false_update"
+    ],
+    "summary": "==== 12 failed, 3340 passed, 52 skipped, 5905 warnings in 576.01s (0:09:36) ===="
+  },
+  "added_failed_ids": [],
+  "removed_failed_ids": []
+}

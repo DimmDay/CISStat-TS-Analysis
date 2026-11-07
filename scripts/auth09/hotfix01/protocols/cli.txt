@@ -1,0 +1,54 @@
+usage: local_gates.py [-h] [--only a,b,c] [--auth00-target {index,head}]
+                      [--skip-install] [--with-pytest]
+                      [--with-auth02-postgres] [--with-auth03-postgres]
+                      [--with-auth06-postgres] [--with-auth05-postgres]
+                      [--with-auth04-postgres] [--with-auth09-postgres]
+                      [--with-auth08-postgres] [--with-session-postgres]
+                      [--fail-fast] [--jest-workers N] [--list]
+
+Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)
+
+options:
+  -h, --help            show this help message and exit
+  --only a,b,c          запустить только выбранные гейты (auth09,auth09-
+                        postgres,auth08,auth08-postgres,auth06,auth06-
+                        postgres,auth07,auth05,auth05-postgres,auth04,auth04-
+                        postgres,auth03,auth03-postgres,auth02,auth02-
+                        postgres,auth01,auth00,rules,session-
+                        postgres,pytest,jest)
+  --auth00-target {index,head}
+                        AUTH-00: index после явного git add (default), head
+                        после commit перед push
+  --skip-install        пропустить npm ci / pip install (повторные локальные
+                        прогоны)
+  --with-pytest         добавить полный pytest-гейт (нужен для push в
+                        develop/refactor/*)
+  --with-auth02-postgres
+                        добавить live PG проверки; нужен disposable
+                        CISSTAT_AUTH_TEST_DSN (в CI обязательны)
+  --with-auth03-postgres
+                        добавить live PG context/currentness; нужен disposable
+                        CISSTAT_AUTH_TEST_DSN
+  --with-auth06-postgres
+                        добавить PostgreSQL / two-origin HTTPS proof
+  --with-auth05-postgres
+                        добавить PostgreSQL MFA/bootstrap/recovery проверки
+  --with-auth04-postgres
+                        добавить PostgreSQL session/HTTP/fault проверки; нужен
+                        disposable CISSTAT_AUTH_TEST_DSN
+  --with-auth09-postgres
+                        добавить AUTH-09 native object/migration проверки;
+                        disposable CISSTAT_AUTH_TEST_DSN
+  --with-auth08-postgres
+                        добавить AUTH-08 PostgreSQL Account
+                        lifecycle/CAS/audit; нужен disposable
+                        CISSTAT_AUTH_TEST_DSN
+  --with-session-postgres
+                        добавить V2.3 live PG проверку session backend; нужен
+                        disposable CISSTAT_TEST_PG_DSN
+  --fail-fast           остановиться на первом упавшем гейте
+  --jest-workers N      переопределить maxWorkers для test:ci (машины с малой
+                        RAM: по умолчанию CI держит 2 воркера и на 4 ГБ RAM
+                        воркера может убить OOM-killer с SIGKILL; CI-раннеры
+                        16 ГБ не страдают)
+  --list                показать гейты и выйти

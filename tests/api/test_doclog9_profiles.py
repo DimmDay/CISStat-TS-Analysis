@@ -1069,9 +1069,9 @@ class TestStaticCatalogs:
         # каталог 18 файлов / 107 statements (106 + 1). V2.3 добавил
         # 0022_session_backend_postgres.sql (таблица analysis_sessions +
         # индекс expires_at) -- каталог 19 файлов / 109 statements.
-        assert len(MIGRATION_FILES) == 19  # V2.3: +1 (0022 session backend)
-        assert MIGRATION_FILES[-1][0] == "0022_session_backend_postgres.sql"
-        assert len(MIGRATION_STATEMENTS) == 109  # V2.3: +2 (0022)
+        assert len(MIGRATION_FILES) == 20  # AUTH-09: 0023 Account ownership
+        assert MIGRATION_FILES[-1][0] == "0023_auth09_account_ownership.sql"
+        assert len(MIGRATION_STATEMENTS) == 118  # AUTH-09: +9 ownership statements
 
     def test_migration_file_parity(self):
         from apps.api.research_runs import MIGRATION_FILES

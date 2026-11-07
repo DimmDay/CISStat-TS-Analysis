@@ -1003,6 +1003,13 @@ class TestPostgresSessionStoreDdl:
 # Cookie helpers -- регрессия
 # ────────────────────────────────────────────────────────────────────
 
+def _real_cookie_request(cookie=""):
+    # AUTH-09 checks real request state/credentials before using the pointer.
+    from starlette.requests import Request
+    return Request({"type":"http","method":"GET","path":"/","query_string":b"",
+                    "headers":[(b"cookie",cookie.encode())] if cookie else []})
+
+
 class TestSessionCookie:
     """get_or_create_session_id() -- не изменилось, но проверяем что не сломалось."""
 
@@ -1010,14 +1017,12 @@ class TestSessionCookie:
         # Локальный режим (без ALLOWED_ORIGINS) -- SameSite=Lax
         monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
 
-        class _MockRequest:
-            cookies: dict = {}
         class _MockResponse:
             cookie_set: dict = {}
             def set_cookie(self, **kwargs):
                 self.cookie_set = kwargs
 
-        req, resp = _MockRequest(), _MockResponse()
+        req, resp = _real_cookie_request(), _MockResponse()
         sid = get_or_create_session_id(req, resp)
         assert sid  # не пустой
         assert resp.cookie_set["key"] == SESSION_COOKIE_NAME
@@ -1030,14 +1035,12 @@ class TestSessionCookie:
     def test_uses_existing_cookie_when_present(self, monkeypatch):
         monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
 
-        class _MockRequest:
-            cookies = {SESSION_COOKIE_NAME: "existing-session-xyz"}
         class _MockResponse:
             cookie_set: dict = {}
             def set_cookie(self, **kwargs):
                 self.cookie_set = kwargs
 
-        req, resp = _MockRequest(), _MockResponse()
+        req, resp = _real_cookie_request("cisstat_session_id=existing-session-xyz"), _MockResponse()
         sid = get_or_create_session_id(req, resp)
         assert sid == "existing-session-xyz"
         assert resp.cookie_set == {}  # не вызывался set_cookie
@@ -1046,14 +1049,12 @@ class TestSessionCookie:
         # Продакшн-режим (ALLOWED_ORIGINS задан) -- SameSite=None, Secure=True
         monkeypatch.setenv("ALLOWED_ORIGINS", "https://ts-standalone.vercel.app")
 
-        class _MockRequest:
-            cookies: dict = {}
         class _MockResponse:
             cookie_set: dict = {}
             def set_cookie(self, **kwargs):
                 self.cookie_set = kwargs
 
-        req, resp = _MockRequest(), _MockResponse()
+        req, resp = _real_cookie_request(), _MockResponse()
         sid = get_or_create_session_id(req, resp)
         assert resp.cookie_set["samesite"] == "none"
         assert resp.cookie_set["secure"] is True
@@ -1104,7 +1105,7 @@ class TestSessionSchemaVersionAnchor:
         # (+owner_subject, +tenant_id -- владение сессии переживает
         # персистенцию, урок F1). Старые документы без полей читаются
         # с None = суррогат вычисляется при первой привязке run.
-        assert SESSION_SCHEMA_VERSION == 4
+        assert SESSION_SCHEMA_VERSION == 5
 
     def test_serialized_document_carries_schema_version_stamp(self):
         session = AnalysisSession(session_id="schema-001")

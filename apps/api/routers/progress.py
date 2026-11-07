@@ -1506,6 +1506,7 @@ def create_checkpoint(
 
 
 @router.get("/runs/{run_id}/restore", response_model=RestoreResponse)
+@router.post("/runs/{run_id}/restore", response_model=RestoreResponse)
 @_durable_ops
 def restore_run(request: Request, response: Response, run_id: str) -> RestoreResponse:
     """Восстановление (§5.3): валидный run_id и status != completed ->
@@ -1561,6 +1562,7 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     # вёл другое исследование) -- abandoned, симметрично новой загрузке.
     old_session_id = request.cookies.get(SESSION_COOKIE_NAME) or ""
     if old_session_id:
+        old_session_id = get_or_create_session_id(request, response)
         store.supersede_active_runs(old_session_id, keep_run_id=run_id)
 
     # НОВАЯ сессия (новый cookie, §5.3) -- даже если cookie был.
@@ -1587,9 +1589,11 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     # только создавшая cookie-сессия). Для легаси-run поля не
     # фабрикуются (None -- суррогат вычислится при первом зеркале,
     # перелинковка §5 сохраняет непрерывность).
-    if run.owner_subject:
+    if run.owner_subject or run.owner_account_id is not None:
         session.owner_subject = run.owner_subject
         session.tenant_id = run.tenant_id or "tenant-default"
+    session.owner_account_id = run.owner_account_id
+    request.state._auth09_session_id = new_session_id
 
     # Прогресс -- из trace_events (засев слоя 1 в пределах cap; §5.3:
     # решения восстанавливаются, промежуточные DataFrame -- нет).

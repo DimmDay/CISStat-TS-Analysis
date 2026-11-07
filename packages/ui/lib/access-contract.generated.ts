@@ -3007,6 +3007,10 @@ export const ACCESS_REGISTRY: AccessRegistryDTO = {
     "api:POST:/v1/auth/recovery/rotate": {
       "operation_id": "auth.mfa.recovery_rotate",
       "programmatic_api": false
+    },
+    "api:POST:/v1/progress/runs/{run_id}/restore": {
+      "operation_id": "platform.restore_run",
+      "programmatic_api": false
     }
   }
 };

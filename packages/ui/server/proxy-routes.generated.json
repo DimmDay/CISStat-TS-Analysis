@@ -657,6 +657,10 @@
   },
   {
     "method": "POST",
+    "path": "/v1/progress/runs/{run_id}/restore"
+  },
+  {
+    "method": "POST",
     "path": "/v1/progress/runs/{run_id}/resume"
   },
   {

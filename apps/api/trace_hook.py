@@ -940,6 +940,9 @@ class TraceHookMiddleware:
         иначе upload_completed не попал бы в трассу в момент фиксации
         run_id (ключевой сценарий приёмки PROGR-3)."""
         request = Request(scope)
+        selected = scope.get("state", {}).get("_auth09_session_id")
+        if selected:
+            return selected
         session_id = request.cookies.get(SESSION_COOKIE_NAME)
         if session_id:
             return session_id

@@ -328,6 +328,16 @@ class AccessDecision:
 def effective_ownership(run: Any) -> str:
     """Состояние владения: явное 'bound' либо unresolved для legacy
     (полей нет = честное отсутствие, состояние вычисляет резолвер)."""
+    account = getattr(run, "owner_account_id", None)
+    if account is not None:
+        from uuid import UUID
+        try:
+            valid = str(UUID(account)) == account
+        except (ValueError, TypeError, AttributeError):
+            valid = False
+        return OWNERSHIP_BOUND if (valid and getattr(run, "ownership", None) == OWNERSHIP_BOUND
+            and type(getattr(run, "ownership_version", None)) is int
+            and run.ownership_version == 1) else OWNERSHIP_UNRESOLVED
     if getattr(run, "ownership", None) == OWNERSHIP_BOUND and getattr(
         run, "owner_subject", None
     ):
@@ -360,14 +370,9 @@ def authorize_run_access(
     «чужой запуск» на уровне HTTP (uniform 404 -- существование не
     дисклоужается); причина живёт в AccessDecision (серверный аудит).
 
-    Таблица (первый совпавший строкец побеждает):
-      1. anonymous-субъект                          -> deny anonymous
-      2. роль ADMIN (key-субъект)                   -> allow admin
-      3. mode dev_single_user                       -> allow dev_single_user_isolated
-      4. bound && subject==owner && tenant==run     -> allow owner
-      5. bound && (не совпало)                      -> deny foreign_session
-      6. unresolved && session_id==run.session_id   -> allow creator_continuity
-      7. unresolved && (иначе)                      -> deny unresolved_foreign
+    AUTH-09: Account boundary precedes ADMIN/dev/creator compatibility.
+    The original subject is provenance; current membership is resolved by AUTH-08.
+    Legacy named private owner reads only; writes require explicit migration.
     """
     run_id = str(getattr(run, "run_id", "") or "")
 
@@ -393,6 +398,30 @@ def authorize_run_access(
     # 1. Аноним (нет cookie/ключа): знания run_id недостаточно (R09).
     if subject.is_anonymous:
         return _finish(False, "anonymous", log_warning=True)
+
+    if action not in ("read", "write"):
+        return _finish(False, "unknown_action")
+    run_tenant = getattr(run, "tenant_id", None) or DEFAULT_TENANT_ID
+    account = getattr(run, "owner_account_id", None)
+    if account is not None:
+        from uuid import UUID
+        try:
+            valid = str(UUID(account)) == account
+        except (ValueError, TypeError, AttributeError):
+            valid = False
+        allowed = (valid and subject.is_authenticated and subject.account_id == account
+            and subject.tenant_id == run_tenant
+            and getattr(run, "ownership", "bound") == "bound"
+            and type(getattr(run, "ownership_version", 1)) is int
+            and getattr(run, "ownership_version", 1) == 1)
+        return _finish(bool(allowed), "account_member" if allowed else "account_boundary")
+    if subject.tenant_id != run_tenant:
+        return _finish(False, "foreign_tenant")
+    if subject.account_id is not None:
+        allowed = (action == "read" and subject.is_authenticated
+            and subject.subject_id == getattr(run, "owner_subject", None)
+            and effective_ownership(run) == OWNERSHIP_BOUND)
+        return _finish(bool(allowed), "legacy_personal_owner" if allowed else "legacy_migration_required")
 
     # 2. ADMIN-роль сохраняет текущий контракт (§15.1): предметный
     #    доступ администратора фиксируется решением явно.

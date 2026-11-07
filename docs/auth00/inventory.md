@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `76eb8dba1773442794b30eb5907ff0f837b01d5d`. Автоматически собранные входы + явная policy review.
+База: `c2217ec5ba38116e9da6413dc2c56794aefb89b5`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -11,9 +11,9 @@
 
 | Вид | Число |
 |---|---:|
-| api | 234 |
+| api | 235 |
 | framework | 8 |
-| internal_operation | 9 |
+| internal_operation | 10 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 34 |
@@ -36,11 +36,11 @@
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
-| auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
+| auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | browser.internal | Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-11, AUTH-12 |
-| browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
+| browser.session | AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. AUTH-09 central session_pointer validates current context and durable run before scientific data; unknown pointer rotated; legacy data never auto-claimed; authority failure 503. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-11, AUTH-12 |
 | cors.transport | AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN. | Scientific direct API authority rollout remains AUTH-11. | AUTH-11 |
-| document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
+| document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. AUTH-09 common run gate enforces Account/tenant before role/dev compatibility; original author remains provenance. Lazy visual freeze uses actual caller. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
 | logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | ops.diagnostics | /health/ops без AuthN; безопасная проекция технического состояния. | Private ops/service или platform permission; не раскрывать конфигурацию/секреты. | AUTH-03, AUTH-20 |
@@ -49,7 +49,7 @@
 | proxy.transport | AUTH-06 shared force-dynamic Node proxy: fixed TLS target, exact configured Origin/Fetch Metadata/CSRF before forwarding, generated method/path allowlist, identity/forwarded headers stripped, explicit cookie/header forwarding, no redirect/no-store. Backend remains authority. GET restore blocked. | Scientific ownership/enforcement remains AUTH-09/11; maintain reviewed allowlist. | AUTH-09, AUTH-11 |
 | public.metadata | Открытые metadata/education endpoints; личная AuthN не заявлена. | Явный public allowlist; безопасная проекция, лимит ответа и throttle для compute. | AUTH-01, AUTH-11 |
 | renderer.service | No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints. | Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
-| run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
+| run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. AUTH-09: explicit Account/tenant boundary before ADMIN/dev/creator cookie; owner_subject provenance. Named legacy write requires migration. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
 | storage.internal | Internal file/object/DB operation; content hash/path/registry checks are not user authentication. | Reach only via authorized object service; trusted roots/keys, no direct filesystem mount or public object ACL. | AUTH-09, AUTH-11, AUTH-13, AUTH-20 |
 | task.alias | Four UI application hrefs; causes has live backend data, other task views do not imply ready compute. | Canonical application-stage gate including aliases; scientific EDA Granger/DOCLOG monitoring are distinct. | AUTH-01, AUTH-11 |
 | ui.admin | AUTH-07: common admin UI in both shells (/admin, /admin/progress, /admin/logs; AdminGate + session-based dashboards, no browser API-key); named session checked via /api/v1/auth/me, final role/MFA enforcement server-side. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
@@ -90,13 +90,13 @@
 | api:GET:/v1/logs/delivery | apps.api.routers.logs:get_delivery_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:276 |
 | api:GET:/v1/logs/grants | apps.api.routers.logs:list_grants / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:420 |
 | api:GET:/v1/logs/telemetry | apps.api.routers.logs:get_telemetry_logs / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:192 |
-| api:GET:/v1/progress/admin/case-bank/candidates | apps.api.routers.progress:get_case_bank_candidates / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2547 |
-| api:GET:/v1/progress/admin/overview | apps.api.routers.progress:get_admin_overview / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2499 |
+| api:GET:/v1/progress/admin/case-bank/candidates | apps.api.routers.progress:get_case_bank_candidates / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2551 |
+| api:GET:/v1/progress/admin/overview | apps.api.routers.progress:get_admin_overview / service:observability | admin.key / admin cross-run projection | apps/api/routers/progress.py:2503 |
 | api:GET:/v1/progress/runs/{run_id} | apps.api.routers.progress:get_run_detail / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1283 |
-| api:GET:/v1/progress/runs/{run_id}/delivery | apps.api.routers.progress:list_run_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1782 |
-| api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id} | apps.api.routers.progress:get_operation_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1819 |
-| api:GET:/v1/progress/runs/{run_id}/mentor/next-step | apps.api.routers.progress:get_mentor_next_step / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2162 |
-| api:GET:/v1/progress/runs/{run_id}/report | apps.api.routers.progress:get_run_report / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2263 |
+| api:GET:/v1/progress/runs/{run_id}/delivery | apps.api.routers.progress:list_run_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1786 |
+| api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id} | apps.api.routers.progress:get_operation_delivery / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1823 |
+| api:GET:/v1/progress/runs/{run_id}/mentor/next-step | apps.api.routers.progress:get_mentor_next_step / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2166 |
+| api:GET:/v1/progress/runs/{run_id}/report | apps.api.routers.progress:get_run_report / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:2267 |
 | api:GET:/v1/progress/runs/{run_id}/restore | apps.api.routers.progress:restore_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1508 |
 | api:GET:/v1/progress/trace | apps.api.routers.progress:get_progress_trace / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:391 |
 | api:GET:/v1/public/rules/load/{template_id} | apps.api.routers.public:load_rules_template / scientific:validation | api.key / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:105 |
@@ -221,10 +221,11 @@
 | api:POST:/v1/models/train | apps.api.routers.models:train_model / scientific:modeling | api.model_key / placeholder accepted response; reflects raw ENV principal_id/API-key | apps/api/routers/models.py:713 |
 | api:POST:/v1/models/tune | apps.api.routers.models:tune_model / scientific:modeling | api.model_key / submitted/model dataset and model selection | apps/api/routers/models.py:725 |
 | api:POST:/v1/progress/eda-checks | apps.api.routers.progress:report_eda_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:946 |
-| api:POST:/v1/progress/mentor/sanity-check | apps.api.routers.progress:run_mentor_sanity_check / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:2343 |
+| api:POST:/v1/progress/mentor/sanity-check | apps.api.routers.progress:run_mentor_sanity_check / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:2347 |
 | api:POST:/v1/progress/preprocessing-checks | apps.api.routers.progress:report_preprocessing_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:816 |
 | api:POST:/v1/progress/runs/{run_id}/checkpoints | apps.api.routers.progress:create_checkpoint / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1372 |
 | api:POST:/v1/progress/runs/{run_id}/pause | apps.api.routers.progress:pause_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1311 |
+| api:POST:/v1/progress/runs/{run_id}/restore | apps.api.routers.progress:restore_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1509 |
 | api:POST:/v1/progress/runs/{run_id}/resume | apps.api.routers.progress:resume_run / service:platform | run.object / run/checkpoint/delivery/report | apps/api/routers/progress.py:1345 |
 | api:POST:/v1/progress/upload-stops | apps.api.routers.progress:report_upload_stops / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:589 |
 | api:POST:/v1/progress/validation-checks | apps.api.routers.progress:report_validation_checks / service:platform | progress.session / session-bound trace/observation | apps/api/routers/progress.py:699 |
@@ -317,6 +318,7 @@
 | auth.audit.publish | auth.audit.publish / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/audit_outbox.py:12 |
 | auth.mfa.bootstrap | auth.mfa.bootstrap / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | scripts/auth05/bootstrap.py:14 |
 | auth.mfa.schema.apply | auth.mfa.schema.apply / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa_migrations.py:18 |
+| auth.ownership.migrate | auth.ownership.migrate / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth09/migrate_ownership.py:17 |
 | auth.schema.apply | auth.schema.apply / service:platform | auth.storage / DDL + schema checksum ledger | apps/api/authentication/migrations.py:13 |
 | auth.sessions.schema.apply | auth.sessions.schema.apply / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/session_migrations.py:17 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |

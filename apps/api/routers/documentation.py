@@ -125,10 +125,10 @@ def _authorized_run_or_404(request: Request, run_id: str, *, action: str) -> Any
     durable audit-потоке (сам шлюз _audit_access_decision)."""
     from apps.api.research_runs import get_research_run_store
 
+    subject, session_id = _subject_and_session(request)
     run = get_research_run_store().get_run(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail=_RUN_NOT_FOUND_DETAIL)
-    subject, session_id = _subject_and_session(request)
     from apps.api.identity import authorize_run_access
 
     decision = authorize_run_access(

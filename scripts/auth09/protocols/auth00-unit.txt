@@ -1,0 +1,40 @@
+test_auth06_migration_manifest_contains_only_application_sources (test_auth00_inventory.InventoryTests.test_auth06_migration_manifest_contains_only_application_sources) ... ok
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... ok
+test_changed_next_proxy_requires_review (test_auth00_inventory.InventoryTests.test_changed_next_proxy_requires_review) ... ok
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_foreign_asgi_root_requires_review (test_auth00_inventory.InventoryTests.test_foreign_asgi_root_requires_review) ... ok
+test_foreign_http_server_requires_review (test_auth00_inventory.InventoryTests.test_foreign_http_server_requires_review) ... ok
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... ok
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_installed_typescript_does_not_change_repository_inventory (test_auth00_inventory.InventoryTests.test_installed_typescript_does_not_change_repository_inventory) ... ok
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... ok
+test_manual_extra_cannot_invent_an_http_route (test_auth00_inventory.InventoryTests.test_manual_extra_cannot_invent_an_http_route) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_policy_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_policy_threat_reference_must_exist) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ok
+test_review_cannot_overwrite_a_discovered_path (test_auth00_inventory.InventoryTests.test_review_cannot_overwrite_a_discovered_path) ... ok
+test_reviewed_application_source_change_still_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_reviewed_application_source_change_still_invalidates_snapshot) ... ok
+test_reviewed_dependency_sources_require_catalogue_correction (test_auth00_inventory.InventoryTests.test_reviewed_dependency_sources_require_catalogue_correction) ... ok
+test_reviewed_password_blocklist_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_password_blocklist_fingerprint_is_checkout_portable) ... ok
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+test_shared_next_proxy_discovery (test_auth00_inventory.InventoryTests.test_shared_next_proxy_discovery) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 68.299s
+
+OK

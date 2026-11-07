@@ -1,0 +1,17 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_new_named_run_and_session_account (test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_84804efa5206475cbee67471adfc5d75:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ERROR
+
+======================================================================
+ERROR: test_new_named_run_and_session_account (test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH09-base/tests/integration/test_auth09_objects.py", line 198, in test_new_named_run_and_session_account
+    self.assertEqual(s.owner_account_id, str(self.account.account_id))
+                     ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AnalysisSession' object has no attribute 'owner_account_id'
+
+----------------------------------------------------------------------
+Ran 1 test in 8.466s
+
+FAILED (errors=1)

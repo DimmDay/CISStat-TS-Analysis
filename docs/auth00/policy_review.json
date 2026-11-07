@@ -1,5 +1,5 @@
 {
-  "baseline": "76eb8dba1773442794b30eb5907ff0f837b01d5d",
+  "baseline": "c2217ec5ba38116e9da6413dc2c56794aefb89b5",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -72,7 +72,7 @@
       ]
     },
     "browser.session": {
-      "observed": "AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет.",
+      "observed": "AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. AUTH-09 central session_pointer validates current context and durable run before scientific data; unknown pointer rotated; legacy data never auto-claimed; authority failure 503.",
       "target": "AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе.",
       "follow_up": [
         "AUTH-03",
@@ -104,7 +104,7 @@
       ]
     },
     "run.object": {
-      "observed": "AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09.",
+      "observed": "AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. AUTH-09: explicit Account/tenant boundary before ADMIN/dev/creator cookie; owner_subject provenance. Named legacy write requires migration.",
       "target": "Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration.",
       "follow_up": [
         "AUTH-03",
@@ -133,7 +133,7 @@
       ]
     },
     "document.object": {
-      "observed": "Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09.",
+      "observed": "Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. AUTH-09 common run gate enforces Account/tenant before role/dev compatibility; original author remains provenance. Lazy visual freeze uses actual caller.",
       "target": "Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission.",
       "follow_up": [
         "AUTH-03",
@@ -299,7 +299,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback.",
+      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -6867,6 +6867,32 @@
       ],
       "canonical_operation": "accounts.lifecycle.operator",
       "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
+    },
+    "api:POST:/v1/progress/runs/{run_id}/restore": {
+      "policy": "run.object",
+      "stage": "platform",
+      "resource": "run/checkpoint/delivery/report",
+      "effects": [
+        "session_write",
+        "file_read",
+        "cookie_rotation"
+      ],
+      "canonical_operation": "apps.api.routers.progress:restore_run",
+      "admission": "AUTH-09: CSRF/Origin POST; Account/tenant object gate; restore preserves owner/provenance.",
+      "stage_namespace": "service"
+    },
+    "auth.ownership.migrate": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "apps.api.accounts.ownership_migration:migrate_legacy_run",
+      "admission": "Trusted interactive operator; explicit evidence/source/version, active Account CAS, single PostgreSQL transaction with mandatory audit; never HTTP."
     }
   },
   "extra_surfaces": [
@@ -7224,6 +7250,25 @@
           "symbol": "AccountLifecycle"
         }
       ]
+    },
+    {
+      "id": "auth.ownership.migrate",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "interactive local legacy migration",
+      "operation": "auth.ownership.migrate",
+      "evidence": [
+        {
+          "source": "scripts/auth09/migrate_ownership.py",
+          "line": 17,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/accounts/ownership_migration.py",
+          "line": 40,
+          "symbol": "migrate_legacy_run"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -7364,6 +7409,17 @@
     "apps/api/accounts/entitlements.py",
     "apps/api/accounts/lifecycle.py",
     "docs/auth08/design.md",
-    "scripts/auth08/manage_account.py"
+    "scripts/auth08/manage_account.py",
+    "apps/api/ownership.py",
+    "apps/api/accounts/ownership_migration.py",
+    "apps/api/migrations/0023_auth09_account_ownership.sql",
+    "scripts/auth09/migrate_ownership.py",
+    "docs/auth09/design.md",
+    "packages/ui/lib/researchOwnership.ts",
+    "scripts/auth00/check_committed.py",
+    "scripts/local_gates.py",
+    ".github/workflows/auth00.yml",
+    "tests/unit/test_auth00_precommit.py",
+    "docs/auth09/hotfix01.md"
   ]
 }

@@ -1,0 +1,46 @@
+$ /workspace/scratch/4331ff71bc24/auth09-min-venv/bin/python scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 235, "framework": 8, "internal_operation": 10, "legacy_authority": 1, "legacy_widget": 250, "page": 34, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 10, "task_alias": 4, "transport": 2, "worker": 6}, "entries": 567}
+exit=0
+$ /workspace/scratch/4331ff71bc24/auth09-min-venv/bin/python scripts/auth01/generate.py --check
+AUTH-01 generated OpenAPI/TS parity OK
+exit=0
+$ /workspace/scratch/4331ff71bc24/auth09-min-venv/bin/python scripts/auth06/generate_proxy_routes.py --check
+{"status": "ok", "api_routes": 235}
+exit=0
+$ /workspace/scratch/4331ff71bc24/auth09-min-venv/bin/python -m unittest discover -s tests/unit -p test_auth09*.py -v
+test_admin_dev_cannot_bypass (test_auth09_ownership.AccountObjectTests.test_admin_dev_cannot_bypass) ... Run access: DENY run=RUN-A0900001 action=read subject=e4fbbdff-e59b-4fbb-a802-490f804ed856 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=e4fbbdff-e59b-4fbb-a802-490f804ed856 via=auth_session reason=account_boundary
+ok
+test_foreign_tenant_legacy_admin_deny (test_auth09_ownership.AccountObjectTests.test_foreign_tenant_legacy_admin_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=7cc8aa0a-b9ef-4ad1-adee-f239056d53cd via=auth_session reason=foreign_tenant
+ok
+test_legacy_json_and_malformed_binding (test_auth09_ownership.AccountObjectTests.test_legacy_json_and_malformed_binding) ... Run access: DENY run=RUN-A0900001 action=read subject=1e140751-0607-48e6-91e9-26e8d1fe7541 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=1e140751-0607-48e6-91e9-26e8d1fe7541 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=1e140751-0607-48e6-91e9-26e8d1fe7541 via=auth_session reason=account_boundary
+ok
+test_member_not_author (test_auth09_ownership.AccountObjectTests.test_member_not_author) ... ok
+test_memory_immutable (test_auth09_ownership.AccountObjectTests.test_memory_immutable) ... ok
+test_memory_no_claim (test_auth09_ownership.AccountObjectTests.test_memory_no_claim) ... ok
+test_migration_parity_no_mass_backfill (test_auth09_ownership.AccountObjectTests.test_migration_parity_no_mass_backfill) ... ok
+test_operator_and_native_runner_fail_closed (test_auth09_ownership.AccountObjectTests.test_operator_and_native_runner_fail_closed) ... ok
+test_private_legacy_named_read_only (test_auth09_ownership.AccountObjectTests.test_private_legacy_named_read_only) ... Run access: DENY run=RUN-A0900001 action=read subject=cb07ddcc-7975-4807-a505-b2af849a1293 via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=5a6acde2-45be-4a43-80ef-03b560c61fde via=auth_session reason=legacy_migration_required
+ok
+test_roundtrip (test_auth09_ownership.AccountObjectTests.test_roundtrip) ... ok
+test_same_person_other_account_cannot_use_creator_cookie (test_auth09_ownership.AccountObjectTests.test_same_person_other_account_cannot_use_creator_cookie) ... Run access: DENY run=RUN-A0900001 action=read subject=dcd63acc-3228-448f-ab5c-01efc576232a via=auth_session reason=account_boundary
+ok
+test_surrogate_unknown_action_and_unauthenticated_deny (test_auth09_ownership.AccountObjectTests.test_surrogate_unknown_action_and_unauthenticated_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=7ba40637-a570-46b1-91fe-817734e1e783 via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=7ba40637-a570-46b1-91fe-817734e1e783 via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.131s
+
+OK
+exit=0
+$ /workspace/scratch/4331ff71bc24/auth09-venv/bin/python scripts/auth05/check_routes.py
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 235, "inventory_api": 235, "registry_bindings": 239, "inventory_entries": 567, "added": [], "missing": []}
+exit=0
+PASS: clean c2217ec overlay; minimal unit and source/generated/runtime parity.

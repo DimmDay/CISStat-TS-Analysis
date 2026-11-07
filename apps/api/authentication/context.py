@@ -353,7 +353,7 @@ def _resolve_context(request, request_id):
                 request_id=request_id,
             )
         binding = _research_binding(request)
-        if binding and binding != (ctx.subject_id, ctx.tenant_id):
+        if ctx.account_id is None and binding and binding != (ctx.subject_id, ctx.tenant_id):
             auth_error(400, "auth_ambiguous", request_id)
         return ctx
     if mode == MODE_SCOPED:

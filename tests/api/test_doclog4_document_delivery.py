@@ -1209,7 +1209,7 @@ class TestOpsWiringAndMigration:
         assert "0016_pgv2_print_documents.sql" in names  # PGV-02
         assert "0017_pgv9_print_renditions.sql" in names  # PGV-09
         assert "0018_pgv9fix_print_rendition_keys.sql" in names  # PGV-09-FIX
-        assert len(names) == 19  # V2.3: +1 (0022 session backend)
+        assert len(names) == 20  # AUTH-09: 0023 Account ownership
 
     def test_migration_file_parity_with_catalog(self):
         """Паритет источников DDL (паттерн DOCLOG-1/2/3): каждый файл

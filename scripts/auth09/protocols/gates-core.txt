@@ -1,0 +1,253 @@
+Локальные гейты (база c2217ec): auth09, auth08, auth07, auth05, auth04, auth03, auth02, rules
+
+=== ГЕЙТ auth09 (auth09.yml contracts) — AUTH-09 Object ownership / operator / legacy migration
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth09*.py -v
+test_admin_dev_cannot_bypass (test_auth09_ownership.AccountObjectTests.test_admin_dev_cannot_bypass) ... Run access: DENY run=RUN-A0900001 action=read subject=5b8c3973-8cd8-4b93-801f-da8be55ac11e via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=5b8c3973-8cd8-4b93-801f-da8be55ac11e via=auth_session reason=account_boundary
+ok
+test_foreign_tenant_legacy_admin_deny (test_auth09_ownership.AccountObjectTests.test_foreign_tenant_legacy_admin_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=4744c796-17b2-4f7e-9c16-dc31d75be3c6 via=auth_session reason=foreign_tenant
+ok
+test_legacy_json_and_malformed_binding (test_auth09_ownership.AccountObjectTests.test_legacy_json_and_malformed_binding) ... Run access: DENY run=RUN-A0900001 action=read subject=21aa7eae-1c1d-4bff-96ee-e8848bf8c362 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=21aa7eae-1c1d-4bff-96ee-e8848bf8c362 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=21aa7eae-1c1d-4bff-96ee-e8848bf8c362 via=auth_session reason=account_boundary
+ok
+test_member_not_author (test_auth09_ownership.AccountObjectTests.test_member_not_author) ... ok
+test_memory_immutable (test_auth09_ownership.AccountObjectTests.test_memory_immutable) ... ok
+test_memory_no_claim (test_auth09_ownership.AccountObjectTests.test_memory_no_claim) ... ok
+test_migration_parity_no_mass_backfill (test_auth09_ownership.AccountObjectTests.test_migration_parity_no_mass_backfill) ... ok
+test_operator_and_native_runner_fail_closed (test_auth09_ownership.AccountObjectTests.test_operator_and_native_runner_fail_closed) ... ok
+test_private_legacy_named_read_only (test_auth09_ownership.AccountObjectTests.test_private_legacy_named_read_only) ... Run access: DENY run=RUN-A0900001 action=read subject=6fcbfaa5-a30e-4ad0-8fb5-6bc49b090b17 via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=989b6917-b694-43f7-8f28-87cad5b73b01 via=auth_session reason=legacy_migration_required
+ok
+test_roundtrip (test_auth09_ownership.AccountObjectTests.test_roundtrip) ... ok
+test_same_person_other_account_cannot_use_creator_cookie (test_auth09_ownership.AccountObjectTests.test_same_person_other_account_cannot_use_creator_cookie) ... Run access: DENY run=RUN-A0900001 action=read subject=e3d81e63-498e-492c-9d02-13877764561e via=auth_session reason=account_boundary
+ok
+test_surrogate_unknown_action_and_unauthenticated_deny (test_auth09_ownership.AccountObjectTests.test_surrogate_unknown_action_and_unauthenticated_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=e3c08b38-a0b7-4af9-b67e-f7689f7a063f via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=e3c08b38-a0b7-4af9-b67e-f7689f7a063f via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.241s
+
+OK
+--- auth09: PASS (1.2 c)
+
+=== ГЕЙТ auth08 (auth08.yml contracts) — AUTH-08 Account-effective capabilities / lifecycle / me
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth08*.py -v
+test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) ... /workspace/scratch/4331ff71bc24/CISStat-AUTH09/tests/unit/test_auth08_entitlements.py:32: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back) ... ok
+test_downgrade_next_resolution_and_no_shared_mutable_caps (test_auth08_entitlements.AccountEntitlementTests.test_downgrade_next_resolution_and_no_shared_mutable_caps) ... ok
+test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed) ... ok
+test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission) ... ok
+test_legacy_adapter_is_explicitly_preserved (test_auth08_entitlements.AccountEntitlementTests.test_legacy_adapter_is_explicitly_preserved) ... ok
+test_lifecycle_actions_are_mandatory_and_operator_cli_in_image (test_auth08_entitlements.AccountEntitlementTests.test_lifecycle_actions_are_mandatory_and_operator_cli_in_image) ... ok
+test_no_dsn_runner_and_noninteractive_writer_fail (test_auth08_entitlements.AccountEntitlementTests.test_no_dsn_runner_and_noninteractive_writer_fail) ... ok
+test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner) ... ok
+test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.282s
+
+OK
+--- auth08: PASS (0.8 c)
+
+=== ГЕЙТ auth07 (auth07.yml contracts) — AUTH-07 admin named-session / MFA / logs + windows-паритет
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m pytest tests/api/test_auth07_admin_sessions.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/4331ff71bc24/auth09-venv/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/CISStat-AUTH09
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.8, platformdirs-4.14.5, anyio-4.14.2
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 5.52s =========================
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python scripts/windows_parity.py tests/api/test_auth07_admin_sessions.py -v
+windows-parity: заблокированы модули (resource) -- import поднимает ImportError, как на windows-2025
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/4331ff71bc24/auth09-venv/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/CISStat-AUTH09
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.8, platformdirs-4.14.5, anyio-4.14.2
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 4.08s =========================
+--- auth07: PASS (14.5 c)
+
+=== ГЕЙТ auth05 (auth05.yml contracts) — AUTH-05 MFA / bootstrap / recovery contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth05*.py -v
+test_cli_requires_operator_terminal_and_dsn_gate_never_skips (test_auth05_mfa.MfaPrimitiveTests.test_cli_requires_operator_terminal_and_dsn_gate_never_skips) ... ok
+test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key) ... ok
+test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint) ... ok
+test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.817s
+
+OK
+--- auth05: PASS (1.6 c)
+
+=== ГЕЙТ auth04 (auth04.yml contracts) — AUTH-04 password / CSRF / route contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth04*.py -v
+test_argon2id_random_salt_and_verify (test_auth04_password_transport.PasswordTests.test_argon2id_random_salt_and_verify) ... ok
+test_invalid_unicode_is_policy_denial_not_server_error (test_auth04_password_transport.PasswordTests.test_invalid_unicode_is_policy_denial_not_server_error) ... ok
+test_long_password_not_truncated_or_stripped (test_auth04_password_transport.PasswordTests.test_long_password_not_truncated_or_stripped) ... ok
+test_malformed_hash_never_authenticates (test_auth04_password_transport.PasswordTests.test_malformed_hash_never_authenticates) ... ok
+test_no_dummy_password_is_a_real_account (test_auth04_password_transport.PasswordTests.test_no_dummy_password_is_a_real_account) ... ok
+test_policy_length_and_blocklist (test_auth04_password_transport.PasswordTests.test_policy_length_and_blocklist) ... ok
+test_duplicate_auth_cookie_is_invalid (test_auth04_password_transport.TransportTests.test_duplicate_auth_cookie_is_invalid) ... ok
+test_expired_csrf_and_future_issue_are_denied (test_auth04_password_transport.TransportTests.test_expired_csrf_and_future_issue_are_denied) ... ok
+test_invalid_opaque_tokens_rejected_before_db (test_auth04_password_transport.TransportTests.test_invalid_opaque_tokens_rejected_before_db) ... ok
+test_missing_cross_origin_and_cross_site_fail (test_auth04_password_transport.TransportTests.test_missing_cross_origin_and_cross_site_fail) ... ok
+test_no_default_key_or_wildcard_origin (test_auth04_password_transport.TransportTests.test_no_default_key_or_wildcard_origin) ... ok
+test_signature_cookie_header_and_session_binding (test_auth04_password_transport.TransportTests.test_signature_cookie_header_and_session_binding) ... ok
+test_valid_csrf_both_exact_origins (test_auth04_password_transport.TransportTests.test_valid_csrf_both_exact_origins) ... ok
+test_verifier_domain_separated_and_deterministic (test_auth04_password_transport.TransportTests.test_verifier_domain_separated_and_deterministic) ... ok
+test_actual_openapi_routes_equal_reviewed_inventory (test_auth04_routes.RouteTests.test_actual_openapi_routes_equal_reviewed_inventory) ... ok
+test_capabilities_cannot_authorize_any_auth_operation (test_auth04_routes.RouteTests.test_capabilities_cannot_authorize_any_auth_operation) ... ok
+test_no_header_identity_or_key_is_a_personal_session (test_auth04_routes.RouteTests.test_no_header_identity_or_key_is_a_personal_session) ... ok
+test_password_schema_is_write_only_and_has_no_default_secret (test_auth04_routes.RouteTests.test_password_schema_is_write_only_and_has_no_default_secret) ... ok
+test_safe_validation_and_origin_errors_on_actual_asgi (test_auth04_routes.RouteTests.test_safe_validation_and_origin_errors_on_actual_asgi) ... ok
+test_same_origin_browser_csrf_bootstrap_without_origin (test_auth04_routes.RouteTests.test_same_origin_browser_csrf_bootstrap_without_origin) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 5.962s
+
+OK
+--- auth04: PASS (7.2 c)
+
+=== ГЕЙТ auth03 (auth03.yml contracts) — AUTH-03 unified context / ASGI adapters (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth03*.py -v
+test_client_identity_account_role_mfa_headers_ignored (test_auth03_context.ContextTests.test_client_identity_account_role_mfa_headers_ignored) ... ok
+test_context_is_immutable (test_auth03_context.ContextTests.test_context_is_immutable) ... ok
+test_cookie_and_key_conflicting_server_owner_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_server_owner_rejected) ... ok
+test_cookie_and_key_conflicting_tenant_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_tenant_rejected) ... ok
+test_duplicate_key_headers_rejected (test_auth03_context.ContextTests.test_duplicate_key_headers_rejected) ... ok
+test_empty_present_key_is_not_absent (test_auth03_context.ContextTests.test_empty_present_key_is_not_absent) ... ok
+test_explicit_subject_rotation_is_stable (test_auth03_context.ContextTests.test_explicit_subject_rotation_is_stable) ... ok
+test_invalid_key_never_falls_back_to_owned_cookie (test_auth03_context.ContextTests.test_invalid_key_never_falls_back_to_owned_cookie) ... ok
+test_invalid_registry_subject_tenant_and_scopes_fail_closed (test_auth03_context.ContextTests.test_invalid_registry_subject_tenant_and_scopes_fail_closed) ... ok
+test_key_principal_and_subject_are_same_safe_projection (test_auth03_context.ContextTests.test_key_principal_and_subject_are_same_safe_projection) ... ok
+test_matching_research_pointer_cannot_add_scopes_or_role (test_auth03_context.ContextTests.test_matching_research_pointer_cannot_add_scopes_or_role) ... ok
+test_missing_key_is_401_on_actual_dependency (test_auth03_context.ContextTests.test_missing_key_is_401_on_actual_dependency) ... ok
+test_real_subject_projection_keeps_uniform_object_denial (test_auth03_context.ContextTests.test_real_subject_projection_keeps_uniform_object_denial) ... Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+ok
+test_require_api_key_returns_safe_string_and_revocation_rechecked (test_auth03_context.ContextTests.test_require_api_key_returns_safe_string_and_revocation_rechecked) ... ok
+test_restored_cookie_continuity_without_role (test_auth03_context.ContextTests.test_restored_cookie_continuity_without_role) ... ok
+test_scope_and_request_cache_do_not_cross_requests (test_auth03_context.ContextTests.test_scope_and_request_cache_do_not_cross_requests) ... ok
+test_scoped_mode_never_uses_research_surrogate (test_auth03_context.ContextTests.test_scoped_mode_never_uses_research_surrogate) ... ok
+test_surrogate_is_not_key_protected_principal (test_auth03_context.ContextTests.test_surrogate_is_not_key_protected_principal) ... ok
+test_unconfigured_registry_is_503_without_config_disclosure (test_auth03_context.ContextTests.test_unconfigured_registry_is_503_without_config_disclosure) ... ok
+test_unknown_auth_cookie_does_not_fall_back_to_research (test_auth03_context.ContextTests.test_unknown_auth_cookie_does_not_fall_back_to_research) ... ok
+test_unknown_pointer_does_not_replace_verified_key (test_auth03_context.ContextTests.test_unknown_pointer_does_not_replace_verified_key) ... ok
+test_authority_data_is_current_and_owner_not_admin (test_auth03_context.DurableContextTests.test_authority_data_is_current_and_owner_not_admin) ... ok
+test_db_and_schema_outages_have_safe_503 (test_auth03_context.DurableContextTests.test_db_and_schema_outages_have_safe_503) ... ok
+test_falsey_server_verifier_never_falls_back_to_env (test_auth03_context.DurableContextTests.test_falsey_server_verifier_never_falls_back_to_env) ... ok
+test_matching_credentials_keep_key_scopes_ceiling (test_auth03_context.DurableContextTests.test_matching_credentials_keep_key_scopes_ceiling) ... ok
+test_missing_binding_never_auto_selects_account (test_auth03_context.DurableContextTests.test_missing_binding_never_auto_selects_account) ... ok
+test_missing_suspended_closed_account_denied (test_auth03_context.DurableContextTests.test_missing_suspended_closed_account_denied) ... ok
+test_revoked_missing_membership_denied (test_auth03_context.DurableContextTests.test_revoked_missing_membership_denied) ... ok
+test_suspended_missing_identity_denied (test_auth03_context.DurableContextTests.test_suspended_missing_identity_denied) ... ok
+test_untrusted_verifier_failure_is_503_without_secret (test_auth03_context.DurableContextTests.test_untrusted_verifier_failure_is_503_without_secret) ... ok
+test_uuid_env_binding_reads_db_role_tenant_not_env (test_auth03_context.DurableContextTests.test_uuid_env_binding_reads_db_role_tenant_not_env) ... ok
+test_verified_browser_and_key_must_match_subject_and_account (test_auth03_context.DurableContextTests.test_verified_browser_and_key_must_match_subject_and_account) ... ok
+test_verifier_http_error_cannot_disclose_secrets (test_auth03_context.DurableContextTests.test_verifier_http_error_cannot_disclose_secrets) ... ok
+test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context) ... ok
+test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi) ... ok
+test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack) ... ok
+test_error_request_id_matches_telemetry_response_header (test_auth03_http.HTTPTests.test_error_request_id_matches_telemetry_response_header) ... ok
+test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie) ... ok
+test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound) ... ok
+test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source) ... ok
+test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage) ... ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 0.791s
+
+OK
+--- auth03: PASS (1.6 c)
+
+=== ГЕЙТ auth02 (auth02.yml contracts) — AUTH-02 storage unit contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -m unittest discover -s tests/unit -p test_auth02_storage.py -v
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ok
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.134s
+
+OK
+--- auth02: PASS (0.4 c)
+
+=== ГЕЙТ rules (test_rules.yml) — Validation rules sanity check
+    $ /workspace/scratch/4331ff71bc24/CISStat-AUTH09/../auth09-venv/bin/python -c from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']
+is_valid = False
+--- rules: PASS (1.5 c)
+
+=== СВОДКА ===
+  PASS  auth09      1.2 c
+  PASS  auth08      0.8 c
+  PASS  auth07     14.5 c
+  PASS  auth05      1.6 c
+  PASS  auth04      7.2 c
+  PASS  auth03      1.6 c
+  PASS  auth02      0.4 c
+  PASS  rules       1.5 c
+
+ИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: auth02, auth03, auth04, auth05, auth08, auth09 (нужны соответствующие --with-authXX-postgres; native CI отдельно)

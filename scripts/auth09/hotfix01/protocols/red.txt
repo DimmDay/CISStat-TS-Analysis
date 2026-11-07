@@ -1,0 +1,17 @@
+test_staged_before_first_commit_passes_without_changing_index (precommit_oracle.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... FAIL
+
+======================================================================
+FAIL: test_staged_before_first_commit_passes_without_changing_index (precommit_oracle.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH09/tests/unit/test_auth00_precommit.py", line 71, in test_staged_before_first_commit_passes_without_changing_index
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : git archive HEAD недоступен: fatal: not a valid object name: HEAD
+
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.125s
+
+FAILED (failures=1)
+RED reproduced against original checker; no commit was created.

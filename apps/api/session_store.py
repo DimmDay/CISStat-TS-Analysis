@@ -120,7 +120,7 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с 
 # гейтов качества -- канонические исходные колонки; старые документы без
 # поля читаются с пустым реестром = все колонки исходные (обратная
 # совместимость, спека §Реализация п.3).
-SESSION_SCHEMA_VERSION = 4  # DOCLOG-0: аддитивные owner_subject/tenant_id (см. session_to_dict)
+SESSION_SCHEMA_VERSION = 5  # AUTH-09 explicit Account binding; old JSON stays legacy
 
 
 class SessionConflictError(RuntimeError):
@@ -375,6 +375,7 @@ class AnalysisSession:
     # первой привязке run).
     owner_subject: Optional[str] = None
     tenant_id: Optional[str] = None
+    owner_account_id: Optional[str] = None
     # Внутрисессионный буфер stored-событий (каноническая форма to_dict(),
     # 8+1 ключей). Пишет apps/api/trace_hook.py (§4.2) на успешных ответах;
     # читается через read_pipeline_trace() -- граница нормализации старых
@@ -406,7 +407,7 @@ class AnalysisSession:
         (в т.ч. restore-наследование) НЕ переписывается."""
         from apps.api.identity import DEFAULT_TENANT_ID, subject_pseudonym
 
-        if self.owner_subject is None:
+        if self.owner_subject is None and self.owner_account_id is None:
             self.owner_subject = subject_pseudonym(self.session_id)
         if self.tenant_id is None:
             self.tenant_id = DEFAULT_TENANT_ID
@@ -916,6 +917,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         # PROGR-25-A-CERT -- несериализованное поле терялось на каждом
         # save→get Redis-пути). Аддитивные ключи; legacy-документы без
         # них читаются as None (session_from_dict).
+        "owner_account_id": session.owner_account_id,
         "owner_subject": session.owner_subject,
         "tenant_id": session.tenant_id,
         "pipeline_trace": deepcopy(session.pipeline_trace),
@@ -1029,6 +1031,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         run_id=str(d.get("run_id", "") or ""),
         # DOCLOG-0: None для старых документов без полей (backcompat
         # rolling-deploy; суррогат вычислится при первой привязке run).
+        owner_account_id=(str(d["owner_account_id"]) if d.get("owner_account_id") is not None else None),
         owner_subject=(
             str(d["owner_subject"])
             if isinstance(d.get("owner_subject"), str) and d.get("owner_subject")
@@ -1803,9 +1806,9 @@ def get_or_create_session_id(request: Request, response: Response) -> str:
     """
     is_production = bool(os.environ.get("ALLOWED_ORIGINS"))
 
-    session_id = request.cookies.get(SESSION_COOKIE_NAME)
-    if not session_id:
-        session_id = uuid.uuid4().hex
+    from apps.api.ownership import session_pointer
+    session_id = session_pointer(request)
+    if session_id != request.cookies.get(SESSION_COOKIE_NAME):
         response.set_cookie(
             key=SESSION_COOKIE_NAME,
             value=session_id,

@@ -119,6 +119,9 @@ COPY shared/ ./shared/
 # (~43 МБ корпусов сертификаций) -- образ не раздувается.
 COPY scripts/auth05/ ./scripts/auth05/
 # AUTH-08: durable Account lifecycle is an operator-only command, not HTTP.
+# AUTH-09 local operator; not an HTTP endpoint.
+COPY scripts/auth09/migrate_ownership.py ./scripts/auth09/migrate_ownership.py
+RUN python -c "from pathlib import Path; assert Path('scripts/auth09/migrate_ownership.py').is_file(); from apps.api.accounts.ownership_migration import migrate_legacy_run; print('auth09 operator OK')"
 COPY scripts/auth08/manage_account.py ./scripts/auth08/manage_account.py
 RUN python -c "from pathlib import Path; assert Path('scripts/auth08/manage_account.py').is_file(); from apps.api.accounts.lifecycle import AccountLifecycle; print('auth08 operator command OK')"
 

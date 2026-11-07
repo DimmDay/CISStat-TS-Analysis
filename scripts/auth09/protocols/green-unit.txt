@@ -1,0 +1,29 @@
+test_admin_dev_cannot_bypass (test_auth09_ownership.AccountObjectTests.test_admin_dev_cannot_bypass) ... Run access: DENY run=RUN-A0900001 action=read subject=8365453d-7229-42ea-9d31-e2859601c140 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=8365453d-7229-42ea-9d31-e2859601c140 via=auth_session reason=account_boundary
+ok
+test_foreign_tenant_legacy_admin_deny (test_auth09_ownership.AccountObjectTests.test_foreign_tenant_legacy_admin_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=932c6f46-70ae-466f-983a-c8c59fa14d5e via=auth_session reason=foreign_tenant
+ok
+test_legacy_json_and_malformed_binding (test_auth09_ownership.AccountObjectTests.test_legacy_json_and_malformed_binding) ... Run access: DENY run=RUN-A0900001 action=read subject=b45a37a6-968a-4e52-b5d2-c26fbea12bcd via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=b45a37a6-968a-4e52-b5d2-c26fbea12bcd via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=b45a37a6-968a-4e52-b5d2-c26fbea12bcd via=auth_session reason=account_boundary
+ok
+test_member_not_author (test_auth09_ownership.AccountObjectTests.test_member_not_author) ... ok
+test_memory_immutable (test_auth09_ownership.AccountObjectTests.test_memory_immutable) ... ok
+test_memory_no_claim (test_auth09_ownership.AccountObjectTests.test_memory_no_claim) ... ok
+test_migration_parity_no_mass_backfill (test_auth09_ownership.AccountObjectTests.test_migration_parity_no_mass_backfill) ... ok
+test_operator_and_native_runner_fail_closed (test_auth09_ownership.AccountObjectTests.test_operator_and_native_runner_fail_closed) ... ok
+test_private_legacy_named_read_only (test_auth09_ownership.AccountObjectTests.test_private_legacy_named_read_only) ... Run access: DENY run=RUN-A0900001 action=read subject=7fb70faf-d4d7-4430-bd32-f5bef0e3ab2f via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=de3073e8-85e5-43ef-b729-2ecb63b54549 via=auth_session reason=legacy_migration_required
+ok
+test_roundtrip (test_auth09_ownership.AccountObjectTests.test_roundtrip) ... ok
+test_same_person_other_account_cannot_use_creator_cookie (test_auth09_ownership.AccountObjectTests.test_same_person_other_account_cannot_use_creator_cookie) ... Run access: DENY run=RUN-A0900001 action=read subject=1403e22d-6d59-4d88-9b23-b1079e03a08a via=auth_session reason=account_boundary
+ok
+test_surrogate_unknown_action_and_unauthenticated_deny (test_auth09_ownership.AccountObjectTests.test_surrogate_unknown_action_and_unauthenticated_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=acd499a0-7c26-4c3a-9783-b70c803e0642 via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=acd499a0-7c26-4c3a-9783-b70c803e0642 via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.139s
+
+OK

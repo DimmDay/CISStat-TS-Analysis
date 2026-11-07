@@ -226,6 +226,8 @@ class ResearchRun:
     owner_subject: Optional[str] = None
     tenant_id: Optional[str] = None
     ownership: Optional[str] = None
+    owner_account_id: Optional[str] = None
+    ownership_version: int = 0
 
     def __post_init__(self) -> None:
         if self.status not in RUN_STATUSES:
@@ -266,6 +268,9 @@ class ResearchRun:
             result["tenant_id"] = self.tenant_id
         if self.ownership is not None:
             result["ownership"] = self.ownership
+        if self.owner_account_id is not None:
+            result["owner_account_id"] = self.owner_account_id
+            result["ownership_version"] = self.ownership_version
         return result
 
     @classmethod
@@ -304,6 +309,8 @@ class ResearchRun:
             ),
             # DOCLOG-0: мусорные типы -> честное отсутствие (щит C-CERT);
             # ownership вне известного значения не фабрикуется в bound.
+            owner_account_id=(str(raw["owner_account_id"]) if raw.get("owner_account_id") is not None else None),
+            ownership_version=raw.get("ownership_version", 0),
             owner_subject=(
                 str(raw["owner_subject"])
                 if isinstance(raw.get("owner_subject"), str) and raw.get("owner_subject")
@@ -1418,6 +1425,91 @@ MIGRATION_STATEMENTS_0022: tuple[str, ...] = (
     "ON analysis_sessions (expires_at)",
 )
 
+
+# AUTH-09 additive schema; no automatic assignment of legacy runs.
+MIGRATION_STATEMENTS_0023: tuple[str, ...] = (
+    """
+ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS owner_account_id UUID
+    """,
+    """
+ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS ownership_version BIGINT NOT NULL DEFAULT 0
+    """,
+    """
+CREATE INDEX IF NOT EXISTS idx_research_runs_account ON research_runs(owner_account_id)
+    """,
+    """
+CREATE TABLE IF NOT EXISTS run_ownership_migrations (
+    run_id TEXT PRIMARY KEY REFERENCES research_runs(run_id),
+    owner_account_id UUID NOT NULL,
+    tenant_id UUID NOT NULL,
+    previous_owner_subject TEXT,
+    previous_tenant_id TEXT,
+    previous_session_hash TEXT NOT NULL,
+    evidence TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+)
+    """,
+    """
+CREATE OR REPLACE FUNCTION auth09_run_owner_guard() RETURNS trigger
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+BEGIN
+    IF OLD.owner_account_id IS NOT NULL THEN
+        IF (NEW.owner_account_id,NEW.tenant_id,NEW.owner_subject,NEW.ownership,NEW.ownership_version)
+            IS DISTINCT FROM
+           (OLD.owner_account_id,OLD.tenant_id,OLD.owner_subject,OLD.ownership,OLD.ownership_version) THEN
+            RAISE EXCEPTION 'immutable Account ownership' USING ERRCODE='23514';
+        END IF;
+    ELSIF NEW.owner_account_id IS NOT NULL THEN
+        IF NEW.owner_subject IS DISTINCT FROM OLD.owner_subject OR
+           NOT EXISTS (SELECT 1 FROM run_ownership_migrations m WHERE m.run_id=OLD.run_id
+             AND m.owner_account_id=NEW.owner_account_id AND m.tenant_id::text=NEW.tenant_id
+             AND m.previous_owner_subject IS NOT DISTINCT FROM OLD.owner_subject
+             AND m.previous_tenant_id IS NOT DISTINCT FROM OLD.tenant_id) THEN
+            RAISE EXCEPTION 'explicit ownership migration required' USING ERRCODE='23514';
+        END IF;
+    END IF;
+    RETURN NEW;
+END $$
+    """,
+    """
+DO $$ BEGIN
+    IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='auth09_run_owner_guard'
+                  AND tgrelid='research_runs'::regclass) THEN
+        CREATE TRIGGER auth09_run_owner_guard BEFORE UPDATE ON research_runs
+        FOR EACH ROW EXECUTE FUNCTION auth09_run_owner_guard();
+    END IF;
+END $$
+    """,
+    """
+CREATE OR REPLACE FUNCTION auth09_receipt_guard() RETURNS trigger
+LANGUAGE plpgsql AS $$ BEGIN
+    RAISE EXCEPTION 'immutable ownership receipt' USING ERRCODE='23514';
+END $$
+    """,
+    """
+DO $$ BEGIN
+    IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='auth09_receipt_guard'
+                  AND tgrelid='run_ownership_migrations'::regclass) THEN
+        CREATE TRIGGER auth09_receipt_guard BEFORE UPDATE OR DELETE ON run_ownership_migrations
+        FOR EACH ROW EXECUTE FUNCTION auth09_receipt_guard();
+    END IF;
+END $$
+    """,
+    """
+DO $$ BEGIN
+    IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='auth09_account_binding'
+                  AND conrelid='research_runs'::regclass) THEN
+        ALTER TABLE research_runs ADD CONSTRAINT auth09_account_binding CHECK (
+            (owner_account_id IS NULL AND ownership_version=0) OR
+            (owner_account_id IS NOT NULL AND ownership_version=1
+             AND ownership IS NOT DISTINCT FROM 'bound' AND tenant_id IS NOT NULL)
+        );
+    END IF;
+END $$
+    """,
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
@@ -1429,6 +1521,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     + MIGRATION_STATEMENTS_0015 + MIGRATION_STATEMENTS_0016
     + MIGRATION_STATEMENTS_0017 + MIGRATION_STATEMENTS_0018
     + MIGRATION_STATEMENTS_0022
+    + MIGRATION_STATEMENTS_0023
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -1455,6 +1548,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     # V2.3 (session backend Postgres): таблица analysis_sessions +
     # индекс expires_at; файл-дубль 0022_session_backend_postgres.sql.
     ("0022_session_backend_postgres.sql", MIGRATION_STATEMENTS_0022),
+    ("0023_auth09_account_ownership.sql", MIGRATION_STATEMENTS_0023),
 )
 
 
@@ -1591,8 +1685,19 @@ def _merge_run_additive(new: ResearchRun, existing: ResearchRun) -> ResearchRun:
     контекста/ревизии (паритет SQL-миграции: COALESCE(EXCLUDED.x,
     stored.x)). Целевые поля (target_column и пр.) не затрагиваются:
     None там -- осознанное значение (сброс цели)."""
+    if existing.owner_account_id is not None:
+        if (new.owner_account_id not in (None, existing.owner_account_id)
+            or new.owner_subject not in (None, existing.owner_subject)
+            or new.tenant_id not in (None, existing.tenant_id)
+            or new.ownership not in (None, existing.ownership)
+            or (new.owner_account_id is not None and new.ownership_version != existing.ownership_version)):
+            raise ValueError("immutable Account ownership")
+    elif new.owner_account_id is not None:
+        raise ValueError("explicit legacy ownership migration required")
     return replace(
         new,
+        owner_account_id=existing.owner_account_id,
+        ownership_version=existing.ownership_version,
         context_id=new.context_id if new.context_id is not None else existing.context_id,
         data_revision=(
             new.data_revision if new.data_revision is not None
@@ -1940,7 +2045,7 @@ class PostgresResearchRunStore(ResearchRunStore):
         "run_id, session_id, dataset_fingerprint, dataset_name, "
         "target_column, created_at, last_active_at, status, "
         "context_id, data_revision, data_digest, target_column_source, "
-        "owner_subject, tenant_id, ownership"
+        "owner_subject, tenant_id, ownership, owner_account_id, ownership_version"
     )
 
     # COALESCE аддитивных полей (паритет _merge_run_additive Memory):
@@ -1953,8 +2058,8 @@ class PostgresResearchRunStore(ResearchRunStore):
             (run_id, session_id, dataset_fingerprint, dataset_name,
              target_column, created_at, last_active_at, status,
              context_id, data_revision, data_digest, target_column_source,
-             owner_subject, tenant_id, ownership)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             owner_subject, tenant_id, ownership, owner_account_id, ownership_version)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (run_id) DO UPDATE SET
             session_id = EXCLUDED.session_id,
             dataset_fingerprint = EXCLUDED.dataset_fingerprint,
@@ -1969,7 +2074,10 @@ class PostgresResearchRunStore(ResearchRunStore):
             data_digest = COALESCE(EXCLUDED.data_digest, research_runs.data_digest),
             owner_subject = COALESCE(EXCLUDED.owner_subject, research_runs.owner_subject),
             tenant_id = COALESCE(EXCLUDED.tenant_id, research_runs.tenant_id),
-            ownership = COALESCE(EXCLUDED.ownership, research_runs.ownership)
+            ownership = COALESCE(EXCLUDED.ownership, research_runs.ownership),
+            owner_account_id = COALESCE(EXCLUDED.owner_account_id, research_runs.owner_account_id),
+            ownership_version = CASE WHEN EXCLUDED.owner_account_id IS NULL
+                THEN research_runs.ownership_version ELSE EXCLUDED.ownership_version END
     """
 
     @staticmethod
@@ -1981,6 +2089,7 @@ class PostgresResearchRunStore(ResearchRunStore):
             run.status, run.context_id, run.data_revision, run.data_digest,
             run.target_column_source,
             run.owner_subject, run.tenant_id, run.ownership,
+            run.owner_account_id, run.ownership_version,
         )
 
     def upsert_run(self, run: ResearchRun) -> None:
@@ -2052,6 +2161,8 @@ class PostgresResearchRunStore(ResearchRunStore):
             data_digest=row[10] if row[10] is None else str(row[10]),
             # DOCLOG-0 (миграция 0006): владение; NULL legacy -- честное
             # отсутствие (unresolved вычисляет резолвер, не данные).
+            owner_account_id=str(row[15]) if len(row)>15 and row[15] is not None else None,
+            ownership_version=row[16] if len(row)>16 else 0,
             owner_subject=row[12] if row[12] is None else str(row[12]),
             tenant_id=row[13] if row[13] is None else str(row[13]),
             ownership=(
@@ -2238,9 +2349,10 @@ class PostgresResearchRunStore(ResearchRunStore):
             # её замок) даже для первого батча запуска; конкурентная
             # вставка того же run блокируется до фиксации первой.
             cur.execute(
-                "INSERT INTO research_runs (run_id) VALUES (%s) "
-                "ON CONFLICT (run_id) DO NOTHING",
-                (run_id,),
+                "INSERT INTO research_runs(run_id,owner_subject,tenant_id,ownership,owner_account_id,ownership_version) "
+                "VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (run_id) DO NOTHING",
+                (run_id,batch.run.owner_subject,batch.run.tenant_id,batch.run.ownership,
+                 batch.run.owner_account_id,batch.run.ownership_version),
             )
             cur.execute(
                 "SELECT context_id FROM research_runs WHERE run_id = %s FOR UPDATE",
@@ -2628,6 +2740,9 @@ def _mirror_run_base(
     # вычисляется здесь (та же функция -- тот же субъект).
     owner_subject, tenant_id = session.ensure_owner_binding()
     existing = store.get_run(run_id)
+    if existing is not None and existing.owner_account_id is not None:
+        if session.owner_account_id != existing.owner_account_id or tenant_id != existing.tenant_id:
+            raise ValueError("session does not own this Account run")
     if existing is None:
         # Новый запуск: предыдущие АКТИВНЫЕ запуски этой сессии --
         # abandoned (новый датасет = новое исследование, §3.1/§5.2).
@@ -2642,6 +2757,8 @@ def _mirror_run_base(
             owner_subject=owner_subject,
             tenant_id=tenant_id,
             ownership="bound",
+            owner_account_id=session.owner_account_id,
+            ownership_version=1 if session.owner_account_id is not None else 0,
         )
         expected_context = None
     else:

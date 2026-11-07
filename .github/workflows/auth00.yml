@@ -18,6 +18,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Inventory discovery and adversarial source fixtures
-        run: python -m unittest discover -s tests/unit -p test_auth00_inventory.py -v
+        run: python -m unittest discover -s tests/unit -p "test_auth00*.py" -v
       - name: Source, classification and documentation parity
         run: python scripts/auth00/inventory.py --check

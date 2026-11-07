@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/CISStat-AUTH09
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.8, platformdirs-4.14.5, anyio-4.14.2
+collected 175 items
+
+tests/api/test_session_store.py ........................................ [ 22%]
+..............................................................           [ 58%]
+tests/api/test_progress_audit_c.py ................................      [ 76%]
+tests/api/test_progress_panel.py ...................                     [ 87%]
+tests/api/test_auth09_visual_export.py ..                                [ 88%]
+tests/api/test_pgv09fix_write_path.py ....................               [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 175 passed, 1 warning in 5.24s ========================

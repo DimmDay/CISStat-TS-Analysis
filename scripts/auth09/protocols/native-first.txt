@@ -1,0 +1,41 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_account_switch_login_rotates_auth_and_clears_research (test_auth09_objects.OwnershipSQLTests.test_account_switch_login_rotates_auth_and_clears_research) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6b4f8668ad7c4ba28c35de59b6e9e2ed:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_bound_account_and_provenance_immutable (test_auth09_objects.OwnershipSQLTests.test_bound_account_and_provenance_immutable) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6d74d88691084dbeb053060cb06e30ec:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse (test_auth09_objects.OwnershipSQLTests.test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_dc26d3194aba430fafe2e42eafc78fb1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Run access: DENY run= action=read subject=fcb9e8cd-b568-4890-b3e4-834de55c7617 via=session_surrogate reason=account_boundary
+ok
+test_fresh_process_and_doclog_gate_after_migration (test_auth09_objects.OwnershipSQLTests.test_fresh_process_and_doclog_gate_after_migration) ... Run access: DENY run=RUN-FCE9D428 action=read subject=246b3c58-00f9-45ca-ba64-0550b7980f04 via=auth_session reason=account_boundary
+ok
+test_legacy_cookie_no_auto_claim (test_auth09_objects.OwnershipSQLTests.test_legacy_cookie_no_auto_claim) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_40bb4d671dd34301a7df22ac94212641:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_member_post_restore_csrf_and_author_preserved (test_auth09_objects.OwnershipSQLTests.test_member_post_restore_csrf_and_author_preserved) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7d7e3ffa6a794836873fb4b47fa0e53c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_migration_preserves_data_provenance_and_fences_stale_save (test_auth09_objects.OwnershipSQLTests.test_migration_preserves_data_provenance_and_fences_stale_save) ... ok
+test_new_named_run_and_session_account (test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7b9115cd56f64231b9a6a7f71f9dc61e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_one_time_and_expected_source (test_auth09_objects.OwnershipSQLTests.test_one_time_and_expected_source) ... ok
+test_real_audit_insert_failure_rolls_back_everything (test_auth09_objects.OwnershipSQLTests.test_real_audit_insert_failure_rolls_back_everything) ... ok
+test_receipt_immutable_and_no_raw_cookie_in_audit (test_auth09_objects.OwnershipSQLTests.test_receipt_immutable_and_no_raw_cookie_in_audit) ... ok
+test_regular_sql_upsert_cannot_claim_legacy (test_auth09_objects.OwnershipSQLTests.test_regular_sql_upsert_cannot_claim_legacy) ... ok
+test_reject_unsupported_non_atomic_topologies (test_auth09_objects.OwnershipSQLTests.test_reject_unsupported_non_atomic_topologies) ... ok
+test_restore_unknown_author_preserves_tenant_and_source_bytes (test_auth09_objects.OwnershipSQLTests.test_restore_unknown_author_preserves_tenant_and_source_bytes) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_b7db3a3e2d094489bb953064d23f6a32:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_revoked_member_cannot_fallback_pointer (test_auth09_objects.OwnershipSQLTests.test_revoked_member_cannot_fallback_pointer) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_13159054dedd4bcf95be90919aa2d948:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_same_person_other_account_denied_session_trace_doclog_and_uniform404 (test_auth09_objects.OwnershipSQLTests.test_same_person_other_account_denied_session_trace_doclog_and_uniform404) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_d8dd2f7f4bda4da891231c267b8e754b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Run access: DENY run=RUN-C98E862C action=read subject=2eba75a4-9320-4201-9bcc-c9b9d64b3469 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C98E862C action=read subject=2eba75a4-9320-4201-9bcc-c9b9d64b3469 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C98E862C action=read subject=2eba75a4-9320-4201-9bcc-c9b9d64b3469 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C98E862C action=read subject=2eba75a4-9320-4201-9bcc-c9b9d64b3469 via=auth_session reason=account_boundary
+ok
+test_sql_new_binding_cannot_have_null_ownership_state (test_auth09_objects.OwnershipSQLTests.test_sql_new_binding_cannot_have_null_ownership_state) ... ok
+test_stale_and_suspended_target_do_not_claim (test_auth09_objects.OwnershipSQLTests.test_stale_and_suspended_target_do_not_claim) ... ok
+test_two_concurrent_targets_one_winner (test_auth09_objects.OwnershipSQLTests.test_two_concurrent_targets_one_winner) ... ok
+test_unknown_author_not_invented (test_auth09_objects.OwnershipSQLTests.test_unknown_author_not_invented) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 26.876s
+
+OK

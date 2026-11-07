@@ -1,11 +1,11 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "76eb8dba1773442794b30eb5907ff0f837b01d5d",
+  "baseline": "c2217ec5ba38116e9da6413dc2c56794aefb89b5",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 234,
+    "api": 235,
     "framework": 8,
-    "internal_operation": 9,
+    "internal_operation": 10,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
@@ -88,7 +88,7 @@
       ]
     },
     "browser.session": {
-      "observed": "AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет.",
+      "observed": "AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. AUTH-09 central session_pointer validates current context and durable run before scientific data; unknown pointer rotated; legacy data never auto-claimed; authority failure 503.",
       "target": "AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе.",
       "follow_up": [
         "AUTH-03",
@@ -120,7 +120,7 @@
       ]
     },
     "run.object": {
-      "observed": "AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09.",
+      "observed": "AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. AUTH-09: explicit Account/tenant boundary before ADMIN/dev/creator cookie; owner_subject provenance. Named legacy write requires migration.",
       "target": "Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration.",
       "follow_up": [
         "AUTH-03",
@@ -149,7 +149,7 @@
       ]
     },
     "document.object": {
-      "observed": "Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09.",
+      "observed": "Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. AUTH-09 common run gate enforces Account/tenant before role/dev compatibility; original author remains provenance. Lazy visual freeze uses actual caller.",
       "target": "Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission.",
       "follow_up": [
         "AUTH-03",
@@ -315,7 +315,7 @@
       ]
     },
     "auth.storage": {
-      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback.",
+      "observed": "AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together.",
       "target": "Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback.",
       "follow_up": [
         "AUTH-03",
@@ -412,6 +412,7 @@
     }
   },
   "source_fingerprints": {
+    ".github/workflows/auth00.yml": "2f9ff8ecf0d967594e2856f1ba30344418813d8dd12227e0c4e5c30c5f97b9d0",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
@@ -419,11 +420,12 @@
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "40c0254423d2bc73d9755357bf0f96d54f3fcccce35a22077f6e867e4aa3d6e3",
-    "apps/api/access_registry.v1.json": "d97162de0ff4f0b65e303f301e1156fd36aca33aea41231d9c3ebdf85420dc39",
+    "apps/api/access_registry.v1.json": "1f5ead513a046a0ab0fbabd43e9a1d5ea364bbcf84e70a744f398bbd39d7de9b",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
     "apps/api/accounts/models.py": "4a3dfb8fdd135bd2b8bff0259a0baff396a262c2485d655c3be310a354587b4a",
+    "apps/api/accounts/ownership_migration.py": "5749560846b527916ef653b7354370dc81700c14496b22c39b24043fd6952ced",
     "apps/api/accounts/repository.py": "b9eed272454419f0e1a969f3c3dd7cd6f3ed586efa2889de743217b81c621a76",
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
@@ -431,7 +433,7 @@
     "apps/api/auth.py": "52ad8ffdd0a80054cb6ae0b7ac6523e2561ea4a4d15db430b05370c5ffb2022b",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "de1c2ec6ef2b6103131964e62e714a255c453e61adb42cefa52ff39f185d8ca5",
+    "apps/api/authentication/context.py": "e8a23d7def784d9befb038bf9dfba00e1989e41687d66cec29ce17b95acdeb9f",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -476,7 +478,7 @@
     "apps/api/forecasting.py": "265485a8a6697dd42a0393392a55b3d9a50f05eba032bbad597b01456f49e43b",
     "apps/api/forecasting_contract.py": "7b26e55fe16d83f3c2ed6e829437195433c2eb2e141e820ab8e619ce5559284a",
     "apps/api/format_correction.py": "441792d0e61f2b6b0320102c9cd791004a45eef1e3ec7640f0f1dd88c3c074c3",
-    "apps/api/identity.py": "a1518765c84fff3d19ad94935b1673988ffd91b25af2b380e720f3e6b5feb688",
+    "apps/api/identity.py": "c28f8df207c75f0d51de81c1bf4b26a0fea122537cd034ab720ee0da31d7aeaf",
     "apps/api/inclusion_correction.py": "7e1cd2d35748a8472b066bbb81a3687521af87d4c50aff4347985af20fe26018",
     "apps/api/knowledge/__init__.py": "9caf4568ad76d245cd199a746d5d0c0c213260557719915b4b39e916ff8b028c",
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
@@ -486,6 +488,7 @@
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
+    "apps/api/migrations/0023_auth09_account_ownership.sql": "7abebc73b3f371b6cebb393f1a317fe8f7ad9eda8ad5c3f79915453dcac53e01",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -524,6 +527,7 @@
     "apps/api/neural_contract.py": "d89f6ef735a84cd1084da9251302af148c62cac34061f0eb44f4aaf39ec1bcad",
     "apps/api/neural_resources.py": "5e4e466e77d1c80a9d106136e2e75de96a0384ee64aa9f0af7f9150d9665dc9f",
     "apps/api/outliers_correction.py": "0721f3ecdfb245a5233e4b85594f95a1ac93dd620badb9d9cb6ee3332eda9af4",
+    "apps/api/ownership.py": "96b0d9c5d361534c889682c9ecb834dc3bde7db7eb756cac2ca786711c75dfba",
     "apps/api/passport_checkpoints.py": "88a96b7f1976e1c1cbe1ac4dd63e56470bee9214365063c566fd613e6d79fd8a",
     "apps/api/passport_comparison.py": "eeaad8c295300370b6808d811dfff1937f6cda4cd8aadf75e1618ea257a8c425",
     "apps/api/passport_history.py": "3bc321f6de12fe9c98186c29851dd8462b882bc055e1551f4f90546bcdf4699d",
@@ -545,27 +549,27 @@
     "apps/api/referential_correction.py": "9022b2e114a20faaa75ba4bc25743eb55cb2f89c81fcf5e9751d11155bee5a21",
     "apps/api/regularity_correction.py": "b2cd7323cbeecaeb58a5935248caf72a19316a90127e518f9da253cd7e058ce6",
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
-    "apps/api/research_runs.py": "358887a4296b7feca02f260f3f5ab86612837c8c7420ba1735d49232d06cc46a",
+    "apps/api/research_runs.py": "9df9e4b860f94fc0f77a15e77706daf047ff2b9bef56d03e60e30ebc83d78c39",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
     "apps/api/routers/diagnostics.py": "a6a4061cace32805fef524041a420e72a3144793ad0b589310aa2cd35953f2b6",
     "apps/api/routers/diagnostics_internal.py": "928558b5b09a56ca2a9d815d64e9db9e0ddee35ebfd06250c97a349a570e44a0",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
-    "apps/api/routers/documentation.py": "94196421ac179a38dfcfd2028f52934a8c6a22f9073aba87f0017020fdb7ad75",
+    "apps/api/routers/documentation.py": "2290fb9c257448d9567787db9e270e3a34dc75984a175c3fa46bf41cece4c590",
     "apps/api/routers/forecasting_session.py": "4de8d79b7457fcc5d9fd48218eba6d23ecb1d63a21220b4a79b1c17bea5483bb",
     "apps/api/routers/internal.py": "67aa1feb36294ea0b3460259e385205bea49d08a861400383986afbaf63659c4",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
     "apps/api/routers/modeling_session.py": "c3f89dcf3a03887b80f2da1ae810eeb600151c3a8e8b6bd74e39407737b5f0dc",
     "apps/api/routers/models.py": "8a17f480883d7ec812015f944cecc659a037684362db1a02de95acbf0b3d55c8",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
-    "apps/api/routers/progress.py": "6a66fd47db9c88a3b7d0980ca94ed8fe9d2ca885976b04f2bdf7d95050f9e33c",
+    "apps/api/routers/progress.py": "fb41c2950da88ce3830e77585ae346d5328f4f7c56dc08915ec2f945671f63aa",
     "apps/api/routers/public.py": "9655a1ec20d03ffff8377130bda9e3b3dae896e51c080ad9e5f957e2d4b016a5",
     "apps/api/routers/session.py": "194a070e23f269574952db8c69a3fb3e8a4edd896084577d1100cbd922271614",
     "apps/api/routers/tasks_session.py": "6478e9df66721b7fc66ed5ea7a2edc8e1694edfe6305f1ad0baf0e54c6bf2a46",
     "apps/api/routers/upload_db.py": "a0679c9e9220ce935a4b555327f8c25e444750b4190403f9f1432018aa0e7a4d",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
-    "apps/api/security_audit.py": "7460bf1ac5d1003e6ba2f5f8ead9ca6149a01d10c421eb19745f44397c0efe43",
-    "apps/api/session_store.py": "d1d9bfead6fb7d88ad3fa3f11cb93c995c24d794f38dc2e935657b6dc570e148",
+    "apps/api/security_audit.py": "9dc7851d040353f024233b5ebb3479df15febc686dc447df4151d644772f967a",
+    "apps/api/session_store.py": "e4a354a8e1df66de43d2317ff26e490a042303fb8badfce36e530cf1f5f5fa81",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "ed37a44ba8f32cfc1bf798d65c5ec2603e2cd7944b166f01b7df19a3f29b718d",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
@@ -573,12 +577,12 @@
     "apps/api/telemetry.py": "58e9aafadcf79f40b0d41b6b417526e42c367dd68933d5257354641303a3d44b",
     "apps/api/text_quality_correction.py": "eb7ffcfa5a515f06d734e5c952b78e6a278f6f9f301ee4dfebc9384f6d82682c",
     "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
-    "apps/api/trace_hook.py": "471ffc038f1f9906fd3446a785ea1b201ce35a228aa7b85a2b737fecf1576021",
+    "apps/api/trace_hook.py": "9602855e297297756e4f4378c0b6f782ee0b83f6495f2bc21d736622cf35fb93",
     "apps/api/type_conversion.py": "c2a7ad440f3d1c48bfb940ebd0369aed35aa76cb916e563943dcc3a9e046c5a9",
     "apps/api/uniqueness_correction.py": "306cf1bb356f79819859cbc56ad453b16ad14c3999a439eb6df70179f2c85f21",
     "apps/api/upload_common.py": "824b64e3d4a23c7336811f57ba4135c5c53b8f2a7d2ec54645ba6db4f54703cc",
     "apps/api/visual_artifacts.py": "c0fd49dae7ad8e01454ddc0b1fa8884a255afb9502ee011716747b037fd261f4",
-    "apps/api/visual_exports.py": "fd67b39612f1a278643eed7a2985bbfda0e807734626b017ad39f68bbb7bf732",
+    "apps/api/visual_exports.py": "d56e4372af466ac5f9b71b7699b76f90e34c27ba481e6139cf0f562cb66c8fe4",
     "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
     "apps/embedded/app/admin/logs/page.tsx": "f0d27b4c204f5ab9b919872542c7c0015fa841ac2430ab43af35002fcdbceba7",
@@ -629,13 +633,15 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "b6def0bd71fd5fc45cd6c175928156db290a4601274d61dd24942a786497f6b1",
+    "docs/auth01/openapi.json": "793ffabf1f171225962d2ec13a27ff619154028623588051e60c75e4a6f24892",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
     "docs/auth05/design.md": "c57d9f99880fad324002a437fc00fea78ccf73db06db1d68222ee07659299684",
     "docs/auth06/design.md": "1906ee39876660f3f00bb422fb464f10b28713a30977e0dfb6259ea090f4ec59",
     "docs/auth08/design.md": "00c6bc4a7ef1c4bf5452c8436ab24387d894485769eafabf694f794007ee4ad8",
+    "docs/auth09/design.md": "e85652b96c357c63702118bacc805ed699e66573f873475c7e605764fd55aafe",
+    "docs/auth09/hotfix01.md": "774e1569b70d0ace6cff3f7996f5b7fef091d55a10bd442dccb1dd65291b2a5a",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -693,7 +699,7 @@
     "packages/ui/context/AuthContext.tsx": "5967def62a7d478e420564f612ac9f74ac0449cf5ce89101772a25e815cc7347",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "a6a3985552852a6ff2ba9ba54bc367819fb5713d38469ad286358a2f83819e7d",
+    "packages/ui/lib/access-contract.generated.ts": "31e979480e01a4f17e0baa11cb9904ab64aeb85b5bdd481dd31392e5d5070429",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
@@ -704,19 +710,24 @@
     "packages/ui/lib/mentor.ts": "be9e0e4d85bc089eaa164d3f3a240cef804e603f2646f598f42d2bbb16b8eff5",
     "packages/ui/lib/monitoring.ts": "177e44ab9147054e4f25489ac5f85864d09c327d45c93bd75056282289ab8f6f",
     "packages/ui/lib/plans.ts": "b4f400ac01e99ae323c14f9292d513b41677fa3853d6c5dd05ebd3496b579587",
+    "packages/ui/lib/researchOwnership.ts": "7ce2623276a2cd8eac26372d7e2ff68a49a9af83a2d4765a6146bcba7eb8dd9b",
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "91e48aa3c54459440dbf246b8c7c4e297ec14a3fb97c29f1b1b3c36261428236",
-    "packages/ui/server/proxy-routes.generated.json": "8af834e825a715f3baef99e3875edb85f7cdc191e16007b5ce69dc955f37b489",
+    "packages/ui/server/proxy-routes.generated.json": "71ad56e6174cf58a2146a1a4391e8965baff39fbbed38b338cc33c70476b8f37",
+    "scripts/auth00/check_committed.py": "fd71630572a5ba67d2b43cc34c124c5f41941a6a85c0b695be70a1bc3db070e2",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
     "scripts/auth02/rollback_0019.sql": "3bd9ec18f1fdea3e28c7d5b12437b9d0aeb2d7bf7a9f271dc6593bb4fbdecdcd",
     "scripts/auth05/bootstrap.py": "be75f9ef612067420d898ec5233903bdf626402a2b7274f95bcf5447d68ecbe6",
     "scripts/auth08/manage_account.py": "cc3cb9374f67f3c066974e7e984f9d81384f60b91fc5afdb19bf92208e24b0ab",
+    "scripts/auth09/migrate_ownership.py": "401e5b9b77b72e4c253d457f34fb39eae1c73fa37f4b27608e86220bd141f4af",
+    "scripts/local_gates.py": "5032055d5668549b796dc6769c8ae28c88b26fe6e5ab507c487d872cc0bdb020",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
+    "tests/unit/test_auth00_precommit.py": "2d7955f3d9f4df49a2c0db33795b74465bc5f23c57cce67390d3a1698a846c15",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -1795,7 +1806,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2547,
+          "line": 2551,
           "symbol": "get_case_bank_candidates"
         },
         {
@@ -1828,7 +1839,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2499,
+          "line": 2503,
           "symbol": "get_admin_overview"
         },
         {
@@ -1894,7 +1905,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1782,
+          "line": 1786,
           "symbol": "list_run_delivery"
         },
         {
@@ -1927,7 +1938,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 1819,
+          "line": 1823,
           "symbol": "get_operation_delivery"
         },
         {
@@ -1960,7 +1971,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2162,
+          "line": 2166,
           "symbol": "get_mentor_next_step"
         },
         {
@@ -1994,7 +2005,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2263,
+          "line": 2267,
           "symbol": "get_run_report"
         },
         {
@@ -2041,6 +2052,7 @@
       "direct_guard_mentions": [
         "AnalysisSession",
         "_authorized_run",
+        "get_or_create_session_id",
         "get_session_store",
         "session.append_trace_event",
         "session.current_context_id",
@@ -6532,7 +6544,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/progress.py",
-          "line": 2343,
+          "line": 2347,
           "symbol": "run_mentor_sanity_check"
         },
         {
@@ -6658,6 +6670,49 @@
       ],
       "canonical_operation": "apps.api.routers.progress:pause_run",
       "admission": "authorize-before-operation",
+      "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/progress/runs/{run_id}/restore",
+      "operation": "apps.api.routers.progress:restore_run",
+      "evidence": [
+        {
+          "source": "apps/api/routers/progress.py",
+          "line": 1509,
+          "symbol": "restore_run"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 219,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "AnalysisSession",
+        "_authorized_run",
+        "get_or_create_session_id",
+        "get_session_store",
+        "session.append_trace_event",
+        "session.current_context_id",
+        "session.set_dataset",
+        "session.set_target_column",
+        "session_store.save"
+      ],
+      "id": "api:POST:/v1/progress/runs/{run_id}/restore",
+      "discovery": "automatic",
+      "policy": "run.object",
+      "stage": "platform",
+      "resource": "run/checkpoint/delivery/report",
+      "effects": [
+        "session_write",
+        "file_read",
+        "cookie_rotation"
+      ],
+      "canonical_operation": "apps.api.routers.progress:restore_run",
+      "admission": "AUTH-09: CSRF/Origin POST; Account/tenant object gate; restore preserves owner/provenance.",
       "stage_namespace": "service"
     },
     {
@@ -9396,6 +9451,37 @@
       ],
       "canonical_operation": "auth.mfa.schema.apply",
       "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    {
+      "id": "auth.ownership.migrate",
+      "kind": "internal_operation",
+      "method": "OPERATOR",
+      "path": "interactive local legacy migration",
+      "operation": "auth.ownership.migrate",
+      "evidence": [
+        {
+          "source": "scripts/auth09/migrate_ownership.py",
+          "line": 17,
+          "symbol": "main"
+        },
+        {
+          "source": "apps/api/accounts/ownership_migration.py",
+          "line": 40,
+          "symbol": "migrate_legacy_run"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "apps.api.accounts.ownership_migration:migrate_legacy_run",
+      "admission": "Trusted interactive operator; explicit evidence/source/version, active Account CAS, single PostgreSQL transaction with mandatory audit; never HTTP."
     },
     {
       "id": "auth.schema.apply",

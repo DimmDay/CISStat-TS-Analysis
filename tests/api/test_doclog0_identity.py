@@ -441,7 +441,7 @@ class TestOwnershipPersistence:
             session_to_dict,
         )
 
-        assert SESSION_SCHEMA_VERSION == 4
+        assert SESSION_SCHEMA_VERSION == 5
         session = AnalysisSession(session_id="d0-sess-1")
         session.ensure_owner_binding()
         raw = session_to_dict(session)

@@ -1235,5 +1235,5 @@ class TestMigrations:
         # каталог пополнен 0016_pgv2_print_documents (аддитивная:
         # 2 таблицы + 2 индекса = 3 statement; 93 + 3 = 96).
         assert "0018_pgv9fix_print_rendition_keys.sql" in [n for n, _ in MIGRATION_FILES]  # PGV-09-FIX
-        assert len(MIGRATION_FILES) == 19  # V2.3: +1 (0022 session backend)
-        assert len(MIGRATION_STATEMENTS) == 109  # PGV-09-FIX: +1 (0018); V2.3: +2 (0022)
+        assert len(MIGRATION_FILES) == 20  # AUTH-09: 0023 Account ownership
+        assert len(MIGRATION_STATEMENTS) == 118  # AUTH-09: +9 ownership statements

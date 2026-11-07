@@ -1,0 +1,5 @@
+auth00 HEAD-parity: РАСХОЖДЕНИЕ discovery рабочего дерева и HEAD.
+  Есть в рабочем дереве, НЕТ в HEAD (не закоммичено; возможно, молча скрыто .gitignore):
+    - api:POST:/v1/progress/runs/{run_id}/restore
+  Подсказка: git status --porcelain --ignored; git check-ignore -v <путь>
+  CI (auth00.yml) проверяет чистую выгрузку HEAD -- такой пуш сломает сборку. Закоммитьте/удалите перечисленные поверхности.
