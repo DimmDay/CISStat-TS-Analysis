@@ -29,6 +29,9 @@ from apps.api.schemas import (
 )
 
 
+from apps.api.billing.compute_runtime import compute_kernel
+
+
 MAX_TRIALS = 64
 # Task 135: qlike -- primary-метрика volatility-моделей (контракт Task
 # 134); для level-моделей qlike=None -> честный отказ trial'а.
@@ -211,6 +214,7 @@ def finalize_tuning_plan_with_artifacts(
     return TuningPlanExecution(response=response, best_backtest=selected_backtest)
 
 
+@compute_kernel("tuning")
 def execute_tuning_plan_with_artifacts(
     *, model_id: str, model_name: str, family_id: str,
     param_space: Mapping[str, list[Any]], series: list[float], labels: list[str],
@@ -314,6 +318,7 @@ def execute_vector_tuning_trial(
     ), result
 
 
+@compute_kernel("tuning")
 def execute_vector_tuning_plan_with_artifacts(
     *, model_id: str, model_name: str, family_id: str,
     param_space: Mapping[str, list[Any]], system: Any,
@@ -398,6 +403,7 @@ def execute_volatility_tuning_trial(
     ), result
 
 
+@compute_kernel("tuning")
 def execute_volatility_tuning_plan_with_artifacts(
     *, model_id: str, model_name: str, family_id: str,
     param_space: Mapping[str, list[Any]], target: Any,
@@ -480,6 +486,7 @@ def execute_panel_tuning_trial(
     ), result
 
 
+@compute_kernel("tuning")
 def execute_panel_tuning_plan_with_artifacts(
     *, model_id: str, model_name: str, family_id: str,
     param_space: Mapping[str, list[Any]], system: Any,

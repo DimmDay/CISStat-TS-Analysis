@@ -132,6 +132,8 @@ def _pelt_breaks(
 ) -> list[int]:
     import ruptures as rpt
 
+    from apps.api.billing.compute_meter import tick
+    tick("pelt")
     algorithm = rpt.Pelt(model="linear", min_size=min_segment, jump=jump).fit(signal)
     return [int(index) for index in algorithm.predict(pen=penalty) if index < len(signal)]
 
@@ -201,6 +203,10 @@ def _segments_and_fitted(
     return segments, fitted.tolist()
 
 
+from apps.api.billing.compute_runtime import compute_kernel
+
+
+@compute_kernel("pelt")
 def analyze_structural_breaks(
     series: pd.Series,
     alpha: float = 0.05,

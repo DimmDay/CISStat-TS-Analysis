@@ -1,0 +1,3685 @@
+{
+  "schema_version": "auth14.benchmark/1",
+  "environment": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 9,
+    "cpu_quota_milli": null,
+    "memory_limit_bytes": 10451427328,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scipy": "1.17.0",
+      "statsmodels": "0.15.0",
+      "ruptures": "1.1.10",
+      "scikit-learn": "1.8.0",
+      "xgboost": "2.1.3",
+      "lightgbm": "4.5.0",
+      "catboost": "1.2.8",
+      "arch": "8.0.0",
+      "prophet": "1.4.0",
+      "statsforecast": "2.1.1",
+      "torch": null,
+      "neuralforecast": null
+    }
+  },
+  "kernels": "4c568af0ac3ed82d68c394c5066d794b658266ab8029f055e4ea017a1f835620",
+  "requested_keys": [
+    "pelt",
+    "tuning:ets",
+    "tuning:ets_damped"
+  ],
+  "timeout_seconds": 120,
+  "memory_mb": 1024,
+  "reserve_memory_mb": 1024,
+  "samples": [
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1869531020,
+        "rss_peak_bytes": 186425344,
+        "cpu_ns": 1403346540,
+        "parent_wall_ns": 1871844802
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1805296738,
+        "rss_peak_bytes": 186384384,
+        "cpu_ns": 1394203229,
+        "parent_wall_ns": 1807978718
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1703560214,
+        "rss_peak_bytes": 186413056,
+        "cpu_ns": 1295921960,
+        "parent_wall_ns": 1705228385
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1734244749,
+        "rss_peak_bytes": 186347520,
+        "cpu_ns": 1313769238,
+        "parent_wall_ns": 1735846513
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1767182682,
+        "rss_peak_bytes": 186503168,
+        "cpu_ns": 1303556583,
+        "parent_wall_ns": 1768879968
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 80,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 80,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 80,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 80
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1766960718,
+        "rss_peak_bytes": 186499072,
+        "cpu_ns": 1355809848,
+        "parent_wall_ns": 1768597743
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1803162010,
+        "rss_peak_bytes": 186441728,
+        "cpu_ns": 1410073064,
+        "parent_wall_ns": 1804899525
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1867364386,
+        "rss_peak_bytes": 186445824,
+        "cpu_ns": 1463324511,
+        "parent_wall_ns": 1869232877
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1834951791,
+        "rss_peak_bytes": 186306560,
+        "cpu_ns": 1435102858,
+        "parent_wall_ns": 1836771029
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2003865128,
+        "rss_peak_bytes": 187449344,
+        "cpu_ns": 1550282381,
+        "parent_wall_ns": 2005462976
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1903970467,
+        "rss_peak_bytes": 186437632,
+        "cpu_ns": 1488580647,
+        "parent_wall_ns": 1905559203
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 120,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 120,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 120,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 120
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 1903795152,
+        "rss_peak_bytes": 186384384,
+        "cpu_ns": 1510298859,
+        "parent_wall_ns": 1905472028
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2303996186,
+        "rss_peak_bytes": 186478592,
+        "cpu_ns": 1897672523,
+        "parent_wall_ns": 2305549408
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2267542669,
+        "rss_peak_bytes": 186466304,
+        "cpu_ns": 1885679994,
+        "parent_wall_ns": 2269324041
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2367837610,
+        "rss_peak_bytes": 186413056,
+        "cpu_ns": 1961088361,
+        "parent_wall_ns": 2369501025
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2420487671,
+        "rss_peak_bytes": 186417152,
+        "cpu_ns": 1996447497,
+        "parent_wall_ns": 2422508078
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2468334646,
+        "rss_peak_bytes": 186449920,
+        "cpu_ns": 2054414783,
+        "parent_wall_ns": 2469945583
+      }
+    },
+    {
+      "case": {
+        "key": "pelt",
+        "rows": 180,
+        "folds": 1,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "breaks"
+      },
+      "status": "ok",
+      "work": {
+        "key": "pelt",
+        "rows": 180,
+        "columns": 3,
+        "units": 17,
+        "horizon": 1,
+        "seasonal_period": 1,
+        "grid_points": 180,
+        "folds": 1,
+        "trials": 1
+      },
+      "result": {
+        "n_breaks": 0,
+        "jump": 1,
+        "grid_points": 180
+      },
+      "usage": {
+        "key": "pelt",
+        "units": 6,
+        "limit": 17
+      },
+      "metrics": {
+        "wall_ns": 2405097798,
+        "rss_peak_bytes": 186310656,
+        "cpu_ns": 1958396248,
+        "parent_wall_ns": 2406630369
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2003828045,
+        "rss_peak_bytes": 197758976,
+        "cpu_ns": 1526830007,
+        "parent_wall_ns": 2006260536
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2035842795,
+        "rss_peak_bytes": 197615616,
+        "cpu_ns": 1594707109,
+        "parent_wall_ns": 2038271630
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2067576086,
+        "rss_peak_bytes": 197611520,
+        "cpu_ns": 1545879921,
+        "parent_wall_ns": 2069696492
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2004242385,
+        "rss_peak_bytes": 197799936,
+        "cpu_ns": 1607032841,
+        "parent_wall_ns": 2006400248
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 1969802180,
+        "rss_peak_bytes": 197795840,
+        "cpu_ns": 1525038259,
+        "parent_wall_ns": 1971612589
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2135505835,
+        "rss_peak_bytes": 197718016,
+        "cpu_ns": 1700175148,
+        "parent_wall_ns": 2138317280
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2067386435,
+        "rss_peak_bytes": 197718016,
+        "cpu_ns": 1627718787,
+        "parent_wall_ns": 2069292552
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2035091849,
+        "rss_peak_bytes": 197836800,
+        "cpu_ns": 1619825996,
+        "parent_wall_ns": 2052053542
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2119843950,
+        "rss_peak_bytes": 197652480,
+        "cpu_ns": 1630670268,
+        "parent_wall_ns": 2121847661
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2268451934,
+        "rss_peak_bytes": 197939200,
+        "cpu_ns": 1814802668,
+        "parent_wall_ns": 2270463036
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2167875137,
+        "rss_peak_bytes": 198340608,
+        "cpu_ns": 1727716890,
+        "parent_wall_ns": 2169968762
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2505126694,
+        "rss_peak_bytes": 197869568,
+        "cpu_ns": 2040270440,
+        "parent_wall_ns": 2507008655
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2103902870,
+        "rss_peak_bytes": 197828608,
+        "cpu_ns": 1644438735,
+        "parent_wall_ns": 2105870197
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2105319663,
+        "rss_peak_bytes": 197672960,
+        "cpu_ns": 1648012989,
+        "parent_wall_ns": 2107492315
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2205147381,
+        "rss_peak_bytes": 197754880,
+        "cpu_ns": 1712113292,
+        "parent_wall_ns": 2207428405
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2468844195,
+        "rss_peak_bytes": 198459392,
+        "cpu_ns": 1997895544,
+        "parent_wall_ns": 2471165356
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2306649722,
+        "rss_peak_bytes": 197570560,
+        "cpu_ns": 1808186899,
+        "parent_wall_ns": 2309156064
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2407039278,
+        "rss_peak_bytes": 197808128,
+        "cpu_ns": 1954313557,
+        "parent_wall_ns": 2409556274
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2304985774,
+        "rss_peak_bytes": 197668864,
+        "cpu_ns": 1827363684,
+        "parent_wall_ns": 2306984448
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2220237335,
+        "rss_peak_bytes": 197521408,
+        "cpu_ns": 1794235469,
+        "parent_wall_ns": 2222670436
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2005111073,
+        "rss_peak_bytes": 197632000,
+        "cpu_ns": 1591806493,
+        "parent_wall_ns": 2007230889
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2436287181,
+        "rss_peak_bytes": 198017024,
+        "cpu_ns": 2005130504,
+        "parent_wall_ns": 2438440846
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2468372335,
+        "rss_peak_bytes": 197861376,
+        "cpu_ns": 1971272693,
+        "parent_wall_ns": 2470579499
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2504813891,
+        "rss_peak_bytes": 197701632,
+        "cpu_ns": 2002970460,
+        "parent_wall_ns": 2506919254
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2369585103,
+        "rss_peak_bytes": 197783552,
+        "cpu_ns": 1865644695,
+        "parent_wall_ns": 2371852397
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2219863176,
+        "rss_peak_bytes": 197701632,
+        "cpu_ns": 1779409285,
+        "parent_wall_ns": 2222397235
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2436903683,
+        "rss_peak_bytes": 197611520,
+        "cpu_ns": 1862273812,
+        "parent_wall_ns": 2438894566
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2536748050,
+        "rss_peak_bytes": 197746688,
+        "cpu_ns": 2065487187,
+        "parent_wall_ns": 2538653396
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2404609566,
+        "rss_peak_bytes": 197926912,
+        "cpu_ns": 1941993209,
+        "parent_wall_ns": 2406599810
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2507082711,
+        "rss_peak_bytes": 197771264,
+        "cpu_ns": 1944028802,
+        "parent_wall_ns": 2509269894
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2906682460,
+        "rss_peak_bytes": 197713920,
+        "cpu_ns": 2296616979,
+        "parent_wall_ns": 2909993842
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2569741238,
+        "rss_peak_bytes": 197820416,
+        "cpu_ns": 2049291401,
+        "parent_wall_ns": 2571982213
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2367862293,
+        "rss_peak_bytes": 197652480,
+        "cpu_ns": 1919139411,
+        "parent_wall_ns": 2370075376
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2768878897,
+        "rss_peak_bytes": 197877760,
+        "cpu_ns": 2313031671,
+        "parent_wall_ns": 2770713957
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2536629145,
+        "rss_peak_bytes": 197722112,
+        "cpu_ns": 2103462504,
+        "parent_wall_ns": 2538560209
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2669304020,
+        "rss_peak_bytes": 197517312,
+        "cpu_ns": 2234779199,
+        "parent_wall_ns": 2672223190
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2004005063,
+        "rss_peak_bytes": 197623808,
+        "cpu_ns": 1559694421,
+        "parent_wall_ns": 2006263234
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2135686910,
+        "rss_peak_bytes": 197599232,
+        "cpu_ns": 1691331511,
+        "parent_wall_ns": 2137580317
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2336930800,
+        "rss_peak_bytes": 197861376,
+        "cpu_ns": 1868096035,
+        "parent_wall_ns": 2338951238
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2668968898,
+        "rss_peak_bytes": 197808128,
+        "cpu_ns": 2106571611,
+        "parent_wall_ns": 2670859873
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2235572207,
+        "rss_peak_bytes": 197521408,
+        "cpu_ns": 1811523084,
+        "parent_wall_ns": 2237409040
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2235975489,
+        "rss_peak_bytes": 197697536,
+        "cpu_ns": 1728126161,
+        "parent_wall_ns": 2238062594
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2267974289,
+        "rss_peak_bytes": 197681152,
+        "cpu_ns": 1806308525,
+        "parent_wall_ns": 2269960035
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2170225288,
+        "rss_peak_bytes": 197836800,
+        "cpu_ns": 1714130481,
+        "parent_wall_ns": 2172278893
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2167333040,
+        "rss_peak_bytes": 197619712,
+        "cpu_ns": 1732090324,
+        "parent_wall_ns": 2169427587
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2367778699,
+        "rss_peak_bytes": 197746688,
+        "cpu_ns": 1906703149,
+        "parent_wall_ns": 2370050828
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2267776583,
+        "rss_peak_bytes": 197758976,
+        "cpu_ns": 1792789020,
+        "parent_wall_ns": 2270344543
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 80,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2411567484,
+        "rss_peak_bytes": 197787648,
+        "cpu_ns": 1929010584,
+        "parent_wall_ns": 2414020384
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2368340348,
+        "rss_peak_bytes": 197640192,
+        "cpu_ns": 1889175686,
+        "parent_wall_ns": 2370637681
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2110501758,
+        "rss_peak_bytes": 197726208,
+        "cpu_ns": 1580756649,
+        "parent_wall_ns": 2119255200
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2505356624,
+        "rss_peak_bytes": 197681152,
+        "cpu_ns": 1917270757,
+        "parent_wall_ns": 2507546563
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2705740921,
+        "rss_peak_bytes": 197500928,
+        "cpu_ns": 2167202423,
+        "parent_wall_ns": 2707956593
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2204852351,
+        "rss_peak_bytes": 197795840,
+        "cpu_ns": 1773577216,
+        "parent_wall_ns": 2207266543
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2168028436,
+        "rss_peak_bytes": 197758976,
+        "cpu_ns": 1694973647,
+        "parent_wall_ns": 2169808136
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2135451707,
+        "rss_peak_bytes": 197672960,
+        "cpu_ns": 1700175144,
+        "parent_wall_ns": 2137339115
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2436657158,
+        "rss_peak_bytes": 197660672,
+        "cpu_ns": 1933140070,
+        "parent_wall_ns": 2438602372
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2404553899,
+        "rss_peak_bytes": 197595136,
+        "cpu_ns": 1944134140,
+        "parent_wall_ns": 2406547175
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2712897100,
+        "rss_peak_bytes": 197816320,
+        "cpu_ns": 2190845361,
+        "parent_wall_ns": 2714982803
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2438049856,
+        "rss_peak_bytes": 197836800,
+        "cpu_ns": 1980760352,
+        "parent_wall_ns": 2440548003
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 120,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2368018527,
+        "rss_peak_bytes": 197660672,
+        "cpu_ns": 1925976830,
+        "parent_wall_ns": 2370352019
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2304280604,
+        "rss_peak_bytes": 197677056,
+        "cpu_ns": 1843988814,
+        "parent_wall_ns": 2306199449
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2167939986,
+        "rss_peak_bytes": 197668864,
+        "cpu_ns": 1740491918,
+        "parent_wall_ns": 2169874325
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 2,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 2,
+        "limit": 2
+      },
+      "metrics": {
+        "wall_ns": 2104442297,
+        "rss_peak_bytes": 197660672,
+        "cpu_ns": 1682184570,
+        "parent_wall_ns": 2106751054
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2504480748,
+        "rss_peak_bytes": 197623808,
+        "cpu_ns": 2080236539,
+        "parent_wall_ns": 2506902502
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2235180902,
+        "rss_peak_bytes": 197820416,
+        "cpu_ns": 1813853805,
+        "parent_wall_ns": 2237001652
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 2,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 4,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 2,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 2
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 4,
+        "limit": 4
+      },
+      "metrics": {
+        "wall_ns": 2304279219,
+        "rss_peak_bytes": 197771264,
+        "cpu_ns": 1854986123,
+        "parent_wall_ns": 2306229452
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2367590977,
+        "rss_peak_bytes": 197652480,
+        "cpu_ns": 1941161486,
+        "parent_wall_ns": 2369864540
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2338868063,
+        "rss_peak_bytes": 197746688,
+        "cpu_ns": 1901935728,
+        "parent_wall_ns": 2340963572
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 1,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 3,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 1
+      },
+      "result": {
+        "successful_trials": 1,
+        "selected_trials": 1,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 3,
+        "limit": 3
+      },
+      "metrics": {
+        "wall_ns": 2304368396,
+        "rss_peak_bytes": 197550080,
+        "cpu_ns": 1864590093,
+        "parent_wall_ns": 2306227964
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 17,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2768588489,
+        "rss_peak_bytes": 197939200,
+        "cpu_ns": 2336204039,
+        "parent_wall_ns": 2770431381
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 29,
+        "holdout": false,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2468400140,
+        "rss_peak_bytes": 197898240,
+        "cpu_ns": 2064751054,
+        "parent_wall_ns": 2470479894
+      }
+    },
+    {
+      "case": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "folds": 3,
+        "trials": 2,
+        "horizon": 4,
+        "seed": 101,
+        "holdout": true,
+        "scenario": "smooth"
+      },
+      "status": "ok",
+      "work": {
+        "key": "tuning:ets_damped",
+        "rows": 180,
+        "columns": 1,
+        "units": 6,
+        "horizon": 4,
+        "seasonal_period": 12,
+        "grid_points": 1,
+        "folds": 3,
+        "trials": 2
+      },
+      "result": {
+        "successful_trials": 2,
+        "selected_trials": 2,
+        "folds": 3
+      },
+      "usage": {
+        "key": "tuning:ets_damped",
+        "units": 6,
+        "limit": 6
+      },
+      "metrics": {
+        "wall_ns": 2504761739,
+        "rss_peak_bytes": 197775360,
+        "cpu_ns": 2087157845,
+        "parent_wall_ns": 2507003395
+      }
+    }
+  ],
+  "load_test": {
+    "concurrency": 1,
+    "wall_ns": 2513761308,
+    "samples": [
+      {
+        "case": {
+          "key": "tuning:ets",
+          "rows": 180,
+          "folds": 3,
+          "trials": 1,
+          "horizon": 4,
+          "seed": 17,
+          "holdout": false,
+          "scenario": "smooth"
+        },
+        "status": "ok",
+        "work": {
+          "key": "tuning:ets",
+          "rows": 180,
+          "columns": 1,
+          "units": 3,
+          "horizon": 4,
+          "seasonal_period": 12,
+          "grid_points": 1,
+          "folds": 3,
+          "trials": 1
+        },
+        "result": {
+          "successful_trials": 1,
+          "selected_trials": 1,
+          "folds": 3
+        },
+        "usage": {
+          "key": "tuning:ets",
+          "units": 3,
+          "limit": 3
+        },
+        "metrics": {
+          "wall_ns": 2369394647,
+          "rss_peak_bytes": 197816320,
+          "cpu_ns": 1931572170,
+          "parent_wall_ns": 2373106165
+        }
+      }
+    ]
+  }
+}

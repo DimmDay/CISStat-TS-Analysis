@@ -17,6 +17,7 @@ const incoming = [
   "x-csrf-token",
   "x-csrf-request",
   "x-api-key",
+  "idempotency-key",
 ];
 const outgoing = [
   "content-type",

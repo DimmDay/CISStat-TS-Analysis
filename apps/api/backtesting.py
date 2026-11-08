@@ -528,6 +528,8 @@ def run_backtest_plan(
     adapter_warnings: list[str] = []
     started = time.monotonic()
     for fold in plan.folds:
+        from apps.api.billing.compute_meter import tick
+        tick("tuning:"+model_id)
         raw_train = [values[index] for index in fold.train_indices]
         fold_started = time.monotonic()
         feature_lineage: Optional[dict[str, Any]] = None
@@ -979,6 +981,8 @@ def run_vector_backtest_plan(
     folds: list[dict[str, Any]] = []
     started = time.monotonic()
     for fold in plan.folds:
+        from apps.api.billing.compute_meter import tick
+        tick("tuning:"+model_id)
         fold_started = time.monotonic()
         n_train = len(fold.train_indices)
         n_test = len(fold.test_indices)
@@ -1441,6 +1445,8 @@ def run_panel_backtest_plan(
     folds: list[dict[str, Any]] = []
     started = time.monotonic()
     for fold in plan.folds:
+        from apps.api.billing.compute_meter import tick
+        tick("tuning:"+model_id)
         fold_started = time.monotonic()
         n_train = len(fold.train_indices)
         n_test = len(fold.test_indices)
@@ -1720,6 +1726,8 @@ def run_volatility_backtest_plan(
     folds: list[dict[str, Any]] = []
     started = time.monotonic()
     for fold in plan.folds:
+        from apps.api.billing.compute_meter import tick
+        tick("tuning:"+model_id)
         fold_started = time.monotonic()
         n_train = len(fold.train_indices)
         n_test = len(fold.test_indices)
@@ -2141,6 +2149,8 @@ def run_panel_entity_backtest_plan(
     started = time.monotonic()
     last_train_rows = 0
     for fold in folds_plan:
+        from apps.api.billing.compute_meter import tick
+        tick("tuning:"+model_id)
         fold_started = time.monotonic()
         if max(fold.train_dates) >= min(fold.test_dates):
             raise BacktestExecutionError(

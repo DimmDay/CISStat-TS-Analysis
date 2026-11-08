@@ -1,0 +1,11 @@
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... ok
+test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ok
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ok
+test_summary_does_not_prescribe_staging_for_worktree_drift (test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift) ... ok
+test_summary_repeats_snapshot_failure_and_manual_staging_hint (test_auth00_local_output.LocalOutputTests.test_summary_repeats_snapshot_failure_and_manual_staging_hint) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.087s
+
+OK

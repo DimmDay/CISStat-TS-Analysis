@@ -71,6 +71,9 @@ services:
       CISSTAT_WORKER_KEY: ${CISSTAT_WORKER_KEY:-}
       CISSTAT_WORKER_ACCOUNT_SLOTS: ${CISSTAT_WORKER_ACCOUNT_SLOTS:-1}
       CISSTAT_WORKER_PROOF_DIR: /var/lib/cisstat-worker-proofs
+      CISSTAT_CU_PROFILE: ${CISSTAT_CU_PROFILE:-}
+      CISSTAT_CU_PROFILE_SHA256: ${CISSTAT_CU_PROFILE_SHA256:-}
+      CISSTAT_COMPUTE_CACHE_DIR: /var/lib/cisstat-compute-cache
       CISSTAT_AUTH_CSRF_KEY: ${CISSTAT_AUTH_CSRF_KEY:?заполните CISSTAT_AUTH_CSRF_KEY в .env (openssl rand -base64 32)}
       CISSTAT_AUTH_MFA_KEYS: ${CISSTAT_AUTH_MFA_KEYS:?заполните CISSTAT_AUTH_MFA_KEYS в .env (JSON-keyring, docs/auth05/design.md)}
       CISSTAT_AUTH_MFA_ACTIVE_KEY: ${CISSTAT_AUTH_MFA_ACTIVE_KEY:?заполните CISSTAT_AUTH_MFA_ACTIVE_KEY в .env}
@@ -81,6 +84,8 @@ services:
       ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
     volumes:
       - worker_proofs:/var/lib/cisstat-worker-proofs
+      - cu_profiles:/var/lib/cisstat-cu-profiles
+      - compute_cache:/var/lib/cisstat-compute-cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,6 +146,8 @@ services:
 
 volumes:
   worker_proofs: {}
+  cu_profiles: {}
+  compute_cache: {}
   pgdata: {}
   caddy_data: {}
   caddy_config: {}

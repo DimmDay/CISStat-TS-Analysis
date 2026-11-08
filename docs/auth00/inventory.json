@@ -1,21 +1,21 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "ad4fd342eeba39161e69cce736d9d5d25f1cea2f",
+  "baseline": "a16b31bd0c3d49586de24d3556a39e43b9cc3321",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
     "api": 239,
     "framework": 8,
-    "internal_operation": 21,
+    "internal_operation": 25,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 12,
+    "storage": 13,
     "task_alias": 4,
     "transport": 2,
-    "worker": 7
+    "worker": 9
   },
   "policies": {
     "public.metadata": {
@@ -252,7 +252,7 @@
       ]
     },
     "worker.authority": {
-      "observed": "AUTH-13 protected modeling aliases/render/delivery use durable service credentials, current delegated authority, finite subprocess/lease/deadline, monotonically increasing fences, transactional projection/settle/audit and positive-stop reconciliation. Unknown remote/process outcomes retain holds. Legacy advisory profile remains separate; priced CU awaits AUTH-14.",
+      "observed": "AUTH-13/14 protected workers use durable service credentials, current delegated authority, finite subprocess/lease/deadline, fences, transactional projection/settle/audit and positive-stop reconciliation. Optional measured CU quote is pinned at admission; unknown outcomes retain holds. No monetary wallet/automatic commercial launch.",
       "target": "Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication.",
       "follow_up": [
         "AUTH-03",
@@ -421,7 +421,7 @@
     },
     "scientific.operation": {
       "observed": "AUTH-11 protected required/scoped: named browser session or durable scoped programmatic key, current Account/membership, existing run/session object policy before commercial decision. ScientificRoute before body parsing; router dependency normalizes actual workload; request execution fence rechecks kernel inputs. Baseline allowlist/bounds, actual saved model provenance on scientific result reads, no role-derived plan upgrade. Legacy dev compatibility is not production authority. Global legacy rules PATCH and train placeholder refuse protected execution.",
-      "target": "Preserve one identity/object/functional policy path; add atomic budget reservations and worker start/settle/fencing separately. Service progress/DOCLOG metadata retain service/object/history semantics, not paid application stage inference.",
+      "target": "Preserve one identity/object/functional policy path; AUTH-14 PELT/tuning use bounded metering/atomic reservations when protected; extend operational acceptance and other priced operations separately. Service progress/DOCLOG retain existing metadata semantics.",
       "follow_up": [
         "AUTH-12",
         "AUTH-13",
@@ -455,17 +455,35 @@
         "T08",
         "T11"
       ]
+    },
+    "compute.calibrated": {
+      "observed": "AUTH-14 protected PELT/sync/stateless/async tuning use fixed-point attempted-fit quotes, supervised progress before fit, saved tariff, atomic result/settle and current-authority cache/replay. A configured profile must match measured host/dependencies/kernels/domain; no configured profile explicitly preserves unpriced AUTH-13. Independent Linux wall/group-RSS supervisor and PostgreSQL global running+uncertain capacity. Shipped measurements are LOCAL reference only; VM calibration is not claimed.",
+      "target": "Measure and explicitly install representative VM profile before calibrated admission; preserve bounds/replay/holds and complete operational, Demo/wallet and certification tasks separately.",
+      "follow_up": [
+        "AUTH-15",
+        "AUTH-16",
+        "AUTH-20",
+        "AUTH-21",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T08",
+        "T12",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
     ".github/workflows/auth00.yml": "2f9ff8ecf0d967594e2856f1ba30344418813d8dd12227e0c4e5c30c5f97b9d0",
     ".github/workflows/auth11.yml": "41b92b46598103f32e52b07e48b4fba07653612d285ca04f96c04d349cc43416",
     ".github/workflows/auth12.yml": "548d4c32aa6504cc4f61ea479951a308e0a0aae99381e0f06df02ef2e80a428f",
+    ".github/workflows/auth14.yml": "0a6c5e17d98ac6bfa5971f658a02e8691b5a3a49e6815565e289055d75866c9d",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
+    "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "93c2ececcdb9a59debafa9ccbb9756c95f889bacb8c1f37d5714ad27ca9372c0",
@@ -485,7 +503,7 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "ab48d3763d97a197deaf13f25b97b804a3da815dcea6ee3bb022f12465ac484b",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "2a4b8b5939711c0d5af6b64ed535144daf49d0feae3faed31bd0e2681e3eeb73",
+    "apps/api/authentication/context.py": "be864fd74974d6f5ff54505dd4b3ce1952d7d561089b4c78dd846cbf61089bee",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -501,8 +519,14 @@
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
     "apps/api/authentication/sessions.py": "7096dffca6a96a31d99c7d54829aaf0e25215a5cf517147381a0428fcf75cb8c",
     "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
-    "apps/api/backtesting.py": "406c5a0f6dd9079f1a18fcf1a66f472b2fb3c6a20ee0377e2cbe9788e660ebaa",
+    "apps/api/backtesting.py": "4f4d17dd0be120a612e9bec585719ecd64cf71dcb9a21486fefe8286090defb9",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
+    "apps/api/billing/compute_benchmark.py": "2af1d78a8b546a0da8cc8edea9ec1b6e7ea0f318fa92ca4f924732e68209631b",
+    "apps/api/billing/compute_cache.py": "2e68be8609b679e543a205cafe45acf30aea2e0d2cf4a67927c69abfd956e34e",
+    "apps/api/billing/compute_meter.py": "fb28ad2d58773e744132797a64627ce1a977dabcf4084d5e26023b9e14dd81f4",
+    "apps/api/billing/compute_profile.py": "741c07c222802c87b2fdc9316c52287023a5386cf1d3120aea6506bd3970daf3",
+    "apps/api/billing/compute_runtime.py": "da5c48e9ab325c9f7772149c7a3d6cd3a45648b1fbc71c0d35a491f11cb021ce",
+    "apps/api/billing/compute_units.py": "6a27a09984abca5009b78eaf036c25bc2c38b3701273ae9af2ee8207d73a8845",
     "apps/api/billing/contract.py": "d0eceaccb09f7e85e282e4e368a82f07d76a1d6b3ee86a632cfa98844db7af52",
     "apps/api/billing/coordinator.py": "dc38b0f3888d9a426f5033bce0ff1c5611e718f21e97ed5cfa5e74c9e56b6aff",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
@@ -580,7 +604,7 @@
     "apps/api/model_readiness.py": "a75e46728be0782288a54f58581872df018852cb4d03c2646a32d33d62ffe746",
     "apps/api/modeling_comparison.py": "f3bdb473e933c42d0be80a4178f9dd6466b7b917c050fad16cc420a90baae42f",
     "apps/api/modeling_selection.py": "0b7f74e6764b74b4857a4b8306454e64622e268e67e37deef8127aaf3488c760",
-    "apps/api/modeling_tuning.py": "88eb2fb02479154966167c09c42b12ee2101fccdd1b4465fbe4c642b4257d40b",
+    "apps/api/modeling_tuning.py": "c3efe3b6cd28a75df6a3f97fad72b8e3b82c5b1e618ed82fc36381923adfb2f4",
     "apps/api/modeling_workflow.py": "fb10dc973e28b697b02eb68041b978716806fb70421220a8aff85db2e9012bfa",
     "apps/api/monitoring.py": "02eb82fe3cd16b6479dcd60f662e52cb253cbcdcc28f6b1b8098d7f9e802b557",
     "apps/api/multivariate_contract.py": "d5e99657954701300591bcc07c520a16852ed8d439441e06a5f72b5e963fc16d",
@@ -620,12 +644,12 @@
     "apps/api/routers/forecasting_session.py": "95e2500b152b2cf68243571dd57850fd12fba1e218c6b6df6c99cbaeaf5ff62e",
     "apps/api/routers/internal.py": "2b305db5940c65c75f2190341b33d7a6d0df6aa81586ea7e38b7661d22234b2c",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
-    "apps/api/routers/modeling_session.py": "99707e4d8d90cccec2fa9697a715758fec5891e6b440d1f31a2a818ce70444b5",
-    "apps/api/routers/models.py": "de0c43b84f0479e43eb22812d82c8829c1e6a4a3249aa1e57dfd1cb970c0a574",
+    "apps/api/routers/modeling_session.py": "e518f895c4323c87aa4e9a799368f7241057c7f65ccfe60711715c208d5f1b21",
+    "apps/api/routers/models.py": "0cf302559ff2d39a4b854bc2ff10009177be28a7a6b77930849b29c5ec6c9213",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
     "apps/api/routers/progress.py": "aaa03337f710af42d882d0008162733cda411872b5e570d53543f98536c77865",
     "apps/api/routers/public.py": "3a342cecaa7f41e529e0cf700d3456edd2227aae7802e97ca259ccbf3470d197",
-    "apps/api/routers/session.py": "9ab48278c69ff41f344ba17eb9a562bdf50a4a94466746483ada4b17d0ee2f40",
+    "apps/api/routers/session.py": "adce1f741c9c2af1686a161a19b3419b056bf6a48031873d57e0e5bf37c72f1b",
     "apps/api/routers/tasks_session.py": "41dc051b9fa354117044a6e7e13a5527a130e9f299f9c9a5f3b4348e453a8123",
     "apps/api/routers/upload_db.py": "a850f675671474126ff32214846d095682cfaa74cbef92b8b7cf9def0290df1c",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
@@ -649,14 +673,14 @@
     "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
     "apps/api/workers/__init__.py": "ee70622c30146a1d9ead84e0400e61f15458998a6380753fb89757052f273482",
-    "apps/api/workers/authority.py": "eba680cae0fe3792afbf9a2a49ccbf9b3b05330322765cacb491e5afbf78de66",
-    "apps/api/workers/bridge.py": "83599dc8739b26719a389cc03be2a936537ef0cbf4275a94ca01bc2abb91e836",
-    "apps/api/workers/child.py": "7849e48a10790bd8ec34722bed9b5e7565bdb7f2cce532aa4896425b32728b41",
+    "apps/api/workers/authority.py": "81803ef4b7cf6816db90cc2408dc3fca7e301b831641189a862125f3b6bbc20a",
+    "apps/api/workers/bridge.py": "19911b9f84cfe46cb0fdd499639fc71c5abfacc23a56baf362f4be5349b6a59f",
+    "apps/api/workers/child.py": "055d747987c7e2359b10c8cafaae6cbb4ff36567bada4f47cf6cf8f124068eac",
     "apps/api/workers/connection.py": "7824385a597ff8bced431debd0978231b048ee3b1a3565f567d78d078c318234",
     "apps/api/workers/delivery.py": "6df0089da4ff5ff67840a6ffb7d02c40dc15b6a2c13facc60f07118a7802d1d9",
-    "apps/api/workers/execution.py": "94b26879017da444269797f2004581005934ddbd3936621143e5892c94a2ced5",
+    "apps/api/workers/execution.py": "2d58ae852411d3859675a5e82f7280e4b1b6f309a891f989c919ba64f6e3e026",
     "apps/api/workers/migrations.py": "abb02312820a48746f32cc5516e233d2e553516e5a3a7a634dbec077f007d98c",
-    "apps/api/workers/process.py": "f860601889577854b81e95039aa294536210560bf2d8b43e4589e515564426e4",
+    "apps/api/workers/process.py": "3d23b39fe8f09933c99bf066b9104ffecf3f3c13bac36578f000d5fb63b09bbc",
     "apps/api/workers/render.py": "aedd6b7f2d8d19a2fcbd8bd9f97ef2e6d49039f52f54106d6bcedcd516800e28",
     "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
     "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
@@ -704,7 +728,7 @@
     "apps/standalone/app/validation/page.tsx": "dbbff830acf0afa866c7dcff7c7136ddc1f3e676376c46bd806a6679d9b06970",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
-    "deployment/cisstat-stack/docker-compose.yml": "d2a773aa6a41049db88659d2a3155f73dfd42b5a1496481a4a0792192acf8adc",
+    "deployment/cisstat-stack/docker-compose.yml": "d0c2569c34eed10efd1de1533940e1b3a718330de8ff2c7314551ae7b92f51f6",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
@@ -723,6 +747,9 @@
     "docs/auth11/design.md": "e46545e6c03c414d42997dcc369ea714144fb455955d9af16bb2640b695514b5",
     "docs/auth12/deploy.md": "38ed9d90c18568458b16489c3a18ad7ca8927322c8d3d75bedac8511fd000041",
     "docs/auth12/design.md": "8c7c3cafaaeec7b6ea796cc9a9b1ef60f258ba5156ee1d9cfa30d198a7e76437",
+    "docs/auth14/design.md": "c60e066ca1ac6f839fea1151cfd20d8ec4da4c337e789db101a5e9049cfa8dc7",
+    "docs/auth14/hotfix01.md": "b9d8d86de911222871bfab3525135daabaa76e4df6aa622fb6a6f4a256142534",
+    "docs/auth14/runbook.md": "2137621383e776a15254886417bc5448e669089bfd12207fdd81e954f4c851a3",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -795,9 +822,9 @@
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
-    "packages/ui/server/firstPartyProxy.ts": "91e48aa3c54459440dbf246b8c7c4e297ec14a3fb97c29f1b1b3c36261428236",
+    "packages/ui/server/firstPartyProxy.ts": "f4203907a1fd56e1f74fd7f8069521b2a96c5175a06ebe9fc7228ebf09f13178",
     "packages/ui/server/proxy-routes.generated.json": "5a841c75bdce2480e19f482c89a02ab0464e2c7ff3fa4bc518d69a0a7ab0e04d",
-    "scripts/auth00/check_committed.py": "fd71630572a5ba67d2b43cc34c124c5f41941a6a85c0b695be70a1bc3db070e2",
+    "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
     "scripts/auth02/rollback_0019.sql": "3bd9ec18f1fdea3e28c7d5b12437b9d0aeb2d7bf7a9f271dc6593bb4fbdecdcd",
@@ -810,14 +837,16 @@
     "scripts/auth12/migrate.py": "e4321d6b7d8301e8400825c6d73518b5866ed26c94ac3706eb579f39b92136f9",
     "scripts/auth13/manage_workers.py": "a43b92980b716bdad4052478b6b44174e8b2b17a3b55dfc9600e33fa24bcbbdd",
     "scripts/auth13/migrate.py": "681cfab1de868eac5a01e45bf386299f633ebfda28e41d28c7094a53ce9b2613",
-    "scripts/local_gates.md": "a4c40aeb5eb651ce5b195b1149fab95c9f760d2187e6cd0f0c18560a493471b7",
-    "scripts/local_gates.py": "b5bc702137341f958d151f2ce0879c7413367a363bfbacd024f7ff3ae8c298c9",
+    "scripts/auth14/benchmark.py": "28227ce53c4fd2f788ee5a68e21c3be1b1df7f7e91899fb20fd1647d3cea2cac",
+    "scripts/auth14/profile.py": "630e12e3b666a012626e8fab1926616841ce64552d012b65af95275beb60081c",
+    "scripts/local_gates.md": "5de6363218fbde034dfcb118541fbee520c7142f4563ca836dddae94d0091b30",
+    "scripts/local_gates.py": "eb0cdc91fc27f366ef92a45ffa30996656d0038b7d00ed6f1e65722b0676cfc6",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
     "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
-    "tests/unit/test_auth00_local_output.py": "2ee57bcad7bbf19ed57bf0356ea5a8de54ed4c122266bbf98f2986fb8c7a6e57",
-    "tests/unit/test_auth00_precommit.py": "2d7955f3d9f4df49a2c0db33795b74465bc5f23c57cce67390d3a1698a846c15",
+    "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
+    "tests/unit/test_auth00_precommit.py": "e89b1797e7f2bf98fd6f6c0594336a57c700b36f2e258215ad5aff12a0868e94",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
     "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
@@ -2340,7 +2369,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 593,
+          "line": 594,
           "symbol": "get_current_session"
         },
         {
@@ -2378,7 +2407,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 664,
+          "line": 665,
           "symbol": "get_session_dataset"
         },
         {
@@ -2416,7 +2445,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4838,
+          "line": 4840,
           "symbol": "get_dataset_consistency_profile"
         },
         {
@@ -2455,7 +2484,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1800,
+          "line": 1802,
           "symbol": "get_dataset_decomposition"
         },
         {
@@ -2493,7 +2522,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1840,
+          "line": 1842,
           "symbol": "get_dataset_decomposition_series"
         },
         {
@@ -2531,7 +2560,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 762,
+          "line": 763,
           "symbol": "get_dataset_derived_columns"
         },
         {
@@ -2569,7 +2598,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1569,
+          "line": 1571,
           "symbol": "get_dataset_distribution"
         },
         {
@@ -2607,7 +2636,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 957,
+          "line": 958,
           "symbol": "get_dataset_eda_correlation"
         },
         {
@@ -2645,7 +2674,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1106,
+          "line": 1107,
           "symbol": "get_dataset_eda_distribution"
         },
         {
@@ -2683,7 +2712,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1187,
+          "line": 1189,
           "symbol": "get_dataset_eda_feature_selection"
         },
         {
@@ -2721,7 +2750,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 990,
+          "line": 991,
           "symbol": "get_dataset_eda_ih"
         },
         {
@@ -2759,7 +2788,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1265,
+          "line": 1267,
           "symbol": "get_dataset_eda_model_matrix"
         },
         {
@@ -2797,7 +2826,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1032,
+          "line": 1033,
           "symbol": "get_dataset_eda_seasonality"
         },
         {
@@ -2835,7 +2864,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1069,
+          "line": 1070,
           "symbol": "get_dataset_eda_stationarity"
         },
         {
@@ -2873,7 +2902,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1143,
+          "line": 1144,
           "symbol": "get_dataset_eda_structural_breaks"
         },
         {
@@ -2900,7 +2929,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_structural_breaks",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     {
@@ -2911,7 +2940,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1219,
+          "line": 1221,
           "symbol": "get_dataset_eda_validation_strategy"
         },
         {
@@ -2949,7 +2978,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2206,
+          "line": 2208,
           "symbol": "get_dataset_format_profile"
         },
         {
@@ -2988,7 +3017,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3440,
+          "line": 3442,
           "symbol": "get_dataset_inclusion_profile"
         },
         {
@@ -3027,7 +3056,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2513,
+          "line": 2515,
           "symbol": "get_dataset_missing_correlation"
         },
         {
@@ -3065,7 +3094,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2533,
+          "line": 2535,
           "symbol": "get_dataset_missing_distribution"
         },
         {
@@ -3103,7 +3132,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2653,
+          "line": 2655,
           "symbol": "get_dataset_missing_editor_rows"
         },
         {
@@ -3141,7 +3170,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2490,
+          "line": 2492,
           "symbol": "get_dataset_missing_matrix"
         },
         {
@@ -3179,7 +3208,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2383,
+          "line": 2385,
           "symbol": "get_dataset_missing_profile"
         },
         {
@@ -3218,7 +3247,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3406,
+          "line": 3408,
           "symbol": "get_dataset_outlier_boxplot"
         },
         {
@@ -3256,7 +3285,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3389,
+          "line": 3391,
           "symbol": "get_dataset_outlier_density"
         },
         {
@@ -3295,7 +3324,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2888,
+          "line": 2890,
           "symbol": "get_dataset_outlier_editor_rows"
         },
         {
@@ -3333,7 +3362,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3356,
+          "line": 3358,
           "symbol": "get_dataset_outlier_histogram"
         },
         {
@@ -3371,7 +3400,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3307,
+          "line": 3309,
           "symbol": "get_dataset_outlier_line"
         },
         {
@@ -3409,7 +3438,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3106,
+          "line": 3108,
           "symbol": "get_dataset_outlier_profile"
         },
         {
@@ -3448,7 +3477,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1305,
+          "line": 1307,
           "symbol": "get_panel_balance"
         },
         {
@@ -3486,7 +3515,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5976,
+          "line": 5978,
           "symbol": "compare_dataset_passports"
         },
         {
@@ -3527,7 +3556,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5932,
+          "line": 5934,
           "symbol": "get_dataset_passport_status"
         },
         {
@@ -3565,7 +3594,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2437,
+          "line": 2439,
           "symbol": "get_dataset_preprocessing_check_modes"
         },
         {
@@ -3603,7 +3632,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3946,
+          "line": 3948,
           "symbol": "get_dataset_preprocessing_decomposition_profile"
         },
         {
@@ -3641,7 +3670,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4528,
+          "line": 4530,
           "symbol": "get_dataset_preprocessing_feature_generation_profile"
         },
         {
@@ -3679,7 +3708,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3842,
+          "line": 3844,
           "symbol": "get_dataset_preprocessing_regularity_intervals"
         },
         {
@@ -3717,7 +3746,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3800,
+          "line": 3802,
           "symbol": "get_dataset_preprocessing_regularity_profile"
         },
         {
@@ -3756,7 +3785,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3861,
+          "line": 3863,
           "symbol": "get_dataset_preprocessing_regularity_timeline"
         },
         {
@@ -3794,7 +3823,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4652,
+          "line": 4654,
           "symbol": "get_dataset_preprocessing_scaling_profile"
         },
         {
@@ -3832,7 +3861,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4181,
+          "line": 4183,
           "symbol": "get_dataset_preprocessing_smoothing_profile"
         },
         {
@@ -3870,7 +3899,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4432,
+          "line": 4434,
           "symbol": "get_dataset_preprocessing_spectral_profile"
         },
         {
@@ -3908,7 +3937,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4312,
+          "line": 4314,
           "symbol": "get_dataset_preprocessing_stationarity_profile"
         },
         {
@@ -3946,7 +3975,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4069,
+          "line": 4071,
           "symbol": "get_dataset_preprocessing_variance_profile"
         },
         {
@@ -3984,7 +4013,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2296,
+          "line": 2298,
           "symbol": "get_dataset_range_profile"
         },
         {
@@ -4023,7 +4052,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3527,
+          "line": 3529,
           "symbol": "get_dataset_referential_profile"
         },
         {
@@ -4062,7 +4091,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3714,
+          "line": 3716,
           "symbol": "get_dataset_regularity_profile"
         },
         {
@@ -4102,7 +4131,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 716,
+          "line": 717,
           "symbol": "get_dataset_rows"
         },
         {
@@ -4140,7 +4169,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 896,
+          "line": 897,
           "symbol": "get_dataset_stats"
         },
         {
@@ -4178,7 +4207,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1690,
+          "line": 1692,
           "symbol": "get_structure_detection"
         },
         {
@@ -4216,7 +4245,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4735,
+          "line": 4737,
           "symbol": "get_dataset_sufficiency_profile"
         },
         {
@@ -4255,7 +4284,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3621,
+          "line": 3623,
           "symbol": "get_dataset_text_quality_profile"
         },
         {
@@ -4294,7 +4323,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1753,
+          "line": 1755,
           "symbol": "get_dataset_timeseries"
         },
         {
@@ -4332,7 +4361,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4929,
+          "line": 4931,
           "symbol": "get_dataset_uniqueness_profile"
         },
         {
@@ -4371,7 +4400,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1922,
+          "line": 1924,
           "symbol": "get_dataset_validate"
         },
         {
@@ -4415,7 +4444,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2155,
+          "line": 2157,
           "symbol": "get_dataset_validation_check_modes"
         },
         {
@@ -4453,7 +4482,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2144,
+          "line": 2146,
           "symbol": "get_dataset_validation_rules"
         },
         {
@@ -4491,7 +4520,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5758,
+          "line": 5760,
           "symbol": "get_date_column"
         },
         {
@@ -4529,7 +4558,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3337,
+          "line": 3339,
           "symbol": "list_model_cards"
         },
         {
@@ -4566,7 +4595,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3360,
+          "line": 3362,
           "symbol": "get_model_card"
         },
         {
@@ -4604,7 +4633,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1039,
+          "line": 1040,
           "symbol": "get_modeling_context"
         },
         {
@@ -4641,7 +4670,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1109,
+          "line": 1110,
           "symbol": "get_modeling_feature_regressors"
         },
         {
@@ -4821,7 +4850,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2176,
+          "line": 2178,
           "symbol": "get_modeling_job"
         },
         {
@@ -4859,7 +4888,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3608,
+          "line": 3610,
           "symbol": "panel_candidates"
         },
         {
@@ -4895,7 +4924,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1191,
+          "line": 1192,
           "symbol": "get_modeling_state"
         },
         {
@@ -4931,7 +4960,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5605,
+          "line": 5607,
           "symbol": "get_target_column"
         },
         {
@@ -6729,7 +6758,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 630,
+          "line": 636,
           "symbol": "run_backtest"
         },
         {
@@ -6837,7 +6866,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 724,
+          "line": 730,
           "symbol": "train_model"
         },
         {
@@ -6873,7 +6902,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 736,
+          "line": 742,
           "symbol": "tune_model"
         },
         {
@@ -6898,7 +6927,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     {
@@ -7451,7 +7480,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4858,
+          "line": 4860,
           "symbol": "correct_dataset_consistency"
         },
         {
@@ -7491,7 +7520,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5448,
+          "line": 5450,
           "symbol": "convert_dataset_types"
         },
         {
@@ -7535,7 +7564,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 807,
+          "line": 808,
           "symbol": "delete_dataset_derived_columns"
         },
         {
@@ -7575,7 +7604,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1360,
+          "line": 1362,
           "symbol": "filter_dataset_by_entity"
         },
         {
@@ -7614,7 +7643,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2225,
+          "line": 2227,
           "symbol": "correct_dataset_formats"
         },
         {
@@ -7654,7 +7683,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3456,
+          "line": 3458,
           "symbol": "correct_dataset_inclusion"
         },
         {
@@ -7694,7 +7723,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2554,
+          "line": 2556,
           "symbol": "correct_dataset_missing"
         },
         {
@@ -7734,7 +7763,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2726,
+          "line": 2728,
           "symbol": "apply_dataset_missing_manual_corrections"
         },
         {
@@ -7774,7 +7803,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3176,
+          "line": 3178,
           "symbol": "correct_dataset_outliers"
         },
         {
@@ -7814,7 +7843,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2966,
+          "line": 2968,
           "symbol": "apply_dataset_outlier_manual_corrections"
         },
         {
@@ -7856,7 +7885,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1474,
+          "line": 1476,
           "symbol": "aggregate_dataset_by_date"
         },
         {
@@ -7895,7 +7924,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 6096,
+          "line": 6098,
           "symbol": "capture_dataset_passport"
         },
         {
@@ -7936,7 +7965,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4002,
+          "line": 4004,
           "symbol": "create_dataset_preprocessing_decomposition_outputs"
         },
         {
@@ -7975,7 +8004,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4573,
+          "line": 4575,
           "symbol": "create_dataset_preprocessing_feature_generation"
         },
         {
@@ -8014,7 +8043,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3884,
+          "line": 3886,
           "symbol": "correct_dataset_preprocessing_regularity"
         },
         {
@@ -8053,7 +8082,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4697,
+          "line": 4699,
           "symbol": "create_dataset_preprocessing_scaling_recipe"
         },
         {
@@ -8091,7 +8120,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4238,
+          "line": 4240,
           "symbol": "create_dataset_preprocessing_smoothing_transformation"
         },
         {
@@ -8130,7 +8159,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4490,
+          "line": 4492,
           "symbol": "save_dataset_preprocessing_spectral_selection"
         },
         {
@@ -8168,7 +8197,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4366,
+          "line": 4368,
           "symbol": "create_dataset_preprocessing_stationarity_transformation"
         },
         {
@@ -8207,7 +8236,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4122,
+          "line": 4124,
           "symbol": "create_dataset_preprocessing_variance_transformation"
         },
         {
@@ -8246,7 +8275,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2315,
+          "line": 2317,
           "symbol": "correct_dataset_ranges"
         },
         {
@@ -8286,7 +8315,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3550,
+          "line": 3552,
           "symbol": "correct_dataset_referential"
         },
         {
@@ -8326,7 +8355,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3740,
+          "line": 3742,
           "symbol": "correct_dataset_regularity"
         },
         {
@@ -8366,7 +8395,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4765,
+          "line": 4767,
           "symbol": "save_dataset_sufficiency_plan"
         },
         {
@@ -8406,7 +8435,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3643,
+          "line": 3645,
           "symbol": "correct_dataset_text_quality"
         },
         {
@@ -8446,7 +8475,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4948,
+          "line": 4950,
           "symbol": "correct_dataset_uniqueness"
         },
         {
@@ -8486,7 +8515,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5766,
+          "line": 5768,
           "symbol": "set_date_column"
         },
         {
@@ -8524,7 +8553,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 603,
+          "line": 604,
           "symbol": "load_demo_dataset"
         },
         {
@@ -8562,7 +8591,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1403,
+          "line": 1404,
           "symbol": "run_modeling_backtest"
         },
         {
@@ -8606,7 +8635,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1620,
+          "line": 1621,
           "symbol": "decide_modeling_backtest_scope"
         },
         {
@@ -8646,7 +8675,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1291,
+          "line": 1292,
           "symbol": "bootstrap_modeling_baselines"
         },
         {
@@ -8689,7 +8718,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1215,
+          "line": 1216,
           "symbol": "generate_modeling_candidates"
         },
         {
@@ -8730,7 +8759,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3159,
+          "line": 3161,
           "symbol": "create_model_card"
         },
         {
@@ -8775,7 +8804,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2826,
+          "line": 2828,
           "symbol": "compare_modeling_candidates"
         },
         {
@@ -8816,7 +8845,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2765,
+          "line": 2767,
           "symbol": "diagnose_modeling_candidate"
         },
         {
@@ -8855,7 +8884,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2785,
+          "line": 2787,
           "symbol": "ensure_modeling_diagnostics"
         },
         {
@@ -9043,7 +9072,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2083,
+          "line": 2085,
           "symbol": "start_modeling_job"
         },
         {
@@ -9072,7 +9101,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     {
@@ -9083,7 +9112,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2186,
+          "line": 2188,
           "symbol": "cancel_modeling_job"
         },
         {
@@ -9122,7 +9151,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2221,
+          "line": 2223,
           "symbol": "step_modeling_job"
         },
         {
@@ -9164,7 +9193,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3682,
+          "line": 3684,
           "symbol": "panel_backtest"
         },
         {
@@ -9203,7 +9232,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3740,
+          "line": 3742,
           "symbol": "panel_forecast"
         },
         {
@@ -9242,7 +9271,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3471,
+          "line": 3473,
           "symbol": "build_panel_passport_for_session"
         },
         {
@@ -9282,7 +9311,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3544,
+          "line": 3546,
           "symbol": "confirm_panel_entry_checkpoint"
         },
         {
@@ -9324,7 +9353,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3049,
+          "line": 3051,
           "symbol": "select_modeling_candidate"
         },
         {
@@ -9362,7 +9391,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3009,
+          "line": 3011,
           "symbol": "evaluate_modeling_selection"
         },
         {
@@ -9401,7 +9430,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1778,
+          "line": 1779,
           "symbol": "tune_modeling_candidate"
         },
         {
@@ -9433,7 +9462,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     {
@@ -9444,7 +9473,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1660,
+          "line": 1661,
           "symbol": "skip_modeling_tuning"
         },
         {
@@ -9483,7 +9512,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1702,
+          "line": 1703,
           "symbol": "skip_all_pending_modeling_tuning"
         },
         {
@@ -9523,7 +9552,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2395,
+          "line": 2397,
           "symbol": "start_modeling_tuning"
         },
         {
@@ -9555,7 +9584,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     {
@@ -9566,7 +9595,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2498,
+          "line": 2500,
           "symbol": "step_modeling_tuning"
         },
         {
@@ -9609,7 +9638,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 6235,
+          "line": 6237,
           "symbol": "set_stage"
         },
         {
@@ -9647,7 +9676,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5639,
+          "line": 5641,
           "symbol": "set_target_column"
         },
         {
@@ -9685,7 +9714,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2453,
+          "line": 2455,
           "symbol": "save_dataset_preprocessing_check_modes"
         },
         {
@@ -9723,7 +9752,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5419,
+          "line": 5421,
           "symbol": "save_dataset_type_schema"
         },
         {
@@ -9761,7 +9790,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2170,
+          "line": 2172,
           "symbol": "save_dataset_validation_check_modes"
         },
         {
@@ -9799,7 +9828,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5016,
+          "line": 5018,
           "symbol": "save_dataset_validation_rules"
         },
         {
@@ -9837,7 +9866,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1119,
+          "line": 1120,
           "symbol": "set_modeling_feature_regressors"
         },
         {
@@ -10207,6 +10236,156 @@
       "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
     },
     {
+      "id": "compute.cache",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "compute.cache",
+      "operation": "compute.cache",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_cache.py",
+          "line": 46,
+          "symbol": "read"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current-authority signed content-addressed compute result replay",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.cache",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "compute.calibration",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.calibration",
+      "operation": "compute.calibration",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_benchmark.py",
+          "line": 246,
+          "symbol": "calibrate"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "real CPU/wall/RSS training/holdout/capacity evidence",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.calibration",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "compute.meter",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.meter",
+      "operation": "compute.meter",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_meter.py",
+          "line": 53,
+          "symbol": "tick"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "attempted fold/PELT fit ceiling before start",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.meter",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "compute.profile",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.profile",
+      "operation": "compute.profile",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_profile.py",
+          "line": 152,
+          "symbol": "load_profile"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "pinned compatible measured profile",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.profile",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "compute.quote",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.quote",
+      "operation": "compute.quote",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_units.py",
+          "line": 73,
+          "symbol": "quote_work"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "measured-domain integer micro-CU quote",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.quote",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "compute.runtime",
+      "kind": "worker",
+      "method": "INTERNAL",
+      "path": "compute.runtime",
+      "operation": "compute.runtime",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_runtime.py",
+          "line": 183,
+          "symbol": "compute_kernel"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "protected PELT/tuning isolated runtime",
+      "effects": [
+        "compute",
+        "durable_write"
+      ],
+      "canonical_operation": "compute.runtime",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
       "id": "execution:model.job_step",
       "kind": "internal_operation",
       "method": "CALL",
@@ -10289,7 +10468,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 337,
+          "line": 362,
           "symbol": "claim"
         }
       ],
@@ -10313,7 +10492,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 530,
+          "line": 585,
           "symbol": "publish"
         }
       ],
@@ -10337,7 +10516,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 681,
+          "line": 744,
           "symbol": "reconcile"
         }
       ],
@@ -10385,7 +10564,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/process.py",
-          "line": 86,
+          "line": 123,
           "symbol": "subprocess.Popen"
         }
       ],
@@ -18260,6 +18439,31 @@
       ],
       "canonical_operation": "apps/api/document_render_worker.py:self._loop",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    {
+      "id": "worker:apps/api/workers/process.py:176",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "supervise",
+      "operation": "apps/api/workers/process.py:supervise",
+      "evidence": [
+        {
+          "source": "apps/api/workers/process.py",
+          "line": 176,
+          "symbol": "supervise"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
+      "effects": [
+        "compute",
+        "stop_process_group"
+      ],
+      "canonical_operation": "compute.supervisor",
+      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
     },
     {
       "id": "worker:delivery.run_once",

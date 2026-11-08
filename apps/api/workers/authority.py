@@ -107,6 +107,13 @@ class WorkerAuthority:
             ctx = self._ctx(row)
             entry = row["descriptor"]["entry_id"]
             account, caps, _ = self.billing._authority(c, ctx, entry)
+            normalized = row["descriptor"].get("compute_work")
+            if (
+                normalized
+                and caps.max_dataset_rows is not None
+                and normalized["rows"] > caps.max_dataset_rows
+            ):
+                auth_error(402, "dataset_limit_exceeded")
             workload = row["descriptor"].get("workload")
             if (
                 workload
@@ -126,6 +133,15 @@ class WorkerAuthority:
                 auth_error(403, dec.code)
         if str(account.tenant_id) != str(row["tenant_id"]):
             auth_error(404, "scientific_object_not_found")
+        if (
+            row["kind"] == "modeling"
+            and row["descriptor"].get("resource_kind") == "stateless"
+            and row["descriptor"].get("family") == "inline"
+        ):
+            self.billing._scope_lifetime(
+                self.billing._chain(c, row["account_id"]), self.now(c)
+            )
+            return caps
         # Current persisted ownership, not the job ID/creator cookie. Lock the run
         # through publication so concurrent transfer/context mutation cannot win.
         run = c.execute(
@@ -224,6 +240,15 @@ class WorkerAuthority:
         if kind not in ("modeling", "render"):
             raise ValueError("computational kind required")
         descriptor = descriptor or {}
+        if descriptor.get("compute_quote"):
+            from apps.api.billing.compute_units import Quote
+
+            quote = Quote.model_validate(descriptor["compute_quote"])
+            if (
+                quote.version != request.cost.version
+                or quote.reserved_micro_cu != request.cost.micro_cu
+            ):
+                auth_error(409, "idempotency_conflict")
         fingerprint = digest_payload(
             {
                 "kind": kind,
@@ -353,6 +378,21 @@ class WorkerAuthority:
                 auth_error(409, "worker_fenced")
             if now >= row["deadline"]:
                 auth_error(409, "worker_expired")
+            from apps.api.billing.compute_runtime import profile_or_error
+
+            profile = profile_or_error()
+            saved = row["descriptor"].get("compute_quote")
+            capacity = min(
+                profile.max_concurrency if profile else 32,
+                saved.get("capacity", 32) if saved else 32,
+            )
+            if row["kind"] != "delivery" and (profile or saved):
+                c.execute("SELECT pg_advisory_xact_lock(%s)", (140014,))
+                busy = c.execute(
+                    "SELECT count(*) AS n FROM auth_worker_jobs WHERE kind<>'delivery' AND state IN ('running','uncertain')"
+                ).fetchone()["n"]
+                if busy >= capacity:
+                    auth_error(429, "compute_capacity_exceeded")
             lease = min(now + timedelta(seconds=lease_seconds), row["deadline"])
             if row["reservation_id"]:
                 reservation = self._reservation(c, row["reservation_id"])
@@ -412,6 +452,21 @@ class WorkerAuthority:
             "stopped": True,
             "remote_unknown": bool(remote_unknown),
         }
+        if proof.usage is not None:
+            body["usage"] = proof.usage
+        if proof.metrics is not None:
+            body["metrics"] = proof.metrics
+        signature = hmac.new(
+            self.key.encode(),
+            ("cisstat.worker.stop/1\0" + digest_payload(body)).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        return {**body, "signature": signature}
+
+    def attach_result(self, claim, proof, reference):
+        self._proof(claim, proof)
+        body = {k: v for k, v in proof.items() if k != "signature"}
+        body["compute_cache"] = reference
         signature = hmac.new(
             self.key.encode(),
             ("cisstat.worker.stop/1\0" + digest_payload(body)).encode(),
@@ -547,6 +602,10 @@ class WorkerAuthority:
             ):
                 return row
             self._check(c, row, claim)
+            if row["descriptor"].get("compute_quote"):
+                from apps.api.billing.compute_runtime import saved_charge
+
+                actual_cu = saved_charge(row["descriptor"], proof)
             with bind_connection(c, self.store):
                 publisher(c)
             if (
@@ -662,6 +721,10 @@ class WorkerAuthority:
                 or row["attempt_fence"] != claim.fence
             ):
                 auth_error(409, "worker_fenced")
+            if row["descriptor"].get("compute_quote"):
+                from apps.api.billing.compute_runtime import saved_charge
+
+                actual_cu = saved_charge(row["descriptor"], proof)
             self._settle(c, row, row["accrued_cu"] + actual_cu)
             self._terminal_projection(c, row, code)
             row = c.execute(

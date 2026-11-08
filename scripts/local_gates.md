@@ -1,6 +1,6 @@
 # Локальные гейты перед передачей в GitHub
 
-AUTH-12 применяется поверх ad4fd342eeba39161e69cce736d9d5d25f1cea2f. AUTH-09/10/11 и исправления INDEX уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
+AUTH-14 применяется поверх a16b31bd0c3d49586de24d3556a39e43b9cc3321. AUTH-01…13 и исправления INDEX уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
 
 ## До коммита: явно подготовить Git index
 
@@ -8,7 +8,7 @@ AUTH-12 применяется поверх ad4fd342eeba39161e69cce736d9d5d25f1c
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth12/files.txt
+git add --pathspec-from-file=scripts/auth14/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -59,3 +59,17 @@ AUTH-13 добавляет default `auth13` portable process/stop-proof contract
 опциональный `--with-auth13-postgres` (или `--only auth13-postgres`) с обязательным
 disposable `CISSTAT_AUTH_TEST_DSN`. Миграция и service provisioning —
 `docs/auth13/runbook.md`; отсутствие DSN/пропуски не считаются native PASS.
+
+## AUTH-14 — CU benchmark и runtime
+
+Default `auth14`: portable fixed-point/coverage/meter/profile/physical-process contracts, минимальные dependencies из `scripts/auth14/requirements.txt`. Native `--with-auth14-postgres` или `--only auth14-postgres` требует disposable `CISSTAT_AUTH_TEST_DSN`, полный API runtime; missing DSN/skips/zero tests — FAIL. CI: Ubuntu/Windows contracts, PostgreSQL16/18 native. Это не утверждение локального запуска Windows/PG18. Все прежние opt-in gates сохранены.
+
+HTTP paths/methods и DTO сохранены; изменено исполнение существующих PELT GET, sync/stateless tuning и async aliases. AUTH-00 карта отражает calibrated pricing/meter/profile/cache/supervisor boundaries, BFF forwarding Idempotency-Key. Actual ASGI gate: `python scripts/auth06/check_routes.py`; route/BFF parity: `python scripts/pgv11/check_routes_auth00.py`.
+
+Raw локальный benchmark/отдельный holdout — `scripts/auth14/reference/`; его profile не является замером VM и не включается автоматически. В calibrated режиме неизвестный домен отказывается, configured corrupt/mismatched profile даёт503 без unpriced fallback. Новых migrations нет. Для VM пересобрать **api и web**, сохранить protected volumes/keys; measurement/install/checksum и переключение — `docs/auth14/runbook.md`. Docker engine отсутствует в сессии; сборка images выполняется на VM. Финансовый wallet/commercial rollout/AUTH-CERT этим gate не объявляются пройденными.
+
+## AUTH-14 HOTFIX-01 — разбор `Inventory drift`
+
+Патч поверх AUTH-14 уточняет **какой snapshot** упал: WORKTREE, INDEX или HEAD. Лог содержит reviewed source paths и expected/actual SHA-256, изменения entry fields/metadata; прежняя общая строка не позволяла установить локальную причину. Защита не ослаблена и inventory не перезаписывается автоматически.
+
+После распаковки hotfix явно stage объединённый `scripts/auth14/files.txt` и повторить `python scripts/local_gates.py --only auth00 --skip-install`. Если WORKTREE не согласован, одного git add недостаточно: просмотрите названные файлы/карту против поставки. Не выполняйте `inventory.py --write` только для устранения FAIL. Полная инструкция: `docs/auth14/hotfix01.md`. Неполный INDEX, незаписанный guard и новые/ignored routes по-прежнему дают FAIL.

@@ -1,0 +1,14 @@
+test_summary_does_not_prescribe_staging_for_worktree_drift (test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift) ... FAIL
+
+======================================================================
+FAIL: test_summary_does_not_prescribe_staging_for_worktree_drift (test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tests/unit/test_auth00_local_output.py", line 127, in test_summary_does_not_prescribe_staging_for_worktree_drift
+    self.assertIn("WORKTREE", summary)
+AssertionError: 'WORKTREE' not found in '\n  FAIL  auth00      0.0 c\n  FAILED STEP auth00: /workspace/scratch/4331ff71bc24/AUTH14-hotfix01/../auth11-min-venv/bin/python scripts/auth00/check_committed.py --target index\n  Полный лог: /workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tmprbv7x1uc/logs/local_gates/auth00.log\n  До commit: просмотрите изменения и явно подготовьте INDEX:\n    git add --pathspec-from-file=scripts/auth10/files.txt\n    git add --pathspec-from-file=scripts/auth10/hotfix01/files.txt\n    python scripts/local_gates.py --only auth00 --skip-install\n  После commit проверяйте HEAD: --auth00-target head. Автоматического staging нет.\n\nИТОГ: НЕ ПУШТЕ — есть красные гейты\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.016s
+
+FAILED (failures=1)

@@ -1,0 +1,18 @@
+test_crlf_worktree_matches_lf_index (test_auth00_precommit.PrecommitTests.test_crlf_worktree_matches_lf_index) ... ok
+test_empty_index_is_not_pass (test_auth00_precommit.PrecommitTests.test_empty_index_is_not_pass) ... ok
+test_format_only_drift_is_explicit_and_still_fails (test_auth00_precommit.PrecommitTests.test_format_only_drift_is_explicit_and_still_fails) ... ok
+test_head_does_not_silently_fall_back_to_index (test_auth00_precommit.PrecommitTests.test_head_does_not_silently_fall_back_to_index) ... ok
+test_ignored_page_still_blocks_pass (test_auth00_precommit.PrecommitTests.test_ignored_page_still_blocks_pass) ... ok
+test_index_drift_names_partial_staging_and_source (test_auth00_precommit.PrecommitTests.test_index_drift_names_partial_staging_and_source) ... ok
+test_invalid_inventory_drift_has_context_without_traceback (test_auth00_precommit.PrecommitTests.test_invalid_inventory_drift_has_context_without_traceback) ... ok
+test_local_gate_target_is_explicit_and_does_not_mutate_commands (test_auth00_precommit.PrecommitTests.test_local_gate_target_is_explicit_and_does_not_mutate_commands) ... ok
+test_partially_staged_source_with_old_inventory_fails (test_auth00_precommit.PrecommitTests.test_partially_staged_source_with_old_inventory_fails) ... ok
+test_staged_before_first_commit_passes_without_changing_index (test_auth00_precommit.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... ok
+test_unstaged_guard_change_with_same_routes_fails (test_auth00_precommit.PrecommitTests.test_unstaged_guard_change_with_same_routes_fails) ... ok
+test_untracked_reviewed_helper_cannot_be_left_out (test_auth00_precommit.PrecommitTests.test_untracked_reviewed_helper_cannot_be_left_out) ... ok
+test_worktree_drift_names_source_before_index_is_checked (test_auth00_precommit.PrecommitTests.test_worktree_drift_names_source_before_index_is_checked) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.929s
+
+OK

@@ -1,0 +1,14 @@
+test_authority_io_cannot_extend_physical_runtime (test_auth14_compute.DeadlineTests.test_authority_io_cannot_extend_physical_runtime) ... FAIL
+
+======================================================================
+FAIL: test_authority_io_cannot_extend_physical_runtime (test_auth14_compute.DeadlineTests.test_authority_io_cannot_extend_physical_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH14/tests/unit/test_auth14_compute.py", line 260, in test_authority_io_cannot_extend_physical_runtime
+    self.assertFalse(marker.exists(),'blocked authority pulse extended physical compute deadline')
+AssertionError: True is not false : blocked authority pulse extended physical compute deadline
+
+----------------------------------------------------------------------
+Ran 1 test in 1.607s
+
+FAILED (failures=1)

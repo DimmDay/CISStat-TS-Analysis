@@ -1,6 +1,7 @@
 """Session-backed, traceable Modeling workflow for both web shells."""
 from __future__ import annotations
 from apps.api.scientific import ScientificRoute, scientific_guard
+from apps.api.billing.compute_runtime import compute_route
 from apps.api.workers.bridge import model_step, persist_model_job, model_job_id, cancel_model
 from apps.api.workers.execution import execute_trial as worker_execute_trial
 
@@ -1776,6 +1777,7 @@ def skip_all_pending_modeling_tuning(
 
 
 @router.post("/tune", response_model=TuneResponse)
+@compute_route
 def tune_modeling_candidate(
     payload: ModelingTuneRequest,
     request: Request,
@@ -2159,7 +2161,7 @@ def start_modeling_job(
         session.modeling_pipeline["tuning"] = "in_progress"
     session.touch()
     try:
-        job = persist_model_job(request,store,session,job,family="model_jobs")
+        job = persist_model_job(request,store,session,job,family="model_jobs",plan=plan)
     except SessionConflictError:
         current = store.get(session.session_id)
         if current is not None:
@@ -2486,7 +2488,7 @@ def start_modeling_tuning(
     if _refresh_execution_readiness(session) is None:
         session.modeling_pipeline["tuning"] = "in_progress"
     session.touch()
-    job = persist_model_job(request,store,session,job,family="tuning_jobs")
+    job = persist_model_job(request,store,session,job,family="tuning_jobs",plan=plan)
     job_id = job["job_id"]
     return {
         "job_id": job_id, "job_signature": signature, "status": "in_progress",

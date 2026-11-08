@@ -1,0 +1,41 @@
+test_format_only_drift_is_explicit_and_still_fails (test_auth00_precommit.PrecommitTests.test_format_only_drift_is_explicit_and_still_fails) ... FAIL
+test_index_drift_names_partial_staging_and_source (test_auth00_precommit.PrecommitTests.test_index_drift_names_partial_staging_and_source) ... FAIL
+test_invalid_inventory_drift_has_context_without_traceback (test_auth00_precommit.PrecommitTests.test_invalid_inventory_drift_has_context_without_traceback) ... FAIL
+test_worktree_drift_names_source_before_index_is_checked (test_auth00_precommit.PrecommitTests.test_worktree_drift_names_source_before_index_is_checked) ... FAIL
+
+======================================================================
+FAIL: test_format_only_drift_is_explicit_and_still_fails (test_auth00_precommit.PrecommitTests.test_format_only_drift_is_explicit_and_still_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tests/unit/test_auth00_precommit.py", line 219, in test_format_only_drift_is_explicit_and_still_fails
+    self.assertIn("WORKTREE inventory check failed", result.stderr)
+AssertionError: 'WORKTREE inventory check failed' not found in 'auth00 INDEX-parity: FAIL\nInventory drift: docs/auth00/inventory.json\nReview files, then git add them and retry. No automatic staging or commit was performed.\n'
+
+======================================================================
+FAIL: test_index_drift_names_partial_staging_and_source (test_auth00_precommit.PrecommitTests.test_index_drift_names_partial_staging_and_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tests/unit/test_auth00_precommit.py", line 208, in test_index_drift_names_partial_staging_and_source
+    self.assertIn("INDEX inventory check failed", result.stderr)
+AssertionError: 'INDEX inventory check failed' not found in 'auth00 INDEX-parity: FAIL\nInventory drift: docs/auth00/inventory.json\nReview files, then git add them and retry. No automatic staging or commit was performed.\n'
+
+======================================================================
+FAIL: test_invalid_inventory_drift_has_context_without_traceback (test_auth00_precommit.PrecommitTests.test_invalid_inventory_drift_has_context_without_traceback)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tests/unit/test_auth00_precommit.py", line 226, in test_invalid_inventory_drift_has_context_without_traceback
+    self.assertIn("WORKTREE inventory check failed", result.stderr)
+AssertionError: 'WORKTREE inventory check failed' not found in 'auth00 INDEX-parity: FAIL\nInventory drift: docs/auth00/inventory.json\nReview files, then git add them and retry. No automatic staging or commit was performed.\n'
+
+======================================================================
+FAIL: test_worktree_drift_names_source_before_index_is_checked (test_auth00_precommit.PrecommitTests.test_worktree_drift_names_source_before_index_is_checked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/AUTH14-hotfix01/tests/unit/test_auth00_precommit.py", line 192, in test_worktree_drift_names_source_before_index_is_checked
+    self.assertIn("WORKTREE inventory check failed", result.stderr)
+AssertionError: 'WORKTREE inventory check failed' not found in 'auth00 INDEX-parity: FAIL\nInventory drift: docs/auth00/inventory.json\nReview files, then git add them and retry. No automatic staging or commit was performed.\n'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.308s
+
+FAILED (failures=4)

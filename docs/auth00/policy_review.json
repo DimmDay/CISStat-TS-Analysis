@@ -1,5 +1,5 @@
 {
-  "baseline": "ad4fd342eeba39161e69cce736d9d5d25f1cea2f",
+  "baseline": "a16b31bd0c3d49586de24d3556a39e43b9cc3321",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -236,7 +236,7 @@
       ]
     },
     "worker.authority": {
-      "observed": "AUTH-13 protected modeling aliases/render/delivery use durable service credentials, current delegated authority, finite subprocess/lease/deadline, monotonically increasing fences, transactional projection/settle/audit and positive-stop reconciliation. Unknown remote/process outcomes retain holds. Legacy advisory profile remains separate; priced CU awaits AUTH-14.",
+      "observed": "AUTH-13/14 protected workers use durable service credentials, current delegated authority, finite subprocess/lease/deadline, fences, transactional projection/settle/audit and positive-stop reconciliation. Optional measured CU quote is pinned at admission; unknown outcomes retain holds. No monetary wallet/automatic commercial launch.",
       "target": "Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication.",
       "follow_up": [
         "AUTH-03",
@@ -405,7 +405,7 @@
     },
     "scientific.operation": {
       "observed": "AUTH-11 protected required/scoped: named browser session or durable scoped programmatic key, current Account/membership, existing run/session object policy before commercial decision. ScientificRoute before body parsing; router dependency normalizes actual workload; request execution fence rechecks kernel inputs. Baseline allowlist/bounds, actual saved model provenance on scientific result reads, no role-derived plan upgrade. Legacy dev compatibility is not production authority. Global legacy rules PATCH and train placeholder refuse protected execution.",
-      "target": "Preserve one identity/object/functional policy path; add atomic budget reservations and worker start/settle/fencing separately. Service progress/DOCLOG metadata retain service/object/history semantics, not paid application stage inference.",
+      "target": "Preserve one identity/object/functional policy path; AUTH-14 PELT/tuning use bounded metering/atomic reservations when protected; extend operational acceptance and other priced operations separately. Service progress/DOCLOG retain existing metadata semantics.",
       "follow_up": [
         "AUTH-12",
         "AUTH-13",
@@ -438,6 +438,22 @@
         "T05",
         "T08",
         "T11"
+      ]
+    },
+    "compute.calibrated": {
+      "observed": "AUTH-14 protected PELT/sync/stateless/async tuning use fixed-point attempted-fit quotes, supervised progress before fit, saved tariff, atomic result/settle and current-authority cache/replay. A configured profile must match measured host/dependencies/kernels/domain; no configured profile explicitly preserves unpriced AUTH-13. Independent Linux wall/group-RSS supervisor and PostgreSQL global running+uncertain capacity. Shipped measurements are LOCAL reference only; VM calibration is not claimed.",
+      "target": "Measure and explicitly install representative VM profile before calibrated admission; preserve bounds/replay/holds and complete operational, Demo/wallet and certification tasks separately.",
+      "follow_up": [
+        "AUTH-15",
+        "AUTH-16",
+        "AUTH-20",
+        "AUTH-21",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T08",
+        "T12",
+        "T15"
       ]
     }
   },
@@ -1084,7 +1100,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_structural_breaks",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-validation-strategy": {
@@ -2235,7 +2251,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/progress/eda-checks": {
@@ -2899,7 +2915,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/jobs/{job_id}/cancel": {
@@ -3007,7 +3023,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/skip": {
@@ -3043,7 +3059,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "admission": "AUTH-11 current credential/Account/object/actual workload; AUTH-13 reserve/fence/atomic publication; AUTH-14 optional measured quote, attempted-fit meter, bounds/capacity and current-authority replay",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/step": {
@@ -7151,6 +7167,90 @@
       ],
       "canonical_operation": "execution:worker.service",
       "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    "compute.quote": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "measured-domain integer micro-CU quote",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.quote",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.meter": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "attempted fold/PELT fit ceiling before start",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.meter",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.runtime": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "protected PELT/tuning isolated runtime",
+      "effects": [
+        "compute",
+        "durable_write"
+      ],
+      "canonical_operation": "compute.runtime",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.profile": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "pinned compatible measured profile",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.profile",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.calibration": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "real CPU/wall/RSS training/holdout/capacity evidence",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.calibration",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.cache": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current-authority signed content-addressed compute result replay",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.cache",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "worker:apps/api/workers/process.py:176": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
+      "effects": [
+        "compute",
+        "stop_process_group"
+      ],
+      "canonical_operation": "compute.supervisor",
+      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
     }
   },
   "extra_surfaces": [
@@ -7668,7 +7768,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 337,
+          "line": 362,
           "symbol": "claim"
         }
       ]
@@ -7682,7 +7782,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 530,
+          "line": 585,
           "symbol": "publish"
         }
       ]
@@ -7696,7 +7796,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/authority.py",
-          "line": 681,
+          "line": 744,
           "symbol": "reconcile"
         }
       ]
@@ -7710,7 +7810,7 @@
       "evidence": [
         {
           "source": "apps/api/workers/process.py",
-          "line": 86,
+          "line": 123,
           "symbol": "subprocess.Popen"
         }
       ]
@@ -7728,15 +7828,101 @@
           "symbol": "verify"
         }
       ]
+    },
+    {
+      "id": "compute.quote",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.quote",
+      "operation": "compute.quote",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_units.py",
+          "line": 73,
+          "symbol": "quote_work"
+        }
+      ]
+    },
+    {
+      "id": "compute.meter",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.meter",
+      "operation": "compute.meter",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_meter.py",
+          "line": 53,
+          "symbol": "tick"
+        }
+      ]
+    },
+    {
+      "id": "compute.runtime",
+      "kind": "worker",
+      "method": "INTERNAL",
+      "path": "compute.runtime",
+      "operation": "compute.runtime",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_runtime.py",
+          "line": 183,
+          "symbol": "compute_kernel"
+        }
+      ]
+    },
+    {
+      "id": "compute.profile",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.profile",
+      "operation": "compute.profile",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_profile.py",
+          "line": 152,
+          "symbol": "load_profile"
+        }
+      ]
+    },
+    {
+      "id": "compute.calibration",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "compute.calibration",
+      "operation": "compute.calibration",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_benchmark.py",
+          "line": 246,
+          "symbol": "calibrate"
+        }
+      ]
+    },
+    {
+      "id": "compute.cache",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "compute.cache",
+      "operation": "compute.cache",
+      "evidence": [
+        {
+          "source": "apps/api/billing/compute_cache.py",
+          "line": 46,
+          "symbol": "read"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
     ".github/workflows/auth00.yml",
     ".github/workflows/auth11.yml",
     ".github/workflows/auth12.yml",
+    ".github/workflows/auth14.yml",
     "app/core/auth.py",
     "app/data/db_connectors.py",
     "app/data/db_guard.py",
+    "app/eda/structural_breaks.py",
     "apps/api/access_registry.v1.json",
     "apps/api/accounts/entitlements.py",
     "apps/api/accounts/lifecycle.py",
@@ -7809,6 +7995,9 @@
     "docs/auth11/design.md",
     "docs/auth12/deploy.md",
     "docs/auth12/design.md",
+    "docs/auth14/design.md",
+    "docs/auth14/hotfix01.md",
+    "docs/auth14/runbook.md",
     "packages/ui/components/DatasetPassportPanel.tsx",
     "packages/ui/components/DatasetViewEditor.tsx",
     "packages/ui/components/DbConnectionForm.tsx",
@@ -7895,6 +8084,8 @@
     "scripts/auth12/migrate.py",
     "scripts/auth13/manage_workers.py",
     "scripts/auth13/migrate.py",
+    "scripts/auth14/benchmark.py",
+    "scripts/auth14/profile.py",
     "scripts/local_gates.md",
     "scripts/local_gates.py",
     "spec_auth.md",

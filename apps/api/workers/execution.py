@@ -43,6 +43,18 @@ class Execution:
         # From spawn onwards, absence of positive join evidence means hold.
         # Never fall back to the constructor's no-start proof after a launch.
         self.proof = None
+        descriptor = getattr(self, "compute_descriptor", {})
+        raw = descriptor.get("compute_work")
+        quote = descriptor.get("compute_quote")
+        if quote:
+            self.timeout = min(self.timeout, quote["coefficient"]["wall_ms"] / 1000)
+            self.memory_mb = min(
+                self.memory_mb or 4096, quote["coefficient"]["memory_mb"]
+            )
+            remaining = min(remaining, self.timeout)
+        limit = raw["units"] if raw else None
+        if raw and getattr(self, "model_job", None) and kwargs.get("plan") is not None:
+            limit = min(limit, len(kwargs["plan"].folds))
         try:
             result, proof = run_bounded(
                 target,
@@ -52,6 +64,8 @@ class Execution:
                 memory_mb=self.memory_mb,
                 checkpoint=lambda: self.authority.pulse(self.claim),
                 admission=admission,
+                work_key=raw["key"] if raw else None,
+                work_limit=limit,
             )
             self.proof = self.authority.seal_stop(self.claim, proof)
             from .spool import save
@@ -127,6 +141,27 @@ def publish_session(store, session):
     if active is None or PUBLISHING.get() or active.claim.kind != "modeling":
         return False
     record = getattr(active, "model_job", None)
+    if getattr(active, "inline", False):
+        key = active.compute_descriptor["compute_work"]["key"]
+        if key.startswith("tuning:"):
+            from apps.api.billing.compute_cache import stage
+            from apps.api.workers.spool import save
+
+            model = key.split(":", 1)[1]
+            reference = stage(session.modeling_artifacts["tuning"][model], "tuning")
+            active.proof = active.authority.attach_result(
+                active.claim, active.proof, reference
+            )
+            save(active.claim, active.proof)
+        active.publish(
+            lambda c: store.save(session),
+            descriptor={
+                "session": session.session_id,
+                "revision": session.storage_revision,
+            },
+            final=True,
+        )
+        return True
     if not record:
         auth_error(409, "worker_fenced")
     family, jid = record

@@ -112,6 +112,11 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "compute_result_unavailable":"Результат вычисления временно недоступен; повторный расчёт не запущен",
+    'compute_profile_unavailable':'Сервис вычислений временно недоступен',
+    'compute_work_not_calibrated':'Выбранные параметры вычисления пока не поддерживаются сервером',
+    'compute_capacity_exceeded':'Вычислительные мощности заняты; повторите позже',
+    'compute_route_required':'Защищённый вычислительный контур недоступен',
     "worker_service_unavailable": "Служебная авторизация worker недоступна",
     "worker_not_found": "Задание worker не найдено",
     "worker_fenced": "Попытка задания больше не действительна",

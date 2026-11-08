@@ -183,6 +183,57 @@ class PrecommitTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("HEAD", result.stderr)
 
+    def test_worktree_drift_names_source_before_index_is_checked(self):
+        self.stage()
+        path = self.root / "apps/api/routers/demo.py"
+        path.write_bytes(path.read_bytes().replace(b"return False", b"return True"))
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("WORKTREE inventory check failed", result.stderr)
+        self.assertIn(
+            "Reviewed source differs: apps/api/routers/demo.py", result.stderr
+        )
+        self.assertIn("expected SHA-256", result.stderr)
+        self.assertIn("actual SHA-256", result.stderr)
+        self.assertIn("git add alone cannot repair WORKTREE drift", result.stderr)
+        self.assertNotIn("INDEX inventory check failed", result.stderr)
+
+    def test_index_drift_names_partial_staging_and_source(self):
+        self.stage()
+        path = self.root / "apps/api/routers/demo.py"
+        path.write_bytes(path.read_bytes().replace(b"return False", b"return True"))
+        self.refresh()
+        self.git("add", "apps/api/routers/demo.py")
+        before = self.git("ls-files", "--stage").stdout
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("INDEX inventory check failed", result.stderr)
+        self.assertIn(
+            "Reviewed source differs: apps/api/routers/demo.py", result.stderr
+        )
+        self.assertIn("stale or partially staged", result.stderr)
+        self.assertEqual(self.git("ls-files", "--stage").stdout, before)
+
+    def test_format_only_drift_is_explicit_and_still_fails(self):
+        import json
+
+        path = self.root / "docs/auth00/inventory.json"
+        path.write_text(
+            json.dumps(json.loads(path.read_text(encoding="utf-8"))), encoding="utf-8"
+        )
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("WORKTREE inventory check failed", result.stderr)
+        self.assertIn("serialization/documentation differs", result.stderr)
+
+    def test_invalid_inventory_drift_has_context_without_traceback(self):
+        self.fixture.put("docs/auth00/inventory.json", "{invalid")
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("WORKTREE inventory check failed", result.stderr)
+        self.assertIn("Declared inventory JSON is invalid", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_local_gate_target_is_explicit_and_does_not_mutate_commands(self):
         gates = module(ROOT / "scripts/local_gates.py", "auth00_local_gates")
         commands = [[sys.executable, "scripts/auth00/check_committed.py"]]

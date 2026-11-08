@@ -1,0 +1,21 @@
+test_auth14_compute (unittest.loader._FailedTest.test_auth14_compute) ... ERROR
+
+======================================================================
+ERROR: test_auth14_compute (unittest.loader._FailedTest.test_auth14_compute)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth14_compute
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH14/tests/unit/test_auth14_compute.py", line 3, in <module>
+    from apps.api.billing.compute_units import Coefficient,Workload,quote_work,charge_units
+ModuleNotFoundError: No module named 'apps.api.billing.compute_units'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

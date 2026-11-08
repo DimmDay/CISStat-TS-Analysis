@@ -1,0 +1,7 @@
+auth00 INDEX-parity: FAIL
+WORKTREE inventory check failed:
+Inventory drift: docs/auth00/inventory.json
+Reviewed source differs: app/eda/structural_breaks.py
+  expected SHA-256: 285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a
+  actual SHA-256:   04fa12257019e577989feb386798849132e975599c60af4c747f9caf819a51de
+WORKTREE failed before the Git snapshot check; git add alone cannot repair WORKTREE drift. Review/restore the named sources and the matching delivered map. Do not regenerate the inventory merely to silence this failure. No files or index were changed.

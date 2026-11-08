@@ -482,6 +482,10 @@ def _tunable_predict(model_id: str, y_train: List[float], test_size: int, params
 _VALID_METRICS = {"mae", "rmse", "mape", "mase", "weighted_score"}
 
 
+from apps.api.billing.compute_runtime import compute_kernel, compute_route
+
+
+@compute_kernel("tuning")
 def _execute_tune(
     spec,
     model_id: str,
@@ -537,6 +541,8 @@ def _execute_tune(
     for params in trials_grid:
         fold_metrics: List[BacktestMetrics] = []
         for split in splits:
+            from apps.api.billing.compute_meter import tick
+            tick("tuning:"+model_id)
             y_train = [series[i] for i in split.train_idx]
             y_test = [series[i] for i in split.test_idx]
             try:
@@ -738,8 +744,10 @@ def train_model(principal: AuthenticatedPrincipal = Depends(get_current_principa
     response_model=TuneResponse,
     dependencies=[Depends(legacy_model_capability)],
 )
+@compute_route
 def tune_model(
     payload: TuneRequest,
+    request: Request = None,
     principal: AuthenticatedPrincipal = Depends(get_current_principal),
 ):
     """Grid search гиперпараметров через expanding-window CV."""

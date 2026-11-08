@@ -69,7 +69,7 @@ def model_job_id(request, session, signature, key=None):
     )
 
 
-def persist_model_job(request, store, session, job, *, family):
+def persist_model_job(request, store, session, job, *, family, plan=None):
     if not enabled():
         store.save(session)
         return job
@@ -106,13 +106,40 @@ def persist_model_job(request, store, session, job, *, family):
     from apps.api.scientific_workload import _work
 
     workload = _work([job["model_id"]], session, record=job, custom=True)
+    from apps.api.billing.compute_units import Workload
+    from apps.api.billing.compute_runtime import make_quote
+
+    if plan is None:
+        auth_error(503, "compute_work_not_calibrated")
+    work = Workload(
+        key="tuning:" + job["model_id"],
+        rows=plan.n_observations,
+        columns=1
+        + max(
+            len(getattr(plan, "feature_columns", ()) or ()),
+            len(getattr(getattr(plan, "feature_plan", None), "features", ()) or ()),
+        ),
+        units=len(job["selected_grid"]) * len(plan.folds),
+        folds=len(plan.folds),
+        trials=len(job["selected_grid"]),
+        horizon=plan.horizon + plan.gap,
+        seasonal_period=max(1, workload.seasonal_period),
+    )
+    quote = make_quote(work)
+    description.update(
+        compute_work=work.model_dump(mode="json"),
+        compute_quote=quote.model_dump(mode="json") if quote else None,
+    )
     req = Admission(
         entry_id=entry,
         resource_kind="run",
         resource_id=session.run_id,
         idempotency_key="model:" + job["job_id"],
         payload=description,
-        cost=Cost(micro_cu=0, version="unpriced-auth13/1"),
+        cost=Cost(
+            micro_cu=quote.reserved_micro_cu if quote else 0,
+            version=quote.version if quote else "unpriced-auth13/1",
+        ),
         deadline=deadline,
         slots=1,
         workload=workload,
@@ -198,12 +225,14 @@ def model_step(family):
             }
             timeout = float(policy["step_timeout_seconds"])
             auth = authority(request)
+            row = auth.find("modeling", job_id)
             claim = auth.claim(
                 wid, phase=current, lease_seconds=min(3600, max(1, int(timeout) + 30))
             )
             work = Execution(
                 auth, claim, timeout=timeout, memory_mb=float(policy["memory_limit_mb"])
             )
+            work.compute_descriptor = row["descriptor"]
             work.model_job = (family, job_id)
             token = ACTIVE.set(work)
             try:

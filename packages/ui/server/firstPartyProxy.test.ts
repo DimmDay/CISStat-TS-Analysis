@@ -288,3 +288,15 @@ test("https upstream never requires allowlist, even in production", async () => 
     else process.env.NODE_ENV = prevNodeEnv;
   }
 });
+
+test("same-origin compute request preserves its idempotency key", async () => {
+  await proxyRequest(request("POST", "/api/v1/session/modeling/tune", {
+    origin,
+    cookie: "__Host-cisstat_csrf=proof",
+    "x-csrf-token": "proof",
+    "idempotency-key": "auth14-lost-response",
+  }), config, upstream);
+  expect(upstream).toHaveBeenCalledTimes(1);
+  const forwarded = new Headers(upstream.mock.calls[0][1].headers);
+  expect(forwarded.get("idempotency-key")).toBe("auth14-lost-response");
+});

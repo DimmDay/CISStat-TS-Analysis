@@ -1,0 +1,546 @@
+{
+  "ok": true,
+  "profile_sha256": "24e14426fa8f3872502d2b50fedcaaca6c4118d975607b6dc42e89991a0efad0",
+  "checks": [
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1403347,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1394204,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1295922,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1313770,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 1303557,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 1355810,
+      "quoted_attempted_micro_cu": 2806698
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1410074,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1463325,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1435103,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1550283,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 1488581,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 1510299,
+      "quoted_attempted_micro_cu": 3437484
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1897673,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1885680,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1961089,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "pelt",
+      "holdout": false,
+      "measured_cpu_microseconds": 1996448,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 2054415,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "pelt",
+      "holdout": true,
+      "measured_cpu_microseconds": 1958397,
+      "quoted_attempted_micro_cu": 4210044
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1526831,
+      "quoted_attempted_micro_cu": 3189416
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1594708,
+      "quoted_attempted_micro_cu": 3189416
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1545880,
+      "quoted_attempted_micro_cu": 3189416
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1607033,
+      "quoted_attempted_micro_cu": 6378832
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1525039,
+      "quoted_attempted_micro_cu": 6378832
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1700176,
+      "quoted_attempted_micro_cu": 6378832
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1627719,
+      "quoted_attempted_micro_cu": 4784124
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1619826,
+      "quoted_attempted_micro_cu": 4784124
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1630671,
+      "quoted_attempted_micro_cu": 4784124
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1814803,
+      "quoted_attempted_micro_cu": 9568248
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1727717,
+      "quoted_attempted_micro_cu": 9568248
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 2040271,
+      "quoted_attempted_micro_cu": 9568248
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1644439,
+      "quoted_attempted_micro_cu": 3906220
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1648013,
+      "quoted_attempted_micro_cu": 3906220
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1712114,
+      "quoted_attempted_micro_cu": 3906220
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1997896,
+      "quoted_attempted_micro_cu": 7812440
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1808187,
+      "quoted_attempted_micro_cu": 7812440
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1954314,
+      "quoted_attempted_micro_cu": 7812440
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1827364,
+      "quoted_attempted_micro_cu": 5859330
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1794236,
+      "quoted_attempted_micro_cu": 5859330
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1591807,
+      "quoted_attempted_micro_cu": 5859330
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2005131,
+      "quoted_attempted_micro_cu": 11718660
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1971273,
+      "quoted_attempted_micro_cu": 11718660
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 2002971,
+      "quoted_attempted_micro_cu": 11718660
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1865645,
+      "quoted_attempted_micro_cu": 4784122
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1779410,
+      "quoted_attempted_micro_cu": 4784122
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1862274,
+      "quoted_attempted_micro_cu": 4784122
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2065488,
+      "quoted_attempted_micro_cu": 9568244
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 1941994,
+      "quoted_attempted_micro_cu": 9568244
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1944029,
+      "quoted_attempted_micro_cu": 9568244
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2296617,
+      "quoted_attempted_micro_cu": 7176183
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2049292,
+      "quoted_attempted_micro_cu": 7176183
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 1919140,
+      "quoted_attempted_micro_cu": 7176183
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2313032,
+      "quoted_attempted_micro_cu": 14352366
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": false,
+      "measured_cpu_microseconds": 2103463,
+      "quoted_attempted_micro_cu": 14352366
+    },
+    {
+      "key": "tuning:ets",
+      "holdout": true,
+      "measured_cpu_microseconds": 2234780,
+      "quoted_attempted_micro_cu": 14352366
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1559695,
+      "quoted_attempted_micro_cu": 3414126
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1691332,
+      "quoted_attempted_micro_cu": 3414126
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1868097,
+      "quoted_attempted_micro_cu": 3414126
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2106572,
+      "quoted_attempted_micro_cu": 6828252
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1811524,
+      "quoted_attempted_micro_cu": 6828252
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1728127,
+      "quoted_attempted_micro_cu": 6828252
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1806309,
+      "quoted_attempted_micro_cu": 5121189
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1714131,
+      "quoted_attempted_micro_cu": 5121189
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1732091,
+      "quoted_attempted_micro_cu": 5121189
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1906704,
+      "quoted_attempted_micro_cu": 10242378
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1792790,
+      "quoted_attempted_micro_cu": 10242378
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1929011,
+      "quoted_attempted_micro_cu": 10242378
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1889176,
+      "quoted_attempted_micro_cu": 3778352
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1580757,
+      "quoted_attempted_micro_cu": 3778352
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1917271,
+      "quoted_attempted_micro_cu": 3778352
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2167203,
+      "quoted_attempted_micro_cu": 7556704
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1773578,
+      "quoted_attempted_micro_cu": 7556704
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1694974,
+      "quoted_attempted_micro_cu": 7556704
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1700176,
+      "quoted_attempted_micro_cu": 5667528
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1933141,
+      "quoted_attempted_micro_cu": 5667528
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1944135,
+      "quoted_attempted_micro_cu": 5667528
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2190846,
+      "quoted_attempted_micro_cu": 11335056
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1980761,
+      "quoted_attempted_micro_cu": 11335056
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1925977,
+      "quoted_attempted_micro_cu": 11335056
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1843989,
+      "quoted_attempted_micro_cu": 4181434
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1740492,
+      "quoted_attempted_micro_cu": 4181434
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1682185,
+      "quoted_attempted_micro_cu": 4181434
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2080237,
+      "quoted_attempted_micro_cu": 8362868
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1813854,
+      "quoted_attempted_micro_cu": 8362868
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1854987,
+      "quoted_attempted_micro_cu": 8362868
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1941162,
+      "quoted_attempted_micro_cu": 6272151
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 1901936,
+      "quoted_attempted_micro_cu": 6272151
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 1864591,
+      "quoted_attempted_micro_cu": 6272151
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2336205,
+      "quoted_attempted_micro_cu": 12544302
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": false,
+      "measured_cpu_microseconds": 2064752,
+      "quoted_attempted_micro_cu": 12544302
+    },
+    {
+      "key": "tuning:ets_damped",
+      "holdout": true,
+      "measured_cpu_microseconds": 2087158,
+      "quoted_attempted_micro_cu": 12544302
+    }
+  ]
+}

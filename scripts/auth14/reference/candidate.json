@@ -1,0 +1,78 @@
+{
+  "schema_version": "auth14.profile/1",
+  "environment": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 9,
+    "cpu_quota_milli": null,
+    "memory_limit_bytes": 10451427328,
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scipy": "1.17.0",
+      "statsmodels": "0.15.0",
+      "ruptures": "1.1.10",
+      "scikit-learn": "1.8.0",
+      "xgboost": "2.1.3",
+      "lightgbm": "4.5.0",
+      "catboost": "1.2.8",
+      "arch": "8.0.0",
+      "prophet": "1.4.0",
+      "statsforecast": "2.1.1",
+      "torch": null,
+      "neuralforecast": null
+    }
+  },
+  "kernels": "4c568af0ac3ed82d68c394c5066d794b658266ab8029f055e4ea017a1f835620",
+  "evidence_digest": "b887cbcd3548cf03d0cdd18c3bd1241a82667500268cef862412a26f442c6186",
+  "coefficients": [
+    {
+      "key": "pelt",
+      "base_micro_cu": "39739.131038552036975154",
+      "exponent": "0.25",
+      "min_rows": 80,
+      "max_rows": 180,
+      "max_columns": 3,
+      "max_units": 17,
+      "max_horizon": 1,
+      "max_period": 1,
+      "max_folds": 1,
+      "max_trials": 1,
+      "wall_ms": 7410,
+      "memory_mb": 269
+    },
+    {
+      "key": "tuning:ets",
+      "base_micro_cu": "178293.674996308333743433",
+      "exponent": "0.5",
+      "min_rows": 80,
+      "max_rows": 180,
+      "max_columns": 1,
+      "max_units": 6,
+      "max_horizon": 4,
+      "max_period": 12,
+      "max_folds": 3,
+      "max_trials": 2,
+      "wall_ms": 8730,
+      "memory_mb": 284
+    },
+    {
+      "key": "tuning:ets_damped",
+      "base_micro_cu": "570790.893896499503363509",
+      "exponent": "0.25",
+      "min_rows": 80,
+      "max_rows": 180,
+      "max_columns": 1,
+      "max_units": 6,
+      "max_horizon": 4,
+      "max_period": 12,
+      "max_folds": 3,
+      "max_trials": 2,
+      "wall_ms": 8312,
+      "memory_mb": 284
+    }
+  ],
+  "max_concurrency": 1
+}

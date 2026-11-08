@@ -43,6 +43,7 @@ from apps.api.eda_feature_selection import build_eda_feature_selection
 from apps.api.eda_ih import build_eda_ih
 from apps.api.eda_seasonality import build_eda_seasonality
 from apps.api.eda_stationarity import build_eda_stationarity
+from apps.api.billing.compute_runtime import compute_route
 from apps.api.eda_structural_breaks import build_eda_structural_breaks
 from apps.api.eda_validation_strategy import build_eda_validation_strategy
 from apps.api.eda_model_matrix import build_eda_model_matrix
@@ -1141,6 +1142,7 @@ def get_dataset_eda_distribution(
 
 
 @router.get("/dataset/eda-structural-breaks", response_model=DatasetEdaStructuralBreaksResponse)
+@compute_route
 def get_dataset_eda_structural_breaks(
     column: str,
     request: Request,

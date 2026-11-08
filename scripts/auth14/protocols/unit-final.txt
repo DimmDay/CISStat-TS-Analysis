@@ -1,0 +1,21 @@
+test_leaked_seed_and_missing_measurement_reject_profile (test_auth14_compute.CalibrationTests.test_leaked_seed_and_missing_measurement_reject_profile) ... ok
+test_training_envelope_covers_independent_holdout (test_auth14_compute.CalibrationTests.test_training_envelope_covers_independent_holdout) ... ok
+test_underestimated_holdout_is_rejected_without_refitting (test_auth14_compute.CalibrationTests.test_underestimated_holdout_is_rejected_without_refitting) ... ok
+test_authority_io_cannot_extend_physical_runtime (test_auth14_compute.DeadlineTests.test_authority_io_cannot_extend_physical_runtime) ... ok
+test_coefficient_rejects_nonfinite_and_overflow (test_auth14_compute.PricingTests.test_coefficient_rejects_nonfinite_and_overflow) ... ok
+test_dimensions_cannot_extrapolate (test_auth14_compute.PricingTests.test_dimensions_cannot_extrapolate) ... ok
+test_extra_work_cannot_exceed_quote (test_auth14_compute.PricingTests.test_extra_work_cannot_exceed_quote) ... ok
+test_foreign_kernel_cannot_consume_a_different_quote (test_auth14_compute.PricingTests.test_foreign_kernel_cannot_consume_a_different_quote) ... ok
+test_integer_dimensions_reject_bool_float_negative (test_auth14_compute.PricingTests.test_integer_dimensions_reject_bool_float_negative) ... ok
+test_meter_denies_before_extra_work (test_auth14_compute.PricingTests.test_meter_denies_before_extra_work) ... ok
+test_rounding_once_per_billable_unit_is_integer (test_auth14_compute.PricingTests.test_rounding_once_per_billable_unit_is_integer) ... ok
+test_actual_killed_work_retains_attempt_count (test_auth14_compute.ProcessMeterTests.test_actual_killed_work_retains_attempt_count) ... ok
+test_missing_profile_is_distinct_from_bad_configured_profile (test_auth14_compute.ProcessMeterTests.test_missing_profile_is_distinct_from_bad_configured_profile) ... ok
+test_joined_parent_does_not_leave_native_descendant_running (test_auth14_compute.ProcessTreeTests.test_joined_parent_does_not_leave_native_descendant_running) ... ok
+test_generated_features_are_part_of_actual_work_volume (test_auth14_compute.WorkloadBoundaryTests.test_generated_features_are_part_of_actual_work_volume) ... ok
+test_inline_reserves_all_trials_while_async_phase_meters_one (test_auth14_compute.WorkloadBoundaryTests.test_inline_reserves_all_trials_while_async_phase_meters_one) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 4.894s
+
+OK

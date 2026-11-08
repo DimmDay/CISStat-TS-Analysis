@@ -113,6 +113,38 @@ class LocalOutputTests(unittest.TestCase):
             )
             self.assertEqual(index.read_bytes(), b"index must not be modified")
 
+    def test_summary_does_not_prescribe_staging_for_worktree_drift(self):
+        mod = runner()
+        with tempfile.TemporaryDirectory() as tmp:
+            mod.ROOT = Path(tmp)
+            checker = mod.ROOT / "scripts/auth00/check_committed.py"
+            checker.parent.mkdir(parents=True)
+            checker.write_text(
+                "print('WORKTREE inventory check failed:'); raise SystemExit(1)\n",
+                encoding="utf-8",
+            )
+            mod.GATES = [
+                (
+                    "auth00",
+                    "fixture",
+                    "fixture",
+                    [[sys.executable, "scripts/auth00/check_committed.py"]],
+                )
+            ]
+            with (
+                patch.object(
+                    sys,
+                    "argv",
+                    ["local_gates.py", "--only", "auth00", "--skip-install"],
+                ),
+                redirect_stdout(io.StringIO()) as out,
+            ):
+                self.assertEqual(mod.main(), 1)
+            summary = out.getvalue().split("=== СВОДКА ===", 1)[1]
+            self.assertIn("WORKTREE", summary)
+            self.assertNotIn("git add --pathspec-from-file", summary)
+            self.assertIn("auth00.log", summary)
+
     def test_other_gate_keeps_original_execution_and_creates_no_auth00_log(self):
         mod = runner()
         with tempfile.TemporaryDirectory() as tmp:

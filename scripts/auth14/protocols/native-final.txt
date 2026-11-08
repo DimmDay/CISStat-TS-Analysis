@@ -1,0 +1,60 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_failure_and_retry_charge_attempted_unit_once (test_auth14_compute.ComputeSQLTests.test_failure_and_retry_charge_attempted_unit_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_517cdbb6b67c400386ba21fb8e99cd8d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_global_capacity_counts_uncertain_and_queued_can_retry (test_auth14_compute.ComputeSQLTests.test_global_capacity_counts_uncertain_and_queued_can_retry) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_161f4698a2bb430d998f146103be73a6:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_mandatory_audit_fault_rolls_back_charge_and_result (test_auth14_compute.ComputeSQLTests.test_mandatory_audit_fault_rolls_back_charge_and_result) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_04a4ee014a1b48e5b525e97fa134639b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_missing_work_progress_retains_hold (test_auth14_compute.ComputeSQLTests.test_missing_work_progress_retains_hold) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a9d8c9e898a0457e819643747c52f14e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_nonapplicable_pelt_does_not_create_a_compute_charge (test_auth14_compute.ComputeSQLTests.test_nonapplicable_pelt_does_not_create_a_compute_charge) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_565a909fa2af47d59d68cf1061156675:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_pelt_actual_fits_are_charged_and_get_rejects_corrupted_profile (test_auth14_compute.ComputeSQLTests.test_pelt_actual_fits_are_charged_and_get_rejects_corrupted_profile) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7f6b77e5f5964dd19eaf40480fc2e875:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_profile_corruption_has_no_zero_price_fallback (test_auth14_compute.ComputeSQLTests.test_profile_corruption_has_no_zero_price_fallback) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_4fa6f7e3a11a46a6b07aa22ab3dace50:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_aliases_use_same_paid_tariff_and_no_duplicate_settle (test_auth14_compute.ComputeSQLTests.test_real_aliases_use_same_paid_tariff_and_no_duplicate_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_915d59cd7f4f4537bb0db045433a9a64:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/4331ff71bc24/CISStat-AUTH14/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+/workspace/scratch/4331ff71bc24/CISStat-AUTH14/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+ok
+test_saved_quote_survives_current_profile_removal (test_auth14_compute.ComputeSQLTests.test_saved_quote_survives_current_profile_removal) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_70f0f472f349440a86b5d7ccb4259965:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_stateless_inline_tuning_is_reserved_and_settled (test_auth14_compute.ComputeSQLTests.test_stateless_inline_tuning_is_reserved_and_settled) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_df0c8899bfbd446d99fbc34d7acb077d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_stopped_timeout_uses_progress_before_fit (test_auth14_compute.ComputeSQLTests.test_stopped_timeout_uses_progress_before_fit) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_29c31367ab514e6580bad7f2f623de03:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_synchronous_session_tuning_saves_result_with_settlement (test_auth14_compute.ComputeSQLTests.test_synchronous_session_tuning_saves_result_with_settlement) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_19ddb56d36bb456a9457e380e916e46a:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/4331ff71bc24/CISStat-AUTH14/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 34.459s
+
+OK

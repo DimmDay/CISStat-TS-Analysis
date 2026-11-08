@@ -1,0 +1,23 @@
+test_generated_features_are_part_of_actual_work_volume (test_auth14_compute.WorkloadBoundaryTests.test_generated_features_are_part_of_actual_work_volume) ... FAIL
+test_inline_reserves_all_trials_while_async_phase_meters_one (test_auth14_compute.WorkloadBoundaryTests.test_inline_reserves_all_trials_while_async_phase_meters_one) ... FAIL
+
+======================================================================
+FAIL: test_generated_features_are_part_of_actual_work_volume (test_auth14_compute.WorkloadBoundaryTests.test_generated_features_are_part_of_actual_work_volume)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH14/tests/unit/test_auth14_compute.py", line 287, in test_generated_features_are_part_of_actual_work_volume
+    self.assertEqual(work.columns, 3)
+AssertionError: 1 != 3
+
+======================================================================
+FAIL: test_inline_reserves_all_trials_while_async_phase_meters_one (test_auth14_compute.WorkloadBoundaryTests.test_inline_reserves_all_trials_while_async_phase_meters_one)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH14/tests/unit/test_auth14_compute.py", line 305, in test_inline_reserves_all_trials_while_async_phase_meters_one
+    self.assertEqual(bounded.call_args.kwargs['work_limit'], expected)
+AssertionError: 2 != 4
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.125s
+
+FAILED (failures=2)
