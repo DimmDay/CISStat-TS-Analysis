@@ -1,0 +1,124 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_actual_engine_input_is_rechecked_after_ingress (test_auth11_scientific.ScientificSQLTests.test_actual_engine_input_is_rechecked_after_ingress) ... ok
+test_all_advanced_tuning_and_step_alternatives_deny_before_kernel (test_auth11_scientific.ScientificSQLTests.test_all_advanced_tuning_and_step_alternatives_deny_before_kernel) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_cada9c34992242f399c99cd81533e960:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-8C650A55 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_authority_outage_safe_503_never_reaches_scientific_reader (test_auth11_scientific.ScientificSQLTests.test_authority_outage_safe_503_never_reaches_scientific_reader) ... ok
+test_db_limit_is_derived_from_current_cap_and_actual_rows (test_auth11_scientific.ScientificSQLTests.test_db_limit_is_derived_from_current_cap_and_actual_rows) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_da2d7dbac2044a95813dec5e9c286b28:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-96EEA3B5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_db_probe_and_load_share_current_own_upload_capability (test_auth11_scientific.ScientificSQLTests.test_db_probe_and_load_share_current_own_upload_capability) ... ok
+test_demo_application_alias_and_history_restore_denied (test_auth11_scientific.ScientificSQLTests.test_demo_application_alias_and_history_restore_denied) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_439078d265644937b943bb1359f1cd02:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-0ADC506F operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_demo_baseline_internal_uses_actual_series_not_browser_profile (test_auth11_scientific.ScientificSQLTests.test_demo_baseline_internal_uses_actual_series_not_browser_profile) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_1383afd574e94952af2ea9ab37a680dd:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-CA4FB674 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_demo_session_baseline_pipeline_positive (test_auth11_scientific.ScientificSQLTests.test_demo_session_baseline_pipeline_positive) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_fe6c6f9388784fd7935236b392ce2cc4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/4331ff71bc24/CISStat-AUTH11/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-ca0f5061-a6e8-4f64-90f5-4c46eff173f6 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/4331ff71bc24/CISStat-AUTH11/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/stats/stattools.py:52: RuntimeWarning: invalid value encountered in scalar divide
+  dw = np.sum(diff_resids**2, axis=axis) / np.sum(resids**2, axis=axis)
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  return acorr_lm(
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_model_card producer_key=model_card:dd5d3cef-b294-4d03-90a1-1aa8fd895ac1 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_model_card producer_key=model_card:dd5d3cef-b294-4d03-90a1-1aa8fd895ac1 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=promote_forecast producer_key=forecast:99394bff-f78b-41b7-b8de-ee6e4a36359a error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-80AE42E5 operation=freeze_visual:forecasting.forecast.chart producer_key=pgv.visual_result:forecasting.forecast.chart error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+ok
+test_downgrade_blocks_saved_model_state_card_forecast_export_and_xai (test_auth11_scientific.ScientificSQLTests.test_downgrade_blocks_saved_model_state_card_forecast_export_and_xai) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_1e597444c29f4261b2cb9792a5462de9:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-9F0902EA operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_every_scientific_and_research_route_requires_auth_before_payload (test_auth11_scientific.ScientificSQLTests.test_every_scientific_and_research_route_requires_auth_before_payload) ... ok
+test_expanded_dataframe_is_checked_before_session_mutation (test_auth11_scientific.ScientificSQLTests.test_expanded_dataframe_is_checked_before_session_mutation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_043f60ca46e34fce8caf98a720f62ac0:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-0D242363 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_foreign_same_person_account_denied_before_db_and_body (test_auth11_scientific.ScientificSQLTests.test_foreign_same_person_account_denied_before_db_and_body) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a48eef8a6e4a42cf8a69b916a0152898:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-848591A8 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Run access: DENY run=RUN-848591A8 action=read subject=7a245b7a-5eb2-4ec9-bdfd-ed8a10e752ca via=auth_session reason=account_boundary
+Run access: DENY run=RUN-848591A8 action=read subject=7a245b7a-5eb2-4ec9-bdfd-ed8a10e752ca via=auth_session reason=account_boundary
+ok
+test_global_rule_override_cannot_mutate_other_accounts (test_auth11_scientific.ScientificSQLTests.test_global_rule_override_cannot_mutate_other_accounts) ... ok
+test_internal_analyst_role_cannot_upgrade_demo_account (test_auth11_scientific.ScientificSQLTests.test_internal_analyst_role_cannot_upgrade_demo_account) ... ok
+test_json_suffix_cannot_bypass_actual_series_row_limit (test_auth11_scientific.ScientificSQLTests.test_json_suffix_cannot_bypass_actual_series_row_limit) ... ok
+test_membership_revoke_is_effective_next_request (test_auth11_scientific.ScientificSQLTests.test_membership_revoke_is_effective_next_request) ... ok
+test_missing_content_type_cannot_bypass_actual_rows (test_auth11_scientific.ScientificSQLTests.test_missing_content_type_cannot_bypass_actual_rows) ... ok
+test_oversized_file_never_registers_file_or_session (test_auth11_scientific.ScientificSQLTests.test_oversized_file_never_registers_file_or_session) ... ok
+test_saved_default_baseline_card_remains_readable (test_auth11_scientific.ScientificSQLTests.test_saved_default_baseline_card_remains_readable) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_566ec09b313f4e30a8b99e8ec5f98e41:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-33B80126 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_starter_api_baseline_allowed_advanced_and_scope_bypass_denied (test_auth11_scientific.ScientificSQLTests.test_starter_api_baseline_allowed_advanced_and_scope_bypass_denied) ... ok
+test_unauthorized_upload_rejected_before_multipart_decode (test_auth11_scientific.ScientificSQLTests.test_unauthorized_upload_rejected_before_multipart_decode) ... ok
+test_unknown_saved_baseline_provenance_does_not_become_default (test_auth11_scientific.ScientificSQLTests.test_unknown_saved_baseline_provenance_does_not_become_default) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c2d3ceae156c4455974c70638d9f41e1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-6C202C48 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_validation_does_not_echo_database_credentials (test_auth11_scientific.ScientificSQLTests.test_validation_does_not_echo_database_credentials) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 34.913s
+
+OK

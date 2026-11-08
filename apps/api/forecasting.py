@@ -381,6 +381,7 @@ def compute_forecast(
     validated_horizon: int | None = None,
     simulation_trajectories: int = DEFAULT_SIMULATION_TRAJECTORIES,
     random_state: int = 42,
+    params_source: str | None = None,
 ) -> ForecastComputation:
     """Строить прогноз: реестровый точечный прогноз + метод-зависимые интервалы.
 
@@ -388,6 +389,11 @@ def compute_forecast(
     интервалы -- по ci_method контракта; каждая граница инвертируется
     отдельно; аномалии и предупреждения -- честные производные слои.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=len(history_values), folds=1,
+                        horizon=horizon, seasonal_period=seasonal_period,
+                        custom_parameters=params_source != "model_default",
+                        operation_id="forecasting.create_forecast", parameters=params)
     if int(horizon) < 1:
         raise ForecastingError("Горизонт прогноза должен быть положительным")
     ci_method = interval_method_for_model(model_id)

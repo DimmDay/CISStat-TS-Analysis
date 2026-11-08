@@ -5,8 +5,8 @@ UPLOAD-DB-4 (spec_database_plan.md, фаза B): сервисы «Загрузк
 
 Роутер монтируется В ОБОИХ семействах (конвенция платформы, паритет
 файлового /upload):
-    /v1/internal/upload/db/*  -- без авторизации (embedded/standalone);
-    /v1/public/upload/db/*    -- по API-ключу (внешние покупатели).
+    /v1/internal/upload/db/*  -- named AuthSession + Account guard;
+    /v1/public/upload/db/*    -- durable key + scopes + Account guard.
 Один модуль реализации: обработчики регистрируются на ОБА роутера,
 дублирование логики запрещено (та же дисциплина, что upload_common.py
 для файловой дорожки). Браузерная сессия -- общая cookie
@@ -45,6 +45,7 @@ host-whitelist off (S5 -- решение о включении в проде п�
 UPLOAD-DB-10), MSSQL-пароль в URL-объекте pyodbc (пересмотр на
 UPLOAD-DB-7), UI-форма (UPLOAD-DB-5) и навигатор (UPLOAD-DB-6).
 """
+from apps.api.scientific import ScientificRoute, scientific_guard, bounded_db_rows
 import logging
 import os
 import time
@@ -74,9 +75,9 @@ from apps.api.upload_common import register_uploaded_dataframe
 logger = logging.getLogger(__name__)
 
 # internal-семейство (embedded/standalone): cookie-сессия, без API-ключа.
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 # public-семейство (внешние покупатели): тот же контракт за API-ключом.
-public_router = APIRouter(dependencies=[Depends(require_api_key)])
+public_router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard), Depends(require_api_key)])
 
 
 def _connection_kwargs(connection) -> dict:
@@ -211,7 +212,7 @@ def _register(app_router: APIRouter) -> None:
                 result = load_db_dataframe(
                     conn_obj,
                     payload.sql,
-                    row_limit=payload.row_limit,
+                    row_limit=bounded_db_rows(request, payload.row_limit),
                     secrets=(password,),
                 )
             except DbQueryRejected as exc:

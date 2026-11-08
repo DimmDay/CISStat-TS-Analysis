@@ -1,5 +1,6 @@
 """Residual diagnostics for real fitted ETS/ARIMA models (Phase 2)."""
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard, legacy_model_capability
 
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,12 +11,12 @@ from scipy.stats import jarque_bera
 from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
 from statsmodels.stats.stattools import durbin_watson
 
-from apps.api.auth import require_capability, get_current_principal
+from apps.api.auth import get_current_principal
 from apps.api.model_impls.ets import _ets_fit_predict
 from apps.api.model_impls.arima import _arima_fit_predict
 from apps.api.plans import AuthenticatedPrincipal
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 
 class DiagnosticsRequest(BaseModel):
@@ -47,6 +48,9 @@ class DiagnosticsResponse(BaseModel):
 
 def _fit_residuals(model_id: str, series: List[float], params: Dict[str, Any]) -> np.ndarray:
     """Fit the real Phase-6 model and return in-sample residuals."""
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=len(series),
+                        custom_parameters=bool(params))
     y = np.asarray(series, dtype=np.float64).reshape(-1)
     if y.size < 8:
         raise ValueError("At least 8 observations are required")
@@ -204,7 +208,7 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
 @router.post(
     "/diagnostics",
     response_model=DiagnosticsResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
+    dependencies=[Depends(legacy_model_capability)],
 )
 def run_diagnostics(
     payload: DiagnosticsRequest,

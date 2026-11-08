@@ -321,7 +321,13 @@ def build_identity_health() -> dict[str, Any]:
         api_mode = key_mode()
     except Exception:
         api_mode = "invalid_configuration"
+    from apps.api.scientific import scientific_mode
+    try:
+        scientific_guard_mode = scientific_mode()
+    except Exception:
+        scientific_guard_mode = "invalid_configuration"
     return {
+        "scientific_guard": scientific_guard_mode,
         "api_key_authority": api_mode,
         "mode": get_identity_mode(),
         "run_ownership_enforcement": "owner_bound",

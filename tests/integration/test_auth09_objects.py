@@ -218,7 +218,13 @@ class OwnershipSQLTests(unittest.TestCase):
             foreign = b.get(root + r.run_id + suffix)
             missing = b.get(root + "RUN-FFFFFFFF" + suffix)
             self.assertEqual(foreign.status_code, 404, foreign.text)
-            self.assertEqual(foreign.json(), missing.json())
+            foreign_body, missing_body = foreign.json(), missing.json()
+            # AUTH-11 safe errors have per-request correlation IDs; uniform
+            # resource denial compares code/message, not unrelated request IDs.
+            for body in (foreign_body, missing_body):
+                if isinstance(body.get("detail"), dict):
+                    self.assertTrue(body["detail"].pop("request_id", ""))
+            self.assertEqual(foreign_body, missing_body)
 
     def test_legacy_cookie_no_auto_claim(self):
         s, r = self.legacy()
@@ -243,7 +249,7 @@ class OwnershipSQLTests(unittest.TestCase):
         anon.cookies.set(
             "cisstat_session_id", pointer, domain="ownership.example", path="/"
         )
-        self.assertEqual(anon.get("/v1/session/current").status_code, 404)
+        self.assertEqual(anon.get("/v1/session/current").status_code, 401)  # AUTH-11: pointer is not personal AuthN.
 
     def test_member_post_restore_csrf_and_author_preserved(self):
         s, r = self.demo(self.client())

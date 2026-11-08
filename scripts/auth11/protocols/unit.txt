@@ -1,0 +1,14 @@
+test_actual_engine_values_override_ingress_claims (test_auth11_scientific.ScientificUnitTests.test_actual_engine_values_override_ingress_claims) ... ok
+test_actual_period_inside_parameters_cannot_hide_behind_scalar (test_auth11_scientific.ScientificUnitTests.test_actual_period_inside_parameters_cannot_hide_behind_scalar) ... ok
+test_all_declared_scientific_routes_have_common_dependency (test_auth11_scientific.ScientificUnitTests.test_all_declared_scientific_routes_have_common_dependency) ... ok
+test_backtest_uses_saved_validation_and_actual_rows (test_auth11_scientific.ScientificUnitTests.test_backtest_uses_saved_validation_and_actual_rows) ... ok
+test_defaults_bounded_but_explicit_saved_validation_preserved (test_auth11_scientific.ScientificUnitTests.test_defaults_bounded_but_explicit_saved_validation_preserved) ... ok
+test_local_staging_hint_selects_current_auth_manifest (test_auth11_scientific.ScientificUnitTests.test_local_staging_hint_selects_current_auth_manifest) ... ok
+test_production_cannot_disable_guard (test_auth11_scientific.ScientificUnitTests.test_production_cannot_disable_guard) ... ok
+test_saved_forecast_does_not_trust_browser_model_id (test_auth11_scientific.ScientificUnitTests.test_saved_forecast_does_not_trust_browser_model_id) ... ok
+test_unknown_route_denied_before_invalid_json (test_auth11_scientific.ScientificUnitTests.test_unknown_route_denied_before_invalid_json) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.808s
+
+OK

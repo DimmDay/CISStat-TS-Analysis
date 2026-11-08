@@ -19,6 +19,7 @@ URL-контракт спецификации (§6) сохранён 1:1.
   Моделирования, без отдельной кнопки «Готово»).
 """
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard
 
 import csv
 from datetime import datetime, timezone
@@ -29,7 +30,7 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from pydantic import BaseModel, Field
 
 from apps.api.final_fit import build_final_fit
@@ -64,7 +65,7 @@ from apps.api.routers.modeling_session import (
 from app.core.passport import prepare_passport_series
 from src.catalog.modeling_spec_loader import ModelingSpec
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 _SPEC_CACHE: ModelingSpec | None = None
 # Тот же repo-относительный контракт пути, что и routers/models.py
@@ -288,6 +289,7 @@ def create_forecast(
             future_labels=future_labels,
             oof_predictions=oof_predictions,
             validated_horizon=validated_horizon,
+        params_source=(card.get("training") or {}).get("params_source"),
             simulation_trajectories=DEFAULT_SIMULATION_TRAJECTORIES,
         )
     except ForecastingError as exc:

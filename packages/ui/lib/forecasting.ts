@@ -1,3 +1,4 @@
+import { scientificErrorMessage } from "./scientificErrors";
 import { apiFetch } from "./browserTransport";
 // packages/ui/lib/forecasting.ts
 //
@@ -102,8 +103,7 @@ async function parse<T>(resp: Response): Promise<T> {
     } catch {
       detail = null;
     }
-    const message =
-      typeof detail === "string" ? detail : `HTTP ${resp.status}`;
+    const message = scientificErrorMessage(detail) ?? `HTTP ${resp.status}`;
     throw new Error(message);
   }
   return (await resp.json()) as T;

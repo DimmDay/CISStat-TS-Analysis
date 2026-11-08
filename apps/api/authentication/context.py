@@ -112,6 +112,23 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "unknown_entry": "Неизвестная защищённая операция",
+    "unknown_operation": "Неизвестная операция",
+    "operation_unavailable": "Операция недоступна в защищённом режиме",
+    "external_policy_required": "Требуется отдельная проверка полномочий",
+    "stage_restricted": "Прикладной модуль недоступен в текущем тарифе",
+    "unknown_stage": "Неизвестный этап исследования",
+    "capability_not_included": "Возможность не включена в текущий тариф Account",
+    "baseline_limit_exceeded": "Нагрузка превышает пределы baseline текущего тарифа",
+    "dataset_limit_exceeded": "Датасет превышает пределы текущего тарифа",
+    "model_context_required": "Проверенный контекст модели недоступен",
+    "registry_version_mismatch": "Версия политики доступа несовместима",
+    "api_not_included": "Программный API недоступен в текущем тарифе",
+    "api_key_required": "Для программного API требуется ключ",
+    "scientific_credential_not_allowed": "Этот credential не разрешён на browser маршруте",
+    "scientific_object_not_found": "Объект исследования не найден",
+    "invalid_scientific_request": "Некорректный запрос научной операции",
+
     "authentication_required": "Требуется аутентификация",
     "invalid_credential": "Недействительные учётные данные",
     "auth_ambiguous": "Предъявлены несовместимые контексты доступа",
@@ -148,6 +165,7 @@ def auth_error(status, code, request_id=""):
     # the versioned safe error payload. No driver error or credential material.
     raise AuthHTTPException(
         status_code=status,
+        headers={"Cache-Control": "no-store"},
         detail={
             "code": code,
             "message": _MESSAGES[code],

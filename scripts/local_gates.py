@@ -30,6 +30,8 @@
                                      инцидента AUTH-07-HOTFIX2 «локально
                                      зелено, на windows-2025
                                      ModuleNotFoundError на collection»
+  auth11  (auth11.yml, push/PR)    Scientific current Account / object / execution guards
+  auth11-postgres (auth11.yml)    native PG all routes / downgrade / baseline pipeline
   auth10  (auth10.yml, push/PR)    Durable API keys / scopes / operator
   auth10-postgres (auth10.yml)    native PG rotation / lifecycle / audit rollback
   auth09  (auth09.yml, push/PR)    Object ownership / legacy migration
@@ -42,7 +44,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -70,6 +72,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth11", "auth11.yml contracts", "AUTH-11 scientific admission / workload / execution fence", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth11/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth11*.py", "-v"],
+    ]),
+    ("auth11-postgres", "auth11.yml postgres", "AUTH-11 native PostgreSQL route matrix / baseline / downgrade", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth11/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth11/verify_postgres.py"],
+    ]),
     ("auth10", "auth10.yml contracts", "AUTH-10 durable API keys / scope / operator contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth10/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth10*.py", "-v"],
@@ -281,11 +291,21 @@ def run_gate(name: str, commands: list[list[str]], skip_install: bool,
             log.close()
 
 
+def staging_manifests() -> list[str]:
+    """Suggest the latest delivered AUTH task, preserving explicit operator staging."""
+    candidates = [p for p in (ROOT / "scripts").glob("auth[0-9][0-9]") if (p / "files.txt").is_file()]
+    if not candidates:
+        return ["scripts/auth10/files.txt", "scripts/auth10/hotfix01/files.txt"]
+    task = max(candidates, key=lambda p: int(p.name[4:]))
+    paths = [task / "files.txt", *sorted(task.glob("hotfix[0-9][0-9]/files.txt"))]
+    return [p.relative_to(ROOT).as_posix() for p in paths]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
+                        help="запустить только выбранные гейты (auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--auth00-target", choices=("index", "head"), default="index",
                         help="AUTH-00: index после явного git add (default), head после commit перед push")
     parser.add_argument("--skip-install", action="store_true",
@@ -302,6 +322,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth11-postgres", action="store_true",
+                        help="добавить AUTH-11 real PostgreSQL scientific/route proof; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth10-postgres", action="store_true",
                         help="добавить AUTH-10 native key lifecycle; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth09-postgres", action="store_true",
@@ -332,6 +354,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth11_postgres:
+        excluded.add("auth11-postgres")
     if not args.with_auth10_postgres:
         excluded.add("auth10-postgres")
     if not args.with_auth09_postgres:
@@ -357,10 +381,10 @@ def main() -> int:
             mark = "*" if name not in excluded else " "
             print(f" {mark} {name:7s} <- {origin:32s} {description}")
         print("\n* = входит в прогон по умолчанию (push в main); "
-              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-auth10-postgres/--with-session-postgres")
+              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-auth10-postgres/--with-auth11-postgres/--with-session-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
@@ -387,13 +411,13 @@ def main() -> int:
             print("  Полный лог: " + str(detail["log"]))
         if name == "auth00" and "scripts/auth00/check_committed.py" in detail["command"]:
             print("  До commit: просмотрите изменения и явно подготовьте INDEX:")
-            print("    git add --pathspec-from-file=scripts/auth10/files.txt")
-            print("    git add --pathspec-from-file=scripts/auth10/hotfix01/files.txt")
+            for manifest in staging_manifests():
+                print("    git add --pathspec-from-file=" + manifest)
             print("    python scripts/local_gates.py --only auth00 --skip-install")
             print("  После commit проверяйте HEAD: --auth00-target head. Автоматического staging нет.")
     failed = any(not ok for _, ok, _ in results)
     names_run = {name for name, _, _ in results}
-    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10")
+    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10", "auth11")
                     if name in names_run and name + "-postgres" not in names_run]
     if not failed and missing_live:
         print("\nИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: "

@@ -1,15 +1,16 @@
 """Session-backed residual diagnostics for standalone/embedded UI (Phase 2)."""
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from pydantic import BaseModel, Field
 
 from apps.api.routers.diagnostics import _diagnose, _fit_residuals, DiagnosticResult
 from apps.api.session_store import get_or_create_session_id, get_session_store
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 
 class InternalDiagnosticsRequest(BaseModel):

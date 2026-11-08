@@ -3,6 +3,7 @@
 Публичные эндпоинты -- для внешних покупателей (веб-клиент standalone
 и прямая интеграция в сторонние ИТ-системы). Авторизация по API-ключу.
 """
+from apps.api.scientific import ScientificRoute, scientific_guard
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request, Response
 import pandas as pd
 
@@ -23,7 +24,7 @@ from app.core.passport import calculate_ts_passport
 from app.validation.regularity import compute_regularity_violations
 from validation.engine import load_rules, validate_dataframe
 
-router = APIRouter(dependencies=[Depends(require_api_key)])
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard), Depends(require_api_key)])
 
 
 def _series_from_points(points) -> pd.Series:

@@ -1,4 +1,5 @@
 "use client";
+import { scientificErrorMessage } from "../lib/scientificErrors";
 import { apiFetch } from "../lib/browserTransport";
 
 // packages/ui/components/TsAnalysisModeling.tsx
@@ -123,6 +124,8 @@ const VALIDATION_STRATEGY_LABELS: Record<string, string> = {
 //
 // Эта функция нормализует все три случая в человекочитаемую строку.
 function formatErrorDetail(detail: unknown): string | null {
+  const policyMessage = scientificErrorMessage(detail);
+  if (policyMessage !== null) return policyMessage;
   if (detail == null) return null;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
@@ -1760,7 +1763,7 @@ function PanelContourSection() {
         }),
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail ?? "Не удалось построить паспорт панели");
+      if (!res.ok) throw new Error(formatErrorDetail(body?.detail) ?? "Не удалось построить паспорт панели");
       setPassport(body as PanelPassportInfo);
       setConfirmed(false);
       setCandidates(null);

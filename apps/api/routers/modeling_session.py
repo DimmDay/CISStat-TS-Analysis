@@ -1,5 +1,6 @@
 """Session-backed, traceable Modeling workflow for both web shells."""
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard
 
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, Depends
 from pydantic import BaseModel, Field
 
 from app.core.passport import prepare_passport_series, series_fingerprint
@@ -129,7 +130,7 @@ from apps.api.session_store import (
 )
 
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 # Task 126: v7 -- feature_contract получил иммутабельный FeaturePlan
 # (plan_id/fingerprint) и точную привязку fold-матриц (matrix_hash).
 MODELING_ARTIFACT_SCHEMA_VERSION = 7
@@ -271,6 +272,9 @@ class ModelingCardRequest(BaseModel):
 
 
 def _context(session, *, require_ready: bool = True, **kwargs) -> dict[str, Any]:
+    from apps.api.scientific import bounded_default
+    kwargs.setdefault("n_splits", bounded_default("folds", 5))
+    kwargs.setdefault("horizon", bounded_default("horizon", 12))
     try:
         context = build_modeling_context(session, **kwargs)
         if require_ready and not context.get("ready"):
@@ -312,10 +316,11 @@ def _seasonal_periods_list(profile: dict[str, Any]) -> list[int]:
 def _action_context(session) -> dict[str, Any]:
     """Rebuild readiness using the validation contract chosen for this run."""
     saved = session.modeling_artifacts.get("validation_strategy", {})
+    from apps.api.scientific import bounded_default
     kwargs = {
-        "horizon": saved.get("horizon", 12),
+        "horizon": saved.get("horizon", bounded_default("horizon", 12)),
         "strategy": saved.get("strategy", "expanding"),
-        "n_splits": saved.get("n_splits", 5),
+        "n_splits": saved.get("n_splits", bounded_default("folds", 5)),
         "gap": saved.get("gap", 0),
         "train_window": saved.get("train_window", 60),
     }
@@ -1045,12 +1050,13 @@ def get_modeling_context(
     saved = session.modeling_artifacts.get("validation_strategy") or session.eda_validation_strategy
     if saved.get("column") not in {None, session.target_column}:
         saved = {}
+    from apps.api.scientific import bounded_default
     context = _context(
         session,
-        horizon=horizon if horizon is not None else int(saved.get("horizon") or 12),
+        horizon=horizon if horizon is not None else int(saved.get("horizon") or bounded_default("horizon", 12)),
         strategy=strategy or saved.get("strategy") or "expanding",
         n_splits=n_splits if n_splits is not None else int(
-            saved.get("requested_splits") or saved.get("n_splits") or 5
+            saved.get("requested_splits") or saved.get("n_splits") or bounded_default("folds", 5)
         ),
         gap=gap if gap is not None else int(saved.get("gap") or 0),
         train_window=(
@@ -1211,9 +1217,11 @@ def generate_modeling_candidates(
     response: Response,
 ):
     store, session = _get_session(request, response)
+    from apps.api.scientific import bounded_default
     context = _context(
-        session, strategy=payload.strategy, horizon=payload.horizon,
-        n_splits=payload.n_splits, gap=payload.gap,
+        session, strategy=payload.strategy,
+        horizon=payload.horizon if "horizon" in payload.model_fields_set else bounded_default("horizon", payload.horizon),
+        n_splits=payload.n_splits if "n_splits" in payload.model_fields_set else bounded_default("folds", payload.n_splits), gap=payload.gap,
         train_window=payload.train_window,
     )
     _prepare_state(session, context, refresh_contract=True)
@@ -1221,6 +1229,8 @@ def generate_modeling_candidates(
         profile=DataProfileRequest(**context["profile"]),
         min_level=payload.min_level,
     ))
+    from apps.api.scientific import filter_candidates
+    result = filter_candidates(request, result)
     runnable = set(context["runnable_shortlist"])
     matrix_models = {
         item["model_id"]: item for item in context["model_matrix"].get("models", [])
@@ -1290,6 +1300,8 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
         model_id for model_id in ("naive", "seasonal_naive", "drift", "mean")
         if model_id in runnable and model_id in PRODUCTION_BACKTEST_MODEL_IDS
     ]
+    from apps.api.scientific import baseline_cohort
+    baseline_ids = baseline_cohort(request, baseline_ids)
     if not baseline_ids:
         raise HTTPException(
             status_code=409,

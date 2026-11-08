@@ -422,6 +422,10 @@ def run_backtest_plan(
     silently break ETS). Only TBATS (Task 125) currently reads it; every other
     adapter ignores unknown params keys, so this is safe to pass unconditionally.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=max(plan.n_observations, len(series)),
+                        folds=len(plan.folds), horizon=plan.horizon + plan.gap,
+                        seasonal_period=seasonal_period, custom_parameters=bool(params), parameters=params)
     # Task 134: одномерный движок считает LEVEL-метрики (MAE/RMSE/MASE) по
     # уровню ряда.  Для objective="volatility" target -- условная дисперсия:
     # её метрики -- QLIKE (primary) + RMSE/MAE по realized proxy
@@ -872,6 +876,10 @@ def run_vector_backtest_plan(
     warning и НЕ получают exog.  Импутация известного будущего запрещена:
     NaN/Inf -- отказ fold'а.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=plan.n_observations,
+                        folds=len(plan.folds), horizon=plan.horizon + plan.gap,
+                        seasonal_period=seasonal_period, custom_parameters=bool(params), parameters=params)
     from apps.api.multivariate_contract import (
         companion_stability,
         compute_vector_metrics,
@@ -1376,6 +1384,10 @@ def run_panel_backtest_plan(
       (exog-канал нейро-моделей -- отдельная постановка);
     - никакого доступа к тестовым наблюдениям со стороны модели.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=plan.n_observations,
+                        folds=len(plan.folds), horizon=plan.horizon + plan.gap,
+                        seasonal_period=seasonal_period, custom_parameters=bool(params), parameters=params)
     if plan.objective != "level_forecast":
         raise BacktestExecutionError(
             "Панельный движок исполняет только level_forecast-планы "
@@ -1604,6 +1616,10 @@ def run_volatility_backtest_plan(
       volatility_clustering_evidence train-среза (advisory);
     - никакого доступа к тестовым наблюдениям со стороны модели.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=plan.n_observations,
+                        folds=len(plan.folds), horizon=plan.horizon + plan.gap,
+                        seasonal_period=seasonal_period, custom_parameters=bool(params), parameters=params)
     from apps.api.volatility_contract import (
         REALIZED_PROXIES,
         VOLATILITY_OOF_POINT_KEYS,
@@ -1992,6 +2008,11 @@ def run_panel_entity_backtest_plan(
       по-сущностных, дисклоужено);
     - никакого доступа к тестовым y со стороны модели.
     """
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=len(frame.frame),
+                        folds=int(validation.get("n_folds") or validation.get("effective_splits") or 1),
+                        horizon=int(validation.get("horizon") or 1) + int(validation.get("gap") or 0),
+                        seasonal_period=seasonal_period, custom_parameters=bool(params), parameters=params)
     from app.modeling.panel_models import (
         PanelModelError,
         build_panel_entity_folds,

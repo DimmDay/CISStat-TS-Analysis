@@ -1,0 +1,13 @@
+FAIL packages/ui/lib/scientificErrors.test.ts
+  ● Test suite failed to run
+
+    [96mpackages/ui/lib/scientificErrors.test.ts[0m:[93m1[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module './scientificErrors' or its corresponding type declarations.
+
+    [7m1[0m import { scientificErrorMessage } from './scientificErrors';
+    [7m [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        1.934 s
+Ran all test suites matching packages/ui/lib/scientificErrors.test.ts.

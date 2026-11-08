@@ -151,6 +151,8 @@ def register_uploaded_dataframe(
     row_limit'ом у БД-дорожки; без новых полей схемы и новых событий
     трассы).
     """
+    from apps.api.scientific import enforce_dataframe
+    enforce_dataframe(request, df)
     head_rows = df.head(5).values.tolist()
     tail_rows = df.tail(5).values.tolist()
     head = [[str(cell) for cell in row] for row in head_rows]
@@ -223,6 +225,8 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
         file_like.name = file.filename
 
         df, _ext = read_uploaded_file(file_like)
+        from apps.api.scientific import enforce_dataframe
+        enforce_dataframe(request, df)
 
         size_label = format_size_label(len(contents))
 

@@ -1,0 +1,22 @@
+{
+  "baseline": "bf5763051285f1f1e74d14e2ce3680a47493c0ca",
+  "baseline_summary": "11 failed, 3451 passed, 43 skipped, 5986 warnings in 366.67s (0:06:06)",
+  "candidate_summary": "11 failed, 3451 passed, 43 skipped, 5986 warnings in 315.06s (0:05:15)",
+  "failed_ids": [
+    "tests/api/test_auth06ops_recon_script.py::test_optional_live_pwsh_parse_gate",
+    "tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded",
+    "tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface",
+    "tests/api/test_doclog7_logs_support.py::TestStaticCatalogs::test_routes_present",
+    "tests/api/test_doclog8_monitoring.py::TestStaticCatalogs::test_routes_registered",
+    "tests/api/test_doclog9_profiles.py::TestStaticCatalogs::test_routes_catalog",
+    "tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics",
+    "tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory",
+    "tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics",
+    "tests/api/test_p10cert_oracles.py::TestCertProfileConsistencyProof::test_o20_second_profile_render_payload_declares_requested_profile",
+    "tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count"
+  ],
+  "new_failures": [],
+  "resolved_failures": [],
+  "full_suite_green": false,
+  "same_environment": true
+}

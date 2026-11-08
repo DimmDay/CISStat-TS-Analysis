@@ -465,6 +465,8 @@ class AnalysisSession:
         старую колонку, оставлять её устаревшей небезопасно (приведёт к
         ошибке в backtest).
         """
+        from apps.api.scientific import authorize_dataframe
+        authorize_dataframe(dataframe)
         self.dataset = dataset
         self.dataframe = dataframe
         # AUDIT-C: новая загрузка -- новая ревизия данных (0) и свой
@@ -745,6 +747,8 @@ class AnalysisSession:
         события/события трассы НЕ стираются (инвалидирование -- задача
         проекций AUDIT-5B/3 по реестру зависимостей pipeline_graph).
         """
+        from apps.api.scientific import authorize_dataframe
+        authorize_dataframe(df)
         if df is None:
             changed = self.dataframe is not None
         else:

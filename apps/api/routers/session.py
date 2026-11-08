@@ -12,6 +12,7 @@ standalone-фронтенду, включая неавторизованного
 apps/standalone/components/StandaloneHome.tsx) для sessions-aware
 логики "рабочий стол vs онбординг/маркетинг".
 """
+from apps.api.scientific import ScientificRoute, scientific_guard
 import logging
 import math
 import re
@@ -20,7 +21,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, Depends
 
 # PROGR-24-ORIGIN-A (spec_status_original_series.md): реестр происхождения
 # колонок и каноническая область гейтов качества -- единая точка регистрации
@@ -338,7 +339,7 @@ def _sufficiency_plan_is_current(
         )
     )
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 DEMO_DATASET_PATH = Path(__file__).resolve().parent.parent / "demo_data" / "sales_demo.csv"
 
@@ -607,6 +608,8 @@ def load_demo_dataset(request: Request, response: Response):
         raise HTTPException(status_code=500, detail="Демо-датасет не найден на сервере")
 
     df = pd.read_csv(DEMO_DATASET_PATH)
+    from apps.api.scientific import enforce_dataframe
+    enforce_dataframe(request, df)
     session_id = get_or_create_session_id(request, response)
     store = get_session_store()
     session = store.get_or_create(session_id)

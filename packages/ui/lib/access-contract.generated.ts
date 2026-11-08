@@ -761,7 +761,7 @@ export const ACCESS_REGISTRY: AccessRegistryDTO = {
       "operation_id": "forecasting.forecast_sensitivity",
       "stage_namespace": "scientific",
       "stage": "forecasting",
-      "capability": null,
+      "capability": "can_tune_models",
       "selector": "model",
       "authority": "functional"
     },
@@ -1257,7 +1257,7 @@ export const ACCESS_REGISTRY: AccessRegistryDTO = {
       "operation_id": "platform.restore_run",
       "stage_namespace": "service",
       "stage": "platform",
-      "capability": null,
+      "capability": "can_save_history",
       "selector": "none",
       "authority": "functional"
     },
@@ -1497,7 +1497,7 @@ export const ACCESS_REGISTRY: AccessRegistryDTO = {
       "operation_id": "upload.db.probe",
       "stage_namespace": "scientific",
       "stage": "upload",
-      "capability": null,
+      "capability": "can_upload_own_data",
       "selector": "none",
       "authority": "functional"
     },

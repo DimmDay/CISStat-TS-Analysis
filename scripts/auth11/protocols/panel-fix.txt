@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/CISStat-AUTH11
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.8, platformdirs-4.14.5, syrupy-6.1.1, xdist-3.8.0, cov-7.1.0, anyio-4.14.2
+collected 71 items
+
+tests/api/test_deepar_panel_pivot.py ............................s...... [ 49%]
+......                                                                   [ 57%]
+tests/api/test_panel_execution.py ..............................         [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/api/test_deepar_panel_pivot.py::TestSessionPanelContour::test_r4_tripwire_univariate_contour_untouched
+  /workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/_pytest/fixtures.py:1392: PytestRemovedIn10Warning: Class-scoped fixtures defined as instance methods are deprecated.
+  Instance attributes set in the 'client' fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use a @classmethod decorator below @pytest.fixture and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/api/test_panel_execution.py::TestCatalog::test_family_panel_present
+  /workspace/scratch/4331ff71bc24/auth11-venv/lib/python3.12/site-packages/_pytest/fixtures.py:1392: PytestRemovedIn10Warning: Class-scoped fixtures defined as instance methods are deprecated.
+  Instance attributes set in the 'spec' fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use a @classmethod decorator below @pytest.fixture and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 70 passed, 1 skipped, 3 warnings in 5.08s ===================

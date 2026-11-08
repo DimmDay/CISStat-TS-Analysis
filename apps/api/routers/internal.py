@@ -2,16 +2,14 @@
 """
 Внутренние эндпоинты -- для embedded-режима (TS Analysis внутри портала).
 
-ЗАГЛУШКА по авторизации: сейчас БЕЗ проверки API-ключа, в предположении,
-что доступ ограничен на уровне сети/шлюза (внутренний сервис, доступный
-только из embedded-фронтенда). Если появится общая авторизация с
-порталом (например, JWT из сессии портала) -- добавить Depends() с
-проверкой этого токена, аналогично require_api_key в auth.py.
-
-Логика идентична public.py -- сознательно не дублируем формулы, только
-роутинг разный (без require_api_key, другой префикс).
+AUTH-11: named AuthSession, current Account/object/operation guard одинаковы
+для embedded и standalone. Имя internal, CORS и сетевой адрес не являются
+доказательством прав. Dev legacy compatibility ограничена advisory profile.
+Формулы переиспользуются с public/model routers; личный browser вход отделён
+от durable scoped programmatic API keys.
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Response
+from apps.api.scientific import ScientificRoute, scientific_guard
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Response, Depends
 import pandas as pd
 
 from apps.api.upload_common import handle_upload
@@ -39,7 +37,7 @@ from app.validation.regularity import compute_regularity_violations
 from apps.api.routers.public import _series_from_points
 from validation.engine import load_rules, validate_dataframe
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 
 @router.post("/passport", response_model=PassportResponse)
@@ -196,10 +194,8 @@ def update_rules(payload: RulesUpdateRequest):
 # Иначе -- fallback на синтетический ряд (как в /v1/models/backtest).
 # Поле data_source в ответе показывает, какой путь сработал.
 #
-# АВТОРИЗАЦИЯ ПО CAPABILITY НЕ ДЕЛАЕТСЯ сознательно:
-# standalone -- публичный демо-режим, посетитель не аутентифицирован.
-# Реальная защита -- на уровне сети (CORS: только vercel.app) и rate-limit
-# (пока не реализован, пост-MVP). Для embedded режим доверяет порталу.
+# AUTH-11: та же operation policy и actual workload gate, что у programmatic API.
+# Baseline не зависит от deprecated can_train_models; advanced — от Account caps.
 
 
 @router.post("/models/backtest", response_model=BacktestResponse)
@@ -208,7 +204,7 @@ def run_backtest_internal(
     request: Request,
     response: Response,
 ):
-    """Бэктест одной модели -- зеркало /v1/models/backtest без auth.
+    """Бэктест одной модели -- зеркало /v1/models/backtest с общей AUTH-11 admission.
 
     ПРИОРИТЕТ источника ряда:
       1. session.dataframe + session.target_column → РЕАЛЬНЫЙ ряд
@@ -305,17 +301,14 @@ def run_backtest_internal(
 # Из-за этого candidates=[] → activeCandidate=null → кнопка «Запустить
 # бэктест» не отрисовывалась → пользователь видел «бэктест не активный».
 #
-# Зеркало здесь переиспользует ту же бизнес-логику (_compute_candidates),
-# что и защищённый эндпоинт — без auth, по аналогии с /v1/internal/upload
-# и /v1/internal/models/backtest.
-#
-# АВТОРИЗАЦИЯ ПО CAPABILITY НЕ ДЕЛАЕТСЯ по той же причине, что и в зеркале
-# backtest: standalone — публичный демо-режим, посетитель не аутентифицирован.
+# Зеркало переиспользует _compute_candidates, как programmatic endpoint.
+# AUTH-11: named browser context и capabilities проверяются общей router
+# dependency; доступные действия каталога фильтруются по текущему Account.
 
 
 @router.post("/models/candidates", response_model=CandidatesResponse)
-def get_candidates_internal(payload: CandidatesRequest):
-    """Пул кандидатов — зеркало /v1/models/candidates без auth.
+def get_candidates_internal(payload: CandidatesRequest, request: Request = None):
+    """Пул кандидатов — зеркало /v1/models/candidates с общей AUTH-11 admission.
 
     Возвращает ТОТ ЖЕ CandidatesResponse (candidates + catalog + statistics +
     spec_version), что и защищённый эндпоинт, поскольку вызывает ту же
@@ -323,4 +316,5 @@ def get_candidates_internal(payload: CandidatesRequest):
     обоими эндпоинтами взаимозаменяемо (мы переключились на internal,
     но поля ответа идентичны).
     """
-    return _compute_candidates(payload)
+    from apps.api.scientific import filter_candidates
+    return filter_candidates(request, _compute_candidates(payload))

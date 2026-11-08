@@ -1,5 +1,5 @@
 {
-  "baseline": "c13a52bd754f753d9a842aa84af8548af3019fed",
+  "baseline": "bf5763051285f1f1e74d14e2ce3680a47493c0ca",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -25,10 +25,9 @@
       ]
     },
     "api.key": {
-      "observed": "AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12.",
+      "observed": "AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12. AUTH-11 also enforces current operation workload and kernel inputs on all scientific alternatives.",
       "target": "Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets.",
       "follow_up": [
-        "AUTH-11",
         "AUTH-12"
       ],
       "threats": [
@@ -38,14 +37,11 @@
       ]
     },
     "api.model_key": {
-      "observed": "AUTH-08 durable Account-effective capabilities from current RequestContext; platform role never upgrades a bound Account. Unbound ENV staff adapter remains until AUTH-10. Existing can_train_models guards retained; comprehensive operation/object/budget admission remains AUTH-09/11/12.",
+      "observed": "AUTH-11 operation-aware baseline/tune/custom admission over AUTH-10 durable key, scope and current Account; kernel fence checks actual inputs. Deprecated can_train_models adapter applies only to unbound dev compatibility.",
       "target": "Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation.",
       "follow_up": [
-        "AUTH-01",
-        "AUTH-03",
-        "AUTH-10",
-        "AUTH-11",
-        "AUTH-12"
+        "AUTH-12",
+        "AUTH-13"
       ],
       "threats": [
         "T01",
@@ -54,12 +50,11 @@
       ]
     },
     "browser.internal": {
-      "observed": "Нет общей AuthN dependency; данные тела/исследовательская cookie не личный вход.",
+      "observed": "AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences.",
       "target": "Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy.",
       "follow_up": [
         "AUTH-03",
         "AUTH-06",
-        "AUTH-11",
         "AUTH-12"
       ],
       "threats": [
@@ -69,14 +64,13 @@
       ]
     },
     "browser.session": {
-      "observed": "AnalysisSession по cisstat_session_id; общей личной AuthN, Account/CU admission нет. AUTH-09 central session_pointer validates current context and durable run before scientific data; unknown pointer rotated; legacy data never auto-claimed; authority failure 503.",
+      "observed": "AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences.",
       "target": "AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе.",
       "follow_up": [
         "AUTH-03",
         "AUTH-04",
         "AUTH-06",
         "AUTH-09",
-        "AUTH-11",
         "AUTH-12"
       ],
       "threats": [
@@ -88,12 +82,11 @@
       ]
     },
     "progress.session": {
-      "observed": "Research session + существующие trace/delivery/mirror guards; не личная AuthN.",
+      "observed": "AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences.",
       "target": "Unified account context; сохранить object/mirror проверки, ограничить admission/observations.",
       "follow_up": [
         "AUTH-03",
-        "AUTH-09",
-        "AUTH-11"
+        "AUTH-09"
       ],
       "threats": [
         "T02",
@@ -409,6 +402,27 @@
         "T11",
         "T15"
       ]
+    },
+    "scientific.operation": {
+      "observed": "AUTH-11 protected required/scoped: named browser session or durable scoped programmatic key, current Account/membership, existing run/session object policy before commercial decision. ScientificRoute before body parsing; router dependency normalizes actual workload; request execution fence rechecks kernel inputs. Baseline allowlist/bounds, actual saved model provenance on scientific result reads, no role-derived plan upgrade. Legacy dev compatibility is not production authority. Global legacy rules PATCH and train placeholder refuse protected execution.",
+      "target": "Preserve one identity/object/functional policy path; add atomic budget reservations and worker start/settle/fencing separately. Service progress/DOCLOG metadata retain service/object/history semantics, not paid application stage inference.",
+      "follow_up": [
+        "AUTH-12",
+        "AUTH-13",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T07",
+        "T08",
+        "T11",
+        "T14",
+        "T15"
+      ]
     }
   },
   "entries": {
@@ -635,7 +649,7 @@
       "stage_namespace": "service"
     },
     "api:GET:/v1/internal/rules/load/{template_id}": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -643,7 +657,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.internal:load_rules_template",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -651,7 +665,7 @@
       ]
     },
     "api:GET:/v1/internal/rules/templates": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -659,7 +673,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.internal:get_rules_templates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -766,51 +780,51 @@
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
         "read"
       ],
       "canonical_operation": "apps.api.routers.progress:get_run_detail",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}/delivery": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
         "read"
       ],
       "canonical_operation": "apps.api.routers.progress:list_run_delivery",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}/delivery/{operation_id}": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
         "read"
       ],
       "canonical_operation": "apps.api.routers.progress:get_operation_delivery",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}/mentor/next-step": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
         "read"
       ],
       "canonical_operation": "apps.api.routers.progress:get_mentor_next_step",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}/report": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -818,11 +832,11 @@
         "file_or_content_emit"
       ],
       "canonical_operation": "apps.api.routers.progress:get_run_report",
-      "admission": "re-authorize object/version before output; audit where required",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/runs/{run_id}/restore": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -831,22 +845,22 @@
         "cookie_rotation"
       ],
       "canonical_operation": "apps.api.routers.progress:restore_run",
-      "admission": "mutation-on-GET: migrate to CSRF-protected command",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/progress/trace": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
         "read"
       ],
       "canonical_operation": "apps.api.routers.progress:get_progress_trace",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/public/rules/load/{template_id}": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -854,7 +868,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.public:load_rules_template",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -862,7 +876,7 @@
       ]
     },
     "api:GET:/v1/public/rules/templates": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -870,7 +884,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.public:get_rules_templates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -878,7 +892,7 @@
       ]
     },
     "api:GET:/v1/session/current": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -886,11 +900,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_current_session",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/session/dataset": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -898,11 +912,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_session_dataset",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/session/dataset/consistency-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -910,11 +924,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_consistency_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/decomposition": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -922,11 +936,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_decomposition",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/decomposition-series": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -934,11 +948,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_decomposition_series",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/derived-columns": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -946,11 +960,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_derived_columns",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/distribution": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -958,11 +972,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_distribution",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-correlation": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -970,11 +984,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_correlation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-distribution": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -982,11 +996,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_distribution",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-feature-selection": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -994,11 +1008,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_feature_selection",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-ih": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1006,11 +1020,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_ih",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-model-matrix": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1018,11 +1032,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_model_matrix",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-seasonality": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1030,11 +1044,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_seasonality",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-stationarity": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1042,11 +1056,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_stationarity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-structural-breaks": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1054,11 +1068,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_structural_breaks",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/eda-validation-strategy": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "eda",
       "resource": "research session and dataset",
       "effects": [
@@ -1066,11 +1080,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_eda_validation_strategy",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/format-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1078,11 +1092,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_format_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/inclusion-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1090,11 +1104,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_inclusion_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/missing-correlation": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1102,11 +1116,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_missing_correlation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/missing-distribution": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1114,11 +1128,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_missing_distribution",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/missing-editor-rows": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1126,11 +1140,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_missing_editor_rows",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/missing-matrix": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1138,11 +1152,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_missing_matrix",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/missing-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1150,11 +1164,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_missing_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-boxplot": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1162,11 +1176,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_boxplot",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-density": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1174,11 +1188,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_density",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-editor-rows": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1186,11 +1200,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_editor_rows",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-histogram": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1198,11 +1212,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_histogram",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-line": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1210,11 +1224,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_line",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/outlier-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1222,11 +1236,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_outlier_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/panel-balance": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1234,11 +1248,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_panel_balance",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/passport/compare": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1246,11 +1260,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:compare_dataset_passports",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/passport/status": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1258,11 +1272,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_passport_status",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing-check-modes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1270,11 +1284,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_check_modes",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/decomposition-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1282,11 +1296,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_decomposition_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/feature-generation-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1294,11 +1308,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_feature_generation_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/regularity-intervals": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1306,11 +1320,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_regularity_intervals",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/regularity-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1318,11 +1332,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_regularity_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/regularity-timeline": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1330,11 +1344,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_regularity_timeline",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/scaling-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1342,11 +1356,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_scaling_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/smoothing-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1354,11 +1368,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_smoothing_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/spectral-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1366,11 +1380,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_spectral_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/stationarity-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1378,11 +1392,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_stationarity_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/preprocessing/variance-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -1390,11 +1404,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_preprocessing_variance_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/range-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1402,11 +1416,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_range_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/referential-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1414,11 +1428,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_referential_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/regularity-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1426,11 +1440,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_regularity_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/rows": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1438,11 +1452,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_rows",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/stats": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1450,11 +1464,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_stats",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/structure-detection": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1462,11 +1476,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_structure_detection",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/sufficiency-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1474,11 +1488,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_sufficiency_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/text-quality-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1486,11 +1500,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_text_quality_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/timeseries": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1498,11 +1512,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_timeseries",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/uniqueness-profile": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1510,11 +1524,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_uniqueness_profile",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/validate": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -1522,11 +1536,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_validate",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/validation-check-modes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1534,11 +1548,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_validation_check_modes",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/dataset/validation-rules": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -1546,11 +1560,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_dataset_validation_rules",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/date-column": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -1558,11 +1572,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_date_column",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/session/modeling/card": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1570,11 +1584,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:list_model_cards",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/card/{card_id}": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1582,11 +1596,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:get_model_card",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/context": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1594,11 +1608,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:get_modeling_context",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/feature-regressors": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1606,11 +1620,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:get_modeling_feature_regressors",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/forecast": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1618,11 +1632,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:list_forecasts",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/forecast/{forecast_id}": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1630,11 +1644,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:get_forecast",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/forecast/{forecast_id}/export.csv": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1643,11 +1657,11 @@
         "file_or_content_emit"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:export_forecast_csv",
-      "admission": "re-authorize object/version before output; audit where required",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/forecast/{forecast_id}/export.json": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1656,11 +1670,11 @@
         "file_or_content_emit"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:export_forecast_json",
-      "admission": "re-authorize object/version before output; audit where required",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/jobs/{job_id}": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -1668,11 +1682,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "modeling.tune.status",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/panel/candidates": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1680,11 +1694,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:panel_candidates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/modeling/state": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -1692,11 +1706,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:get_modeling_state",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:GET:/v1/session/target-column": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -1704,11 +1718,11 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "apps.api.routers.session:get_target_column",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:GET:/v1/session/tasks/causes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "causal",
       "resource": "session Model Card and fold importance",
       "effects": [
@@ -1716,7 +1730,7 @@
         "possible_compute_cache_or_visual_freeze"
       ],
       "canonical_operation": "application.causes.inspect",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "application"
     },
     "api:HEAD:/docs": {
@@ -1764,7 +1778,7 @@
       "stage_namespace": "service"
     },
     "api:PATCH:/v1/internal/rules/update": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -1772,7 +1786,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.internal:update_rules",
-      "admission": "account-scope rule state or explicit platform permission before global override",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -1780,7 +1794,7 @@
       ]
     },
     "api:PATCH:/v1/public/rules/update": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -1788,7 +1802,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.public:update_rules",
-      "admission": "account-scope rule state or explicit platform permission before global override",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -1988,7 +2002,7 @@
       "stage_namespace": "service"
     },
     "api:POST:/v1/internal/models/backtest": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -1996,11 +2010,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.backtest",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/models/candidates": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2008,11 +2022,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.candidates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/models/diagnostics": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2020,11 +2034,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.diagnostics",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/passport": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2032,11 +2046,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.internal:get_passport",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/regularity": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2044,11 +2058,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.internal:get_regularity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/rules/validate": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -2056,7 +2070,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.internal:validate_with_rules",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -2064,7 +2078,7 @@
       ]
     },
     "api:POST:/v1/internal/upload": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2072,11 +2086,11 @@
         "dataset_write"
       ],
       "canonical_operation": "upload.file.load",
-      "admission": "authorize + size/parser sandbox + analysis admission",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/upload/db/load": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2085,11 +2099,11 @@
         "dataset_write"
       ],
       "canonical_operation": "upload.db.load",
-      "admission": "authorize + egress/file policy + analysis/reservation before load",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/internal/upload/db/test": {
-      "policy": "browser.internal",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / research session / rule namespace",
       "effects": [
@@ -2097,7 +2111,7 @@
         "possible_local_file_read"
       ],
       "canonical_operation": "upload.db.probe",
-      "admission": "authorize + egress/file policy before probe",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/learning/track": {
@@ -2149,7 +2163,7 @@
       "stage_namespace": "service"
     },
     "api:POST:/v1/models/backtest": {
-      "policy": "api.model_key",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted/model dataset and model selection",
       "effects": [
@@ -2157,11 +2171,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.backtest",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/models/candidates": {
-      "policy": "api.model_key",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted/model dataset and model selection",
       "effects": [
@@ -2169,11 +2183,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.candidates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/models/diagnostics": {
-      "policy": "api.model_key",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted/model dataset and model selection",
       "effects": [
@@ -2181,11 +2195,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.diagnostics",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/models/train": {
-      "policy": "api.model_key",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "placeholder accepted response; reflects raw ENV principal_id/API-key",
       "effects": [
@@ -2193,11 +2207,11 @@
         "raw_credential_echo"
       ],
       "canonical_operation": "modeling.train.placeholder",
-      "admission": "do not claim custom fit is implemented; remove secret from response in AUTH-03",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/models/tune": {
-      "policy": "api.model_key",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "submitted/model dataset and model selection",
       "effects": [
@@ -2205,11 +2219,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/progress/eda-checks": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
@@ -2217,11 +2231,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:report_eda_checks",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/mentor/sanity-check": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
@@ -2229,11 +2243,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:run_mentor_sanity_check",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/preprocessing-checks": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
@@ -2241,11 +2255,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:report_preprocessing_checks",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/runs/{run_id}/checkpoints": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -2253,11 +2267,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:create_checkpoint",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/runs/{run_id}/pause": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -2265,11 +2279,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:pause_run",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/runs/{run_id}/resume": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -2277,11 +2291,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:resume_run",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/upload-stops": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
@@ -2289,11 +2303,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:report_upload_stops",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/progress/validation-checks": {
-      "policy": "progress.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "session-bound trace/observation",
       "effects": [
@@ -2301,11 +2315,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:report_validation_checks",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/public/passport": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "submitted data / rule namespace",
       "effects": [
@@ -2313,11 +2327,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.public:get_passport",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/public/regularity": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "submitted data / rule namespace",
       "effects": [
@@ -2325,11 +2339,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.public:get_regularity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/public/rules/validate": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "server rule template / module-global override (not Account scoped)",
       "effects": [
@@ -2337,7 +2351,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.public:validate_with_rules",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific",
       "threats": [
         "T10",
@@ -2345,7 +2359,7 @@
       ]
     },
     "api:POST:/v1/public/upload": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / rule namespace",
       "effects": [
@@ -2353,11 +2367,11 @@
         "dataset_write"
       ],
       "canonical_operation": "upload.file.load",
-      "admission": "authorize + size/parser sandbox + analysis admission",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/public/upload/db/load": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / rule namespace",
       "effects": [
@@ -2366,11 +2380,11 @@
         "dataset_write"
       ],
       "canonical_operation": "upload.db.load",
-      "admission": "authorize + egress/file policy + analysis/reservation before load",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/public/upload/db/test": {
-      "policy": "api.key",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "submitted data / rule namespace",
       "effects": [
@@ -2378,11 +2392,11 @@
         "possible_local_file_read"
       ],
       "canonical_operation": "upload.db.probe",
-      "admission": "authorize + egress/file policy before probe",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/consistency-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2390,11 +2404,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_consistency",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/convert-types": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2402,11 +2416,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:convert_dataset_types",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/derived-columns/delete": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -2414,11 +2428,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:delete_dataset_derived_columns",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/entity-filter": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -2426,11 +2440,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:filter_dataset_by_entity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/format-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2438,11 +2452,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_formats",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/inclusion-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2450,11 +2464,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_inclusion",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/missing-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2462,11 +2476,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_missing",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/missing-manual-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2474,11 +2488,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:apply_dataset_missing_manual_corrections",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/outlier-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2486,11 +2500,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_outliers",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/outlier-manual-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2498,11 +2512,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:apply_dataset_outlier_manual_corrections",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/panel-aggregate": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -2510,11 +2524,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:aggregate_dataset_by_date",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/passport/{stage}": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "research session and dataset",
       "effects": [
@@ -2522,11 +2536,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:capture_dataset_passport",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/decomposition-outputs": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2534,11 +2548,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_decomposition_outputs",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/feature-generations": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2546,11 +2560,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_feature_generation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/regularity-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2558,11 +2572,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_preprocessing_regularity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/scaling-recipes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2570,11 +2584,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_scaling_recipe",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/smoothing-transformations": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2582,11 +2596,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_smoothing_transformation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/spectral-selections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2594,11 +2608,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_preprocessing_spectral_selection",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/stationarity-transformations": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2606,11 +2620,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_stationarity_transformation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/preprocessing/variance-transformations": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -2618,11 +2632,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:create_dataset_preprocessing_variance_transformation",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/range-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2630,11 +2644,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_ranges",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/referential-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2642,11 +2656,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_referential",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/regularity-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2654,11 +2668,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_regularity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/sufficiency-plan": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2666,11 +2680,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_sufficiency_plan",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/text-quality-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2678,11 +2692,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_text_quality",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/dataset/uniqueness-corrections": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -2690,11 +2704,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:correct_dataset_uniqueness",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/date-column": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -2702,22 +2716,22 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:set_date_column",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/session/demo": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "upload",
       "resource": "bundled demo dataset; not AuthSession/DemoGrant/campaign entry",
       "effects": [
         "dataset_write"
       ],
       "canonical_operation": "upload.demo_dataset.load",
-      "admission": "authenticated context + analysis admission; not forum login",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/backtest": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2725,11 +2739,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.backtest",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/backtest/exclude": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2737,11 +2751,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:decide_modeling_backtest_scope",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/baselines": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2749,11 +2763,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:bootstrap_modeling_baselines",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/candidates": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2761,11 +2775,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.candidates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/card": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2773,11 +2787,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:create_model_card",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/compare": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2785,11 +2799,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:compare_modeling_candidates",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/diagnostics": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2797,11 +2811,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.diagnostics",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/diagnostics/ensure": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2809,11 +2823,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:ensure_modeling_diagnostics",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/forecast": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2821,11 +2835,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:create_forecast",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/forecast/compare": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2833,11 +2847,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:compare_forecasts",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/forecast/{forecast_id}/sensitivity": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2845,11 +2859,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:forecast_sensitivity",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/forecast/{forecast_id}/trace": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2857,11 +2871,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.forecasting_session:record_client_export_event",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/jobs/start": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -2869,11 +2883,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/jobs/{job_id}/cancel": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -2881,11 +2895,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.cancel",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/jobs/{job_id}/step": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -2893,11 +2907,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.step",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/panel/backtest": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2905,11 +2919,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:panel_backtest",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/panel/forecast": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "forecasting",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2917,11 +2931,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:panel_forecast",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/panel/passport": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2929,11 +2943,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:build_panel_passport_for_session",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/panel/passport/confirm": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2941,11 +2955,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:confirm_panel_entry_checkpoint",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/select": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2953,11 +2967,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:select_modeling_candidate",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/selection/evaluate": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2965,11 +2979,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:evaluate_modeling_selection",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tune": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2977,11 +2991,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/skip": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -2989,11 +3003,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:skip_modeling_tuning",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/skip-pending": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -3001,11 +3015,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:skip_all_pending_modeling_tuning",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/start": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -3013,11 +3027,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.start",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/modeling/tuning/step": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "persisted tuning job/plan (operation Literal tuning), session context",
       "effects": [
@@ -3025,11 +3039,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "modeling.tune.step",
-      "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:POST:/v1/session/stage/{stage}": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -3037,11 +3051,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:set_stage",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:POST:/v1/session/target-column": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "research session and dataset",
       "effects": [
@@ -3049,11 +3063,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:set_target_column",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "api:PUT:/v1/session/dataset/preprocessing-check-modes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "preprocessing",
       "resource": "research session and dataset",
       "effects": [
@@ -3061,11 +3075,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_preprocessing_check_modes",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:PUT:/v1/session/dataset/type-schema": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -3073,11 +3087,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_type_schema",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:PUT:/v1/session/dataset/validation-check-modes": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -3085,11 +3099,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_validation_check_modes",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:PUT:/v1/session/dataset/validation-rules": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "validation",
       "resource": "research session and dataset",
       "effects": [
@@ -3097,11 +3111,11 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.session:save_dataset_validation_rules",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "api:PUT:/v1/session/modeling/feature-regressors": {
-      "policy": "browser.session",
+      "policy": "scientific.operation",
       "stage": "modeling",
       "resource": "session model/job/card/forecast",
       "effects": [
@@ -3109,7 +3123,7 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.modeling_session:set_modeling_feature_regressors",
-      "admission": "authorize-before-operation",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "scientific"
     },
     "asset:standalone:/logo_TS.png": {
@@ -6885,7 +6899,7 @@
       "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
     },
     "api:POST:/v1/progress/runs/{run_id}/restore": {
-      "policy": "run.object",
+      "policy": "scientific.operation",
       "stage": "platform",
       "resource": "run/checkpoint/delivery/report",
       "effects": [
@@ -6894,7 +6908,7 @@
         "cookie_rotation"
       ],
       "canonical_operation": "apps.api.routers.progress:restore_run",
-      "admission": "AUTH-09: CSRF/Origin POST; Account/tenant object gate; restore preserves owner/provenance.",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
     "auth.ownership.migrate": {
@@ -6969,6 +6983,30 @@
       ],
       "canonical_operation": "auth.api_keys.operator",
       "admission": "trusted-interactive-local-operator; current authority/CAS/mandatory outbox"
+    },
+    "scientific.admission": {
+      "policy": "scientific.operation",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account / owned scientific resource / normalized execution inputs",
+      "effects": [
+        "read",
+        "authorize"
+      ],
+      "canonical_operation": "scientific.admission",
+      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
+    },
+    "scientific.execution": {
+      "policy": "scientific.operation",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account / owned scientific resource / normalized execution inputs",
+      "effects": [
+        "read",
+        "authorize"
+      ],
+      "canonical_operation": "scientific.execution",
+      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
     }
   },
   "extra_surfaces": [
@@ -7364,6 +7402,34 @@
           "symbol": "APIKeyService"
         }
       ]
+    },
+    {
+      "id": "scientific.admission",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "preflight",
+      "operation": "scientific.admission",
+      "evidence": [
+        {
+          "source": "apps/api/scientific.py",
+          "line": 186,
+          "symbol": "preflight"
+        }
+      ]
+    },
+    {
+      "id": "scientific.execution",
+      "kind": "internal_operation",
+      "method": "CALL",
+      "path": "authorize_execution",
+      "operation": "scientific.execution",
+      "evidence": [
+        {
+          "source": "apps/api/scientific.py",
+          "line": 379,
+          "symbol": "authorize_execution"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -7524,6 +7590,10 @@
     "scripts/auth10/manage_keys.py",
     "scripts/auth10/migrate.py",
     "tests/unit/test_auth00_local_output.py",
-    "docs/auth10/hotfix01.md"
+    "docs/auth10/hotfix01.md",
+    "docs/auth11/design.md",
+    "tests/unit/test_auth11_scientific.py",
+    ".github/workflows/auth11.yml",
+    "docs/auth11/closure.md"
   ]
 }

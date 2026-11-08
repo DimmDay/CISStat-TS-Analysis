@@ -1,0 +1,15 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_json_suffix_cannot_bypass_actual_series_row_limit (tests.integration.test_auth11_scientific.ScientificSQLTests.test_json_suffix_cannot_bypass_actual_series_row_limit) ... FAIL
+
+======================================================================
+FAIL: test_json_suffix_cannot_bypass_actual_series_row_limit (tests.integration.test_auth11_scientific.ScientificSQLTests.test_json_suffix_cannot_bypass_actual_series_row_limit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH11/tests/integration/test_auth11_scientific.py", line 234, in test_json_suffix_cannot_bypass_actual_series_row_limit
+    self.assertEqual(r.status_code,402,r.text)
+AssertionError: 200 != 402 : {"freq":null,"stationarity":null,"determinism":null,"autocorrelation":null,"normality":null,"trend":null,"correlations":null,"seasonality":null,"seasonal_periods":null,"hurst":null,"fft":null,"periodogram":null,"wavelet":null,"basic_stats":null,"timestamp":null,"error":null}
+
+----------------------------------------------------------------------
+Ran 1 test in 2.759s
+
+FAILED (failures=1)

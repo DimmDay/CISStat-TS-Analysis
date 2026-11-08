@@ -1,0 +1,11 @@
+{
+  "baseline": "bf5763051285f1f1e74d14e2ce3680a47493c0ca",
+  "baseline_api": 239,
+  "candidate_api": 239,
+  "added": [],
+  "removed": [],
+  "baseline_inventory": 572,
+  "candidate_inventory": 574,
+  "guarded_api_bindings": 173,
+  "guarded_operations": 154
+}

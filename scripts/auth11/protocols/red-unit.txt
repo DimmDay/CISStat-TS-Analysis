@@ -1,0 +1,21 @@
+test_auth11_scientific (unittest.loader._FailedTest.test_auth11_scientific) ... ERROR
+
+======================================================================
+ERROR: test_auth11_scientific (unittest.loader._FailedTest.test_auth11_scientific)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth11_scientific
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH11/tests/unit/test_auth11_scientific.py", line 11, in <module>
+    from apps.api.scientific import execution_scope, scientific_mode, authorize_execution
+ModuleNotFoundError: No module named 'apps.api.scientific'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

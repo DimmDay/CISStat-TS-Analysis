@@ -8,6 +8,7 @@
   POST /v1/models/train       — обучение модели (заглушка)
   POST /v1/models/tune        — grid search гиперпараметров с CV
 """
+from apps.api.scientific import ScientificRoute, scientific_guard, legacy_model_capability
 import itertools
 import logging
 import random
@@ -15,9 +16,9 @@ import time
 import math
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from apps.api.auth import require_capability, get_current_principal
+from apps.api.auth import get_current_principal
 from apps.api.cv import ExpandingWindowCV
 from apps.api.plans import AuthenticatedPrincipal
 from apps.api.schemas import (
@@ -71,7 +72,7 @@ from apps.api.model_readiness import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 _spec_cache = None
 _SPEC_YAML_PATH = "rules/modeling.yaml"
@@ -100,13 +101,15 @@ def _reset_spec_cache():
 @router.post(
     "/candidates",
     response_model=CandidatesResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
+    dependencies=[Depends(legacy_model_capability)],
 )
 def get_candidates(
     payload: CandidatesRequest,
+    request: Request = None,
     principal: AuthenticatedPrincipal = Depends(get_current_principal),
 ):
-    return _compute_candidates(payload)
+    from apps.api.scientific import filter_candidates
+    return filter_candidates(request, _compute_candidates(payload))
 
 
 def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
@@ -488,6 +491,10 @@ def _execute_tune(
     metric: str,
     random_state: int,
 ) -> TuneResponse:
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=len(series), folds=cv_config.n_splits,
+                        horizon=cv_config.test_size + cv_config.gap,
+                        custom_parameters=True)
     start = time.monotonic()
     model = spec.get_model(model_id)
     if model is None:
@@ -623,7 +630,7 @@ def _resolve_model_info(model_id: str) -> tuple[str, str]:
 @router.post(
     "/backtest",
     response_model=BacktestResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
+    dependencies=[Depends(legacy_model_capability)],
 )
 def run_backtest(
     payload: BacktestRequest,
@@ -670,6 +677,10 @@ def _run_backtest_with_series(
     train_ratio: float,
     seasonal_period: int,
 ) -> tuple[BacktestMetrics, float]:
+    from apps.api.scientific import authorize_execution
+    authorize_execution(model_id=model_id, rows=len(series), folds=1,
+                        horizon=max(1, len(series) - int(len(series) * train_ratio)),
+                        seasonal_period=seasonal_period)
     start = time.monotonic()
     # AUDIT-6C: fail-closed dispatch-гейт В ТОЧКЕ ИСПОЛНЕНИЯ (план §18
     # п.2; Донастройка_2 п.2). Раньше проверка была только import-time:
@@ -712,7 +723,7 @@ def _run_backtest_with_series(
 
 @router.post(
     "/train",
-    dependencies=[Depends(require_capability("can_train_models"))],
+    dependencies=[Depends(legacy_model_capability)],
 )
 def train_model(principal: AuthenticatedPrincipal = Depends(get_current_principal)):
     return {
@@ -725,7 +736,7 @@ def train_model(principal: AuthenticatedPrincipal = Depends(get_current_principa
 @router.post(
     "/tune",
     response_model=TuneResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
+    dependencies=[Depends(legacy_model_capability)],
 )
 def tune_model(
     payload: TuneRequest,

@@ -129,6 +129,7 @@ PROGR-10 -- Расхождение №1 (progress_ts_analysis.md vs реализ
   (ридер трассы -- сессионный, без durable-зависимости).
 """
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard
 
 import logging
 import os
@@ -233,7 +234,7 @@ from app.preprocessing.outliers import outliers_summary, profile_outliers
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 
 class StageStateOut(BaseModel):

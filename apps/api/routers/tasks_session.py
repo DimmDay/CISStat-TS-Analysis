@@ -15,16 +15,17 @@ spec_tasks_ia_addendum_v1_1.md §10/§10.1: первый реальный вер
 вычисленного».
 """
 from __future__ import annotations
+from apps.api.scientific import ScientificRoute, scientific_guard
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, Depends
 
 from apps.api import promotion_integration as _promotion
 from apps.api.routers.modeling_session import _get_session
 
 
-router = APIRouter()
+router = APIRouter(route_class=ScientificRoute, dependencies=[Depends(scientific_guard)])
 
 
 # Реестр методов объяснения задачи «Причины» (паттерн C, §11.2: колонка
