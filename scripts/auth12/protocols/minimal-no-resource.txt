@@ -1,0 +1,10 @@
+test_admission_cannot_supply_budget_chain_or_price_float (test_auth12_ledger.LedgerContracts.test_admission_cannot_supply_budget_chain_or_price_float) ... ok
+test_cu_cannot_skip_concurrency (test_auth12_ledger.LedgerContracts.test_cu_cannot_skip_concurrency) ... ok
+test_digest_is_canonical_and_finite (test_auth12_ledger.LedgerContracts.test_digest_is_canonical_and_finite) ... ok
+test_money_is_bounded_integer_never_float_or_bool (test_auth12_ledger.LedgerContracts.test_money_is_bounded_integer_never_float_or_bool) ... ok
+test_month_is_explicit_utc_not_browser_clock (test_auth12_ledger.LedgerContracts.test_month_is_explicit_utc_not_browser_clock) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK

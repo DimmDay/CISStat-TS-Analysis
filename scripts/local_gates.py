@@ -30,6 +30,8 @@
                                      инцидента AUTH-07-HOTFIX2 «локально
                                      зелено, на windows-2025
                                      ModuleNotFoundError на collection»
+  auth12  (auth12.yml, push/PR)    Atomic ledger/reservation contracts
+  auth12-postgres (auth12.yml)    native PG CU/API/analysis races and rollback
   auth11  (auth11.yml, push/PR)    Scientific current Account / object / execution guards
   auth11-postgres (auth11.yml)    native PG all routes / downgrade / baseline pipeline
   auth10  (auth10.yml, push/PR)    Durable API keys / scopes / operator
@@ -44,7 +46,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -72,6 +74,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth12", "auth12.yml contracts", "AUTH-12 atomic ledger/reservation contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth12/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth12*.py", "-v"],
+    ]),
+    ("auth12-postgres", "auth12.yml postgres", "AUTH-12 native PostgreSQL resource races / audit rollback", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth12/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth12/verify_postgres.py"],
+    ]),
     ("auth11", "auth11.yml contracts", "AUTH-11 scientific admission / workload / execution fence", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth11/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth11*.py", "-v"],
@@ -305,7 +315,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
+                        help="запустить только выбранные гейты (auth12,auth12-postgres,auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--auth00-target", choices=("index", "head"), default="index",
                         help="AUTH-00: index после явного git add (default), head после commit перед push")
     parser.add_argument("--skip-install", action="store_true",
@@ -322,6 +332,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth12-postgres", action="store_true",
+                        help="добавить AUTH-12 native ledger/reservation; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth11-postgres", action="store_true",
                         help="добавить AUTH-11 real PostgreSQL scientific/route proof; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth10-postgres", action="store_true",
@@ -354,6 +366,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth12_postgres:
+        excluded.add("auth12-postgres")
     if not args.with_auth11_postgres:
         excluded.add("auth11-postgres")
     if not args.with_auth10_postgres:
@@ -381,10 +395,10 @@ def main() -> int:
             mark = "*" if name not in excluded else " "
             print(f" {mark} {name:7s} <- {origin:32s} {description}")
         print("\n* = входит в прогон по умолчанию (push в main); "
-              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-auth10-postgres/--with-auth11-postgres/--with-session-postgres")
+              "pytest добавляется --with-pytest; live PG — --with-auth02-postgres/--with-auth03-postgres/--with-auth04-postgres/--with-auth05-postgres/--with-auth06-postgres/--with-auth08-postgres/--with-auth09-postgres/--with-auth10-postgres/--with-auth11-postgres/--with-auth12-postgres/--with-session-postgres")
         return 0
     if not selected:
-        parser.error("ничего не выбрано; доступно: auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
+        parser.error("ничего не выбрано; доступно: auth12,auth12-postgres,auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest")
 
     rev = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
@@ -417,7 +431,7 @@ def main() -> int:
             print("  После commit проверяйте HEAD: --auth00-target head. Автоматического staging нет.")
     failed = any(not ok for _, ok, _ in results)
     names_run = {name for name, _, _ in results}
-    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10", "auth11")
+    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10", "auth11", "auth12")
                     if name in names_run and name + "-postgres" not in names_run]
     if not failed and missing_live:
         print("\nИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: "

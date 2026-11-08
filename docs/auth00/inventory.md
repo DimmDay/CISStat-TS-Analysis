@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `bf5763051285f1f1e74d14e2ce3680a47493c0ca`. Автоматически собранные входы + явная policy review.
+База: `ad4fd342eeba39161e69cce736d9d5d25f1cea2f`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -13,14 +13,14 @@
 |---|---:|
 | api | 239 |
 | framework | 8 |
-| internal_operation | 13 |
+| internal_operation | 17 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 34 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 10 |
+| storage | 12 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 6 |
@@ -38,6 +38,7 @@
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
 | auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
+| billing.authority | AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit. | Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21. | AUTH-13, AUTH-14, AUTH-20, AUTH-21 |
 | browser.internal | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-12 |
 | browser.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-12 |
 | cors.transport | AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN. | Scientific direct API authority rollout remains AUTH-11. | AUTH-11 |
@@ -328,6 +329,10 @@
 | auth.ownership.migrate | auth.ownership.migrate / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth09/migrate_ownership.py:17 |
 | auth.schema.apply | auth.schema.apply / service:platform | auth.storage / DDL + schema checksum ledger | apps/api/authentication/migrations.py:13 |
 | auth.sessions.schema.apply | auth.sessions.schema.apply / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/session_migrations.py:17 |
+| billing.policy.operator | billing.policy.operator / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | scripts/auth12/manage_budget.py:11 |
+| billing.reserve | billing.reserve / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:260 |
+| billing.schema.apply | billing.schema.apply / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/migrations.py:18 |
+| billing.settle | billing.settle / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:578 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
@@ -665,6 +670,8 @@
 | storage:auth.identities | auth.repository.identity / service:platform | auth.storage / Identity/external issuer-sub mapping | apps/api/authentication/repository.py:8 |
 | storage:auth.mfa | storage:auth.mfa / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa.py:68 |
 | storage:auth.sessions | auth.session.authority / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/sessions.py:68 |
+| storage:billing.job_outbox | storage:billing.job_outbox / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:260 |
+| storage:billing.ledger | storage:billing.ledger / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:236 |
 | storage:datasets | storage:datasets / service:storage | storage.internal / uploads + checkpoints | apps/api/research_runs.py:2785 |
 | storage:db.load | storage:db.load / scientific:upload | storage.internal / SQL and remote/local DB data | app/data/db_guard.py:352 |
 | storage:db.probe | storage:db.probe / scientific:upload | storage.internal / user-supplied DB host/port/path/credentials | app/data/file_loader.py:60 |

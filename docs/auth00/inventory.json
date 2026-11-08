@@ -1,18 +1,18 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "bf5763051285f1f1e74d14e2ce3680a47493c0ca",
+  "baseline": "ad4fd342eeba39161e69cce736d9d5d25f1cea2f",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
     "api": 239,
     "framework": 8,
-    "internal_operation": 13,
+    "internal_operation": 17,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 10,
+    "storage": 12,
     "task_alias": 4,
     "transport": 2,
     "worker": 6
@@ -439,11 +439,28 @@
         "T14",
         "T15"
       ]
+    },
+    "billing.authority": {
+      "observed": "AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit.",
+      "target": "Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21.",
+      "follow_up": [
+        "AUTH-13",
+        "AUTH-14",
+        "AUTH-20",
+        "AUTH-21"
+      ],
+      "threats": [
+        "T01",
+        "T05",
+        "T08",
+        "T11"
+      ]
     }
   },
   "source_fingerprints": {
     ".github/workflows/auth00.yml": "2f9ff8ecf0d967594e2856f1ba30344418813d8dd12227e0c4e5c30c5f97b9d0",
     ".github/workflows/auth11.yml": "41b92b46598103f32e52b07e48b4fba07653612d285ca04f96c04d349cc43416",
+    ".github/workflows/auth12.yml": "548d4c32aa6504cc4f61ea479951a308e0a0aae99381e0f06df02ef2e80a428f",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
@@ -468,7 +485,7 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "ab48d3763d97a197deaf13f25b97b804a3da815dcea6ee3bb022f12465ac484b",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "43def3d6c6455687ea333e679fd05a8e9cb5a64d9d64abcf4894e1a3504a905b",
+    "apps/api/authentication/context.py": "eec84139e5906d685c0caf9279ec74632b6abe43da628b82edced9c4123c701a",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -485,6 +502,11 @@
     "apps/api/authentication/sessions.py": "7096dffca6a96a31d99c7d54829aaf0e25215a5cf517147381a0428fcf75cb8c",
     "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
     "apps/api/backtesting.py": "406c5a0f6dd9079f1a18fcf1a66f472b2fb3c6a20ee0377e2cbe9788e660ebaa",
+    "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
+    "apps/api/billing/contract.py": "d0eceaccb09f7e85e282e4e368a82f07d76a1d6b3ee86a632cfa98844db7af52",
+    "apps/api/billing/coordinator.py": "4294153bf92d99007644017fdea29060647dbfa9dd14cfa2d652ec2260cc899f",
+    "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
+    "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
     "apps/api/consistency_correction.py": "84d931a97b0931fe28a0de936d1fd9b0da342a7873bbae7c163863126e281731",
@@ -525,6 +547,7 @@
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
     "apps/api/migrations/0023_auth09_account_ownership.sql": "7abebc73b3f371b6cebb393f1a317fe8f7ad9eda8ad5c3f79915453dcac53e01",
     "apps/api/migrations/0024_auth10_api_keys.sql": "bc3dcd29e5dfa60a94845d0e211534f224ea9aa7f7aa5ddd242e3a5f90e036b1",
+    "apps/api/migrations/0025_auth12_reservations.sql": "3a0e68d5d6b34446df937d419a58e05883fc7bfac7883108edf36fc536812261",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -607,7 +630,7 @@
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
     "apps/api/scientific.py": "a1e827c77c35789073ff9bed55f3f49162e4fd9488e8e4eb14d71dde2ac9cdfc",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
-    "apps/api/security_audit.py": "33e31b656372d84bf75a159fb630aaf973f31ccffb4c238e85164d73a3e9eaed",
+    "apps/api/security_audit.py": "028c8bee8a1425b83912227958cf51745cab6d7aa4b9632a4634f746df0689e4",
     "apps/api/session_store.py": "f8c62849cdee767247570502ac4b5202b4599311938a246062aa0cb69445c812",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "d679284e95ed4a122b76bbfd595cd0094c94643cc0a06b93a3428030dc91c189",
@@ -684,6 +707,8 @@
     "docs/auth10/hotfix01.md": "02328d7d41e8ca21cea09836c5c684c243e0891ffc2d870010bccb5a3f8bd92f",
     "docs/auth11/closure.md": "b1317c3f716d2ecc1e348fbb45c920e5a598cf52d8bbb7256bf82791ee25c275",
     "docs/auth11/design.md": "e46545e6c03c414d42997dcc369ea714144fb455955d9af16bb2640b695514b5",
+    "docs/auth12/deploy.md": "38ed9d90c18568458b16489c3a18ad7ca8927322c8d3d75bedac8511fd000041",
+    "docs/auth12/design.md": "8c7c3cafaaeec7b6ea796cc9a9b1ef60f258ba5156ee1d9cfa30d198a7e76437",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -767,13 +792,18 @@
     "scripts/auth09/migrate_ownership.py": "401e5b9b77b72e4c253d457f34fb39eae1c73fa37f4b27608e86220bd141f4af",
     "scripts/auth10/manage_keys.py": "7afe7c4671c53c41e90396061c4bb2a79f52e12ad6d59d23d8831dd03c9f0bce",
     "scripts/auth10/migrate.py": "e434ae441f266f032cf75273d68a694bcd815dfe741194fddd1c69400852a4a1",
-    "scripts/local_gates.py": "ca473bbea1904b9f2fa848d58eed94e28afb478f0982c8e24dd51a1a3392495b",
+    "scripts/auth12/manage_budget.py": "ba4b062c15c3b63ba4ef0f5142a9a6237e29f18044480ec6c7f01e9496a642a0",
+    "scripts/auth12/migrate.py": "e4321d6b7d8301e8400825c6d73518b5866ed26c94ac3706eb579f39b92136f9",
+    "scripts/local_gates.md": "e3e1be8152cff112bb6cddd4c1697f153831a084d62664ffd7819c604f87e756",
+    "scripts/local_gates.py": "eae80a0f0bc03bcaec3c2d1e6c369618611592704331ae839649823cc1bd3cc4",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
+    "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
     "tests/unit/test_auth00_local_output.py": "2ee57bcad7bbf19ed57bf0356ea5a8de54ed4c122266bbf98f2986fb8c7a6e57",
     "tests/unit/test_auth00_precommit.py": "2d7955f3d9f4df49a2c0db33795b74465bc5f23c57cce67390d3a1698a846c15",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
+    "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -10061,6 +10091,106 @@
       "stage_namespace": "service"
     },
     {
+      "id": "billing.policy.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.policy.operator",
+      "operation": "billing.policy.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth12/manage_budget.py",
+          "line": 11,
+          "symbol": "main"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.policy.operator",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
+      "id": "billing.reserve",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.reserve",
+      "operation": "billing.reserve",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 260,
+          "symbol": "ReservationCoordinator.reserve"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.reserve",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
+      "id": "billing.schema.apply",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.schema.apply",
+      "operation": "billing.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/billing/migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.schema.apply",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
+      "id": "billing.settle",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.settle",
+      "operation": "billing.settle",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 578,
+          "symbol": "ReservationCoordinator.settle"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.settle",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
       "id": "execution:model.job_step",
       "kind": "internal_operation",
       "method": "CALL",
@@ -17602,6 +17732,56 @@
       "canonical_operation": "auth.session.authority",
       "admission": "trusted-authority-writer",
       "stage_namespace": "service"
+    },
+    {
+      "id": "storage:billing.job_outbox",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:billing.job_outbox",
+      "operation": "storage:billing.job_outbox",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 260,
+          "symbol": "ReservationCoordinator.reserve"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.job_outbox",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
+      "id": "storage:billing.ledger",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:billing.ledger",
+      "operation": "storage:billing.ledger",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 236,
+          "symbol": "ReservationCoordinator._charge"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.ledger",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
     },
     {
       "id": "storage:datasets",

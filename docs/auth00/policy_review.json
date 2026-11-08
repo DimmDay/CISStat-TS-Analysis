@@ -1,5 +1,5 @@
 {
-  "baseline": "bf5763051285f1f1e74d14e2ce3680a47493c0ca",
+  "baseline": "ad4fd342eeba39161e69cce736d9d5d25f1cea2f",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -422,6 +422,22 @@
         "T11",
         "T14",
         "T15"
+      ]
+    },
+    "billing.authority": {
+      "observed": "AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit.",
+      "target": "Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21.",
+      "follow_up": [
+        "AUTH-13",
+        "AUTH-14",
+        "AUTH-20",
+        "AUTH-21"
+      ],
+      "threats": [
+        "T01",
+        "T05",
+        "T08",
+        "T11"
       ]
     }
   },
@@ -7007,6 +7023,78 @@
       ],
       "canonical_operation": "scientific.execution",
       "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
+    },
+    "billing.reserve": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.reserve",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.settle": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.settle",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.policy.operator": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.policy.operator",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.schema.apply": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.schema.apply",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "storage:billing.ledger": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.ledger",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "storage:billing.job_outbox": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.job_outbox",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
     }
   },
   "extra_surfaces": [
@@ -7430,6 +7518,90 @@
           "symbol": "authorize_execution"
         }
       ]
+    },
+    {
+      "id": "billing.reserve",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.reserve",
+      "operation": "billing.reserve",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 260,
+          "symbol": "ReservationCoordinator.reserve"
+        }
+      ]
+    },
+    {
+      "id": "billing.settle",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.settle",
+      "operation": "billing.settle",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 578,
+          "symbol": "ReservationCoordinator.settle"
+        }
+      ]
+    },
+    {
+      "id": "billing.policy.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.policy.operator",
+      "operation": "billing.policy.operator",
+      "evidence": [
+        {
+          "source": "scripts/auth12/manage_budget.py",
+          "line": 11,
+          "symbol": "main"
+        }
+      ]
+    },
+    {
+      "id": "billing.schema.apply",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.schema.apply",
+      "operation": "billing.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/billing/migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "storage:billing.ledger",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:billing.ledger",
+      "operation": "storage:billing.ledger",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 236,
+          "symbol": "ReservationCoordinator._charge"
+        }
+      ]
+    },
+    {
+      "id": "storage:billing.job_outbox",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:billing.job_outbox",
+      "operation": "storage:billing.job_outbox",
+      "evidence": [
+        {
+          "source": "apps/api/billing/coordinator.py",
+          "line": 260,
+          "symbol": "ReservationCoordinator.reserve"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -7594,6 +7766,15 @@
     "docs/auth11/design.md",
     "tests/unit/test_auth11_scientific.py",
     ".github/workflows/auth11.yml",
-    "docs/auth11/closure.md"
+    "docs/auth11/closure.md",
+    "docs/auth12/design.md",
+    ".github/workflows/auth12.yml",
+    "tests/unit/test_auth12_ledger.py",
+    "tests/integration/test_auth12_ledger.py",
+    "scripts/auth12/migrate.py",
+    "scripts/auth12/manage_budget.py",
+    "scripts/local_gates.md",
+    "apps/api/migrations/0025_auth12_reservations.sql",
+    "docs/auth12/deploy.md"
   ]
 }

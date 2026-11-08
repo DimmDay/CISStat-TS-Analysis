@@ -1,0 +1,41 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_audit_fault_rolls_back_reserve_every_table (test_auth12_ledger.LedgerSQLTests.test_audit_fault_rolls_back_reserve_every_table) ... ok
+test_budget_policy_audit_failure_keeps_limit_and_version (test_auth12_ledger.LedgerSQLTests.test_budget_policy_audit_failure_keeps_limit_and_version) ... ok
+test_common_sponsor_across_accounts_and_grant_atomic (test_auth12_ledger.LedgerSQLTests.test_common_sponsor_across_accounts_and_grant_atomic) ... ok
+test_current_revoked_credential_not_allowed_to_replay (test_auth12_ledger.LedgerSQLTests.test_current_revoked_credential_not_allowed_to_replay) ... ok
+test_downgrade_reduces_cap_without_resetting_spent (test_auth12_ledger.LedgerSQLTests.test_downgrade_reduces_cap_without_resetting_spent) ... ok
+test_expired_account_cannot_reserve (test_auth12_ledger.LedgerSQLTests.test_expired_account_cannot_reserve) ... ok
+test_failed_extension_cannot_change_held_or_postings (test_auth12_ledger.LedgerSQLTests.test_failed_extension_cannot_change_held_or_postings) ... ok
+test_foreign_account_receipt_and_claim_are_not_authority (test_auth12_ledger.LedgerSQLTests.test_foreign_account_receipt_and_claim_are_not_authority) ... ok
+test_fresh_process_ledger_persists (test_auth12_ledger.LedgerSQLTests.test_fresh_process_ledger_persists) ... ok
+test_idempotent_concurrent_and_payload_conflict (test_auth12_ledger.LedgerSQLTests.test_idempotent_concurrent_and_payload_conflict) ... ok
+test_job_outbox_fault_rolls_back_all_budget_changes (test_auth12_ledger.LedgerSQLTests.test_job_outbox_fault_rolls_back_all_budget_changes) ... ok
+test_last_analysis_race_and_same_run_once (test_auth12_ledger.LedgerSQLTests.test_last_analysis_race_and_same_run_once) ... ok
+test_last_api_race_account_not_key (test_auth12_ledger.LedgerSQLTests.test_last_api_race_account_not_key) ... ok
+test_last_concurrency_slot_race (test_auth12_ledger.LedgerSQLTests.test_last_concurrency_slot_race) ... ok
+test_last_cu_race_one_job_all_atomic (test_auth12_ledger.LedgerSQLTests.test_last_cu_race_one_job_all_atomic) ... ok
+test_membership_revoke_deny_new_and_start (test_auth12_ledger.LedgerSQLTests.test_membership_revoke_deny_new_and_start) ... ok
+test_migration_cli_apply_retry_and_check_clean_database (test_auth12_ledger.LedgerSQLTests.test_migration_cli_apply_retry_and_check_clean_database) ... ok
+test_migration_retry_checksum_trigger_drift (test_auth12_ledger.LedgerSQLTests.test_migration_retry_checksum_trigger_drift) ... ok
+test_missing_schema_never_migrates_in_request (test_auth12_ledger.LedgerSQLTests.test_missing_schema_never_migrates_in_request) ... ok
+test_over_estimate_cannot_spend_then_explicit_extend (test_auth12_ledger.LedgerSQLTests.test_over_estimate_cannot_spend_then_explicit_extend) ... ok
+test_overflow_never_wraps_or_partially_commits (test_auth12_ledger.LedgerSQLTests.test_overflow_never_wraps_or_partially_commits) ... ok
+test_pause_and_expiry_block_admission_but_never_refund (test_auth12_ledger.LedgerSQLTests.test_pause_and_expiry_block_admission_but_never_refund) ... ok
+test_paused_running_reservation_cannot_extend (test_auth12_ledger.LedgerSQLTests.test_paused_running_reservation_cannot_extend) ... ok
+test_payload_and_idempotency_plaintext_not_saved (test_auth12_ledger.LedgerSQLTests.test_payload_and_idempotency_plaintext_not_saved) ... ok
+test_pending_cancel_keeps_api_analysis_charged (test_auth12_ledger.LedgerSQLTests.test_pending_cancel_keeps_api_analysis_charged) ... ok
+test_restore_cannot_claim_new_analysis (test_auth12_ledger.LedgerSQLTests.test_restore_cannot_claim_new_analysis) ... ok
+test_rotation_does_not_reset_quota_or_idempotency (test_auth12_ledger.LedgerSQLTests.test_rotation_does_not_reset_quota_or_idempotency) ... ok
+test_running_release_forbidden_and_no_lease_refund (test_auth12_ledger.LedgerSQLTests.test_running_release_forbidden_and_no_lease_refund) ... ok
+test_same_run_concurrency_claim_charged_once (test_auth12_ledger.LedgerSQLTests.test_same_run_concurrency_claim_charged_once) ... ok
+test_scope_binding_invalid_parent_and_no_null_infinity (test_auth12_ledger.LedgerSQLTests.test_scope_binding_invalid_parent_and_no_null_infinity) ... ok
+test_settle_audit_failure_keeps_reserve_and_running_state (test_auth12_ledger.LedgerSQLTests.test_settle_audit_failure_keeps_reserve_and_running_state) ... ok
+test_settle_partial_and_terminal_retry (test_auth12_ledger.LedgerSQLTests.test_settle_partial_and_terminal_retry) ... ok
+test_sql_projection_and_immutable_ledger (test_auth12_ledger.LedgerSQLTests.test_sql_projection_and_immutable_ledger) ... ok
+test_unknown_entry_and_custom_model_current_caps_deny (test_auth12_ledger.LedgerSQLTests.test_unknown_entry_and_custom_model_current_caps_deny) ... ok
+test_utc_month_rollover_keeps_old_postings_and_retry (test_auth12_ledger.LedgerSQLTests.test_utc_month_rollover_keeps_old_postings_and_retry) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 41.397s
+
+OK

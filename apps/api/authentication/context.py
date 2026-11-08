@@ -112,6 +112,17 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "budget_not_configured": "Ресурсный бюджет ещё не настроен",
+    "budget_scope_inactive": "Ресурсная политика приостановлена или истекла",
+    "budget_overflow": "Превышен диапазон ресурсного учёта",
+    "quota_exceeded": "Ресурсная квота исчерпана",
+    "concurrency_exceeded": "Достигнут предел одновременных операций",
+    "cu_reserve_exceeded": "Требуется дополнительный резерв до продолжения работы",
+    "idempotency_conflict": "Этот ключ уже использован для другого запроса",
+    "invalid_analysis_claim": "Некорректный контекст нового исследования",
+    "reservation_expired": "Срок допуска операции истёк",
+    "reservation_not_found": "Резервирование не найдено",
+    "reservation_conflict": "Состояние или версия резервирования изменились",
     "unknown_entry": "Неизвестная защищённая операция",
     "unknown_operation": "Неизвестная операция",
     "operation_unavailable": "Операция недоступна в защищённом режиме",

@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "passed": 115,
+    "failed": 2
+  },
+  "command": "pytest tests/api/test_doclog3_telemetry_audit.py tests/api/test_auth03_adapters.py tests/api/test_cisstat_stack_deployment.py -q --tb=short",
+  "candidate": {
+    "passed": 115,
+    "failed": 2
+  },
+  "failed_ids": [
+    "tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded",
+    "tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface"
+  ],
+  "new_failures": [],
+  "full_scientific_suite_run": false,
+  "baseline_commit": "ad4fd342eeba39161e69cce736d9d5d25f1cea2f"
+}

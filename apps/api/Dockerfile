@@ -123,6 +123,9 @@ COPY scripts/auth05/ ./scripts/auth05/
 COPY scripts/auth09/migrate_ownership.py ./scripts/auth09/migrate_ownership.py
 RUN python -c "from pathlib import Path; assert Path('scripts/auth09/migrate_ownership.py').is_file(); from apps.api.accounts.ownership_migration import migrate_legacy_run; print('auth09 operator OK')"
 # AUTH-10 explicit migration and interactive service-key operations.
+COPY scripts/auth12/migrate.py ./scripts/auth12/migrate.py
+COPY scripts/auth12/manage_budget.py ./scripts/auth12/manage_budget.py
+RUN python -c "from apps.api.billing.coordinator import ReservationCoordinator; from apps.api.billing.migrations import check_schema; from apps.api.billing.policy import BudgetPolicy; print('auth12 coordinator/operator imports OK')"
 COPY scripts/auth10/migrate.py ./scripts/auth10/migrate.py
 COPY scripts/auth10/manage_keys.py ./scripts/auth10/manage_keys.py
 RUN python -c "from pathlib import Path; from apps.api.authentication.api_keys import APIKeyService; from apps.api.authentication.api_key_migrations import check_schema; assert Path('scripts/auth10/migrate.py').is_file(); assert Path('scripts/auth10/manage_keys.py').is_file(); print('auth10 operator imports OK')"

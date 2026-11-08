@@ -1,6 +1,6 @@
 # Локальные гейты перед передачей в GitHub
 
-AUTH-11 применяется поверх bf5763051285f1f1e74d14e2ce3680a47493c0ca. AUTH-09/10 и исправления INDEX уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
+AUTH-12 применяется поверх ad4fd342eeba39161e69cce736d9d5d25f1cea2f. AUTH-09/10/11 и исправления INDEX уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
 
 ## До коммита: явно подготовить Git index
 
@@ -8,7 +8,7 @@ AUTH-11 применяется поверх bf5763051285f1f1e74d14e2ce3680a47493
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth11/files.txt
+git add --pathspec-from-file=scripts/auth12/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,21 +34,23 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
-AUTH-11 unit использует scripts/auth11/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
+AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
 ```bash
 # CISSTAT_AUTH_TEST_DSN уже задан в защищённом окружении.
-python scripts/local_gates.py --only auth11,auth11-postgres
+python scripts/local_gates.py --only auth12,auth12-postgres
 # либо вместе с default:
-python scripts/local_gates.py --with-auth11-postgres --skip-install
+python scripts/local_gates.py --with-auth12-postgres --skip-install
 ```
 
-Без DSN/при skips native не PASS. `.github/workflows/auth11.yml`: Ubuntu/Windows unit; PostgreSQL16/18 native Ubuntu. Linux проверки не заменяют настоящий Windows CI. Все прежние PostgreSQL opt-in сохранены; auth07 также выполняет windows_parity.py с запретом Unix-only resource.
+Без DSN/при skips native не PASS. `.github/workflows/auth12.yml`: Ubuntu/Windows unit; PostgreSQL16/18 native Ubuntu. Linux проверки не заменяют настоящий Windows CI. Все прежние PostgreSQL opt-in сохранены; auth07 также выполняет windows_parity.py с запретом Unix-only resource.
 
-## Маршруты AUTH-11
+## Маршруты AUTH-12
 
-HTTP methods/paths не добавлены, не удалены и не переименованы: 239 API, 243 registry bindings. Подключены ScientificRoute и scientific_guard на 173 scientific/research API bindings (154 операции). Пересмотрены policies sensitivity (tuning), restore (history), DB probe (own upload). AUTH-00 включает два явно reviewed внутренних execution boundaries: полный inventory 572→574; OpenAPI/TS/BFF и карта `docs/auth00/inventory.md` обновлены. Независимая ASGI проверка: `python scripts/auth06/check_routes.py`.
+HTTP methods/paths, DTO/OpenAPI/TS/BFF bindings не изменены:239 API,243 bindings. Новых публичных финансовых writer endpoints нет. AUTH-12 — trusted domain coordinator и transactional job intent/outbox; реальная интеграция очередей/worker adapters AUTH-13, коэффициенты CU AUTH-14. Не объявлять текущие HTTP scientific handlers финансово metered до этих этапов.
 
-Production required/scoped автоматически enforce; research cookie/ENV credential не заменяют named login/durable scoped key. Подробности отказов, baseline, границы AUTH-12/13 и VM rollout: `docs/auth11/design.md`. Новых SQL migrations нет. Никакие локальные гейты не изменяют VM.
+AUTH-00 reviewed map добавляет шесть non-HTTP surfaces:reserve,settle,policy operator,schema apply,ledger store,job outbox. Полный inventory574→580, discovery545 прежний. Обновлена карта docs/auth00/inventory.md. Проверка actual ASGI: `python scripts/auth06/check_routes.py`.
+
+Новая explicit authority migration0025 через scripts/auth12/migrate.py --apply/--check; request-time auto-DDL нет. VM требует пересборку api; web байты прежние. Порядок развёртывания/границы и команды в docs/auth12/deploy.md. Локальные тесты используют только disposable DSN и не изменяют VM.
