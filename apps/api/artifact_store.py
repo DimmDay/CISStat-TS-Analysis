@@ -628,6 +628,10 @@ class PostgresArtifactRegistry(ArtifactRegistry):
         return PostgresArtifactRegistry(dsn=dsn)
 
     def _connect(self):
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         import psycopg  # late import -- паритет PostgresResearchRunStore
 
         conn = psycopg.connect(self._dsn, autocommit=False)

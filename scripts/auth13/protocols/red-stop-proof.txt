@@ -1,0 +1,19 @@
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof) ... FAIL
+
+======================================================================
+FAIL: test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/unit/test_auth13_workers.py", line 22, in test_unknown_stop_does_not_reuse_not_started_proof
+    auth.stopped.assert_not_called()
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 910, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'stopped' to not have been called. Called 1 times.
+Calls: [call(namespace(deadline=datetime.datetime(2026, 11, 8, 14, 20, 24, 988100, tzinfo=datetime.timezone.utc), lease_until=datetime.datetime(2026, 11, 8, 14, 20, 24, 988107, tzinfo=datetime.timezone.utc), worker_id='one', fence=1), {'outcome': 'not_started'}, code='worker_stopped')].
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.670s
+
+FAILED (failures=1)

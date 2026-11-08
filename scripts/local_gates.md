@@ -54,3 +54,8 @@ HTTP methods/paths, DTO/OpenAPI/TS/BFF bindings не изменены:239 API,24
 AUTH-00 reviewed map добавляет шесть non-HTTP surfaces:reserve,settle,policy operator,schema apply,ledger store,job outbox. Полный inventory574→580, discovery545 прежний. Обновлена карта docs/auth00/inventory.md. Проверка actual ASGI: `python scripts/auth06/check_routes.py`.
 
 Новая explicit authority migration0025 через scripts/auth12/migrate.py --apply/--check; request-time auto-DDL нет. VM требует пересборку api; web байты прежние. Порядок развёртывания/границы и команды в docs/auth12/deploy.md. Локальные тесты используют только disposable DSN и не изменяют VM.
+
+AUTH-13 добавляет default `auth13` portable process/stop-proof contracts и
+опциональный `--with-auth13-postgres` (или `--only auth13-postgres`) с обязательным
+disposable `CISSTAT_AUTH_TEST_DSN`. Миграция и service provisioning —
+`docs/auth13/runbook.md`; отсутствие DSN/пропуски не считаются native PASS.

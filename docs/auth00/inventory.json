@@ -5,7 +5,7 @@
   "counts": {
     "api": 239,
     "framework": 8,
-    "internal_operation": 17,
+    "internal_operation": 21,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 34,
@@ -15,7 +15,7 @@
     "storage": 12,
     "task_alias": 4,
     "transport": 2,
-    "worker": 6
+    "worker": 7
   },
   "policies": {
     "public.metadata": {
@@ -252,7 +252,7 @@
       ]
     },
     "worker.authority": {
-      "observed": "In-process worker trusts queued durable work/admission; not a browser-authenticated request.",
+      "observed": "AUTH-13 protected modeling aliases/render/delivery use durable service credentials, current delegated authority, finite subprocess/lease/deadline, monotonically increasing fences, transactional projection/settle/audit and positive-stop reconciliation. Unknown remote/process outcomes retain holds. Legacy advisory profile remains separate; priced CU awaits AUTH-14.",
       "target": "Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication.",
       "follow_up": [
         "AUTH-03",
@@ -477,7 +477,7 @@
     "apps/api/accounts/repository.py": "b9eed272454419f0e1a969f3c3dd7cd6f3ed586efa2889de743217b81c621a76",
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
-    "apps/api/artifact_store.py": "6fe3355009b70bb4cee9232234a18c4fc4538bc95bf53c731c113d029dbe0c74",
+    "apps/api/artifact_store.py": "83f8bb7b8ab5d56a1648d9755bd949e8604a618bd120512877a76480d6ab40a0",
     "apps/api/auth.py": "22a296d69861b506210c67764b8a9d69de7011acf40fb0c2dcda6b7a09c4187a",
     "apps/api/authentication/__init__.py": "e006893d07a268e8687bace3d26eaee8ca3af119f04bfd7a52358807b6f8cf03",
     "apps/api/authentication/api_key_contract.py": "1ff52f40a941b76fd5f55cd9689cb8b511d6d971926b5fed486534142a9e1107",
@@ -485,7 +485,7 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "ab48d3763d97a197deaf13f25b97b804a3da815dcea6ee3bb022f12465ac484b",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "eec84139e5906d685c0caf9279ec74632b6abe43da628b82edced9c4123c701a",
+    "apps/api/authentication/context.py": "2a4b8b5939711c0d5af6b64ed535144daf49d0feae3faed31bd0e2681e3eeb73",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
@@ -500,11 +500,11 @@
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
     "apps/api/authentication/sessions.py": "7096dffca6a96a31d99c7d54829aaf0e25215a5cf517147381a0428fcf75cb8c",
-    "apps/api/authentication/storage.py": "5d22475daf5206ed7749e71cf25e462c142ca4a622ee592a6223f1b1518c0fec",
+    "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
     "apps/api/backtesting.py": "406c5a0f6dd9079f1a18fcf1a66f472b2fb3c6a20ee0377e2cbe9788e660ebaa",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
     "apps/api/billing/contract.py": "d0eceaccb09f7e85e282e4e368a82f07d76a1d6b3ee86a632cfa98844db7af52",
-    "apps/api/billing/coordinator.py": "4294153bf92d99007644017fdea29060647dbfa9dd14cfa2d652ec2260cc899f",
+    "apps/api/billing/coordinator.py": "dc38b0f3888d9a426f5033bce0ff1c5611e718f21e97ed5cfa5e74c9e56b6aff",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
     "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
@@ -513,12 +513,12 @@
     "apps/api/cv.py": "5349940b34ef17431c25cf42d262475c54a9eada346ac5c9e80ab9a62e106d4a",
     "apps/api/data_context.py": "88a604b533e4a0686564da416df06a574dc53c82e63443c44ab03de1652bae99",
     "apps/api/decomposition_data.py": "7c22ea681dcd6720eb34ea23c174c1672ad33c34e862ced7b047541c8a50370e",
-    "apps/api/delivery_outbox.py": "acda561581308b2e89cd1e3a2bc49ea3f4955b6362ad4be7464f7ef5f9d8639b",
+    "apps/api/delivery_outbox.py": "2d72a3b44b62e4648af50d6376a7abe076a0c0a06d9f736216478f07c804d554",
     "apps/api/delivery_worker.py": "050a0f2d7c40bf735c3d267f04ec0615f3632886c625a6efed9cddd3a16bea88",
-    "apps/api/doc_profiles.py": "5531f2bf93c87a5e0fa33ce53546bf760f207fb96e030c1015cd384a7042d20c",
-    "apps/api/document_jobs.py": "1d7b3dbbef04653b7993ce947a48367c57e4e7581fff6551ead86106b5e48e33",
+    "apps/api/doc_profiles.py": "966ae504de6484e0d73093dbabfd3d4c73b768b128a7e0ec9afcae0929a5131f",
+    "apps/api/document_jobs.py": "41a67ca1bbeb3ab0936d946d3326968a2043575dd9263aa4e07148f84ea2bc4e",
     "apps/api/document_lifecycle.py": "f7edb74f1c283f20a6d541bd070131872d4a4286c7e99cd9fa9d9df4b5263202",
-    "apps/api/document_render_worker.py": "9cfe537087c81f4b28b29975a1e60e29d40604d107f6911ac6afa75fcbd0dd03",
+    "apps/api/document_render_worker.py": "fabd81128dd2f2f4797e62caa90ae0ca0a6359df506f79e79cf9e9b97e332e55",
     "apps/api/document_renditions.py": "b61bac80c0141b931375b6438041bfbc2e9bb5d0b21fcaa0c60dae90a80d44ea",
     "apps/api/eda_correlation.py": "35d746def1aa07e022408cc351e83fe1c8206b53045ef834dd17c07b4b552bdb",
     "apps/api/eda_distribution.py": "3b1e856e183acf9f2fe84e282123bbbb37dbc0bacddbdaa86b80a6ba32d09946",
@@ -548,6 +548,7 @@
     "apps/api/migrations/0023_auth09_account_ownership.sql": "7abebc73b3f371b6cebb393f1a317fe8f7ad9eda8ad5c3f79915453dcac53e01",
     "apps/api/migrations/0024_auth10_api_keys.sql": "bc3dcd29e5dfa60a94845d0e211534f224ea9aa7f7aa5ddd242e3a5f90e036b1",
     "apps/api/migrations/0025_auth12_reservations.sql": "3a0e68d5d6b34446df937d419a58e05883fc7bfac7883108edf36fc536812261",
+    "apps/api/migrations/0026_auth13_workers.sql": "5ad027d8de3e2acbf1611c6450c8dedce335b43680baac5f5994b39bc274190f",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -615,11 +616,11 @@
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
-    "apps/api/routers/documentation.py": "2290fb9c257448d9567787db9e270e3a34dc75984a175c3fa46bf41cece4c590",
+    "apps/api/routers/documentation.py": "99d77b3619c1e473404e34f13651f38a2f331060b8fc8c78e9e2cdee98106f3e",
     "apps/api/routers/forecasting_session.py": "95e2500b152b2cf68243571dd57850fd12fba1e218c6b6df6c99cbaeaf5ff62e",
     "apps/api/routers/internal.py": "2b305db5940c65c75f2190341b33d7a6d0df6aa81586ea7e38b7661d22234b2c",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
-    "apps/api/routers/modeling_session.py": "33062665a464f8bfe2bf1adddf7502fbaaf16e240aad0b3aca5cca106800263b",
+    "apps/api/routers/modeling_session.py": "99707e4d8d90cccec2fa9697a715758fec5891e6b440d1f31a2a818ce70444b5",
     "apps/api/routers/models.py": "de0c43b84f0479e43eb22812d82c8829c1e6a4a3249aa1e57dfd1cb970c0a574",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
     "apps/api/routers/progress.py": "aaa03337f710af42d882d0008162733cda411872b5e570d53543f98536c77865",
@@ -630,10 +631,10 @@
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
     "apps/api/scientific.py": "a1e827c77c35789073ff9bed55f3f49162e4fd9488e8e4eb14d71dde2ac9cdfc",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
-    "apps/api/security_audit.py": "028c8bee8a1425b83912227958cf51745cab6d7aa4b9632a4634f746df0689e4",
-    "apps/api/session_store.py": "f8c62849cdee767247570502ac4b5202b4599311938a246062aa0cb69445c812",
+    "apps/api/security_audit.py": "dab1337af7fe7d87a10fcdd686e6496c0c7fd823f5d7a1ad563316f869c587b7",
+    "apps/api/session_store.py": "3a81a2750c701c29ca1f1576e6fc33590e20bd4d90b099142289df4278c189c8",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
-    "apps/api/storage_diagnostics.py": "d679284e95ed4a122b76bbfd595cd0094c94643cc0a06b93a3428030dc91c189",
+    "apps/api/storage_diagnostics.py": "d50ffbcef850133b68515ae6c1b234014e1783d8bf903ec7cb761cbb1bfa7941",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
     "apps/api/target_column_rule.py": "3a503622feb1b36af3e27bae2e2b7f7b36ce9b75f34a98dc965380f5e5d0fde2",
     "apps/api/telemetry.py": "04039acf749a9fd86a8bd06e5c201e0096b87e89da4c20c9df0527c2b97fc7ef",
@@ -647,6 +648,18 @@
     "apps/api/visual_exports.py": "d56e4372af466ac5f9b71b7699b76f90e34c27ba481e6139cf0f562cb66c8fe4",
     "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
+    "apps/api/workers/__init__.py": "ee70622c30146a1d9ead84e0400e61f15458998a6380753fb89757052f273482",
+    "apps/api/workers/authority.py": "eba680cae0fe3792afbf9a2a49ccbf9b3b05330322765cacb491e5afbf78de66",
+    "apps/api/workers/bridge.py": "83599dc8739b26719a389cc03be2a936537ef0cbf4275a94ca01bc2abb91e836",
+    "apps/api/workers/child.py": "7849e48a10790bd8ec34722bed9b5e7565bdb7f2cce532aa4896425b32728b41",
+    "apps/api/workers/connection.py": "7824385a597ff8bced431debd0978231b048ee3b1a3565f567d78d078c318234",
+    "apps/api/workers/delivery.py": "6df0089da4ff5ff67840a6ffb7d02c40dc15b6a2c13facc60f07118a7802d1d9",
+    "apps/api/workers/execution.py": "94b26879017da444269797f2004581005934ddbd3936621143e5892c94a2ced5",
+    "apps/api/workers/migrations.py": "abb02312820a48746f32cc5516e233d2e553516e5a3a7a634dbec077f007d98c",
+    "apps/api/workers/process.py": "f860601889577854b81e95039aa294536210560bf2d8b43e4589e515564426e4",
+    "apps/api/workers/render.py": "aedd6b7f2d8d19a2fcbd8bd9f97ef2e6d49039f52f54106d6bcedcd516800e28",
+    "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
+    "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
     "apps/embedded/app/admin/logs/page.tsx": "f0d27b4c204f5ab9b919872542c7c0015fa841ac2430ab43af35002fcdbceba7",
     "apps/embedded/app/admin/page.tsx": "f9627f14db2aa31acf6bd2aaf02efb1fb6cc7ee2a7a04990aa5e1f6073773375",
     "apps/embedded/app/admin/progress/page.tsx": "a59f7174c6d00b67e1aaa83158d5f691cb7d97489e499acad04fbbb06449df6e",
@@ -691,6 +704,7 @@
     "apps/standalone/app/validation/page.tsx": "dbbff830acf0afa866c7dcff7c7136ddc1f3e676376c46bd806a6679d9b06970",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
+    "deployment/cisstat-stack/docker-compose.yml": "d2a773aa6a41049db88659d2a3155f73dfd42b5a1496481a4a0792192acf8adc",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
@@ -794,8 +808,10 @@
     "scripts/auth10/migrate.py": "e434ae441f266f032cf75273d68a694bcd815dfe741194fddd1c69400852a4a1",
     "scripts/auth12/manage_budget.py": "ba4b062c15c3b63ba4ef0f5142a9a6237e29f18044480ec6c7f01e9496a642a0",
     "scripts/auth12/migrate.py": "e4321d6b7d8301e8400825c6d73518b5866ed26c94ac3706eb579f39b92136f9",
-    "scripts/local_gates.md": "e3e1be8152cff112bb6cddd4c1697f153831a084d62664ffd7819c604f87e756",
-    "scripts/local_gates.py": "eae80a0f0bc03bcaec3c2d1e6c369618611592704331ae839649823cc1bd3cc4",
+    "scripts/auth13/manage_workers.py": "a43b92980b716bdad4052478b6b44174e8b2b17a3b55dfc9600e33fa24bcbbdd",
+    "scripts/auth13/migrate.py": "681cfab1de868eac5a01e45bf386299f633ebfda28e41d28c7094a53ce9b2613",
+    "scripts/local_gates.md": "a4c40aeb5eb651ce5b195b1149fab95c9f760d2187e6cd0f0c18560a493471b7",
+    "scripts/local_gates.py": "b5bc702137341f958d151f2ce0879c7413367a363bfbacd024f7ff3ae8c298c9",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1106,7 +1122,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 555,
+          "line": 559,
           "symbol": "list_document_revisions"
         },
         {
@@ -1139,7 +1155,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 744,
+          "line": 748,
           "symbol": "get_job"
         },
         {
@@ -1205,7 +1221,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 776,
+          "line": 780,
           "symbol": "get_rendition_content"
         },
         {
@@ -1272,7 +1288,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 577,
+          "line": 581,
           "symbol": "get_revision"
         },
         {
@@ -1305,7 +1321,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1008,
+          "line": 1012,
           "symbol": "revision_diff"
         },
         {
@@ -1338,7 +1354,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 989,
+          "line": 993,
           "symbol": "revision_lifecycle"
         },
         {
@@ -1371,7 +1387,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 600,
+          "line": 604,
           "symbol": "get_revision_preview"
         },
         {
@@ -1405,7 +1421,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 407,
+          "line": 411,
           "symbol": "list_documents"
         },
         {
@@ -1575,7 +1591,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1112,
+          "line": 1116,
           "symbol": "list_visual_sources_route"
         },
         {
@@ -4513,7 +4529,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3332,
+          "line": 3337,
           "symbol": "list_model_cards"
         },
         {
@@ -4550,7 +4566,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3355,
+          "line": 3360,
           "symbol": "get_model_card"
         },
         {
@@ -4588,7 +4604,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1037,
+          "line": 1039,
           "symbol": "get_modeling_context"
         },
         {
@@ -4625,7 +4641,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1107,
+          "line": 1109,
           "symbol": "get_modeling_feature_regressors"
         },
         {
@@ -4805,7 +4821,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2174,
+          "line": 2176,
           "symbol": "get_modeling_job"
         },
         {
@@ -4843,7 +4859,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3603,
+          "line": 3608,
           "symbol": "panel_candidates"
         },
         {
@@ -4879,7 +4895,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1189,
+          "line": 1191,
           "symbol": "get_modeling_state"
         },
         {
@@ -5640,7 +5656,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1031,
+          "line": 1035,
           "symbol": "document_retention"
         },
         {
@@ -5674,7 +5690,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 757,
+          "line": 761,
           "symbol": "cancel_job"
         },
         {
@@ -5776,7 +5792,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 692,
+          "line": 696,
           "symbol": "request_print_rendition"
         },
         {
@@ -5845,7 +5861,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 873,
+          "line": 877,
           "symbol": "revision_approvals"
         },
         {
@@ -5879,7 +5895,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 924,
+          "line": 928,
           "symbol": "revision_publish"
         },
         {
@@ -5913,7 +5929,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 638,
+          "line": 642,
           "symbol": "request_rendition"
         },
         {
@@ -5947,7 +5963,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 957,
+          "line": 961,
           "symbol": "revision_retract"
         },
         {
@@ -5981,7 +5997,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1072,
+          "line": 1076,
           "symbol": "archive_run"
         },
         {
@@ -6015,7 +6031,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1088,
+          "line": 1092,
           "symbol": "archive_verify"
         },
         {
@@ -6049,7 +6065,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 454,
+          "line": 458,
           "symbol": "create_document_draft"
         },
         {
@@ -6189,7 +6205,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1056,
+          "line": 1060,
           "symbol": "retention_sweep"
         },
         {
@@ -6223,7 +6239,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1133,
+          "line": 1137,
           "symbol": "request_visual_export_route"
         },
         {
@@ -8546,7 +8562,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1401,
+          "line": 1403,
           "symbol": "run_modeling_backtest"
         },
         {
@@ -8590,7 +8606,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1618,
+          "line": 1620,
           "symbol": "decide_modeling_backtest_scope"
         },
         {
@@ -8630,7 +8646,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1289,
+          "line": 1291,
           "symbol": "bootstrap_modeling_baselines"
         },
         {
@@ -8673,7 +8689,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1213,
+          "line": 1215,
           "symbol": "generate_modeling_candidates"
         },
         {
@@ -8714,7 +8730,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3154,
+          "line": 3159,
           "symbol": "create_model_card"
         },
         {
@@ -8759,7 +8775,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2821,
+          "line": 2826,
           "symbol": "compare_modeling_candidates"
         },
         {
@@ -8800,7 +8816,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2760,
+          "line": 2765,
           "symbol": "diagnose_modeling_candidate"
         },
         {
@@ -8839,7 +8855,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2780,
+          "line": 2785,
           "symbol": "ensure_modeling_diagnostics"
         },
         {
@@ -9027,7 +9043,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2081,
+          "line": 2083,
           "symbol": "start_modeling_job"
         },
         {
@@ -9067,7 +9083,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2184,
+          "line": 2186,
           "symbol": "cancel_modeling_job"
         },
         {
@@ -9106,7 +9122,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2219,
+          "line": 2221,
           "symbol": "step_modeling_job"
         },
         {
@@ -9148,7 +9164,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3677,
+          "line": 3682,
           "symbol": "panel_backtest"
         },
         {
@@ -9187,7 +9203,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3735,
+          "line": 3740,
           "symbol": "panel_forecast"
         },
         {
@@ -9226,7 +9242,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3466,
+          "line": 3471,
           "symbol": "build_panel_passport_for_session"
         },
         {
@@ -9266,7 +9282,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3539,
+          "line": 3544,
           "symbol": "confirm_panel_entry_checkpoint"
         },
         {
@@ -9308,7 +9324,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3044,
+          "line": 3049,
           "symbol": "select_modeling_candidate"
         },
         {
@@ -9346,7 +9362,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3004,
+          "line": 3009,
           "symbol": "evaluate_modeling_selection"
         },
         {
@@ -9385,7 +9401,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1776,
+          "line": 1778,
           "symbol": "tune_modeling_candidate"
         },
         {
@@ -9428,7 +9444,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1658,
+          "line": 1660,
           "symbol": "skip_modeling_tuning"
         },
         {
@@ -9467,7 +9483,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1700,
+          "line": 1702,
           "symbol": "skip_all_pending_modeling_tuning"
         },
         {
@@ -9507,7 +9523,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2392,
+          "line": 2395,
           "symbol": "start_modeling_tuning"
         },
         {
@@ -9550,7 +9566,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2494,
+          "line": 2498,
           "symbol": "step_modeling_tuning"
         },
         {
@@ -9821,7 +9837,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1117,
+          "line": 1119,
           "symbol": "set_modeling_feature_regressors"
         },
         {
@@ -10263,6 +10279,127 @@
       "canonical_operation": "modeling.tune.step",
       "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
       "stage_namespace": "scientific"
+    },
+    {
+      "id": "execution:worker.authority",
+      "kind": "internal_operation",
+      "method": "DISPATCH",
+      "path": "execution:worker.authority",
+      "operation": "execution:worker.authority",
+      "evidence": [
+        {
+          "source": "apps/api/workers/authority.py",
+          "line": 337,
+          "symbol": "claim"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "persisted delegated Account/run/session worker claim",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.authority",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    {
+      "id": "execution:worker.publication",
+      "kind": "internal_operation",
+      "method": "DISPATCH",
+      "path": "execution:worker.publication",
+      "operation": "execution:worker.publication",
+      "evidence": [
+        {
+          "source": "apps/api/workers/authority.py",
+          "line": 530,
+          "symbol": "publish"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "atomic current-access result projection, settlement and audit",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.publication",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    {
+      "id": "execution:worker.reconciliation",
+      "kind": "internal_operation",
+      "method": "DISPATCH",
+      "path": "execution:worker.reconciliation",
+      "operation": "execution:worker.reconciliation",
+      "evidence": [
+        {
+          "source": "apps/api/workers/authority.py",
+          "line": 681,
+          "symbol": "reconcile"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "unknown worker outcomes and retained reservation holds",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.reconciliation",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    {
+      "id": "execution:worker.service",
+      "kind": "internal_operation",
+      "method": "DISPATCH",
+      "path": "execution:worker.service",
+      "operation": "execution:worker.service",
+      "evidence": [
+        {
+          "source": "apps/api/workers/services.py",
+          "line": 23,
+          "symbol": "verify"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "opaque worker service credential and allowed worker kind",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.service",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    {
+      "id": "execution:worker.subprocess",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "execution:worker.subprocess",
+      "operation": "execution:worker.subprocess",
+      "evidence": [
+        {
+          "source": "apps/api/workers/process.py",
+          "line": 86,
+          "symbol": "subprocess.Popen"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "bounded pure child process; no database or service credential",
+      "effects": [
+        "compute",
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.subprocess",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
     },
     {
       "id": "legacy:app.py:10025:button",
@@ -18077,7 +18214,7 @@
       "stage_namespace": "service"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:661",
+      "id": "worker:apps/api/document_render_worker.py:676",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "target",
@@ -18085,7 +18222,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 661,
+          "line": 676,
           "symbol": "target"
         }
       ],
@@ -18101,7 +18238,7 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:683",
+      "id": "worker:apps/api/document_render_worker.py:698",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "self._loop",
@@ -18109,7 +18246,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 683,
+          "line": 698,
           "symbol": "self._loop"
         }
       ],

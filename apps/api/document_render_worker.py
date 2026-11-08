@@ -237,7 +237,9 @@ class DocumentRenderWorker:
         max_attempts: Optional[int] = None,
         png_renderer: Optional[Any] = None,
         print_input_loader: Optional[Callable[[str], Any]] = None,
+        worker_authority: Optional[Any] = None,
     ) -> None:
+        self._worker_authority = worker_authority
         self._service = service
         self._snapshot_loader = snapshot_loader or load_snapshot_system
         # PGV-09: клиент контейнера PGV-08 и загрузчик печатного входа
@@ -343,6 +345,10 @@ class DocumentRenderWorker:
         """Просроченные lease (crash воркера) -> честный queued. attempt
         НЕ растёт: рендер из frozen снимка не является научной операцией
         (AC08). Чужие ЖИВЫЕ lease не трогаются (AC09)."""
+        from apps.api.workers.bridge import enabled
+        if enabled():
+            from apps.api.workers.render import reconcile
+            return reconcile(self)
         registry = self._delivery_service().registry
         now = datetime.now(timezone.utc)
         reclaimed = 0
@@ -384,6 +390,11 @@ class DocumentRenderWorker:
         for job in open_jobs:
             if job.state != JOB_QUEUED:
                 continue
+            from apps.api.workers.bridge import enabled
+            if enabled():
+                from apps.api.workers.render import queued
+                if not queued(self,job):
+                    continue
             if len(claims) >= self._batch_size:
                 break
             tenant = job.tenant_id or ""
@@ -399,6 +410,10 @@ class DocumentRenderWorker:
         """Захват -> рендер (timeout) -> stage+commit+rendition -> ready.
         Возвращает 'ready' | 'failed' | 'requeued'. PGV-09: печатные
         jobs (print_revision_id) идут через контейнер PGV-08."""
+        from apps.api.workers.bridge import enabled
+        if enabled():
+            from apps.api.workers.render import process
+            return process(self,job)
         if job.print_revision_id:
             return self._process_print_job(job)
         service = self._delivery_service()

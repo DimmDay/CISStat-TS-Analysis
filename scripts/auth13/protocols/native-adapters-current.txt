@@ -1,0 +1,96 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_actual_queued_render_revoke_cannot_start_or_reclaim (test_auth13_workers.WorkerSQLTests.test_actual_queued_render_revoke_cannot_start_or_reclaim) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_325a76160965497da6a2318720745f2c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+test_actual_sync_render_ready_and_settled_once (test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a961ebc2aedb4d5192caca171d6ff07d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+test_admission_job_projection_failure_rolls_back_reservation (test_auth13_workers.WorkerSQLTests.test_admission_job_projection_failure_rolls_back_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_e7e1549064054345bbc1fc1b3ea8743d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_audit_fault_rolls_back_publish_and_settle (test_auth13_workers.WorkerSQLTests.test_audit_fault_rolls_back_publish_and_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6ae8e32cb0764b2eb064e4b18f3faa0e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_queued_releases_and_no_start (test_auth13_workers.WorkerSQLTests.test_cancel_queued_releases_and_no_start) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7a4033dc0a0f44598370aa4736bb1533:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_running_fences_then_positive_stop_settles (test_auth13_workers.WorkerSQLTests.test_cancel_running_fences_then_positive_stop_settles) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_dd4ce476fa084642971b5edcfacec418:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_claim_race_single_fence (test_auth13_workers.WorkerSQLTests.test_claim_race_single_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_f4a9d9c27eda45749ef7b37a090462f8:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_duplicate_publication_single_charge_and_projection (test_auth13_workers.WorkerSQLTests.test_duplicate_publication_single_charge_and_projection) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_0b83d729c25a454ebaf7133cc478a7d4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_expired_running_lease_keeps_hold_until_positive_stop (test_auth13_workers.WorkerSQLTests.test_expired_running_lease_keeps_hold_until_positive_stop) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_b7d990c8403b4196a5545970625be239:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_foreign_job_context_and_session_pointer_deny (test_auth13_workers.WorkerSQLTests.test_foreign_job_context_and_session_pointer_deny) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_4566164da74548108aa46fae9a6d85b2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_legacy_settle_cannot_bypass_execution_fence (test_auth13_workers.WorkerSQLTests.test_legacy_settle_cannot_bypass_execution_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_ef1c87b47d974c459c222ed714f107fc:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_old_fence_cannot_publish_next_phase (test_auth13_workers.WorkerSQLTests.test_old_fence_cannot_publish_next_phase) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7cc043992f074bec9d364b11cd0543b6:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_partial_checkpoints_accrue_once (test_auth13_workers.WorkerSQLTests.test_partial_checkpoints_accrue_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c3806bb98794460e92e35f92b2116bc2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queue_logout_start_no_result_or_refund (test_auth13_workers.WorkerSQLTests.test_queue_logout_start_no_result_or_refund) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_0305cd2a9e50473c9ab2bdb248ff83ca:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_delivery_mirror_and_ack_atomic (test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_09dbdb067bab44c1a2170a742961838a:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_2ab8340db6dc442b8123fc96f28a9ef1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/4331ff71bc24/CISStat-AUTH13/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+/workspace/scratch/4331ff71bc24/CISStat-AUTH13/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+ok
+test_remote_unknown_proof_never_releases (test_auth13_workers.WorkerSQLTests.test_remote_unknown_proof_never_releases) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c5953413e2a243eaa8d435d66a552e60:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_running_revoke_before_publish_denies_output (test_auth13_workers.WorkerSQLTests.test_running_revoke_before_publish_denies_output) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_07b19820029c476282e7ff5f8b2b1e10:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_credential_kind_revoke_and_safe_storage (test_auth13_workers.WorkerSQLTests.test_service_credential_kind_revoke_and_safe_storage) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_cdcbe1b24ab34746975dfd0395f807b3:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_signed_spool_reconciles_restart_without_reexecuting (test_auth13_workers.WorkerSQLTests.test_signed_spool_reconciles_restart_without_reexecuting) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_bcf13f09a63646068944bd9cb8be1fbb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+
+======================================================================
+FAIL: test_actual_queued_render_revoke_cannot_start_or_reclaim (test_auth13_workers.WorkerSQLTests.test_actual_queued_render_revoke_cannot_start_or_reclaim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 261, in test_actual_queued_render_revoke_cannot_start_or_reclaim
+    revision=self.document_revision()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 244, in document_revision
+    self.assertEqual(response.status_code,200,response.text)
+AssertionError: 201 != 200 : {"document":{"created_at":"2026-11-08T14:26:38.833803+00:00","created_by":"e3586670-06ce-4dd9-923c-628e85b05a05","current_revision_id":null,"document_id":"doc-e18648a61d384e0e8ee62d0c45a80053","kind_code":"D01","revisions":[{"captured_at":"2026-11-08T17:26:38.809479+03:00","completeness_status":"complete","created_at":"2026-11-08T17:26:38.842456+03:00","created_by":"e3586670-06ce-4dd9-923c-628e85b05a05","document_id":"doc-e18648a61d384e0e8ee62d0c45a80053","lifecycle_state":"draft","renditions":[],"revision_id":"drev-846cb0dacdb34bd5a2a8e9b19fb1489b","run_id":"RUN-276E3994","snapshot_id":"rs-4dc0fd6401b840a09e86ba5cc5faecfc","version_no":1}],"run_id":"RUN-276E3994","title":"План исследования"},"revision":{"captured_at":"2026-11-08T17:26:38.809479+03:00","completeness_status":"complete","created_at":"2026-11-08T17:26:38.842456+03:00","created_by":"e3586670-06ce-4dd9-923c-628e85b05a05","document_id":"doc-e18648a61d384e0e8ee62d0c45a80053","lifecycle_state":"draft","renditions":[],"revision_id":"drev-846cb0dacdb34bd5a2a8e9b19fb1489b","run_id":"RUN-276E3994","snapshot_id":"rs-4dc0fd6401b840a09e86ba5cc5faecfc","version_no":1}}
+
+======================================================================
+FAIL: test_actual_sync_render_ready_and_settled_once (test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 248, in test_actual_sync_render_ready_and_settled_once
+    revision=self.document_revision()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 244, in document_revision
+    self.assertEqual(response.status_code,200,response.text)
+AssertionError: 201 != 200 : {"document":{"created_at":"2026-11-08T14:26:40.103164+00:00","created_by":"eb74fcb3-acf3-4c66-8dbe-bcdfb9d8e516","current_revision_id":null,"document_id":"doc-89d85c44306843f8ab16ce09b840ec8f","kind_code":"D01","revisions":[{"captured_at":"2026-11-08T17:26:40.076236+03:00","completeness_status":"complete","created_at":"2026-11-08T17:26:40.111948+03:00","created_by":"eb74fcb3-acf3-4c66-8dbe-bcdfb9d8e516","document_id":"doc-89d85c44306843f8ab16ce09b840ec8f","lifecycle_state":"draft","renditions":[],"revision_id":"drev-2fa4ca1dd4d7427383d581526a4106ff","run_id":"RUN-71EDADA8","snapshot_id":"rs-4c85c52566314827993c4944dc02132f","version_no":1}],"run_id":"RUN-71EDADA8","title":"План исследования"},"revision":{"captured_at":"2026-11-08T17:26:40.076236+03:00","completeness_status":"complete","created_at":"2026-11-08T17:26:40.111948+03:00","created_by":"eb74fcb3-acf3-4c66-8dbe-bcdfb9d8e516","document_id":"doc-89d85c44306843f8ab16ce09b840ec8f","lifecycle_state":"draft","renditions":[],"revision_id":"drev-2fa4ca1dd4d7427383d581526a4106ff","run_id":"RUN-71EDADA8","snapshot_id":"rs-4c85c52566314827993c4944dc02132f","version_no":1}}
+
+----------------------------------------------------------------------
+Ran 20 tests in 34.481s
+
+FAILED (failures=2)

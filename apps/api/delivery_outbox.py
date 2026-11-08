@@ -545,6 +545,10 @@ class PostgresDeliveryOutbox(DeliveryOutbox):
         self._dsn = dsn
 
     def _connect(self):
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         import psycopg
 
         return psycopg.connect(self._dsn)
@@ -761,7 +765,12 @@ def run_delivery_recovery(
     summary = {"due": len(due), "delivered": 0, "session_absent": 0, "failed": 0}
     for task in due:
         try:
-            if task.kind == "layer1_mirror":
+            from apps.api.workers.bridge import enabled
+            guarded = enabled()
+            if guarded:
+                from apps.api.workers.delivery import deliver
+                outcome = deliver(task,run_store,session_store,at=now_iso)
+            elif task.kind == "layer1_mirror":
                 outcome = deliver_layer1_mirror(task, session_store)
             else:
                 # Реестр видов ограничен проекцией (п.5): неизвестный
@@ -787,9 +796,10 @@ def run_delivery_recovery(
                 task.attempts + 1, task.max_attempts, safe_error(exc),
             )
             continue
-        run_store.delivery_outbox.mark_delivered(
-            task.operation_id, delivered_at=now_iso
-        )
+        if not guarded:
+            run_store.delivery_outbox.mark_delivered(
+                task.operation_id, delivered_at=now_iso
+            )
         if outcome == "session_absent":
             summary["session_absent"] += 1
             logger.info(

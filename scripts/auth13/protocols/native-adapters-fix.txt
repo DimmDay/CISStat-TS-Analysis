@@ -1,0 +1,19 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_real_delivery_mirror_and_ack_atomic (tests.integration.test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6c2f759b1f564b12936ba7de3438128b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (tests.integration.test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_53c8cd4ef174441a9c43681a4ecc0ca2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-489D826A operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+FAIL
+
+======================================================================
+FAIL: test_real_model_job_and_legacy_tuning_alias_publish_under_fence (tests.integration.test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 157, in test_real_model_job_and_legacy_tuning_alias_publish_under_fence
+    self.assertEqual(r.status_code,200,r.text)
+AssertionError: 404 != 200 : {"detail":"Не выбрана временная колонка ряда"}
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.447s
+
+FAILED (failures=1)

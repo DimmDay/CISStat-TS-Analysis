@@ -84,6 +84,11 @@ class PostgresAccessStore:
 
     @contextmanager
     def transaction(self, *, readonly=False):
+        from apps.api.workers.connection import access_connection
+        shared = access_connection(self)
+        if shared is not None:
+            yield AccessTransaction(shared)
+            return
         with self._connection(readonly) as conn:
             yield AccessTransaction(conn)
 

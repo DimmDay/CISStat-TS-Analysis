@@ -112,6 +112,13 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "worker_service_unavailable": "Служебная авторизация worker недоступна",
+    "worker_not_found": "Задание worker не найдено",
+    "worker_fenced": "Попытка задания больше не действительна",
+    "worker_uncertain": "Результат исполнения требует сверки; резерв удерживается",
+    "worker_expired": "Время исполнения задания истекло",
+    "worker_stopped": "Вычисление остановлено до публикации результата",
+    "worker_managed_reservation": "Резерв управляется worker coordinator",
     "budget_not_configured": "Ресурсный бюджет ещё не настроен",
     "budget_scope_inactive": "Ресурсная политика приостановлена или истекла",
     "budget_overflow": "Превышен диапазон ресурсного учёта",

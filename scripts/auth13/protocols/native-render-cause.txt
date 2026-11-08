@@ -1,0 +1,17 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_actual_sync_render_ready_and_settled_once (tests.integration.test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_22c391a1588f434d811def9228aae903:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Guarded render failed: 503: {'code': 'auth_authority_unavailable', 'message': 'Сервис аутентификации недоступен', 'request_id': ''}
+FAIL
+
+======================================================================
+FAIL: test_actual_sync_render_ready_and_settled_once (tests.integration.test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 269, in test_actual_sync_render_ready_and_settled_once
+    self.assertEqual(response.status_code,200,response.text)
+AssertionError: 500 != 200 : {"detail":{"code":"internal_error","message":"Внутренняя ошибка"}}
+
+----------------------------------------------------------------------
+Ran 1 test in 3.305s
+
+FAILED (failures=1)

@@ -1,0 +1,7 @@
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.367s
+
+OK

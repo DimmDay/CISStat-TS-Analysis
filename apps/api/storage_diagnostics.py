@@ -118,6 +118,7 @@ def safe_error(value: Any, limit: int = _SAFE_ERROR_LIMIT) -> str:
     else:
         text = str(value)
     text = re.sub(r"csk_[A-Za-z0-9_-]{43}", "<redacted-api-key>", text)
+    text = re.sub(r"cwk_[A-Za-z0-9_-]{43}", "<redacted-worker-key>", text)
     text = _URL_RE.sub("<redacted-url>", text)
     text = _BEARER_RE.sub("<redacted-credentials>", text)
     text = _KV_SECRET_RE.sub(lambda m: f"{m.group(1)}=<redacted>", text)

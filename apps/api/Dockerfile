@@ -125,6 +125,9 @@ RUN python -c "from pathlib import Path; assert Path('scripts/auth09/migrate_own
 # AUTH-10 explicit migration and interactive service-key operations.
 COPY scripts/auth12/migrate.py ./scripts/auth12/migrate.py
 COPY scripts/auth12/manage_budget.py ./scripts/auth12/manage_budget.py
+COPY scripts/auth13/migrate.py ./scripts/auth13/migrate.py
+COPY scripts/auth13/manage_workers.py ./scripts/auth13/manage_workers.py
+RUN python -c "from apps.api.workers.authority import WorkerAuthority; from apps.api.workers.process import run_bounded; from apps.api.workers.migrations import check_schema; print('auth13 worker/operator imports OK')"
 RUN python -c "from apps.api.billing.coordinator import ReservationCoordinator; from apps.api.billing.migrations import check_schema; from apps.api.billing.policy import BudgetPolicy; print('auth12 coordinator/operator imports OK')"
 COPY scripts/auth10/migrate.py ./scripts/auth10/migrate.py
 COPY scripts/auth10/manage_keys.py ./scripts/auth10/manage_keys.py

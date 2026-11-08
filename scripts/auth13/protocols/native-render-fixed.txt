@@ -1,0 +1,8 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_actual_sync_render_ready_and_settled_once (tests.integration.test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_e8d56783079c4e82a3e02aacc9a0281c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.747s
+
+OK

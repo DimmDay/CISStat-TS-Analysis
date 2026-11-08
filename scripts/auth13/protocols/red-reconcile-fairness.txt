@@ -1,0 +1,39 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch (tests.integration.test_auth13_workers.WorkerSQLTests.test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_46e61ad892b34f4f90bd659c0668514c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+test_render_service_reconciles_its_kind_without_modeling_authority (tests.integration.test_auth13_workers.WorkerSQLTests.test_render_service_reconciles_its_kind_without_modeling_authority) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c327075223914b16bce30dc3d0218d05:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ERROR
+
+======================================================================
+ERROR: test_render_service_reconciles_its_kind_without_modeling_authority (tests.integration.test_auth13_workers.WorkerSQLTests.test_render_service_reconciles_its_kind_without_modeling_authority)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 215, in test_render_service_reconciles_its_kind_without_modeling_authority
+    self.assertEqual(WorkerAuthority(self.access,key).reconcile()['pending_expired'],1)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/authentication/sessions.py", line 31, in call
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/workers/authority.py", line 696, in reconcile
+    self._service(c, hint["kind"])
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/workers/authority.py", line 49, in _service
+    return verify(c, self.key, kind, lock=lock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/workers/services.py", line 36, in verify
+    auth_error(503, "worker_service_unavailable")
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/authentication/context.py", line 184, in auth_error
+    raise AuthHTTPException(
+apps.api.authentication.context.AuthHTTPException: 503: {'code': 'worker_service_unavailable', 'message': 'Служебная авторизация worker недоступна', 'request_id': ''}
+
+======================================================================
+FAIL: test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch (tests.integration.test_auth13_workers.WorkerSQLTests.test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 205, in test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch
+    self.assertEqual(result['pending_expired'],1,result)
+AssertionError: 0 != 1 : {'pending_expired': 0, 'uncertain': 0, 'retained': 1, 'revoked': 0, 'confirmed_stopped': 0}
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.426s
+
+FAILED (failures=1, errors=1)

@@ -1,0 +1,4 @@
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 239, "inventory_api": 239, "registry_bindings": 243, "inventory_entries": 585, "added": [], "missing": []}
+AUTH-00 ROUTE CHECK: PASS -- новых маршрутов нет (21 api-маршрутов документации идентичны карте 5e0920e); 17 view PGV-11 идут через 2 классифицированных маршрута PGV-10; объединённый скоуп 55

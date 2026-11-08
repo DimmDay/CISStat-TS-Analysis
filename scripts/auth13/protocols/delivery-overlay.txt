@@ -1,0 +1,577 @@
+Локальные гейты (база a4f7444, AUTH-00 target=INDEX): auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest
+
+=== ГЕЙТ auth13 (auth13.yml contracts) — AUTH-13 bounded process / stop proof / worker contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth13*.py -v
+test_authority_revoke_stops_work_within_bound (test_auth13_workers.WorkerUnitTests.test_authority_revoke_stops_work_within_bound) ... ok
+test_child_never_inherits_authority_secrets (test_auth13_workers.WorkerUnitTests.test_child_never_inherits_authority_secrets) ... ok
+test_crash_has_positive_exit_evidence (test_auth13_workers.WorkerUnitTests.test_crash_has_positive_exit_evidence) ... ok
+test_joined_domain_failure_is_not_unknown_execution (test_auth13_workers.WorkerUnitTests.test_joined_domain_failure_is_not_unknown_execution) ... ok
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof) ... Worker execution stopped: worker_stop_unknown
+ok
+test_worker_service_key_is_redacted_in_operational_errors (test_auth13_workers.WorkerUnitTests.test_worker_service_key_is_redacted_in_operational_errors) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.200s
+
+OK
+--- auth13: PASS (1.3 c)
+
+=== ГЕЙТ auth12 (auth12.yml contracts) — AUTH-12 atomic ledger/reservation contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth12*.py -v
+test_admission_cannot_supply_budget_chain_or_price_float (test_auth12_ledger.LedgerContracts.test_admission_cannot_supply_budget_chain_or_price_float) ... ok
+test_cu_cannot_skip_concurrency (test_auth12_ledger.LedgerContracts.test_cu_cannot_skip_concurrency) ... ok
+test_digest_is_canonical_and_finite (test_auth12_ledger.LedgerContracts.test_digest_is_canonical_and_finite) ... ok
+test_money_is_bounded_integer_never_float_or_bool (test_auth12_ledger.LedgerContracts.test_money_is_bounded_integer_never_float_or_bool) ... ok
+test_month_is_explicit_utc_not_browser_clock (test_auth12_ledger.LedgerContracts.test_month_is_explicit_utc_not_browser_clock) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+--- auth12: PASS (0.2 c)
+
+=== ГЕЙТ auth11 (auth11.yml contracts) — AUTH-11 scientific admission / workload / execution fence
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth11*.py -v
+test_actual_engine_values_override_ingress_claims (test_auth11_scientific.ScientificUnitTests.test_actual_engine_values_override_ingress_claims) ... ok
+test_actual_period_inside_parameters_cannot_hide_behind_scalar (test_auth11_scientific.ScientificUnitTests.test_actual_period_inside_parameters_cannot_hide_behind_scalar) ... ok
+test_all_declared_scientific_routes_have_common_dependency (test_auth11_scientific.ScientificUnitTests.test_all_declared_scientific_routes_have_common_dependency) ... ok
+test_backtest_uses_saved_validation_and_actual_rows (test_auth11_scientific.ScientificUnitTests.test_backtest_uses_saved_validation_and_actual_rows) ... ok
+test_defaults_bounded_but_explicit_saved_validation_preserved (test_auth11_scientific.ScientificUnitTests.test_defaults_bounded_but_explicit_saved_validation_preserved) ... ok
+test_local_staging_hint_selects_current_auth_manifest (test_auth11_scientific.ScientificUnitTests.test_local_staging_hint_selects_current_auth_manifest) ... ok
+test_production_cannot_disable_guard (test_auth11_scientific.ScientificUnitTests.test_production_cannot_disable_guard) ... ok
+test_saved_forecast_does_not_trust_browser_model_id (test_auth11_scientific.ScientificUnitTests.test_saved_forecast_does_not_trust_browser_model_id) ... ok
+test_unknown_route_denied_before_invalid_json (test_auth11_scientific.ScientificUnitTests.test_unknown_route_denied_before_invalid_json) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.860s
+
+OK
+--- auth11: PASS (2.2 c)
+
+=== ГЕЙТ auth10 (auth10.yml contracts) — AUTH-10 durable API keys / scope / operator contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth10*.py -v
+test_cli_and_native_runner_require_authority (test_auth10_api_keys.APIKeyUnitTests.test_cli_and_native_runner_require_authority) ... ok
+test_malformed_token_denied (test_auth10_api_keys.APIKeyUnitTests.test_malformed_token_denied) ... ok
+test_no_admin_internal_or_global_rules_delegation (test_auth10_api_keys.APIKeyUnitTests.test_no_admin_internal_or_global_rules_delegation) ... ok
+test_protected_malformed_key_rejected_before_store_creation (test_auth10_api_keys.APIKeyUnitTests.test_protected_malformed_key_rejected_before_store_creation) ... ok
+test_public_scope_gate (test_auth10_api_keys.APIKeyUnitTests.test_public_scope_gate) ... ok
+test_random_hash_only_repr (test_auth10_api_keys.APIKeyUnitTests.test_random_hash_only_repr) ... ok
+test_required_mode_cannot_enable_env (test_auth10_api_keys.APIKeyUnitTests.test_required_mode_cannot_enable_env) ... ok
+test_rotate_version_strict (test_auth10_api_keys.APIKeyUnitTests.test_rotate_version_strict) ... ok
+test_scope_enum_matches_api_contract (test_auth10_api_keys.APIKeyUnitTests.test_scope_enum_matches_api_contract) ... ok
+test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction) ... ok
+test_strict_issue_body_scope_ceiling (test_auth10_api_keys.APIKeyUnitTests.test_strict_issue_body_scope_ceiling) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.095s
+
+OK
+--- auth10: PASS (0.4 c)
+
+=== ГЕЙТ auth09 (auth09.yml contracts) — AUTH-09 Object ownership / operator / legacy migration
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth09*.py -v
+test_admin_dev_cannot_bypass (test_auth09_ownership.AccountObjectTests.test_admin_dev_cannot_bypass) ... Run access: DENY run=RUN-A0900001 action=read subject=21589c69-6f4d-4b66-85df-71dcb5f8f6ab via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=21589c69-6f4d-4b66-85df-71dcb5f8f6ab via=auth_session reason=account_boundary
+ok
+test_foreign_tenant_legacy_admin_deny (test_auth09_ownership.AccountObjectTests.test_foreign_tenant_legacy_admin_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=c4ec2748-c1a8-426a-8bc6-389269470fa9 via=auth_session reason=foreign_tenant
+ok
+test_legacy_json_and_malformed_binding (test_auth09_ownership.AccountObjectTests.test_legacy_json_and_malformed_binding) ... Run access: DENY run=RUN-A0900001 action=read subject=b85d5cfc-fe59-43a5-95bd-4865d4c41098 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=b85d5cfc-fe59-43a5-95bd-4865d4c41098 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=b85d5cfc-fe59-43a5-95bd-4865d4c41098 via=auth_session reason=account_boundary
+ok
+test_member_not_author (test_auth09_ownership.AccountObjectTests.test_member_not_author) ... ok
+test_memory_immutable (test_auth09_ownership.AccountObjectTests.test_memory_immutable) ... ok
+test_memory_no_claim (test_auth09_ownership.AccountObjectTests.test_memory_no_claim) ... ok
+test_migration_parity_no_mass_backfill (test_auth09_ownership.AccountObjectTests.test_migration_parity_no_mass_backfill) ... ok
+test_operator_and_native_runner_fail_closed (test_auth09_ownership.AccountObjectTests.test_operator_and_native_runner_fail_closed) ... ok
+test_private_legacy_named_read_only (test_auth09_ownership.AccountObjectTests.test_private_legacy_named_read_only) ... Run access: DENY run=RUN-A0900001 action=read subject=d33a20fc-dcca-4600-b850-d7d4cafa6bed via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=de522637-4038-4552-8442-f6a265882d21 via=auth_session reason=legacy_migration_required
+ok
+test_roundtrip (test_auth09_ownership.AccountObjectTests.test_roundtrip) ... ok
+test_same_person_other_account_cannot_use_creator_cookie (test_auth09_ownership.AccountObjectTests.test_same_person_other_account_cannot_use_creator_cookie) ... Run access: DENY run=RUN-A0900001 action=read subject=369f8803-b7a3-4686-9f2e-c09086f4e0b2 via=auth_session reason=account_boundary
+ok
+test_surrogate_unknown_action_and_unauthenticated_deny (test_auth09_ownership.AccountObjectTests.test_surrogate_unknown_action_and_unauthenticated_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=e1a8822c-79c9-4eb8-89e4-b0d30ae6a4eb via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=e1a8822c-79c9-4eb8-89e4-b0d30ae6a4eb via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.093s
+
+OK
+--- auth09: PASS (0.8 c)
+
+=== ГЕЙТ auth08 (auth08.yml contracts) — AUTH-08 Account-effective capabilities / lifecycle / me
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth08*.py -v
+test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) ... /workspace/scratch/4331ff71bc24/AUTH13-delivery/tests/unit/test_auth08_entitlements.py:32: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back) ... ok
+test_downgrade_next_resolution_and_no_shared_mutable_caps (test_auth08_entitlements.AccountEntitlementTests.test_downgrade_next_resolution_and_no_shared_mutable_caps) ... ok
+test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed) ... ok
+test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission) ... ok
+test_legacy_adapter_is_explicitly_preserved (test_auth08_entitlements.AccountEntitlementTests.test_legacy_adapter_is_explicitly_preserved) ... ok
+test_lifecycle_actions_are_mandatory_and_operator_cli_in_image (test_auth08_entitlements.AccountEntitlementTests.test_lifecycle_actions_are_mandatory_and_operator_cli_in_image) ... ok
+test_no_dsn_runner_and_noninteractive_writer_fail (test_auth08_entitlements.AccountEntitlementTests.test_no_dsn_runner_and_noninteractive_writer_fail) ... ok
+test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner) ... ok
+test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.149s
+
+OK
+--- auth08: PASS (0.5 c)
+
+=== ГЕЙТ auth06 (auth06.yml contracts) — AUTH-06 proxy / CSRF / login UI
+    (установка зависимостей пропущена: --skip-install)
+    (установка зависимостей пропущена: --skip-install)
+    $ node node_modules/jest/bin/jest.js --ci --runInBand packages/ui/server/firstPartyProxy.test.ts packages/ui/lib/browserTransport.test.ts packages/ui/lib/authClient.test.ts packages/ui/lib/auth06SourceBoundary.test.ts packages/ui/components/LoginScreen.test.tsx packages/ui/context/AuthContext.test.tsx
+
+Test Suites: 6 passed, 6 total
+Tests:       27 passed, 27 total
+Snapshots:   0 total
+Time:        4.493 s
+Ran all test suites matching packages/ui/server/firstPartyProxy.test.ts|packages/ui/lib/browserTransport.test.ts|packages/ui/lib/authClient.test.ts|packages/ui/lib/auth06SourceBoundary.test.ts|packages/ui/components/LoginScreen.test.tsx|packages/ui/context/AuthContext.test.tsx.
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth06*.py -v
+test_cors_exact_allowlist (test_auth06_csrf.Auth06Contracts.test_cors_exact_allowlist) ... ok
+test_csrf_reuse_is_bound_to_sid (test_auth06_csrf.Auth06Contracts.test_csrf_reuse_is_bound_to_sid) ... ok
+test_me_contract_is_generated (test_auth06_csrf.Auth06Contracts.test_me_contract_is_generated) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.014s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth06/generate_proxy_routes.py --check
+{"status": "ok", "api_routes": 239}
+--- auth06: PASS (8.2 c)
+
+=== ГЕЙТ auth07 (auth07.yml contracts) — AUTH-07 admin named-session / MFA / logs + windows-паритет
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m pytest tests/api/test_auth07_admin_sessions.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/4331ff71bc24/auth11-venv/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/AUTH13-delivery
+configfile: pytest.ini
+plugins: cov-7.1.0, fugue-0.9.8, platformdirs-4.14.5, syrupy-6.1.1, xdist-3.8.0, typeguard-4.6.0, anyio-4.14.2
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 2.76s =========================
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/windows_parity.py tests/api/test_auth07_admin_sessions.py -v
+windows-parity: заблокированы модули (resource) -- import поднимает ImportError, как на windows-2025
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/4331ff71bc24/auth11-venv/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/4331ff71bc24/AUTH13-delivery
+configfile: pytest.ini
+plugins: cov-7.1.0, fugue-0.9.8, platformdirs-4.14.5, syrupy-6.1.1, xdist-3.8.0, typeguard-4.6.0, anyio-4.14.2
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 2.40s =========================
+--- auth07: PASS (9.0 c)
+
+=== ГЕЙТ auth05 (auth05.yml contracts) — AUTH-05 MFA / bootstrap / recovery contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth05*.py -v
+test_cli_requires_operator_terminal_and_dsn_gate_never_skips (test_auth05_mfa.MfaPrimitiveTests.test_cli_requires_operator_terminal_and_dsn_gate_never_skips) ... ok
+test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key) ... ok
+test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint) ... ok
+test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.333s
+
+OK
+--- auth05: PASS (0.6 c)
+
+=== ГЕЙТ auth04 (auth04.yml contracts) — AUTH-04 password / CSRF / route contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth04*.py -v
+test_argon2id_random_salt_and_verify (test_auth04_password_transport.PasswordTests.test_argon2id_random_salt_and_verify) ... ok
+test_invalid_unicode_is_policy_denial_not_server_error (test_auth04_password_transport.PasswordTests.test_invalid_unicode_is_policy_denial_not_server_error) ... ok
+test_long_password_not_truncated_or_stripped (test_auth04_password_transport.PasswordTests.test_long_password_not_truncated_or_stripped) ... ok
+test_malformed_hash_never_authenticates (test_auth04_password_transport.PasswordTests.test_malformed_hash_never_authenticates) ... ok
+test_no_dummy_password_is_a_real_account (test_auth04_password_transport.PasswordTests.test_no_dummy_password_is_a_real_account) ... ok
+test_policy_length_and_blocklist (test_auth04_password_transport.PasswordTests.test_policy_length_and_blocklist) ... ok
+test_duplicate_auth_cookie_is_invalid (test_auth04_password_transport.TransportTests.test_duplicate_auth_cookie_is_invalid) ... ok
+test_expired_csrf_and_future_issue_are_denied (test_auth04_password_transport.TransportTests.test_expired_csrf_and_future_issue_are_denied) ... ok
+test_invalid_opaque_tokens_rejected_before_db (test_auth04_password_transport.TransportTests.test_invalid_opaque_tokens_rejected_before_db) ... ok
+test_missing_cross_origin_and_cross_site_fail (test_auth04_password_transport.TransportTests.test_missing_cross_origin_and_cross_site_fail) ... ok
+test_no_default_key_or_wildcard_origin (test_auth04_password_transport.TransportTests.test_no_default_key_or_wildcard_origin) ... ok
+test_signature_cookie_header_and_session_binding (test_auth04_password_transport.TransportTests.test_signature_cookie_header_and_session_binding) ... ok
+test_valid_csrf_both_exact_origins (test_auth04_password_transport.TransportTests.test_valid_csrf_both_exact_origins) ... ok
+test_verifier_domain_separated_and_deterministic (test_auth04_password_transport.TransportTests.test_verifier_domain_separated_and_deterministic) ... ok
+test_actual_openapi_routes_equal_reviewed_inventory (test_auth04_routes.RouteTests.test_actual_openapi_routes_equal_reviewed_inventory) ... ok
+test_capabilities_cannot_authorize_any_auth_operation (test_auth04_routes.RouteTests.test_capabilities_cannot_authorize_any_auth_operation) ... ok
+test_no_header_identity_or_key_is_a_personal_session (test_auth04_routes.RouteTests.test_no_header_identity_or_key_is_a_personal_session) ... ok
+test_password_schema_is_write_only_and_has_no_default_secret (test_auth04_routes.RouteTests.test_password_schema_is_write_only_and_has_no_default_secret) ... ok
+test_safe_validation_and_origin_errors_on_actual_asgi (test_auth04_routes.RouteTests.test_safe_validation_and_origin_errors_on_actual_asgi) ... ok
+test_same_origin_browser_csrf_bootstrap_without_origin (test_auth04_routes.RouteTests.test_same_origin_browser_csrf_bootstrap_without_origin) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 2.090s
+
+OK
+--- auth04: PASS (2.5 c)
+
+=== ГЕЙТ auth03 (auth03.yml contracts) — AUTH-03 unified context / ASGI adapters (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth03*.py -v
+test_client_identity_account_role_mfa_headers_ignored (test_auth03_context.ContextTests.test_client_identity_account_role_mfa_headers_ignored) ... ok
+test_context_is_immutable (test_auth03_context.ContextTests.test_context_is_immutable) ... ok
+test_cookie_and_key_conflicting_server_owner_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_server_owner_rejected) ... ok
+test_cookie_and_key_conflicting_tenant_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_tenant_rejected) ... ok
+test_duplicate_key_headers_rejected (test_auth03_context.ContextTests.test_duplicate_key_headers_rejected) ... ok
+test_empty_present_key_is_not_absent (test_auth03_context.ContextTests.test_empty_present_key_is_not_absent) ... ok
+test_explicit_subject_rotation_is_stable (test_auth03_context.ContextTests.test_explicit_subject_rotation_is_stable) ... ok
+test_invalid_key_never_falls_back_to_owned_cookie (test_auth03_context.ContextTests.test_invalid_key_never_falls_back_to_owned_cookie) ... ok
+test_invalid_registry_subject_tenant_and_scopes_fail_closed (test_auth03_context.ContextTests.test_invalid_registry_subject_tenant_and_scopes_fail_closed) ... ok
+test_key_principal_and_subject_are_same_safe_projection (test_auth03_context.ContextTests.test_key_principal_and_subject_are_same_safe_projection) ... ok
+test_matching_research_pointer_cannot_add_scopes_or_role (test_auth03_context.ContextTests.test_matching_research_pointer_cannot_add_scopes_or_role) ... ok
+test_missing_key_is_401_on_actual_dependency (test_auth03_context.ContextTests.test_missing_key_is_401_on_actual_dependency) ... ok
+test_real_subject_projection_keeps_uniform_object_denial (test_auth03_context.ContextTests.test_real_subject_projection_keeps_uniform_object_denial) ... Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+ok
+test_require_api_key_returns_safe_string_and_revocation_rechecked (test_auth03_context.ContextTests.test_require_api_key_returns_safe_string_and_revocation_rechecked) ... ok
+test_restored_cookie_continuity_without_role (test_auth03_context.ContextTests.test_restored_cookie_continuity_without_role) ... ok
+test_scope_and_request_cache_do_not_cross_requests (test_auth03_context.ContextTests.test_scope_and_request_cache_do_not_cross_requests) ... ok
+test_scoped_mode_never_uses_research_surrogate (test_auth03_context.ContextTests.test_scoped_mode_never_uses_research_surrogate) ... ok
+test_surrogate_is_not_key_protected_principal (test_auth03_context.ContextTests.test_surrogate_is_not_key_protected_principal) ... ok
+test_unconfigured_registry_is_503_without_config_disclosure (test_auth03_context.ContextTests.test_unconfigured_registry_is_503_without_config_disclosure) ... ok
+test_unknown_auth_cookie_does_not_fall_back_to_research (test_auth03_context.ContextTests.test_unknown_auth_cookie_does_not_fall_back_to_research) ... ok
+test_unknown_pointer_does_not_replace_verified_key (test_auth03_context.ContextTests.test_unknown_pointer_does_not_replace_verified_key) ... ok
+test_authority_data_is_current_and_owner_not_admin (test_auth03_context.DurableContextTests.test_authority_data_is_current_and_owner_not_admin) ... ok
+test_db_and_schema_outages_have_safe_503 (test_auth03_context.DurableContextTests.test_db_and_schema_outages_have_safe_503) ... ok
+test_dev_uuid_env_binding_reads_db_role_tenant_not_env (test_auth03_context.DurableContextTests.test_dev_uuid_env_binding_reads_db_role_tenant_not_env) ... ok
+test_falsey_server_verifier_never_falls_back_to_env (test_auth03_context.DurableContextTests.test_falsey_server_verifier_never_falls_back_to_env) ... ok
+test_matching_credentials_keep_key_scopes_ceiling (test_auth03_context.DurableContextTests.test_matching_credentials_keep_key_scopes_ceiling) ... ok
+test_missing_binding_never_auto_selects_account (test_auth03_context.DurableContextTests.test_missing_binding_never_auto_selects_account) ... ok
+test_missing_suspended_closed_account_denied (test_auth03_context.DurableContextTests.test_missing_suspended_closed_account_denied) ... ok
+test_revoked_missing_membership_denied (test_auth03_context.DurableContextTests.test_revoked_missing_membership_denied) ... ok
+test_suspended_missing_identity_denied (test_auth03_context.DurableContextTests.test_suspended_missing_identity_denied) ... ok
+test_untrusted_verifier_failure_is_503_without_secret (test_auth03_context.DurableContextTests.test_untrusted_verifier_failure_is_503_without_secret) ... ok
+test_verified_browser_and_key_must_match_subject_and_account (test_auth03_context.DurableContextTests.test_verified_browser_and_key_must_match_subject_and_account) ... ok
+test_verifier_http_error_cannot_disclose_secrets (test_auth03_context.DurableContextTests.test_verifier_http_error_cannot_disclose_secrets) ... ok
+test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context) ... ok
+test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi) ... ok
+test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack) ... ok
+test_error_request_id_matches_telemetry_response_header (test_auth03_http.HTTPTests.test_error_request_id_matches_telemetry_response_header) ... ok
+test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie) ... ok
+test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound) ... ok
+test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source) ... ok
+test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage) ... ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 0.423s
+
+OK
+--- auth03: PASS (0.8 c)
+
+=== ГЕЙТ auth02 (auth02.yml contracts) — AUTH-02 storage unit contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth02_storage.py -v
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ok
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.095s
+
+OK
+--- auth02: PASS (0.2 c)
+
+=== ГЕЙТ auth01 (auth01.yml) — AUTH-01 registry / OpenAPI / generated TS parity
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth01_registry.py -v
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... /workspace/scratch/4331ff71bc24/AUTH13-delivery/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.438s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth01/windows_locale_check.py
+AUTH-01 Path.read_text default encoding=cp1251
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.411s
+
+OK
+AUTH-01 Path.read_text default encoding=cp1252
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.261s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth01/generate.py --check
+AUTH-01 generated OpenAPI/TS parity OK
+--- auth01: PASS (1.7 c)
+
+=== ГЕЙТ auth00 (auth00.yml) — AUTH-00 inventory + Git snapshot parity (default INDEX)
+    AUTH-00 full log: /workspace/scratch/4331ff71bc24/AUTH13-delivery/logs/local_gates/auth00.log
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (545 discovery surfaces; full reviewed inventory/source parity)
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+test_auth06_migration_manifest_contains_only_application_sources (test_auth00_inventory.InventoryTests.test_auth06_migration_manifest_contains_only_application_sources) ... ok
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... ok
+test_changed_next_proxy_requires_review (test_auth00_inventory.InventoryTests.test_changed_next_proxy_requires_review) ... ok
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_foreign_asgi_root_requires_review (test_auth00_inventory.InventoryTests.test_foreign_asgi_root_requires_review) ... ok
+test_foreign_http_server_requires_review (test_auth00_inventory.InventoryTests.test_foreign_http_server_requires_review) ... ok
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... ok
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_installed_typescript_does_not_change_repository_inventory (test_auth00_inventory.InventoryTests.test_installed_typescript_does_not_change_repository_inventory) ... ok
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... ok
+test_manual_extra_cannot_invent_an_http_route (test_auth00_inventory.InventoryTests.test_manual_extra_cannot_invent_an_http_route) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_policy_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_policy_threat_reference_must_exist) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ok
+test_review_cannot_overwrite_a_discovered_path (test_auth00_inventory.InventoryTests.test_review_cannot_overwrite_a_discovered_path) ... ok
+test_reviewed_application_source_change_still_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_reviewed_application_source_change_still_invalidates_snapshot) ... ok
+test_reviewed_dependency_sources_require_catalogue_correction (test_auth00_inventory.InventoryTests.test_reviewed_dependency_sources_require_catalogue_correction) ... ok
+test_reviewed_password_blocklist_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_password_blocklist_fingerprint_is_checkout_portable) ... ok
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+test_shared_next_proxy_discovery (test_auth00_inventory.InventoryTests.test_shared_next_proxy_discovery) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... ok
+test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ok
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ok
+test_summary_repeats_snapshot_failure_and_manual_staging_hint (test_auth00_local_output.LocalOutputTests.test_summary_repeats_snapshot_failure_and_manual_staging_hint) ... ok
+test_crlf_worktree_matches_lf_index (test_auth00_precommit.PrecommitTests.test_crlf_worktree_matches_lf_index) ... ok
+test_empty_index_is_not_pass (test_auth00_precommit.PrecommitTests.test_empty_index_is_not_pass) ... ok
+test_head_does_not_silently_fall_back_to_index (test_auth00_precommit.PrecommitTests.test_head_does_not_silently_fall_back_to_index) ... ok
+test_ignored_page_still_blocks_pass (test_auth00_precommit.PrecommitTests.test_ignored_page_still_blocks_pass) ... ok
+test_local_gate_target_is_explicit_and_does_not_mutate_commands (test_auth00_precommit.PrecommitTests.test_local_gate_target_is_explicit_and_does_not_mutate_commands) ... ok
+test_partially_staged_source_with_old_inventory_fails (test_auth00_precommit.PrecommitTests.test_partially_staged_source_with_old_inventory_fails) ... ok
+test_staged_before_first_commit_passes_without_changing_index (test_auth00_precommit.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... ok
+test_unstaged_guard_change_with_same_routes_fails (test_auth00_precommit.PrecommitTests.test_unstaged_guard_change_with_same_routes_fails) ... ok
+test_untracked_reviewed_helper_cannot_be_left_out (test_auth00_precommit.PrecommitTests.test_untracked_reviewed_helper_cannot_be_left_out) ... ok
+
+----------------------------------------------------------------------
+Ran 49 tests in 33.199s
+
+OK
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 239, "framework": 8, "internal_operation": 21, "legacy_authority": 1, "legacy_widget": 250, "page": 34, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 12, "task_alias": 4, "transport": 2, "worker": 7}, "entries": 585}
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (545 discovery surfaces; full reviewed inventory/source parity)
+--- auth00: PASS (56.2 c)
+
+=== ГЕЙТ rules (test_rules.yml) — Validation rules sanity check
+    $ /workspace/scratch/4331ff71bc24/AUTH13-delivery/../auth11-venv/bin/python -c from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']
+is_valid = False
+--- rules: PASS (0.7 c)
+
+=== ГЕЙТ jest (jest.yml) — All Jest tests + renderer build + typecheck:all
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run test:ci
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:ci
+> jest --ci --maxWorkers=2 --json --outputFile=jest-results.json
+
+
+Test Suites: 1 skipped, 254 passed, 254 of 255 total
+Tests:       2 skipped, 2837 passed, 2839 total
+Snapshots:   0 total
+Time:        97.716 s
+Ran all test suites.
+Test results written to: jest-results.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run build --workspace=@cisstat/print-renderer
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run typecheck:all
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:all
+> npm run typecheck:clean && npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:clean
+> node -e "const f=require('fs');['apps/embedded/.next','apps/standalone/.next'].forEach(p=>f.rmSync(p,{recursive:true,force:true}))"
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-embedded@0.1.0 typecheck
+> tsc --noEmit
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-standalone@0.1.0 typecheck
+> tsc --noEmit
+
+--- jest: PASS (119.5 c)
+
+=== СВОДКА ===
+  PASS  auth13      1.3 c
+  PASS  auth12      0.2 c
+  PASS  auth11      2.2 c
+  PASS  auth10      0.4 c
+  PASS  auth09      0.8 c
+  PASS  auth08      0.5 c
+  PASS  auth06      8.2 c
+  PASS  auth07      9.0 c
+  PASS  auth05      0.6 c
+  PASS  auth04      2.5 c
+  PASS  auth03      0.8 c
+  PASS  auth02      0.2 c
+  PASS  auth01      1.7 c
+  PASS  auth00     56.2 c
+  PASS  rules       0.7 c
+  PASS  jest      119.5 c
+
+ИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: auth02, auth03, auth04, auth05, auth06, auth08, auth09, auth10, auth11, auth12, auth13 (нужны соответствующие --with-authXX-postgres; native CI отдельно)

@@ -424,6 +424,12 @@ class ReservationCoordinator:
         ).fetchone()
         if not row:
             auth_error(404, "reservation_not_found")
+        # AUTH-13 managed reservations require the execution generation/service gate.
+        present=c.execute("SELECT to_regclass('auth_worker_jobs') AS present").fetchone()
+        if present['present'] and c.execute("SELECT 1 FROM auth_worker_jobs WHERE reservation_id=%s",(row['reservation_id'],)).fetchone():
+            from apps.api.workers.authority import MANAGED_WRITE
+            if not MANAGED_WRITE.get():
+                auth_error(409, "worker_managed_reservation")
         return row
 
     @staticmethod

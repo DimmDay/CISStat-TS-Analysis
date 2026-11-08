@@ -1,0 +1,84 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_admission_job_projection_failure_rolls_back_reservation (test_auth13_workers.WorkerSQLTests.test_admission_job_projection_failure_rolls_back_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_474a2875271a4416b5de5348a31629e0:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_audit_fault_rolls_back_publish_and_settle (test_auth13_workers.WorkerSQLTests.test_audit_fault_rolls_back_publish_and_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_0de52f0592cc46a08507cb09c6c115fb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_queued_releases_and_no_start (test_auth13_workers.WorkerSQLTests.test_cancel_queued_releases_and_no_start) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_9283816cca2e422e878d9dd03f1a5e8b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_running_fences_then_positive_stop_settles (test_auth13_workers.WorkerSQLTests.test_cancel_running_fences_then_positive_stop_settles) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_75038e8da4f446bfba4b292aabfb2ced:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_claim_race_single_fence (test_auth13_workers.WorkerSQLTests.test_claim_race_single_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c83cfa33d069400eaf4caae09f53d9b4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_duplicate_publication_single_charge_and_projection (test_auth13_workers.WorkerSQLTests.test_duplicate_publication_single_charge_and_projection) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_913ef7f1ffa64cf89e5896b357595155:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_expired_running_lease_keeps_hold_until_positive_stop (test_auth13_workers.WorkerSQLTests.test_expired_running_lease_keeps_hold_until_positive_stop) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_bfa5183c486a4c0381d9ec255a41e021:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_foreign_job_context_and_session_pointer_deny (test_auth13_workers.WorkerSQLTests.test_foreign_job_context_and_session_pointer_deny) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7376b219b1b1486db38e98baa46c7d3e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_legacy_settle_cannot_bypass_execution_fence (test_auth13_workers.WorkerSQLTests.test_legacy_settle_cannot_bypass_execution_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_e1afb1734a4845b7b86908171ca139b7:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_old_fence_cannot_publish_next_phase (test_auth13_workers.WorkerSQLTests.test_old_fence_cannot_publish_next_phase) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_bf064e5fbba64d71b40155879249ce9e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_partial_checkpoints_accrue_once (test_auth13_workers.WorkerSQLTests.test_partial_checkpoints_accrue_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_d3aed1c0b0ff4bab92417a5e5075a135:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queue_logout_start_no_result_or_refund (test_auth13_workers.WorkerSQLTests.test_queue_logout_start_no_result_or_refund) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_444b5432428e487384c7731b8747b076:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_delivery_mirror_and_ack_atomic (test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a5605e903235473cac89ff5a7ffed784:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_dd763d13db064e859ad44df97ec53748:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/CISStat-AUTH13/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-D7CCD5B5 operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-b9ec7b7c-369c-4787-90a4-6bbb8a871c1c error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/4331ff71bc24/CISStat-AUTH13/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+FAIL
+test_remote_unknown_proof_never_releases (test_auth13_workers.WorkerSQLTests.test_remote_unknown_proof_never_releases) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_31e57dcb6fd04a258047f6bb8ea206ad:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_running_revoke_before_publish_denies_output (test_auth13_workers.WorkerSQLTests.test_running_revoke_before_publish_denies_output) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_1e7e50bd6558405aaf1ca0d3186bb9f3:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_credential_kind_revoke_and_safe_storage (test_auth13_workers.WorkerSQLTests.test_service_credential_kind_revoke_and_safe_storage) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_a1f5b450584b45558dc934878f9a76f1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_signed_spool_reconciles_restart_without_reexecuting (test_auth13_workers.WorkerSQLTests.test_signed_spool_reconciles_restart_without_reexecuting) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_4e8c571668364509a68e14835efa1f31:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+
+======================================================================
+FAIL: test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 176, in test_real_model_job_and_legacy_tuning_alias_publish_under_fence
+    self.assertEqual(completed.status_code,200,completed.text)
+AssertionError: 409 != 200 : {"detail":{"code":"worker_stopped","message":"Вычисление остановлено до публикации результата","request_id":""}}
+
+----------------------------------------------------------------------
+Ran 18 tests in 29.527s
+
+FAILED (failures=1)

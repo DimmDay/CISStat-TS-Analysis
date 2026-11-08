@@ -1,0 +1,32 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_audit_fault_rolls_back_publish_and_settle (test_auth13_workers.WorkerSQLTests.test_audit_fault_rolls_back_publish_and_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_d67ebff871744183be77b7559d9abdbe:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_queued_releases_and_no_start (test_auth13_workers.WorkerSQLTests.test_cancel_queued_releases_and_no_start) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c65c9fb6e75d4b548de9bb0a6f0350a0:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_running_fences_then_positive_stop_settles (test_auth13_workers.WorkerSQLTests.test_cancel_running_fences_then_positive_stop_settles) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_65a4066a7e90415e9c442e370ab4430b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_claim_race_single_fence (test_auth13_workers.WorkerSQLTests.test_claim_race_single_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_fa4c4e9cc500451b8abacf5c0deb0bab:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_duplicate_publication_single_charge_and_projection (test_auth13_workers.WorkerSQLTests.test_duplicate_publication_single_charge_and_projection) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_d36cc78c3eb1497c938545ce6810f4a9:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_foreign_job_context_and_session_pointer_deny (test_auth13_workers.WorkerSQLTests.test_foreign_job_context_and_session_pointer_deny) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_59d1d72a7f764796bce0eb0db532f8e7:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_legacy_settle_cannot_bypass_execution_fence (test_auth13_workers.WorkerSQLTests.test_legacy_settle_cannot_bypass_execution_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_97d6a960636b4724a3d2f500088e8048:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_old_fence_cannot_publish_next_phase (test_auth13_workers.WorkerSQLTests.test_old_fence_cannot_publish_next_phase) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_337c08f153f54511b2217a61f856bdd5:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_partial_checkpoints_accrue_once (test_auth13_workers.WorkerSQLTests.test_partial_checkpoints_accrue_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_5ba0a2933a984795b984d1a1a6c299d9:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queue_logout_start_no_result_or_refund (test_auth13_workers.WorkerSQLTests.test_queue_logout_start_no_result_or_refund) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_2d9bb352cf044b8f8a62f367f7223d82:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_remote_unknown_proof_never_releases (test_auth13_workers.WorkerSQLTests.test_remote_unknown_proof_never_releases) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_bfb9964fc32e4b9a8cfabf7c0f28e643:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_running_revoke_before_publish_denies_output (test_auth13_workers.WorkerSQLTests.test_running_revoke_before_publish_denies_output) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_458e6b4ea08f484da60abf141d765aff:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_credential_kind_revoke_and_safe_storage (test_auth13_workers.WorkerSQLTests.test_service_credential_kind_revoke_and_safe_storage) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_2f8f47a1c5b74c2e93197b394c52f06f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 18.025s
+
+OK

@@ -921,6 +921,10 @@ class PostgresDocumentRegistry(DocumentRegistry):
         return cls(dsn)
 
     def _connect(self):
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         import psycopg
 
         conn = psycopg.connect(self._dsn)
@@ -2011,6 +2015,10 @@ class DocumentDeliveryService:
 
     # -- renditions/jobs (§10.3/§11/§17, AC09) --
 
+    def _register_worker_job(self,subject,job):
+        from apps.api.workers.bridge import register_render
+        return register_render(self.registry,job,subject)
+
     def request_rendition(
         self,
         snapshot: ReportSnapshot,
@@ -2147,8 +2155,8 @@ class DocumentDeliveryService:
                 "повторите позднее"
             )
         attempt = len(prior_jobs) + 1
-        job = self.registry.register_job(
-            DocumentJobRecord(
+        job = self._register_worker_job(
+            subject, DocumentJobRecord(
                 job_id=new_job_id(),
                 run_id=run_id,
                 snapshot_id=snapshot.snapshot_id,
@@ -2168,6 +2176,10 @@ class DocumentDeliveryService:
             # появится после stage+commit worker'ом (AC08: никаких
             # broken ready refs по построению).
             return job, None
+        from apps.api.workers.bridge import enabled
+        if enabled():
+            from apps.api.workers.render import sync
+            return sync(self,job,snapshot)
         job = self.registry.update_job(
             replace_dataclass(job, state=JOB_RENDERING)
         )
@@ -2281,8 +2293,8 @@ class DocumentDeliveryService:
                 "повторите позднее"
             )
         attempt = len(prior_jobs) + 1
-        job = self.registry.register_job(
-            DocumentJobRecord(
+        job = self._register_worker_job(
+            subject, DocumentJobRecord(
                 job_id=new_job_id(),
                 run_id=revision.run_id,
                 snapshot_id="",
@@ -2582,6 +2594,15 @@ class DocumentDeliveryService:
         job, _rendition = self.get_job(
             job_id, subject, session_id=session_id
         )
+        from apps.api.workers.bridge import enabled
+        if enabled() and job.state in (JOB_QUEUED, JOB_RENDERING):
+            from apps.api.workers.bridge import authority,ctx
+            auth=authority();row=auth.find('render',job.job_id)
+            if not row:
+                raise DocumentAccessDenied('Задание не имеет действующей делегации')
+            value=replace_dataclass(job,state=JOB_CANCELLED)
+            auth.cancel(ctx(),row['worker_id'],publisher=lambda c:self.registry.update_job(value))
+            return value
         if job.state in (JOB_QUEUED, JOB_RENDERING):
             job = self.registry.update_job(
                 replace_dataclass(job, state=JOB_CANCELLED)

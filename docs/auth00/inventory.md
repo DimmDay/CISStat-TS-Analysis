@@ -13,7 +13,7 @@
 |---|---:|
 | api | 239 |
 | framework | 8 |
-| internal_operation | 17 |
+| internal_operation | 21 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 34 |
@@ -23,7 +23,7 @@
 | storage | 12 |
 | task_alias | 4 |
 | transport | 2 |
-| worker | 6 |
+| worker | 7 |
 
 ## Классификации
 
@@ -58,7 +58,7 @@
 | ui.admin | AUTH-07: common admin UI in both shells (/admin, /admin/progress, /admin/logs; AdminGate + session-based dashboards, no browser API-key); named session checked via /api/v1/auth/me, final role/MFA enforcement server-side. | Named ADMIN+MFA and common admin UI in both shells; OWNER/analyst cannot elevate by URL. | AUTH-05, AUTH-06, AUTH-07 |
 | ui.login | AUTH-06 shared personal login/MFA/recovery and safe generated me DTO; no token URL/storage, exact local return_to, top-level login for framed context. API authority mandatory. | Named admin pages and account lifecycle remain AUTH-07/08. | AUTH-07, AUTH-08 |
 | ui.page | Page component/navigation/redirect, no common personal AuthN gate; UI is not an authority. | UI handles auth/denial/account switch; backend independently enforces operation policy. | AUTH-01, AUTH-06, AUTH-11 |
-| worker.authority | In-process worker trusts queued durable work/admission; not a browser-authenticated request. | Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication. | AUTH-03, AUTH-12, AUTH-13, AUTH-16, AUTH-20 |
+| worker.authority | AUTH-13 protected modeling aliases/render/delivery use durable service credentials, current delegated authority, finite subprocess/lease/deadline, monotonically increasing fences, transactional projection/settle/audit and positive-stop reconciliation. Unknown remote/process outcomes retain holds. Legacy advisory profile remains separate; priced CU awaits AUTH-14. | Service credential/context where remote; recheck account/grant/revoke/reservation/deadline, fence settle/publication. | AUTH-03, AUTH-12, AUTH-13, AUTH-16, AUTH-20 |
 
 ## api
 
@@ -70,21 +70,21 @@
 | api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
 | api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
 | api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
-| api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:555 |
-| api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:744 |
+| api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:559 |
+| api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:748 |
 | api:GET:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:list_org_profiles / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:60 |
-| api:GET:/v1/documentation/renditions/{rendition_id}/content | apps.api.routers.documentation:get_rendition_content / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:776 |
+| api:GET:/v1/documentation/renditions/{rendition_id}/content | apps.api.routers.documentation:get_rendition_content / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:780 |
 | api:GET:/v1/documentation/renditions/{rendition_id}/validations | apps.api.routers.doc_profiles:list_rendition_validations / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:180 |
-| api:GET:/v1/documentation/revisions/{revision_id} | apps.api.routers.documentation:get_revision / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:577 |
-| api:GET:/v1/documentation/revisions/{revision_id}/diff | apps.api.routers.documentation:revision_diff / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1008 |
-| api:GET:/v1/documentation/revisions/{revision_id}/lifecycle | apps.api.routers.documentation:revision_lifecycle / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:989 |
-| api:GET:/v1/documentation/revisions/{revision_id}/preview | apps.api.routers.documentation:get_revision_preview / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:600 |
-| api:GET:/v1/documentation/runs/{run_id}/documents | apps.api.routers.documentation:list_documents / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:407 |
+| api:GET:/v1/documentation/revisions/{revision_id} | apps.api.routers.documentation:get_revision / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:581 |
+| api:GET:/v1/documentation/revisions/{revision_id}/diff | apps.api.routers.documentation:revision_diff / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1012 |
+| api:GET:/v1/documentation/revisions/{revision_id}/lifecycle | apps.api.routers.documentation:revision_lifecycle / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:993 |
+| api:GET:/v1/documentation/revisions/{revision_id}/preview | apps.api.routers.documentation:get_revision_preview / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:604 |
+| api:GET:/v1/documentation/runs/{run_id}/documents | apps.api.routers.documentation:list_documents / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:411 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/actuals | apps.api.routers.monitoring:list_actuals / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:145 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons | apps.api.routers.monitoring:list_comparisons / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:189 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id} | apps.api.routers.monitoring:get_comparison / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:203 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions | apps.api.routers.monitoring:list_decisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:246 |
-| api:GET:/v1/documentation/runs/{run_id}/visual-sources | apps.api.routers.documentation:list_visual_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1112 |
+| api:GET:/v1/documentation/runs/{run_id}/visual-sources | apps.api.routers.documentation:list_visual_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1116 |
 | api:GET:/v1/internal/rules/load/{template_id} | apps.api.routers.internal:load_rules_template / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:113 |
 | api:GET:/v1/internal/rules/templates | apps.api.routers.internal:get_rules_templates / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:108 |
 | api:GET:/v1/knowledge/articles | apps.api.knowledge.router:get_articles / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:143 |
@@ -162,17 +162,17 @@
 | api:GET:/v1/session/dataset/validation-check-modes | apps.api.routers.session:get_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2155 |
 | api:GET:/v1/session/dataset/validation-rules | apps.api.routers.session:get_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2144 |
 | api:GET:/v1/session/date-column | apps.api.routers.session:get_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5758 |
-| api:GET:/v1/session/modeling/card | apps.api.routers.modeling_session:list_model_cards / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3332 |
-| api:GET:/v1/session/modeling/card/{card_id} | apps.api.routers.modeling_session:get_model_card / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3355 |
-| api:GET:/v1/session/modeling/context | apps.api.routers.modeling_session:get_modeling_context / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1037 |
-| api:GET:/v1/session/modeling/feature-regressors | apps.api.routers.modeling_session:get_modeling_feature_regressors / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1107 |
+| api:GET:/v1/session/modeling/card | apps.api.routers.modeling_session:list_model_cards / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3337 |
+| api:GET:/v1/session/modeling/card/{card_id} | apps.api.routers.modeling_session:get_model_card / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3360 |
+| api:GET:/v1/session/modeling/context | apps.api.routers.modeling_session:get_modeling_context / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1039 |
+| api:GET:/v1/session/modeling/feature-regressors | apps.api.routers.modeling_session:get_modeling_feature_regressors / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1109 |
 | api:GET:/v1/session/modeling/forecast | apps.api.routers.forecasting_session:list_forecasts / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:376 |
 | api:GET:/v1/session/modeling/forecast/{forecast_id} | apps.api.routers.forecasting_session:get_forecast / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:384 |
 | api:GET:/v1/session/modeling/forecast/{forecast_id}/export.csv | apps.api.routers.forecasting_session:export_forecast_csv / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:429 |
 | api:GET:/v1/session/modeling/forecast/{forecast_id}/export.json | apps.api.routers.forecasting_session:export_forecast_json / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:442 |
-| api:GET:/v1/session/modeling/jobs/{job_id} | apps.api.routers.modeling_session:get_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2174 |
-| api:GET:/v1/session/modeling/panel/candidates | apps.api.routers.modeling_session:panel_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3603 |
-| api:GET:/v1/session/modeling/state | apps.api.routers.modeling_session:get_modeling_state / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1189 |
+| api:GET:/v1/session/modeling/jobs/{job_id} | apps.api.routers.modeling_session:get_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2176 |
+| api:GET:/v1/session/modeling/panel/candidates | apps.api.routers.modeling_session:panel_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3608 |
+| api:GET:/v1/session/modeling/state | apps.api.routers.modeling_session:get_modeling_state / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1191 |
 | api:GET:/v1/session/target-column | apps.api.routers.session:get_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5605 |
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | scientific.operation / session Model Card and fold importance | apps/api/routers/tasks_session.py:222 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:167 |
@@ -191,24 +191,24 @@
 | api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:235 |
 | api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:244 |
 | api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:317 |
-| api:POST:/v1/documentation/documents/{document_id}/retention | apps.api.routers.documentation:document_retention / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1031 |
-| api:POST:/v1/documentation/jobs/{job_id}/cancel | apps.api.routers.documentation:cancel_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:757 |
+| api:POST:/v1/documentation/documents/{document_id}/retention | apps.api.routers.documentation:document_retention / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1035 |
+| api:POST:/v1/documentation/jobs/{job_id}/cancel | apps.api.routers.documentation:cancel_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:761 |
 | api:POST:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:create_org_profile / service:documentation | profile.policy / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:86 |
 | api:POST:/v1/documentation/org-profiles/{profile_id}/retire | apps.api.routers.doc_profiles:retire_org_profile / service:documentation | profile.policy / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:134 |
-| api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions | apps.api.routers.documentation:request_print_rendition / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:692 |
+| api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions | apps.api.routers.documentation:request_print_rendition / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:696 |
 | api:POST:/v1/documentation/renditions/{rendition_id}/verify-signature | apps.api.routers.doc_profiles:verify_rendition_signature / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:220 |
-| api:POST:/v1/documentation/revisions/{revision_id}/approvals | apps.api.routers.documentation:revision_approvals / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:873 |
-| api:POST:/v1/documentation/revisions/{revision_id}/publish | apps.api.routers.documentation:revision_publish / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:924 |
-| api:POST:/v1/documentation/revisions/{revision_id}/renditions | apps.api.routers.documentation:request_rendition / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:638 |
-| api:POST:/v1/documentation/revisions/{revision_id}/retract | apps.api.routers.documentation:revision_retract / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:957 |
-| api:POST:/v1/documentation/runs/{run_id}/archive | apps.api.routers.documentation:archive_run / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1072 |
-| api:POST:/v1/documentation/runs/{run_id}/archive/verify | apps.api.routers.documentation:archive_verify / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1088 |
-| api:POST:/v1/documentation/runs/{run_id}/documents | apps.api.routers.documentation:create_document_draft / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:454 |
+| api:POST:/v1/documentation/revisions/{revision_id}/approvals | apps.api.routers.documentation:revision_approvals / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:877 |
+| api:POST:/v1/documentation/revisions/{revision_id}/publish | apps.api.routers.documentation:revision_publish / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:928 |
+| api:POST:/v1/documentation/revisions/{revision_id}/renditions | apps.api.routers.documentation:request_rendition / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:642 |
+| api:POST:/v1/documentation/revisions/{revision_id}/retract | apps.api.routers.documentation:revision_retract / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:961 |
+| api:POST:/v1/documentation/runs/{run_id}/archive | apps.api.routers.documentation:archive_run / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1076 |
+| api:POST:/v1/documentation/runs/{run_id}/archive/verify | apps.api.routers.documentation:archive_verify / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1092 |
+| api:POST:/v1/documentation/runs/{run_id}/documents | apps.api.routers.documentation:create_document_draft / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:458 |
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/actuals | apps.api.routers.monitoring:register_actuals / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:116 |
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons | apps.api.routers.monitoring:create_comparison / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:162 |
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions | apps.api.routers.monitoring:create_decision / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:219 |
-| api:POST:/v1/documentation/runs/{run_id}/retention/sweep | apps.api.routers.documentation:retention_sweep / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1056 |
-| api:POST:/v1/documentation/runs/{run_id}/visuals | apps.api.routers.documentation:request_visual_export_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1133 |
+| api:POST:/v1/documentation/runs/{run_id}/retention/sweep | apps.api.routers.documentation:retention_sweep / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1060 |
+| api:POST:/v1/documentation/runs/{run_id}/visuals | apps.api.routers.documentation:request_visual_export_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1137 |
 | api:POST:/v1/internal/models/backtest | apps.api.routers.internal:run_backtest_internal / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/internal.py:201 |
 | api:POST:/v1/internal/models/candidates | apps.api.routers.internal:get_candidates_internal / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/internal.py:309 |
 | api:POST:/v1/internal/models/diagnostics | apps.api.routers.diagnostics_internal:run_internal_diagnostics / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/diagnostics_internal.py:33 |
@@ -270,39 +270,39 @@
 | api:POST:/v1/session/dataset/uniqueness-corrections | apps.api.routers.session:correct_dataset_uniqueness / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4948 |
 | api:POST:/v1/session/date-column | apps.api.routers.session:set_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5766 |
 | api:POST:/v1/session/demo | apps.api.routers.session:load_demo_dataset / scientific:upload | scientific.operation / bundled demo dataset; not AuthSession/DemoGrant/campaign entry | apps/api/routers/session.py:603 |
-| api:POST:/v1/session/modeling/backtest | apps.api.routers.modeling_session:run_modeling_backtest / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1401 |
-| api:POST:/v1/session/modeling/backtest/exclude | apps.api.routers.modeling_session:decide_modeling_backtest_scope / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1618 |
-| api:POST:/v1/session/modeling/baselines | apps.api.routers.modeling_session:bootstrap_modeling_baselines / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1289 |
-| api:POST:/v1/session/modeling/candidates | apps.api.routers.modeling_session:generate_modeling_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1213 |
-| api:POST:/v1/session/modeling/card | apps.api.routers.modeling_session:create_model_card / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3154 |
-| api:POST:/v1/session/modeling/compare | apps.api.routers.modeling_session:compare_modeling_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2821 |
-| api:POST:/v1/session/modeling/diagnostics | apps.api.routers.modeling_session:diagnose_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2760 |
-| api:POST:/v1/session/modeling/diagnostics/ensure | apps.api.routers.modeling_session:ensure_modeling_diagnostics / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2780 |
+| api:POST:/v1/session/modeling/backtest | apps.api.routers.modeling_session:run_modeling_backtest / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1403 |
+| api:POST:/v1/session/modeling/backtest/exclude | apps.api.routers.modeling_session:decide_modeling_backtest_scope / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1620 |
+| api:POST:/v1/session/modeling/baselines | apps.api.routers.modeling_session:bootstrap_modeling_baselines / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1291 |
+| api:POST:/v1/session/modeling/candidates | apps.api.routers.modeling_session:generate_modeling_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1215 |
+| api:POST:/v1/session/modeling/card | apps.api.routers.modeling_session:create_model_card / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3159 |
+| api:POST:/v1/session/modeling/compare | apps.api.routers.modeling_session:compare_modeling_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2826 |
+| api:POST:/v1/session/modeling/diagnostics | apps.api.routers.modeling_session:diagnose_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2765 |
+| api:POST:/v1/session/modeling/diagnostics/ensure | apps.api.routers.modeling_session:ensure_modeling_diagnostics / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:2785 |
 | api:POST:/v1/session/modeling/forecast | apps.api.routers.forecasting_session:create_forecast / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:209 |
 | api:POST:/v1/session/modeling/forecast/compare | apps.api.routers.forecasting_session:compare_forecasts / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:466 |
 | api:POST:/v1/session/modeling/forecast/{forecast_id}/sensitivity | apps.api.routers.forecasting_session:forecast_sensitivity / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:530 |
 | api:POST:/v1/session/modeling/forecast/{forecast_id}/trace | apps.api.routers.forecasting_session:record_client_export_event / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/forecasting_session.py:449 |
-| api:POST:/v1/session/modeling/jobs/start | apps.api.routers.modeling_session:start_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2081 |
-| api:POST:/v1/session/modeling/jobs/{job_id}/cancel | apps.api.routers.modeling_session:cancel_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2184 |
-| api:POST:/v1/session/modeling/jobs/{job_id}/step | apps.api.routers.modeling_session:step_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2219 |
-| api:POST:/v1/session/modeling/panel/backtest | apps.api.routers.modeling_session:panel_backtest / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3677 |
-| api:POST:/v1/session/modeling/panel/forecast | apps.api.routers.modeling_session:panel_forecast / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3735 |
-| api:POST:/v1/session/modeling/panel/passport | apps.api.routers.modeling_session:build_panel_passport_for_session / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3466 |
-| api:POST:/v1/session/modeling/panel/passport/confirm | apps.api.routers.modeling_session:confirm_panel_entry_checkpoint / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3539 |
-| api:POST:/v1/session/modeling/select | apps.api.routers.modeling_session:select_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3044 |
-| api:POST:/v1/session/modeling/selection/evaluate | apps.api.routers.modeling_session:evaluate_modeling_selection / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3004 |
-| api:POST:/v1/session/modeling/tune | apps.api.routers.modeling_session:tune_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1776 |
-| api:POST:/v1/session/modeling/tuning/skip | apps.api.routers.modeling_session:skip_modeling_tuning / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1658 |
-| api:POST:/v1/session/modeling/tuning/skip-pending | apps.api.routers.modeling_session:skip_all_pending_modeling_tuning / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1700 |
-| api:POST:/v1/session/modeling/tuning/start | apps.api.routers.modeling_session:start_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2392 |
-| api:POST:/v1/session/modeling/tuning/step | apps.api.routers.modeling_session:step_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2494 |
+| api:POST:/v1/session/modeling/jobs/start | apps.api.routers.modeling_session:start_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2083 |
+| api:POST:/v1/session/modeling/jobs/{job_id}/cancel | apps.api.routers.modeling_session:cancel_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2186 |
+| api:POST:/v1/session/modeling/jobs/{job_id}/step | apps.api.routers.modeling_session:step_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2221 |
+| api:POST:/v1/session/modeling/panel/backtest | apps.api.routers.modeling_session:panel_backtest / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3682 |
+| api:POST:/v1/session/modeling/panel/forecast | apps.api.routers.modeling_session:panel_forecast / scientific:forecasting | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3740 |
+| api:POST:/v1/session/modeling/panel/passport | apps.api.routers.modeling_session:build_panel_passport_for_session / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3471 |
+| api:POST:/v1/session/modeling/panel/passport/confirm | apps.api.routers.modeling_session:confirm_panel_entry_checkpoint / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3544 |
+| api:POST:/v1/session/modeling/select | apps.api.routers.modeling_session:select_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3049 |
+| api:POST:/v1/session/modeling/selection/evaluate | apps.api.routers.modeling_session:evaluate_modeling_selection / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3009 |
+| api:POST:/v1/session/modeling/tune | apps.api.routers.modeling_session:tune_modeling_candidate / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1778 |
+| api:POST:/v1/session/modeling/tuning/skip | apps.api.routers.modeling_session:skip_modeling_tuning / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1660 |
+| api:POST:/v1/session/modeling/tuning/skip-pending | apps.api.routers.modeling_session:skip_all_pending_modeling_tuning / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1702 |
+| api:POST:/v1/session/modeling/tuning/start | apps.api.routers.modeling_session:start_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2395 |
+| api:POST:/v1/session/modeling/tuning/step | apps.api.routers.modeling_session:step_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2498 |
 | api:POST:/v1/session/stage/{stage} | apps.api.routers.session:set_stage / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:6235 |
 | api:POST:/v1/session/target-column | apps.api.routers.session:set_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5639 |
 | api:PUT:/v1/session/dataset/preprocessing-check-modes | apps.api.routers.session:save_dataset_preprocessing_check_modes / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:2453 |
 | api:PUT:/v1/session/dataset/type-schema | apps.api.routers.session:save_dataset_type_schema / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5419 |
 | api:PUT:/v1/session/dataset/validation-check-modes | apps.api.routers.session:save_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2170 |
 | api:PUT:/v1/session/dataset/validation-rules | apps.api.routers.session:save_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5016 |
-| api:PUT:/v1/session/modeling/feature-regressors | apps.api.routers.modeling_session:set_modeling_feature_regressors / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1117 |
+| api:PUT:/v1/session/modeling/feature-regressors | apps.api.routers.modeling_session:set_modeling_feature_regressors / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1119 |
 
 ## framework
 
@@ -336,6 +336,10 @@
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
+| execution:worker.authority | execution:worker.authority / service:platform | worker.authority / persisted delegated Account/run/session worker claim | apps/api/workers/authority.py:337 |
+| execution:worker.publication | execution:worker.publication / service:platform | worker.authority / atomic current-access result projection, settlement and audit | apps/api/workers/authority.py:530 |
+| execution:worker.reconciliation | execution:worker.reconciliation / service:platform | worker.authority / unknown worker outcomes and retained reservation holds | apps/api/workers/authority.py:681 |
+| execution:worker.service | execution:worker.service / service:platform | worker.authority / opaque worker service credential and allowed worker kind | apps/api/workers/services.py:23 |
 | scientific.admission | scientific.admission / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:186 |
 | scientific.execution | scientific.execution / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:379 |
 
@@ -698,9 +702,10 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
+| execution:worker.subprocess | execution:worker.subprocess / service:platform | worker.authority / bounded pure child process; no database or service credential | apps/api/workers/process.py:86 |
 | worker:apps/api/delivery_worker.py:182 | apps/api/delivery_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/delivery_worker.py:182 |
-| worker:apps/api/document_render_worker.py:661 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:661 |
-| worker:apps/api/document_render_worker.py:683 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:683 |
+| worker:apps/api/document_render_worker.py:676 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:676 |
+| worker:apps/api/document_render_worker.py:698 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:698 |
 | worker:delivery.run_once | worker:delivery.run_once / service:platform | worker.authority / delivery outbox; research runs; checkpoint files | apps/api/delivery_worker.py:118 |
 | worker:document.process | worker:document.process / service:documentation | worker.authority / render job; snapshot; rendition | apps/api/document_render_worker.py:384 |
 | worker:document.system_snapshot | worker:document.system_snapshot / service:documentation | worker.authority / durable snapshot bytes | apps/api/document_render_worker.py:170 |

@@ -1,6 +1,8 @@
 """Session-backed, traceable Modeling workflow for both web shells."""
 from __future__ import annotations
 from apps.api.scientific import ScientificRoute, scientific_guard
+from apps.api.workers.bridge import model_step, persist_model_job, model_job_id, cancel_model
+from apps.api.workers.execution import execute_trial as worker_execute_trial
 
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -2111,7 +2113,7 @@ def start_modeling_job(
         return _model_job_view(session, replay, idempotent_replay=True)
 
     now = utc_now().isoformat()
-    job_id = str(uuid4())
+    job_id = model_job_id(request,session,signature,payload.idempotency_key)
     job = {
         "job_id": job_id,
         "job_signature": signature,
@@ -2157,7 +2159,7 @@ def start_modeling_job(
         session.modeling_pipeline["tuning"] = "in_progress"
     session.touch()
     try:
-        store.save(session)
+        job = persist_model_job(request,store,session,job,family="model_jobs")
     except SessionConflictError:
         current = store.get(session.session_id)
         if current is not None:
@@ -2203,7 +2205,7 @@ def cancel_modeling_job(
     job["cancellation"] = {"reason": payload.reason, "cancelled_at": now}
     session.touch()
     try:
-        store.save(session)
+        cancel_model(request,store,session,job)
     except SessionConflictError:
         current = store.get(session.session_id)
         latest = (
@@ -2217,6 +2219,7 @@ def cancel_modeling_job(
 
 
 @router.post("/jobs/{job_id}/step")
+@model_step("model_jobs")
 def step_modeling_job(
     job_id: str,
     payload: ModelingJobStepRequest,
@@ -2292,7 +2295,7 @@ def step_modeling_job(
     wall_started = time.monotonic()
     cpu_started = time.process_time()
     try:
-        trial, raw_backtest = execute_tuning_trial(
+        trial, raw_backtest = worker_execute_trial(
             model_id=job["model_id"], model_name=model_name, family_id=family_id,
             params=params, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=period, metric=job["metric"],
@@ -2452,12 +2455,12 @@ def start_modeling_tuning(
         )
     except BacktestExecutionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    job_id = str(uuid4())
     signature = _tuning_job_signature(
         model_id=payload.model_id, cohort_id=plan.cohort_id,
         selected_grid=prepared_grid.selected, metric=payload.metric,
         random_state=payload.random_state,
     )
+    job_id = model_job_id(request,session,signature)
     job = {
         "job_id": job_id, "job_signature": signature,
         "model_id": payload.model_id, "cohort_id": plan.cohort_id,
@@ -2483,7 +2486,8 @@ def start_modeling_tuning(
     if _refresh_execution_readiness(session) is None:
         session.modeling_pipeline["tuning"] = "in_progress"
     session.touch()
-    store.save(session)
+    job = persist_model_job(request,store,session,job,family="tuning_jobs")
+    job_id = job["job_id"]
     return {
         "job_id": job_id, "job_signature": signature, "status": "in_progress",
         "completed_trials": 0, "total_trials": len(prepared_grid.selected),
@@ -2492,6 +2496,7 @@ def start_modeling_tuning(
 
 
 @router.post("/tuning/step")
+@model_step("tuning_jobs")
 def step_modeling_tuning(
     payload: ModelingTuningStepRequest,
     request: Request,
@@ -2564,7 +2569,7 @@ def step_modeling_tuning(
     params = job["selected_grid"][current_index]
     started = time.monotonic()
     try:
-        trial, raw_backtest = execute_tuning_trial(
+        trial, raw_backtest = worker_execute_trial(
             model_id=model_id, model_name=model_name, family_id=family_id,
             params=params, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), metric=job["metric"],

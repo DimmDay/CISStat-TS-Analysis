@@ -80,7 +80,8 @@ from apps.api.security_audit import (
 )
 from apps.api.session_store import SESSION_COOKIE_NAME
 
-router = APIRouter()
+from apps.api.workers.bridge import WorkerRequestRoute
+router = APIRouter(route_class=WorkerRequestRoute)
 
 # Uniform-404 (§15/AC06): одинаковые код/тело для «нет» и «чужой».
 _RUN_NOT_FOUND_DETAIL = "Запуск не найден"
@@ -148,6 +149,9 @@ def _map_service_errors(exc: Exception) -> HTTPException:
     purged_artifact (§16.1); 503 mandatory_audit_unavailable (AC11).
     DOCLOG-9: 409 org_profile_mismatch/org_profile_retired; 404
     org_profile_not_found; 422 org_profile_invalid (required/format)."""
+    from apps.api.authentication.context import AuthHTTPException
+    if isinstance(exc, AuthHTTPException):
+        return exc
     from apps.api import doc_profiles as _dp_module  # noqa: F401 -- маппинг ниже
     if isinstance(exc, UnsupportedFormatError):
         return HTTPException(

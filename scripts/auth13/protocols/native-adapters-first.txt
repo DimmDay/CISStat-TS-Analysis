@@ -1,0 +1,65 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_admission_job_projection_failure_rolls_back_reservation (test_auth13_workers.WorkerSQLTests.test_admission_job_projection_failure_rolls_back_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c53ecf0dc8554892b43667772b706267:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_audit_fault_rolls_back_publish_and_settle (test_auth13_workers.WorkerSQLTests.test_audit_fault_rolls_back_publish_and_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_cf4e8921edf848bea5cd76be8e4e3df1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_queued_releases_and_no_start (test_auth13_workers.WorkerSQLTests.test_cancel_queued_releases_and_no_start) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_87772543971c4330a8066926564d29c4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_running_fences_then_positive_stop_settles (test_auth13_workers.WorkerSQLTests.test_cancel_running_fences_then_positive_stop_settles) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_bfd3f4e708ee4cbda51edc942fec8b59:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_claim_race_single_fence (test_auth13_workers.WorkerSQLTests.test_claim_race_single_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_ceaa836c778649f6a84926c2ccb04976:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_duplicate_publication_single_charge_and_projection (test_auth13_workers.WorkerSQLTests.test_duplicate_publication_single_charge_and_projection) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_8791d12d2bd84606aef3cbe054aacecf:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_expired_running_lease_keeps_hold_until_positive_stop (test_auth13_workers.WorkerSQLTests.test_expired_running_lease_keeps_hold_until_positive_stop) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6059cd313a2d46b5ab0732f86066214c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_foreign_job_context_and_session_pointer_deny (test_auth13_workers.WorkerSQLTests.test_foreign_job_context_and_session_pointer_deny) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_e9dd4bc07b864fa1b00a710248349d58:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_legacy_settle_cannot_bypass_execution_fence (test_auth13_workers.WorkerSQLTests.test_legacy_settle_cannot_bypass_execution_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_40f1027a30ee4a0b9fbc497d33acd53b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_old_fence_cannot_publish_next_phase (test_auth13_workers.WorkerSQLTests.test_old_fence_cannot_publish_next_phase) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_11110a2116dc4233bb5ebaae4e7034f2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_partial_checkpoints_accrue_once (test_auth13_workers.WorkerSQLTests.test_partial_checkpoints_accrue_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_58b2a4144569439aa5139d75f696bc61:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queue_logout_start_no_result_or_refund (test_auth13_workers.WorkerSQLTests.test_queue_logout_start_no_result_or_refund) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_7e00a24a1db84bdab8773491be26fd54:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_delivery_mirror_and_ack_atomic (test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_e76ff97b6b954c28b49b6eacd3a1ca52:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ERROR
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_8cde65c4388943fda76ecec60f4f18b2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+test_remote_unknown_proof_never_releases (test_auth13_workers.WorkerSQLTests.test_remote_unknown_proof_never_releases) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_c03d4a65d13b4d158a7f538e96e83b41:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_running_revoke_before_publish_denies_output (test_auth13_workers.WorkerSQLTests.test_running_revoke_before_publish_denies_output) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_cd362418ad4e45459523435c4be9f467:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_credential_kind_revoke_and_safe_storage (test_auth13_workers.WorkerSQLTests.test_service_credential_kind_revoke_and_safe_storage) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_6120af6938894f129d8831588e694452:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_signed_spool_reconciles_restart_without_reexecuting (test_auth13_workers.WorkerSQLTests.test_signed_spool_reconciles_restart_without_reexecuting) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_36ca69a2209a492b90203209f87c5134:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+
+======================================================================
+ERROR: test_real_delivery_mirror_and_ack_atomic (test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 178, in test_real_delivery_mirror_and_ack_atomic
+    outcome=deliver(task,self.runs,self.sessions,at=datetime.now(UTC).isoformat(),worker=self.work)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/workers/delivery.py", line 46, in deliver
+    auth.publish(claim,proof,publisher=project,result_digest=fingerprint,final=True)
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/authentication/sessions.py", line 35, in call
+    auth_error(503, "auth_authority_unavailable")
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/apps/api/authentication/context.py", line 184, in auth_error
+    raise AuthHTTPException(
+apps.api.authentication.context.AuthHTTPException: 503: {'code': 'auth_authority_unavailable', 'message': 'Сервис аутентификации недоступен', 'request_id': ''}
+
+======================================================================
+FAIL: test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 154, in test_real_model_job_and_legacy_tuning_alias_publish_under_fence
+    self.assertEqual(r.status_code,200,r.text)
+AssertionError: 404 != 200 : {"detail":"Не выбрана целевая колонка ряда"}
+
+----------------------------------------------------------------------
+Ran 18 tests in 26.273s
+
+FAILED (failures=1, errors=1)

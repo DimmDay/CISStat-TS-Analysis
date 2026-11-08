@@ -1,0 +1,9 @@
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof) ... Worker execution stopped: worker_stop_unknown
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.650s
+
+OK

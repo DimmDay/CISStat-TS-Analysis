@@ -1441,6 +1441,10 @@ class PostgresSessionStore(SessionStore):
                     conn.close()
 
     def _connect(self):
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         import psycopg  # late import -- см. докстринг класса
 
         conn = psycopg.connect(self._dsn, autocommit=False)
@@ -1526,6 +1530,9 @@ class PostgresSessionStore(SessionStore):
         return session
 
     def save(self, session: AnalysisSession) -> None:
+        from apps.api.workers.execution import publish_session
+        if publish_session(self,session):
+            return
         expected_revision = int(session.storage_revision)
         next_revision = expected_revision + 1
         with self._connect() as conn, conn.cursor() as cur:

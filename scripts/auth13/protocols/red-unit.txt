@@ -1,0 +1,21 @@
+test_auth13_workers (unittest.loader._FailedTest.test_auth13_workers) ... ERROR
+
+======================================================================
+ERROR: test_auth13_workers (unittest.loader._FailedTest.test_auth13_workers)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth13_workers
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/unit/test_auth13_workers.py", line 3, in <module>
+    from apps.api.workers.process import run_bounded, WorkStopped
+ModuleNotFoundError: No module named 'apps.api.workers.process'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

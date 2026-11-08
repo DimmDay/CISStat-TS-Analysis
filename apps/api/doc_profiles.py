@@ -593,6 +593,10 @@ class PostgresOrgProfileRegistry(OrgProfileRegistry):
         return PostgresOrgProfileRegistry(dsn=dsn)
 
     def _connect(self):
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         import psycopg  # late import -- паритет durable-контуров
 
         conn = psycopg.connect(self._dsn, autocommit=False)

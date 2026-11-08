@@ -1,0 +1,13 @@
+test_authority_revoke_stops_work_within_bound (test_auth13_workers.WorkerUnitTests.test_authority_revoke_stops_work_within_bound) ... ok
+test_child_never_inherits_authority_secrets (test_auth13_workers.WorkerUnitTests.test_child_never_inherits_authority_secrets) ... ok
+test_crash_has_positive_exit_evidence (test_auth13_workers.WorkerUnitTests.test_crash_has_positive_exit_evidence) ... ok
+test_joined_domain_failure_is_not_unknown_execution (test_auth13_workers.WorkerUnitTests.test_joined_domain_failure_is_not_unknown_execution) ... ok
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof) ... Worker execution stopped: worker_stop_unknown
+ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.173s
+
+OK

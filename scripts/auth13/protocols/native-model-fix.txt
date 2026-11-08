@@ -1,0 +1,18 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (tests.integration.test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55438 options=-csearch_path=auth09_32b383d1e2b84e0f97d81290c056875e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-4AEEC2F5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-4AEEC2F5 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+FAIL
+
+======================================================================
+FAIL: test_real_model_job_and_legacy_tuning_alias_publish_under_fence (tests.integration.test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/4331ff71bc24/CISStat-AUTH13/tests/integration/test_auth13_workers.py", line 160, in test_real_model_job_and_legacy_tuning_alias_publish_under_fence
+    self.assertEqual(r.status_code,200,r.text)
+AssertionError: 422 != 200 : {"detail":"Обнаружены повторяющиеся даты: паспорт требует один ряд на одну дату"}
+
+----------------------------------------------------------------------
+Ran 1 test in 3.110s
+
+FAILED (failures=1)
