@@ -154,7 +154,11 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Безопасность данных",
     description:
-      "Данные не покидают контур: cookie-сессия в браузере, Redis кэширует на бэкенде. Pre-signed и LTTB-сэмплинг для больших файлов.",
+      // UI-DEVNOTICE-1 (2026-11-09): факт-апдейт — сессии слоя 1 с V2.3
+      // (2026-11-06) живут в PostgreSQL (PostgresSessionStore, миграция
+      // 0022, /health/ops session_backend=postgres); упоминание Redis
+      // устарело. Пин текста — home-capabilities-security-card.test.tsx.
+      "Данные не покидают контур: cookie-сессия в браузере, durable-состояние сессий — в PostgreSQL на бэкенде. Pre-signed и LTTB-сэмплинг для больших файлов.",
     icon: Lock,
   },
 ];

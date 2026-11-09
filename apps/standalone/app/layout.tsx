@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShellProvider, ModuleNav, ThemeProvider, ThemeToaster, NO_FOUC_SCRIPT } from "@cisstat/ui";
 import { ProductHeader } from "@/components/ProductHeader";
+import { DevNoticeBar } from "@/components/DevNoticeBar";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
@@ -30,6 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: NO_FOUC_SCRIPT }} />
       </head>
       <body>
+        {/* UI-DEVNOTICE-1 (2026-11-09): dismissible-полоса «Платформа в
+            активной разработке» (вариант A постановки тимлида) — НАД шапкой,
+            на всех страницах standalone одной вставкой; SSR-вывод пуст,
+            закрытие навсегда в localStorage. Пины — DevNoticeBar.test.tsx. */}
+        <DevNoticeBar />
         <ThemeProvider>
           <ProductHeader />
           <AuthProvider><AppShellProvider>

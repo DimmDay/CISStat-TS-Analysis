@@ -154,6 +154,23 @@ export function ProductHeader() {
               />
             </div>
             <strong className="text-[20px] leading-none font-normal tracking-tight text-brand">CISStat DataTime Lab</strong>
+            {/* UI-DEVNOTICE-1 (2026-11-09): чип «β» — постоянный статус-маркер
+                «платформа в активной разработке» (дополнение к dismissible-полосе
+                DevNoticeBar, вариант A + B постановки). Токены DKT: тёмные
+                значения bg-brand-light/40 и text-brand подставляются контрактом
+                «имена классов не меняются — меняются значения»; произвольных
+                цветов нет. Геометрия: text-[11px]+py-[3px] ≈ 17px < h-7 строки —
+                ряд items-center остаётся обусловленным логотипом/брендом/кнопками.
+                Тултип объясняет статус; для скринридеров — sr-only «бета-версия».
+                Доступное имя ссылки бренда НЕ меняется (aria-label выше, BRND-2).
+                Пины — product-header-beta-chip.test.tsx. */}
+            <span
+              data-testid="product-beta-chip"
+              title="Платформа в активной разработке"
+              className="rounded-full bg-brand-light/40 text-brand text-[11px] leading-none font-normal px-[6px] py-[3px] shrink-0"
+            >
+              β<span className="sr-only"> — бета-версия платформы</span>
+            </span>
           </a>
           {/* Некликабельный слоган (UI-HOME-HEADER-1): обычный span вне
               ссылки бренда; кегль/вес как у бренда, серый токен

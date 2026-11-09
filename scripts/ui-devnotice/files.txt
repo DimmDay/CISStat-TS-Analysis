@@ -1,0 +1,10 @@
+apps/standalone/app/layout.tsx
+apps/standalone/components/DevNoticeBar.test.tsx
+apps/standalone/components/DevNoticeBar.tsx
+apps/standalone/components/ProductHeader.tsx
+apps/standalone/components/product-header-beta-chip.test.tsx
+docs/auth00/inventory.json
+packages/ui/components/home-capabilities-security-card.test.tsx
+packages/ui/lib/capabilities.ts
+scripts/ui-devnotice/files.txt
+worklog/worklog12.md
