@@ -552,6 +552,85 @@
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
     },
+    "api:GET:/v1/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:GET:/v1/api-keys": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.api_keys.list",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:GET:/v1/auth/csrf": {
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "auth.csrf.issue",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:GET:/v1/auth/demo/me": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/auth/demo/me",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:GET:/v1/auth/me": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.me",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:GET:/v1/auth/sessions": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.list",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
     "api:GET:/v1/documentation/documents/{document_id}/revisions": {
       "policy": "document.object",
       "stage": "documentation",
@@ -707,6 +786,17 @@
       "canonical_operation": "apps.api.routers.monitoring:list_decisions",
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
+    },
+    "api:GET:/v1/documentation/runs/{run_id}/visual-sources": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:list_visual_sources_route",
+      "admission": "authorize-before-operation"
     },
     "api:GET:/v1/internal/rules/load/{template_id}": {
       "policy": "scientific.operation",
@@ -1837,6 +1927,17 @@
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
     },
+    "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
     "api:PATCH:/v1/internal/rules/update": {
       "policy": "scientific.operation",
       "stage": "validation",
@@ -1868,6 +1969,284 @@
         "T10",
         "T16"
       ]
+    },
+    "api:POST:/v1/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/api-keys": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.issue",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/api-keys/{key_id}/revoke": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.revoke",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/api-keys/{key_id}/rotate": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "own API keys in current session Account",
+      "effects": [
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.rotate",
+      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    "api:POST:/v1/auth/demo/enter": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/enter",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/auth/demo/leave": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/leave",
+      "admission": "CSRF + private resume credential; atomic revoke and mandatory outbox"
+    },
+    "api:POST:/v1/auth/demo/prepare": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/prepare",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/auth/demo/resume": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/resume",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/auth/login": {
+      "policy": "auth.entry",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.login",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/logout": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.logout",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/mfa/enroll": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.enroll",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/mfa/replace": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.replace",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/mfa/verify": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.verify",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/password": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.password.change",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/recovery": {
+      "policy": "auth.mfa.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.mfa.recover",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/recovery/rotate": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.recovery_rotate",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    "api:POST:/v1/auth/sessions/revoke-all": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.session.revoke_all",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/sessions/{session_id}/revoke": {
+      "policy": "auth.session",
+      "stage": "platform",
+      "resource": "self authentication session",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.session.revoke",
+      "admission": "authenticate-CSRF-object-before-command",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/auth/step-up": {
+      "policy": "auth.mfa.session",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self MFA credential or scoped challenge",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.step_up",
+      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
     },
     "api:POST:/v1/documentation/documents/{document_id}/retention": {
       "policy": "document.object",
@@ -1916,6 +2295,18 @@
       "canonical_operation": "apps.api.routers.doc_profiles:retire_org_profile",
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
+    },
+    "api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "command",
+        "possible_compute_or_persistence"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:request_print_rendition",
+      "admission": "authorize-before-operation"
     },
     "api:POST:/v1/documentation/renditions/{rendition_id}/verify-signature": {
       "policy": "document.object",
@@ -2060,6 +2451,18 @@
       "canonical_operation": "apps.api.routers.documentation:retention_sweep",
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
+    },
+    "api:POST:/v1/documentation/runs/{run_id}/visuals": {
+      "policy": "document.object",
+      "stage": "documentation",
+      "stage_namespace": "service",
+      "resource": "run/document/revision/rendition/job/profile",
+      "effects": [
+        "command",
+        "possible_compute_or_persistence"
+      ],
+      "canonical_operation": "apps.api.routers.documentation:request_visual_export_route",
+      "admission": "authorize-before-operation"
     },
     "api:POST:/v1/internal/models/backtest": {
       "policy": "scientific.operation",
@@ -2339,6 +2742,19 @@
         "possible_compute_or_persistence"
       ],
       "canonical_operation": "apps.api.routers.progress:pause_run",
+      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
+      "stage_namespace": "service"
+    },
+    "api:POST:/v1/progress/runs/{run_id}/restore": {
+      "policy": "scientific.operation",
+      "stage": "platform",
+      "resource": "run/checkpoint/delivery/report",
+      "effects": [
+        "session_write",
+        "file_read",
+        "cookie_rotation"
+      ],
+      "canonical_operation": "apps.api.routers.progress:restore_run",
       "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
       "stage_namespace": "service"
     },
@@ -3197,6 +3613,258 @@
       "canonical_operation": "public.asset",
       "admission": "explicit public asset allowlist"
     },
+    "auth.account.operator": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "accounts.lifecycle.operator",
+      "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
+    },
+    "auth.api_keys.operator": {
+      "policy": "auth.api_keys",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "existing service Identity/Account membership API keys; emergency revocation",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "auth.api_keys.operator",
+      "admission": "trusted-interactive-local-operator; current authority/CAS/mandatory outbox"
+    },
+    "auth.audit.publish": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.audit.publish",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    "auth.demo.schema.apply": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.demo.schema.apply",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "auth.mfa.bootstrap": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.bootstrap",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "auth.mfa.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.mfa.schema.apply",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "auth.ownership.migrate": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
+      "effects": [
+        "read",
+        "write",
+        "audit"
+      ],
+      "canonical_operation": "apps.api.accounts.ownership_migration:migrate_legacy_run",
+      "admission": "Trusted interactive operator; explicit evidence/source/version, active Account CAS, single PostgreSQL transaction with mandatory audit; never HTTP."
+    },
+    "auth.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "DDL + schema checksum ledger",
+      "effects": [
+        "schema_write"
+      ],
+      "canonical_operation": "auth.schema.apply",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "auth.sessions.schema.apply": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.sessions.schema.apply",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    "billing.policy.operator": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.policy.operator",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.reserve": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.reserve",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.schema.apply": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.schema.apply",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "billing.settle": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "billing.settle",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "compute.cache": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current-authority signed content-addressed compute result replay",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.cache",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.calibration": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "real CPU/wall/RSS training/holdout/capacity evidence",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.calibration",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.meter": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "attempted fold/PELT fit ceiling before start",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.meter",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.profile": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "pinned compatible measured profile",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.profile",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.quote": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "measured-domain integer micro-CU quote",
+      "effects": [
+        "authorize",
+        "read_or_write"
+      ],
+      "canonical_operation": "compute.quote",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "compute.runtime": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "protected PELT/tuning isolated runtime",
+      "effects": [
+        "compute",
+        "durable_write"
+      ],
+      "canonical_operation": "compute.runtime",
+      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    "demo.campaign.command": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.campaign.command",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "demo.grant.enter": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.grant.enter",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
     "execution:model.job_step": {
       "policy": "worker.authority",
       "stage": "modeling",
@@ -3231,6 +3899,62 @@
       "canonical_operation": "modeling.tune.step",
       "admission": "current tuning capability + account/grant/object; reserve/start/revoke/fence; status/cancel also authorized",
       "stage_namespace": "scientific"
+    },
+    "execution:worker.authority": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "persisted delegated Account/run/session worker claim",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.authority",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    "execution:worker.publication": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "atomic current-access result projection, settlement and audit",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.publication",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    "execution:worker.reconciliation": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "unknown worker outcomes and retained reservation holds",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.reconciliation",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    "execution:worker.service": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "opaque worker service credential and allowed worker kind",
+      "effects": [
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.service",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    "execution:worker.subprocess": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "bounded pure child process; no database or service credential",
+      "effects": [
+        "compute",
+        "durable_write"
+      ],
+      "canonical_operation": "execution:worker.subprocess",
+      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
     },
     "legacy:app.py:10025:button": {
       "policy": "legacy.token",
@@ -6005,6 +6729,39 @@
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
     },
+    "page:embedded:/admin": {
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:embedded:/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "page:embedded:/admin/logs": {
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
     "page:embedded:/admin/progress": {
       "policy": "ui.admin",
       "stage": "admin/progress",
@@ -6027,6 +6784,17 @@
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
     },
+    "page:embedded:/demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
     "page:embedded:/eda": {
       "policy": "ui.page",
       "stage": "eda",
@@ -6048,6 +6816,17 @@
       "canonical_operation": "ui:embedded:/forecasting",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "scientific"
+    },
+    "page:embedded:/login": {
+      "policy": "ui.login",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "personal login UI",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:embedded:/login",
+      "admission": "UI never substitutes API authority; local redirects only"
     },
     "page:embedded:/modeling": {
       "policy": "ui.page",
@@ -6126,6 +6905,50 @@
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
     },
+    "page:standalone:/admin": {
+      "policy": "ui.admin",
+      "stage": "admin",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:standalone:/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "page:standalone:/admin/logs": {
+      "policy": "ui.admin",
+      "stage": "admin/logs",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/logs",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
+    "page:standalone:/admin/progress": {
+      "policy": "ui.admin",
+      "stage": "admin/progress",
+      "resource": "UI navigation only",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/admin/progress",
+      "admission": "UI does not replace backend enforcement",
+      "stage_namespace": "service"
+    },
     "page:standalone:/dashboard/ts-analysis": {
       "policy": "ui.page",
       "stage": "dashboard/ts-analysis",
@@ -6136,6 +6959,17 @@
       "canonical_operation": "ui:standalone:/dashboard/ts-analysis",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
+    },
+    "page:standalone:/demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
     },
     "page:standalone:/documentation": {
       "policy": "ui.page",
@@ -6180,6 +7014,17 @@
       "canonical_operation": "ui:standalone:/forecasting",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "scientific"
+    },
+    "page:standalone:/login": {
+      "policy": "ui.login",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "personal login UI",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "ui:standalone:/login",
+      "admission": "UI never substitutes API authority; local redirects only"
     },
     "page:standalone:/modeling": {
       "policy": "ui.page",
@@ -6359,6 +7204,30 @@
       "admission": "service caller + render operation authorization + budget",
       "stage_namespace": "service"
     },
+    "scientific.admission": {
+      "policy": "scientific.operation",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account / owned scientific resource / normalized execution inputs",
+      "effects": [
+        "read",
+        "authorize"
+      ],
+      "canonical_operation": "scientific.admission",
+      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
+    },
+    "scientific.execution": {
+      "policy": "scientific.operation",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account / owned scientific resource / normalized execution inputs",
+      "effects": [
+        "read",
+        "authorize"
+      ],
+      "canonical_operation": "scientific.execution",
+      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
+    },
     "storage:artifacts": {
       "policy": "storage.internal",
       "stage": "storage",
@@ -6370,6 +7239,89 @@
       "canonical_operation": "storage:artifacts",
       "admission": "not a standalone authorization boundary; caller must authorize",
       "stage_namespace": "service"
+    },
+    "storage:auth.accounts": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account/tenant/membership/versions",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.account",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "storage:auth.demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "storage:auth.demo",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "storage:auth.identities": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Identity/external issuer-sub mapping",
+      "effects": [
+        "database_read",
+        "database_write"
+      ],
+      "canonical_operation": "auth.repository.identity",
+      "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    "storage:auth.mfa": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "MFA durable authority / operator-only singleton bootstrap",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "storage:auth.mfa",
+      "admission": "trusted-operator-or-purpose-bound-transaction-only"
+    },
+    "storage:auth.sessions": {
+      "policy": "auth.storage",
+      "stage": "platform",
+      "resource": "auth session authority or audit delivery",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.session.authority",
+      "admission": "trusted-authority-writer",
+      "stage_namespace": "service"
+    },
+    "storage:billing.job_outbox": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.job_outbox",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    "storage:billing.ledger": {
+      "policy": "billing.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
+      "effects": [
+        "authorize",
+        "write"
+      ],
+      "canonical_operation": "storage:billing.ledger",
+      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
     },
     "storage:datasets": {
       "policy": "storage.internal",
@@ -6508,6 +7460,40 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
       "stage_namespace": "service"
     },
+    "worker:apps/api/document_render_worker.py:715": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "queued operation",
+      "effects": [
+        "thread_dispatch"
+      ],
+      "canonical_operation": "apps/api/document_render_worker.py:_target via _run_with_deadline",
+      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    "worker:apps/api/document_render_worker.py:737": {
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "queued operation",
+      "effects": [
+        "thread_dispatch"
+      ],
+      "canonical_operation": "apps/api/document_render_worker.py:self._loop",
+      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    "worker:apps/api/workers/process.py:176": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
+      "effects": [
+        "compute",
+        "stop_process_group"
+      ],
+      "canonical_operation": "compute.supervisor",
+      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
+    },
     "worker:delivery.run_once": {
       "policy": "worker.authority",
       "stage": "platform",
@@ -6543,992 +7529,6 @@
       "canonical_operation": "worker:document.system_snapshot",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
       "stage_namespace": "service"
-    },
-    "api:POST:/v1/documentation/print-revisions/{print_revision_id}/renditions": {
-      "policy": "document.object",
-      "stage": "documentation",
-      "stage_namespace": "service",
-      "resource": "run/document/revision/rendition/job/profile",
-      "effects": [
-        "command",
-        "possible_compute_or_persistence"
-      ],
-      "canonical_operation": "apps.api.routers.documentation:request_print_rendition",
-      "admission": "authorize-before-operation"
-    },
-    "api:GET:/v1/documentation/runs/{run_id}/visual-sources": {
-      "policy": "document.object",
-      "stage": "documentation",
-      "stage_namespace": "service",
-      "resource": "run/document/revision/rendition/job/profile",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "apps.api.routers.documentation:list_visual_sources_route",
-      "admission": "authorize-before-operation"
-    },
-    "api:POST:/v1/documentation/runs/{run_id}/visuals": {
-      "policy": "document.object",
-      "stage": "documentation",
-      "stage_namespace": "service",
-      "resource": "run/document/revision/rendition/job/profile",
-      "effects": [
-        "command",
-        "possible_compute_or_persistence"
-      ],
-      "canonical_operation": "apps.api.routers.documentation:request_visual_export_route",
-      "admission": "authorize-before-operation"
-    },
-    "storage:auth.identities": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Identity/external issuer-sub mapping",
-      "effects": [
-        "database_read",
-        "database_write"
-      ],
-      "canonical_operation": "auth.repository.identity",
-      "admission": "trusted server/coordinator only; repository is not caller authorization"
-    },
-    "storage:auth.accounts": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account/tenant/membership/versions",
-      "effects": [
-        "database_read",
-        "database_write"
-      ],
-      "canonical_operation": "auth.repository.account",
-      "admission": "trusted server/coordinator only; repository is not caller authorization"
-    },
-    "auth.schema.apply": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "DDL + schema checksum ledger",
-      "effects": [
-        "schema_write"
-      ],
-      "canonical_operation": "auth.schema.apply",
-      "admission": "trusted server/coordinator only; repository is not caller authorization"
-    },
-    "api:GET:/v1/auth/csrf": {
-      "policy": "auth.entry",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "auth.csrf.issue",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/login": {
-      "policy": "auth.entry",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.password.login",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:GET:/v1/auth/me": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.session.me",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:GET:/v1/auth/sessions": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.session.list",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/logout": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.session.logout",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/sessions/revoke-all": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.session.revoke_all",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/sessions/{session_id}/revoke": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.session.revoke",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/password": {
-      "policy": "auth.session",
-      "stage": "platform",
-      "resource": "self authentication session",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.password.change",
-      "admission": "authenticate-CSRF-object-before-command",
-      "stage_namespace": "service"
-    },
-    "storage:auth.sessions": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "resource": "auth session authority or audit delivery",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.session.authority",
-      "admission": "trusted-authority-writer",
-      "stage_namespace": "service"
-    },
-    "auth.sessions.schema.apply": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "resource": "auth session authority or audit delivery",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.sessions.schema.apply",
-      "admission": "trusted-authority-writer",
-      "stage_namespace": "service"
-    },
-    "auth.audit.publish": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "resource": "auth session authority or audit delivery",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.audit.publish",
-      "admission": "trusted-authority-writer",
-      "stage_namespace": "service"
-    },
-    "api:POST:/v1/auth/mfa/enroll": {
-      "policy": "auth.mfa.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.mfa.enroll",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "api:POST:/v1/auth/mfa/verify": {
-      "policy": "auth.mfa.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.mfa.verify",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "api:POST:/v1/auth/step-up": {
-      "policy": "auth.mfa.session",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.mfa.step_up",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "api:POST:/v1/auth/mfa/replace": {
-      "policy": "auth.mfa.session",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.mfa.replace",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "api:POST:/v1/auth/recovery": {
-      "policy": "auth.mfa.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "auth.mfa.recover",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "api:POST:/v1/auth/recovery/rotate": {
-      "policy": "auth.mfa.session",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "self MFA credential or scoped challenge",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.mfa.recovery_rotate",
-      "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
-    },
-    "storage:auth.mfa": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "MFA durable authority / operator-only singleton bootstrap",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "storage:auth.mfa",
-      "admission": "trusted-operator-or-purpose-bound-transaction-only"
-    },
-    "auth.mfa.schema.apply": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "MFA durable authority / operator-only singleton bootstrap",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.mfa.schema.apply",
-      "admission": "trusted-operator-or-purpose-bound-transaction-only"
-    },
-    "auth.mfa.bootstrap": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "MFA durable authority / operator-only singleton bootstrap",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "auth.mfa.bootstrap",
-      "admission": "trusted-operator-or-purpose-bound-transaction-only"
-    },
-    "page:standalone:/login": {
-      "policy": "ui.login",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "personal login UI",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:standalone:/login",
-      "admission": "UI never substitutes API authority; local redirects only"
-    },
-    "page:embedded:/login": {
-      "policy": "ui.login",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "personal login UI",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:embedded:/login",
-      "admission": "UI never substitutes API authority; local redirects only"
-    },
-    "page:standalone:/admin": {
-      "policy": "ui.admin",
-      "stage": "admin",
-      "resource": "UI navigation only",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:standalone:/admin",
-      "admission": "UI does not replace backend enforcement",
-      "stage_namespace": "service"
-    },
-    "page:standalone:/admin/progress": {
-      "policy": "ui.admin",
-      "stage": "admin/progress",
-      "resource": "UI navigation only",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:standalone:/admin/progress",
-      "admission": "UI does not replace backend enforcement",
-      "stage_namespace": "service"
-    },
-    "page:standalone:/admin/logs": {
-      "policy": "ui.admin",
-      "stage": "admin/logs",
-      "resource": "UI navigation only",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:standalone:/admin/logs",
-      "admission": "UI does not replace backend enforcement",
-      "stage_namespace": "service"
-    },
-    "page:embedded:/admin": {
-      "policy": "ui.admin",
-      "stage": "admin",
-      "resource": "UI navigation only",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:embedded:/admin",
-      "admission": "UI does not replace backend enforcement",
-      "stage_namespace": "service"
-    },
-    "page:embedded:/admin/logs": {
-      "policy": "ui.admin",
-      "stage": "admin/logs",
-      "resource": "UI navigation only",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "ui:embedded:/admin/logs",
-      "admission": "UI does not replace backend enforcement",
-      "stage_namespace": "service"
-    },
-    "auth.account.operator": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
-      "effects": [
-        "read",
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "accounts.lifecycle.operator",
-      "admission": "trusted-local-interactive-operator-only; Account-CAS-and-mandatory-outbox-in-one-UoW"
-    },
-    "api:POST:/v1/progress/runs/{run_id}/restore": {
-      "policy": "scientific.operation",
-      "stage": "platform",
-      "resource": "run/checkpoint/delivery/report",
-      "effects": [
-        "session_write",
-        "file_read",
-        "cookie_rotation"
-      ],
-      "canonical_operation": "apps.api.routers.progress:restore_run",
-      "admission": "AUTH-11 credential/current Account; owned resource before operation/actual workload; last execution fence; budgets AUTH-12",
-      "stage_namespace": "service"
-    },
-    "auth.ownership.migrate": {
-      "policy": "auth.storage",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account entitlements / existing memberships / scoped auth sessions and challenges",
-      "effects": [
-        "read",
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "apps.api.accounts.ownership_migration:migrate_legacy_run",
-      "admission": "Trusted interactive operator; explicit evidence/source/version, active Account CAS, single PostgreSQL transaction with mandatory audit; never HTTP."
-    },
-    "api:GET:/v1/api-keys": {
-      "policy": "auth.api_keys",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "own API keys in current session Account",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "auth.api_keys.list",
-      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
-    },
-    "api:POST:/v1/api-keys": {
-      "policy": "auth.api_keys",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "own API keys in current session Account",
-      "effects": [
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "auth.api_keys.issue",
-      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
-    },
-    "api:POST:/v1/api-keys/{key_id}/rotate": {
-      "policy": "auth.api_keys",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "own API keys in current session Account",
-      "effects": [
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "auth.api_keys.rotate",
-      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
-    },
-    "api:POST:/v1/api-keys/{key_id}/revoke": {
-      "policy": "auth.api_keys",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "own API keys in current session Account",
-      "effects": [
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "auth.api_keys.revoke",
-      "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
-    },
-    "auth.api_keys.operator": {
-      "policy": "auth.api_keys",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "existing service Identity/Account membership API keys; emergency revocation",
-      "effects": [
-        "read",
-        "write",
-        "audit"
-      ],
-      "canonical_operation": "auth.api_keys.operator",
-      "admission": "trusted-interactive-local-operator; current authority/CAS/mandatory outbox"
-    },
-    "scientific.admission": {
-      "policy": "scientific.operation",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "current Account / owned scientific resource / normalized execution inputs",
-      "effects": [
-        "read",
-        "authorize"
-      ],
-      "canonical_operation": "scientific.admission",
-      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
-    },
-    "scientific.execution": {
-      "policy": "scientific.operation",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "current Account / owned scientific resource / normalized execution inputs",
-      "effects": [
-        "read",
-        "authorize"
-      ],
-      "canonical_operation": "scientific.execution",
-      "admission": "trusted server coordinator; no browser identity/plan/workload provenance authority"
-    },
-    "billing.reserve": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "billing.reserve",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "billing.settle": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "billing.settle",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "billing.policy.operator": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "billing.policy.operator",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "billing.schema.apply": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "billing.schema.apply",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "storage:billing.ledger": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "storage:billing.ledger",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "storage:billing.job_outbox": {
-      "policy": "billing.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "Account-scoped resource reservation / ledger / transactional job intent",
-      "effects": [
-        "authorize",
-        "write"
-      ],
-      "canonical_operation": "storage:billing.job_outbox",
-      "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
-    },
-    "worker:apps/api/document_render_worker.py:676": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "queued operation",
-      "effects": [
-        "thread_dispatch"
-      ],
-      "canonical_operation": "apps/api/document_render_worker.py:_target via _run_with_deadline",
-      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
-    },
-    "worker:apps/api/document_render_worker.py:698": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "queued operation",
-      "effects": [
-        "thread_dispatch"
-      ],
-      "canonical_operation": "apps/api/document_render_worker.py:self._loop",
-      "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
-    },
-    "execution:worker.authority": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "persisted delegated Account/run/session worker claim",
-      "effects": [
-        "durable_write"
-      ],
-      "canonical_operation": "execution:worker.authority",
-      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
-    },
-    "execution:worker.publication": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "atomic current-access result projection, settlement and audit",
-      "effects": [
-        "durable_write"
-      ],
-      "canonical_operation": "execution:worker.publication",
-      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
-    },
-    "execution:worker.reconciliation": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "unknown worker outcomes and retained reservation holds",
-      "effects": [
-        "durable_write"
-      ],
-      "canonical_operation": "execution:worker.reconciliation",
-      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
-    },
-    "execution:worker.subprocess": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "bounded pure child process; no database or service credential",
-      "effects": [
-        "compute",
-        "durable_write"
-      ],
-      "canonical_operation": "execution:worker.subprocess",
-      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
-    },
-    "execution:worker.service": {
-      "policy": "worker.authority",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "opaque worker service credential and allowed worker kind",
-      "effects": [
-        "durable_write"
-      ],
-      "canonical_operation": "execution:worker.service",
-      "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
-    },
-    "compute.quote": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "measured-domain integer micro-CU quote",
-      "effects": [
-        "authorize",
-        "read_or_write"
-      ],
-      "canonical_operation": "compute.quote",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "compute.meter": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "attempted fold/PELT fit ceiling before start",
-      "effects": [
-        "authorize",
-        "read_or_write"
-      ],
-      "canonical_operation": "compute.meter",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "compute.runtime": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "protected PELT/tuning isolated runtime",
-      "effects": [
-        "compute",
-        "durable_write"
-      ],
-      "canonical_operation": "compute.runtime",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "compute.profile": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "pinned compatible measured profile",
-      "effects": [
-        "authorize",
-        "read_or_write"
-      ],
-      "canonical_operation": "compute.profile",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "compute.calibration": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "real CPU/wall/RSS training/holdout/capacity evidence",
-      "effects": [
-        "authorize",
-        "read_or_write"
-      ],
-      "canonical_operation": "compute.calibration",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "compute.cache": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "current-authority signed content-addressed compute result replay",
-      "effects": [
-        "authorize",
-        "read_or_write"
-      ],
-      "canonical_operation": "compute.cache",
-      "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
-    },
-    "worker:apps/api/workers/process.py:176": {
-      "policy": "compute.calibrated",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
-      "effects": [
-        "compute",
-        "stop_process_group"
-      ],
-      "canonical_operation": "compute.supervisor",
-      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
-    },
-    "api:GET:/v1/admin/demo-campaigns": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "api:GET:/v1/admin/demo-campaigns",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:GET:/v1/auth/demo/me": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "read"
-      ],
-      "canonical_operation": "api:GET:/v1/auth/demo/me",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "write"
-      ],
-      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "api:POST:/v1/auth/demo/enter": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "api:POST:/v1/auth/demo/enter",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "api:POST:/v1/auth/demo/prepare": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "api:POST:/v1/auth/demo/prepare",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "api:POST:/v1/auth/demo/resume": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "api:POST:/v1/auth/demo/resume",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "page:embedded:/admin/demo-campaigns": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "page:embedded:/admin/demo-campaigns",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "page:embedded:/demo": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "page:embedded:/demo",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "page:standalone:/admin/demo-campaigns": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "campaign policy",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "page:standalone:/admin/demo-campaigns",
-      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
-    },
-    "page:standalone:/demo": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "navigation"
-      ],
-      "canonical_operation": "page:standalone:/demo",
-      "admission": "CSRF + shared verifier + current campaign + isolated grant"
-    },
-    "demo.campaign.command": {
-      "policy": "demo.admin",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo authority",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "demo.campaign.command",
-      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
-    },
-    "demo.grant.enter": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo authority",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "demo.grant.enter",
-      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
-    },
-    "auth.demo.schema.apply": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo authority",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "auth.demo.schema.apply",
-      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
-    },
-    "storage:auth.demo": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo authority",
-      "effects": [
-        "read",
-        "write"
-      ],
-      "canonical_operation": "storage:auth.demo",
-      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
-    },
-    "api:POST:/v1/auth/demo/leave": {
-      "policy": "demo.entry",
-      "stage": "platform",
-      "stage_namespace": "service",
-      "resource": "private demo grant",
-      "effects": [
-        "write",
-        "set_cookie"
-      ],
-      "canonical_operation": "api:POST:/v1/auth/demo/leave",
-      "admission": "CSRF + private resume credential; atomic revoke and mandatory outbox"
     }
   },
   "extra_surfaces": [

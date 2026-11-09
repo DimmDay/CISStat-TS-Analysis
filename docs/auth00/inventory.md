@@ -67,8 +67,8 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:262 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:267 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:272 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:277 |
 | api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:144 |
 | api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:233 |
 | api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
@@ -325,14 +325,14 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
-| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:166 |
+| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
 
 ## internal_operation
 
@@ -735,8 +735,8 @@
 | compute.runtime | compute.runtime / service:platform | compute.calibrated / protected PELT/tuning isolated runtime | apps/api/billing/compute_runtime.py:183 |
 | execution:worker.subprocess | execution:worker.subprocess / service:platform | worker.authority / bounded pure child process; no database or service credential | apps/api/workers/process.py:123 |
 | worker:apps/api/delivery_worker.py:182 | apps/api/delivery_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/delivery_worker.py:182 |
-| worker:apps/api/document_render_worker.py:676 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:676 |
-| worker:apps/api/document_render_worker.py:698 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:698 |
+| worker:apps/api/document_render_worker.py:715 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:715 |
+| worker:apps/api/document_render_worker.py:737 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:737 |
 | worker:apps/api/workers/process.py:176 | apps/api/workers/process.py:supervise / service:platform | compute.calibrated / independent physical wall deadline and aggregate Linux process-group RSS | apps/api/workers/process.py:176 |
 | worker:delivery.run_once | worker:delivery.run_once / service:platform | worker.authority / delivery outbox; research runs; checkpoint files | apps/api/delivery_worker.py:118 |
 | worker:document.process | worker:document.process / service:documentation | worker.authority / render job; snapshot; rendition | apps/api/document_render_worker.py:384 |

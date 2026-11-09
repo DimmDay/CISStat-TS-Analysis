@@ -101,6 +101,10 @@ DEFAULT_LEASE_SECONDS = 120
 # §18: максимум ПОПЫТОК рендера одного job'а (устойчивые неудачи);
 # постановка новых job'ов ограничена отдельно (document_jobs.MAX_JOB_ATTEMPTS).
 DEFAULT_MAX_ATTEMPTS = 5
+# OPS-DIAG-1 (AUTH-13): одинаковая причина ошибки цикла логируется на
+# первом появлении и далее раз в ERROR_LOG_DEDUP_CYCLES циклов (при
+# интервале 10s -- раз в 5 минут); consecutive_errors считает каждый цикл.
+ERROR_LOG_DEDUP_CYCLES = 30
 
 # Переоткладываемые (transient) ошибки рендера; остальные --
 # детерминированные и терминальны (очередь не крутится впустую).
@@ -282,6 +286,12 @@ class DocumentRenderWorker:
         self._last_summary: Optional[dict[str, Any]] = None
         self._consecutive_errors = 0
         self._last_error: Optional[str] = None
+        # OPS-DIAG-1 (AUTH-13): классификация последней ошибки цикла (код из
+        # HTTPException.detail) и дедупликация warning-лога одинаковых
+        # повторов (887+ одинаковых строк подряд затемняют журнал без
+        # добавления информации; счётчик consecutive_errors остаётся честным).
+        self._last_error_code: Optional[str] = None
+        self._last_logged_reason: Optional[str] = None
 
     # -- зависимости (лениво: фабрики singleton'ов API) --
 
@@ -314,23 +324,52 @@ class DocumentRenderWorker:
             cycle_failed = True
             self._record_error(exc)
         if not cycle_failed:
-            with self._state_lock:
-                self._last_run_at = moment
-                self._last_summary = report
-                self._consecutive_errors = 0
-                self._last_error = None
+            self._mark_success(moment, report)
         return report
+
+    def _mark_success(self, moment: str, report: dict[str, Any]) -> None:
+        """Успешный цикл: счётчики ошибок и дедупликация лога сбрасываются."""
+        with self._state_lock:
+            self._last_run_at = moment
+            self._last_summary = report
+            self._consecutive_errors = 0
+            self._last_error = None
+            self._last_error_code = None
+            self._last_logged_reason = None
 
     def _record_error(self, exc: BaseException) -> None:
         reason = safe_error(exc)
+        detail = getattr(exc, "detail", None)
+        code = (
+            detail.get("code")
+            if isinstance(detail, dict)
+            else None
+        )
         with self._state_lock:
             self._consecutive_errors += 1
             self._last_error = reason
-        logger.warning(
-            "Document render worker: цикл не выполнен (%s) -- "
-            "продолжаю по расписанию",
-            reason,
-        )
+            self._last_error_code = code
+            repeated = reason == self._last_logged_reason
+            log_now = (not repeated) or (
+                self._consecutive_errors % ERROR_LOG_DEDUP_CYCLES == 0
+            )
+            if log_now:
+                self._last_logged_reason = reason
+                logged_at = self._consecutive_errors
+        if log_now:
+            if repeated:
+                logger.warning(
+                    "Document render worker: цикл не выполнен (%s) -- "
+                    "продолжаю по расписанию; повтор без изменений #%d",
+                    reason,
+                    logged_at,
+                )
+            else:
+                logger.warning(
+                    "Document render worker: цикл не выполнен (%s) -- "
+                    "продолжаю по расписанию",
+                    reason,
+                )
 
     # -- lease/claim (AC08/AC09) --
 
@@ -739,6 +778,7 @@ class DocumentRenderWorker:
                 "last_summary": self._last_summary,
                 "consecutive_errors": self._consecutive_errors,
                 "last_error": self._last_error,
+                "last_error_code": self._last_error_code,
             }
 
 
@@ -805,6 +845,7 @@ def document_render_worker_status() -> dict[str, Any]:
             "last_summary": None,
             "consecutive_errors": 0,
             "last_error": None,
+            "last_error_code": None,
         }
     return worker.status()
 

@@ -55,6 +55,9 @@ from apps.api.knowledge import router as knowledge_router_module
 from apps.api.storage_diagnostics import get_storage_mode
 from apps.api import delivery_worker
 from apps.api import document_render_worker
+# OPS-DIAG-1 (AUTH-13): провижининг process-wide worker-credential
+# (CISSTAT_WORKER_KEY -> auth_worker_services) до старта воркеров.
+from apps.api.workers import bootstrap as worker_bootstrap
 
 
 # H29 (Task DOCLOG-H29-UIHONEST-AUDITVIEW, 2026-10-27): состав
@@ -139,6 +142,13 @@ async def _lifespan(app: FastAPI):
         # ПОЛНЫЙ durable-контур (runs/session/artifacts/snapshots/documents).
         verify_required_storage_backends()
         logger.info("Startup: required-режим хранения -- фабрики проверены")
+    # OPS-DIAG-1 (AUTH-13): идемпотентная регистрация process-wide
+    # worker-credential (CISSTAT_WORKER_KEY) в auth_worker_services ДО
+    # старта воркеров. Старт api от этого НЕ зависит (сбой -- warning
+    # + честный статус в /health/ops worker_credential): credential --
+    # deployment-конфиг, а не живоспособность сервиса. revoked/expired
+    # строки не воскрешаются (ротация ключа); пустой env -- missing.
+    worker_bootstrap.startup_check()
     # DOCLOG-3 (§13.1): lifecycle-события в техпоток (essential -- не
     # сэмплируются); сбой телеметрии не влияет на старт (AC11).
     telemetry_emit(
@@ -307,6 +317,13 @@ def health_ops():
             "running": False,
             "missing": ["<state unavailable>"],
         }
+    # OPS-DIAG-1 (AUTH-13): состояние process-wide worker-credential
+    # (peek-семантика; диагностика не роняет health; секрет и дайджест
+    # ключа не выдаются -- только метаданные строки auth_worker_services).
+    try:
+        snapshot["worker_credential"] = worker_bootstrap.last_status()
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["worker_credential"] = {"state": "<state unavailable>"}
     # DOCLOG-PDF-RENDER-DEPLOY-2 (§18 дух / урок F14): факты доступности
     # зависимостей тяжёлых рендеров документов (peek-семантика: только
     # ФС allowlist-шрифта и ленивые импорты; диагностика не роняет

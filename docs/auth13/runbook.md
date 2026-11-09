@@ -71,6 +71,33 @@ docker compose exec api python scripts/auth13/manage_workers.py revoke-service -
 
 Исторические jobs без AUTH-13 ticket не auto-claim и не получают синтезированную личность владельца; их следует разобрать при drain/rollout и при необходимости создать заново после авторизованного admission. Автоматическая миграция таких заданий не выполняется.
 
+## Bootstrap worker-credential (AUTH-13-HOTFIX-1, OPS-DIAG-1)
+
+Дефект 09.11.2026: compose прокидывает `CISSTAT_WORKER_KEY` (по умолчанию пуст), но строка в `auth_worker_services` не создаётся никаким продакшн-путём — `verify()` на каждом цикле document_render_worker и на каждом `admit()` (пользовательский рендер/native-modeling) отвечает `503 worker_service_unavailable` (887+ подряд, `last_run_at=null`).
+
+С этой версии api при старте (lifespan, до запуска воркеров) выполняется идемпотентный bootstrap `apps/api/workers/bootstrap.py`:
+
+- ключ из env присутствует и валиден, валидной строки нет — дайджест ключа регистрируется (в БД только sha256, паритет `issue`), аудит `service_bootstrapped`; следующий цикл воркера восстанавливается без перезапуска;
+- строка отозвана — состояние `revoked`, воскрешения нет (ротация ключа обязательна);
+- строка истекла — `expired`, автоматического продления нет (ротация);
+- ключ пуст/невалиден — `missing`/`invalid`, БД не затрагивается;
+- старт api от провижининга НЕ зависит (сбой — warning и честный статус; credential — deployment-конфиг, а не живоспособность).
+
+Диагностика: `/health/ops` → `worker_credential` (state/remediation, без секрета и дайджеста) и `document_render_worker.last_error_code`; одинаковая причина ошибки цикла логируется раз в 30 циклов (~5 мин при интервале 10s), `consecutive_errors` считает каждый цикл.
+
+```bash
+# Состояние без входа в контейнер:
+curl -s http://localhost:8000/health/ops | python3 -c "import json,sys; print(json.load(sys.stdin)['worker_credential'])"
+# Если ключ уже в .env, но регистрация нужна без рестарта:
+docker compose exec api python -m apps.api.workers.bootstrap ensure
+# Инвентарь service-строк (без хэшей):
+docker compose exec api python -m apps.api.workers.bootstrap status
+# Низкоуровневая генерация ключа вне интерактивного issue-service (формат cwk_+43):
+docker compose exec api python -m apps.api.workers.bootstrap gen
+```
+
+Штатный путь выдачи ключа прежний: `issue-service` (интерактивно, ключ показывается один раз). Команда `ensure` — идемпотентная регистрация уже имеющегося ключа; `revoked`/`expired` она не обходит.
+
 ## Границы
 
 В runtime AUTH-13 применяется server quote `unpriced-auth13/1`, micro-CU=0; конечные slots и counters уже проходят atomic AUTH-12. Synthetic integer-CU tests проверяют settle/hold/гонки; они не задают прайс. Финансовый CU launch/benchmark — AUTH-14, Demo lifecycle — AUTH-15/16, operational rollout/backup disaster recovery — AUTH-20, wallet/lots — AUTH-21. AUTH-CERT не объявляется пройденной.

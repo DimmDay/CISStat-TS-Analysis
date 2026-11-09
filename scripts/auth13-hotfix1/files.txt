@@ -1,0 +1,12 @@
+apps/api/workers/bootstrap.py
+apps/api/document_render_worker.py
+apps/api/main.py
+deployment/cisstat-stack/.env.example
+docs/auth00/inventory.json
+docs/auth00/inventory.md
+docs/auth00/policy_review.json
+docs/auth13/runbook.md
+scripts/auth13-hotfix1/files.txt
+scripts/local_gates.md
+tests/integration/test_auth13_bootstrap.py
+tests/unit/test_auth13_worker_bootstrap.py
