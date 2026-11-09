@@ -1,0 +1,22 @@
+test_real_demo_upload_foreign_run_document_and_pointer_are_denied (tests.integration.test_auth15_demo.CampaignSQLTests.test_real_demo_upload_foreign_run_document_and_pointer_are_denied) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth15_7d0ce1e7c6a44212a7edd5e669c21a9e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-BDA734BB action=read subject=6ca96dc1-14a0-4ab5-aeb1-59ab056ab855 via=auth_session reason=account_boundary
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-BDA734BB action=read subject=6ca96dc1-14a0-4ab5-aeb1-59ab056ab855 via=auth_session reason=account_boundary
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:143: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-BDA734BB action=read subject=6ca96dc1-14a0-4ab5-aeb1-59ab056ab855 via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 21.190s
+
+OK

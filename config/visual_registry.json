@@ -2445,10 +2445,11 @@
     },
     {
       "targets": [
-        "packages/ui/components/AdminLogsDashboard.tsx"
+        "packages/ui/components/AdminLogsDashboard.tsx",
+        "packages/ui/components/DemoCampaignAdmin.tsx"
       ],
       "reason_class": "ops_admin",
-      "reason": "Операционные таблицы журналов/аудита/грантов администратора (DOCLOG-7); содержимое — технические события, не научные визуализации."
+      "reason": "Операционные таблицы журналов/аудита/грантов администратора (DOCLOG-7) и ресурсных бюджетов демо-кампаний (AUTH-15); содержимое — технические события, не научные визуализации."
     },
     {
       "targets": [

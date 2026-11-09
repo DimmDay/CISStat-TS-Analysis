@@ -134,6 +134,8 @@ class APIKeyService:
             auth_error(403, "api_key_management_denied")
         service = SessionService(self.store, clock=self.clock)
         row = service._load(c, token_digest(token), touch=False)
+        if row.get("demo_grant_id"):
+            auth_error(403, "api_key_management_denied")
         if origin is not None and row["origin"] != origin:
             auth_error(401, "invalid_credential")
         if fresh:

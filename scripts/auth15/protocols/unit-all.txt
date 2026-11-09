@@ -1,0 +1,33 @@
+.........................E................................../workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+....................................Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+......................................................../workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py:32: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+..........Run access: DENY run=RUN-A0900001 action=read subject=2699ad1e-2c56-487f-aaa6-1bcee2b38af4 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=2699ad1e-2c56-487f-aaa6-1bcee2b38af4 via=auth_session reason=account_boundary
+.Run access: DENY run=RUN-A0900001 action=read subject=de5e772c-19e5-4dfb-aae1-89b3ef491349 via=auth_session reason=foreign_tenant
+.Run access: DENY run=RUN-A0900001 action=read subject=2b7c50ed-527a-4560-b73d-a397187d2d1b via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=2b7c50ed-527a-4560-b73d-a397187d2d1b via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=2b7c50ed-527a-4560-b73d-a397187d2d1b via=auth_session reason=account_boundary
+......Run access: DENY run=RUN-A0900001 action=read subject=bc792f92-4c87-4013-932d-e6e1fbaac0a8 via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=75ad2ac2-8f9c-490b-9a5e-be52c4a6e231 via=auth_session reason=legacy_migration_required
+..Run access: DENY run=RUN-A0900001 action=read subject=70eace83-19be-4e6c-9c5e-f97ec3bb603c via=auth_session reason=account_boundary
+.Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=6f8e289f-cea4-4367-9df7-a80e9cad3448 via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=6f8e289f-cea4-4367-9df7-a80e9cad3448 via=auth_session reason=account_boundary
+................................Worker execution stopped: worker_stop_unknown
+.......................
+======================================================================
+ERROR: test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth00_inventory.py", line 121, in test_repository_snapshot_and_all_entries_classified
+    self.mod.check(ROOT, report)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 416, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json
+
+----------------------------------------------------------------------
+Ran 228 tests in 113.024s
+
+FAILED (errors=1)

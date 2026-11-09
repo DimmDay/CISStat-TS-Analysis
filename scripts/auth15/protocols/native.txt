@@ -1,0 +1,19 @@
+test_audit_fault_rolls_back_grant_and_account_and_counter (test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_grant_and_account_and_counter) ... ok
+test_audit_fault_rolls_back_pause_and_budgets (test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_pause_and_budgets) ... ok
+test_cas_and_stale_mfa (test_auth15_demo.CampaignSQLTests.test_cas_and_stale_mfa) ... ok
+test_concurrent_last_grant_and_same_marker (test_auth15_demo.CampaignSQLTests.test_concurrent_last_grant_and_same_marker) ... ok
+test_expiry_cannot_issue_new_grant_for_known_marker (test_auth15_demo.CampaignSQLTests.test_expiry_cannot_issue_new_grant_for_known_marker) ... ok
+test_http_cookie_csrf_and_no_input_echo (test_auth15_demo.CampaignSQLTests.test_http_cookie_csrf_and_no_input_echo) ... ok
+test_last_grant_bounded_and_retry_does_not_increment (test_auth15_demo.CampaignSQLTests.test_last_grant_bounded_and_retry_does_not_increment) ... ok
+test_migration_retry_and_guards (test_auth15_demo.CampaignSQLTests.test_migration_retry_and_guards) ... ok
+test_pause_resume_and_revoke_close_context_and_ledger_authority (test_auth15_demo.CampaignSQLTests.test_pause_resume_and_revoke_close_context_and_ledger_authority) ... ok
+test_policy_clamps_demo_caps_and_own_upload (test_auth15_demo.CampaignSQLTests.test_policy_clamps_demo_caps_and_own_upload) ... ok
+test_resume_keeps_expiry_usage_and_revokes_previous_session (test_auth15_demo.CampaignSQLTests.test_resume_keeps_expiry_usage_and_revokes_previous_session) ... ok
+test_rotation_secret_once_old_password_denied_existing_grant_retained (test_auth15_demo.CampaignSQLTests.test_rotation_secret_once_old_password_denied_existing_grant_retained) ... ok
+test_shared_pair_has_distinct_subject_account_tenant_grant (test_auth15_demo.CampaignSQLTests.test_shared_pair_has_distinct_subject_account_tenant_grant) ... ok
+test_wrong_origin_and_secret_and_invalid_resume_do_not_create (test_auth15_demo.CampaignSQLTests.test_wrong_origin_and_secret_and_invalid_resume_do_not_create) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 43.536s
+
+OK

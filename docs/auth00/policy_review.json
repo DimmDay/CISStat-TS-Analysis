@@ -1,5 +1,5 @@
 {
-  "baseline": "a16b31bd0c3d49586de24d3556a39e43b9cc3321",
+  "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "policies": {
     "public.metadata": {
@@ -454,6 +454,34 @@
         "T08",
         "T12",
         "T15"
+      ]
+    },
+    "demo.admin": {
+      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared.",
+      "target": "Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance.",
+      "follow_up": [
+        "AUTH-16",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
+      ]
+    },
+    "demo.entry": {
+      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks.",
+      "target": "No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16.",
+      "follow_up": [
+        "AUTH-16",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
       ]
     }
   },
@@ -7251,6 +7279,256 @@
       ],
       "canonical_operation": "compute.supervisor",
       "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
+    },
+    "api:GET:/v1/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:GET:/v1/auth/demo/me": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/auth/demo/me",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "api:POST:/v1/auth/demo/enter": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/enter",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/auth/demo/prepare": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/prepare",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/auth/demo/resume": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/resume",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "page:embedded:/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "page:embedded:/demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "page:standalone:/admin/demo-campaigns": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "page:standalone:/demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "demo.campaign.command": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.campaign.command",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "demo.grant.enter": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.grant.enter",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "auth.demo.schema.apply": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.demo.schema.apply",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "storage:auth.demo": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "storage:auth.demo",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "api:POST:/v1/auth/demo/leave": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/leave",
+      "admission": "CSRF + private resume credential; atomic revoke and mandatory outbox"
     }
   },
   "extra_surfaces": [
@@ -7912,6 +8190,62 @@
           "symbol": "read"
         }
       ]
+    },
+    {
+      "id": "demo.campaign.command",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.campaign.command",
+      "operation": "demo.campaign.command",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo.py",
+          "line": 305,
+          "symbol": "command"
+        }
+      ]
+    },
+    {
+      "id": "demo.grant.enter",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.grant.enter",
+      "operation": "demo.grant.enter",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo.py",
+          "line": 482,
+          "symbol": "enter"
+        }
+      ]
+    },
+    {
+      "id": "auth.demo.schema.apply",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "auth.demo.schema.apply",
+      "operation": "auth.demo.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "storage:auth.demo",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:auth.demo",
+      "operation": "storage:auth.demo",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_migrations.py",
+          "line": 36,
+          "symbol": "check_schema"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -8096,6 +8430,15 @@
     "tests/unit/test_auth00_precommit.py",
     "tests/unit/test_auth11_scientific.py",
     "tests/unit/test_auth12_ledger.py",
-    "validation/engine.py"
+    "validation/engine.py",
+    "apps/api/authentication/demo.py",
+    "apps/api/authentication/demo_migrations.py",
+    "apps/api/migrations/0027_auth15_demo.sql",
+    "packages/ui/components/DemoCampaignAdmin.tsx",
+    "packages/ui/components/DemoEntry.tsx",
+    "packages/ui/lib/demo.ts",
+    "tests/unit/test_auth15_demo.py",
+    "tests/integration/test_auth15_demo.py",
+    "scripts/auth15/migrate.py"
   ]
 }

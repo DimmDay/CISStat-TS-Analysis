@@ -112,6 +112,13 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "demo_expired": "Демо-доступ завершён; войдите в личный аккаунт или обратитесь на стенд",
+    "campaign_inactive": "Демо-кампания ещё не началась, приостановлена или недоступна в этой оболочке",
+    "campaign_not_found": "Демо-кампания не найдена",
+    "campaign_policy_conflict": "Версия или состояние кампании изменились; обновите список",
+    "campaign_capacity_exhausted": "Лимит демо-кампании исчерпан; обратитесь на стенд",
+    "invalid_campaign_policy": "Некорректная или неконечная политика кампании",
+
     "compute_result_unavailable":"Результат вычисления временно недоступен; повторный расчёт не запущен",
     'compute_profile_unavailable':'Сервис вычислений временно недоступен',
     'compute_work_not_calibrated':'Выбранные параметры вычисления пока не поддерживаются сервером',
@@ -291,7 +298,12 @@ def resolve_verified_context(evidence, *, store=None, request_id=""):
             role = Role(identity.platform_role)
             # INTERNAL is Account authority, not a role-based upgrade.
             plan = PlanName(account.plan) if account.plan != "internal" else None
+            from .demo import restrict_capabilities
+            effective_caps, demo_grant_id = restrict_capabilities(
+                tx.connection, account, account_capabilities(account, now=now), now
+            )
             return RequestContext(
+                demo_grant_id=demo_grant_id,
                 subject_id=str(subject_id),
                 tenant_id=str(account.tenant_id),
                 account_id=str(account_id),
@@ -303,9 +315,9 @@ def resolve_verified_context(evidence, *, store=None, request_id=""):
                 account_plan=account.plan,
                 account_type=account.account_type,
                 plan_expires_at=account.plan_expires_at,
-                account_capabilities=account_capabilities(account, now=now),
+                account_capabilities=effective_caps,
                 scopes=evidence.scopes,
-                platform_permissions=frozenset({"platform.admin"})
+                platform_permissions=frozenset({"platform.admin", "platform.demo.manage"})
                 if role == Role.ADMIN
                 else frozenset(),
                 auth_method=evidence.auth_method,
@@ -392,7 +404,7 @@ def _resolve_context(request, request_id):
                 plan=p.plan,
                 scopes=evidence.scopes,
                 request_id=request_id,
-                platform_permissions=frozenset({"platform.admin"})
+                platform_permissions=frozenset({"platform.admin", "platform.demo.manage"})
                 if p.role == Role.ADMIN
                 else frozenset(),
             )

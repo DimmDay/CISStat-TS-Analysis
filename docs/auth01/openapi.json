@@ -2625,6 +2625,22 @@
         "capability": null,
         "selector": "none",
         "authority": "external"
+      },
+      "demo.campaign.admin": {
+        "operation_id": "demo.campaign.admin",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "demo.entry": {
+        "operation_id": "demo.entry",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
       }
     },
     "bindings": {
@@ -3598,6 +3614,62 @@
       },
       "api:POST:/v1/api-keys/{key_id}/revoke": {
         "operation_id": "auth.api_keys.revoke",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/admin/demo-campaigns": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/auth/demo/me": {
+        "operation_id": "demo.entry",
+        "programmatic_api": false
+      },
+      "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential": {
+        "operation_id": "demo.campaign.admin",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/demo/enter": {
+        "operation_id": "demo.entry",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/demo/prepare": {
+        "operation_id": "demo.entry",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/demo/resume": {
+        "operation_id": "demo.entry",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/demo/leave": {
+        "operation_id": "demo.entry",
         "programmatic_api": false
       }
     }

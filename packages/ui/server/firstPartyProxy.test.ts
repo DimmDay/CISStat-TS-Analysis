@@ -300,3 +300,9 @@ test("same-origin compute request preserves its idempotency key", async () => {
   const forwarded = new Headers(upstream.mock.calls[0][1].headers);
   expect(forwarded.get("idempotency-key")).toBe("auth14-lost-response");
 });
+
+test('AUTH-15 demo resume cookie crosses only the fixed first-party proxy', async()=>{
+ const r=await proxyRequest(new Request(origin+'/api/v1/auth/demo/me',{headers:{origin,cookie:'__Host-cisstat_demo_resume=d1_private; portal=SECRET'}}),config,upstream);
+ expect(r.status).toBe(200);
+ expect(new Headers(upstream.mock.calls[0][1].headers).get('cookie')).toBe('__Host-cisstat_demo_resume=d1_private');
+});

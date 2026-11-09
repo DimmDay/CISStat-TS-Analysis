@@ -122,7 +122,8 @@ class ReservationCoordinator:
         a = Account(**row)
         if not account_is_active(a, now=now):
             auth_error(403, "account_expired", ctx.request_id)
-        caps = account_capabilities(a, now=now)
+        from apps.api.authentication.demo import restrict_capabilities
+        caps, _ = restrict_capabilities(c, a, account_capabilities(a, now=now), now)
         if ctx.auth_method == "auth_session" and ctx.auth_session_id:
             hint = c.execute(
                 "SELECT token_hash FROM auth_sessions WHERE session_id=%s",

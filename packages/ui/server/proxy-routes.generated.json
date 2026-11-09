@@ -9,11 +9,23 @@
   },
   {
     "method": "GET",
+    "path": "/v1/admin/demo-campaigns"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/usage"
+  },
+  {
+    "method": "GET",
     "path": "/v1/api-keys"
   },
   {
     "method": "GET",
     "path": "/v1/auth/csrf"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/auth/demo/me"
   },
   {
     "method": "GET",
@@ -445,11 +457,39 @@
   },
   {
     "method": "PATCH",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}"
+  },
+  {
+    "method": "PATCH",
     "path": "/v1/internal/rules/update"
   },
   {
     "method": "PATCH",
     "path": "/v1/public/rules/update"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/activate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/pause"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/resume"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/rotate-credential"
   },
   {
     "method": "POST",
@@ -462,6 +502,22 @@
   {
     "method": "POST",
     "path": "/v1/api-keys/{key_id}/rotate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/demo/enter"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/demo/leave"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/demo/prepare"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/demo/resume"
   },
   {
     "method": "POST",

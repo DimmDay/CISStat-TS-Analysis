@@ -8,7 +8,7 @@ AUTH-14 применяется поверх a16b31bd0c3d49586de24d3556a39e43b9cc
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth14/files.txt
+git add --pathspec-from-file=scripts/auth15/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -72,4 +72,10 @@ Raw локальный benchmark/отдельный holdout — `scripts/auth14/
 
 Патч поверх AUTH-14 уточняет **какой snapshot** упал: WORKTREE, INDEX или HEAD. Лог содержит reviewed source paths и expected/actual SHA-256, изменения entry fields/metadata; прежняя общая строка не позволяла установить локальную причину. Защита не ослаблена и inventory не перезаписывается автоматически.
 
-После распаковки hotfix явно stage объединённый `scripts/auth14/files.txt` и повторить `python scripts/local_gates.py --only auth00 --skip-install`. Если WORKTREE не согласован, одного git add недостаточно: просмотрите названные файлы/карту против поставки. Не выполняйте `inventory.py --write` только для устранения FAIL. Полная инструкция: `docs/auth14/hotfix01.md`. Неполный INDEX, незаписанный guard и новые/ignored routes по-прежнему дают FAIL.
+После распаковки hotfix явно stage объединённый `scripts/auth15/files.txt` и повторить `python scripts/local_gates.py --only auth00 --skip-install`. Если WORKTREE не согласован, одного git add недостаточно: просмотрите названные файлы/карту против поставки. Не выполняйте `inventory.py --write` только для устранения FAIL. Полная инструкция: `docs/auth14/hotfix01.md`. Неполный INDEX, незаписанный guard и новые/ignored routes по-прежнему дают FAIL.
+
+## AUTH-15 (база b9af29b)
+
+Добавлены 14 HTTP bindings и страницы /demo и /admin/demo-campaigns в обеих оболочках. Новый default auth15; native — `--with-auth15-postgres` или `--only auth15-postgres`, disposable `CISSTAT_AUTH_TEST_DSN`. Native CI PG16/18; отсутствие DSN/skip не PASS. Локальный WASM proof не заменяет native locking/restart.
+
+После распаковки: `git add --pathspec-from-file=scripts/auth15/files.txt`, затем `python scripts/local_gates.py --skip-install`; до push после вашего commit — `--auth00-target head`. Обновлены AUTH-00 inventory/review, функциональные bindings, generated OpenAPI/TS и proxy allowlist. Production build обеих оболочек — `npm run build:all`. Установка на VM требует api+web build и explicit0027, см. docs/auth15/deploy.md. AUTH-16 admission codes/cleanup и эксплуатационная сертификация остаются отдельной задачей.

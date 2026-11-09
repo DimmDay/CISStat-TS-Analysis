@@ -6,6 +6,8 @@ const RETURNS = new Set([
   "/admin",
   "/admin/progress",
   "/admin/logs",
+  "/admin/demo-campaigns",
+  "/demo",
   "/upload",
   "/validation",
   "/preprocessing",
@@ -38,6 +40,8 @@ export type LoginResult =
       accounts: { account_id: string; label: string }[];
     };
 const messages: Record<string, string> = {
+  demo_expired: "Демо-доступ завершён. Войдите в личный аккаунт или обратитесь на стенд.",
+  campaign_inactive: "Демо-кампания приостановлена или ещё не началась. Обратитесь на стенд.",
   csrf_invalid: "Защита запроса устарела. Повторите попытку.",
   too_many_attempts: "Слишком много попыток. Попробуйте позже.",
   mfa_required:

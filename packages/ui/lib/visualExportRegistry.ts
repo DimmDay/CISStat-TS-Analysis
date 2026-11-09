@@ -1696,9 +1696,9 @@ export const VISUAL_RENDER_SITE_EXCLUSIONS: VisualExclusionRecord[] = [
     reason: "Футер главной страницы: svg-декор и градиентные плашки брендинга, не научная графика.",
   },
   {
-    targets: ["packages/ui/components/AdminLogsDashboard.tsx"],
+    targets: ["packages/ui/components/AdminLogsDashboard.tsx", "packages/ui/components/DemoCampaignAdmin.tsx"],
     reason_class: "ops_admin",
-    reason: "Операционные таблицы журналов/аудита/грантов администратора (DOCLOG-7); содержимое — технические события, не научные визуализации.",
+    reason: "Операционные таблицы журналов/аудита/грантов администратора (DOCLOG-7) и ресурсных бюджетов демо-кампаний (AUTH-15); содержимое — технические события, не научные визуализации.",
   },
   {
     targets: ["packages/ui/components/DocumentationWorkspace.tsx"],

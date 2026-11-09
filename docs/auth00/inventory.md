@@ -1,6 +1,6 @@
 # AUTH-00 — route/operation inventory
 
-База: `a16b31bd0c3d49586de24d3556a39e43b9cc3321`. Автоматически собранные входы + явная policy review.
+База: `b9af29bf9e359403db16b280fe8c1ab402597e85`. Автоматически собранные входы + явная policy review.
 
 **Observed — текущее поведение. Target — требования следующих AUTH-задач, не реализованные guards.**
 
@@ -11,16 +11,16 @@
 
 | Вид | Число |
 |---|---:|
-| api | 239 |
+| api | 253 |
 | framework | 8 |
-| internal_operation | 25 |
+| internal_operation | 28 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
-| page | 34 |
+| page | 38 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 13 |
+| storage | 14 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 9 |
@@ -43,6 +43,8 @@
 | browser.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-12 |
 | compute.calibrated | AUTH-14 protected PELT/sync/stateless/async tuning use fixed-point attempted-fit quotes, supervised progress before fit, saved tariff, atomic result/settle and current-authority cache/replay. A configured profile must match measured host/dependencies/kernels/domain; no configured profile explicitly preserves unpriced AUTH-13. Independent Linux wall/group-RSS supervisor and PostgreSQL global running+uncertain capacity. Shipped measurements are LOCAL reference only; VM calibration is not claimed. | Measure and explicitly install representative VM profile before calibrated admission; preserve bounds/replay/holds and complete operational, Demo/wallet and certification tasks separately. | AUTH-15, AUTH-16, AUTH-20, AUTH-21, AUTH-CERT |
 | cors.transport | AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN. | Scientific direct API authority rollout remains AUTH-11. | AUTH-11 |
+| demo.admin | AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared. | Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance. | AUTH-16, AUTH-CERT |
+| demo.entry | AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks. | No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16. | AUTH-16, AUTH-CERT |
 | document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. AUTH-09 common run gate enforces Account/tenant before role/dev compatibility; original author remains provenance. Lazy visual freeze uses actual caller. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
 | logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
@@ -65,10 +67,13 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:261 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:266 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:262 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:267 |
+| api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:144 |
+| api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:233 |
 | api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
 | api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
+| api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:128 |
 | api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
 | api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:559 |
@@ -176,11 +181,22 @@
 | api:GET:/v1/session/modeling/state | apps.api.routers.modeling_session:get_modeling_state / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1192 |
 | api:GET:/v1/session/target-column | apps.api.routers.session:get_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5607 |
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | scientific.operation / session Model Card and fold importance | apps/api/routers/tasks_session.py:222 |
+| api:PATCH:/v1/admin/demo-campaigns/{campaign_id} | apps.api.routers.demo:update / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:160 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:167 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:165 |
+| api:POST:/v1/admin/demo-campaigns | apps.api.routers.demo:create / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:149 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate | apps.api.routers.demo:activate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:173 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause | apps.api.routers.demo:pause / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:185 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume | apps.api.routers.demo:resume_campaign / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:197 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke | apps.api.routers.demo:revoke / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:209 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential | apps.api.routers.demo:rotate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:221 |
 | api:POST:/v1/api-keys | apps.api.routers.api_keys:issue_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:39 |
 | api:POST:/v1/api-keys/{key_id}/revoke | apps.api.routers.api_keys:revoke_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:53 |
 | api:POST:/v1/api-keys/{key_id}/rotate | apps.api.routers.api_keys:rotate_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:46 |
+| api:POST:/v1/auth/demo/enter | apps.api.routers.demo:enter / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:90 |
+| api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:115 |
+| api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:70 |
+| api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:104 |
 | api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:150 |
 | api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
 | api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:286 |
@@ -325,6 +341,7 @@
 | auth.account.operator | accounts.lifecycle.operator / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth08/manage_account.py:14 |
 | auth.api_keys.operator | auth.api_keys.operator / service:platform | auth.api_keys / existing service Identity/Account membership API keys; emergency revocation | scripts/auth10/manage_keys.py:13 |
 | auth.audit.publish | auth.audit.publish / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/audit_outbox.py:12 |
+| auth.demo.schema.apply | auth.demo.schema.apply / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_migrations.py:18 |
 | auth.mfa.bootstrap | auth.mfa.bootstrap / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | scripts/auth05/bootstrap.py:14 |
 | auth.mfa.schema.apply | auth.mfa.schema.apply / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa_migrations.py:18 |
 | auth.ownership.migrate | auth.ownership.migrate / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth09/migrate_ownership.py:17 |
@@ -338,6 +355,8 @@
 | compute.meter | compute.meter / service:platform | compute.calibrated / attempted fold/PELT fit ceiling before start | apps/api/billing/compute_meter.py:53 |
 | compute.profile | compute.profile / service:platform | compute.calibrated / pinned compatible measured profile | apps/api/billing/compute_profile.py:152 |
 | compute.quote | compute.quote / service:platform | compute.calibrated / measured-domain integer micro-CU quote | apps/api/billing/compute_units.py:73 |
+| demo.campaign.command | demo.campaign.command / service:platform | demo.admin / private demo authority | apps/api/authentication/demo.py:305 |
+| demo.grant.enter | demo.grant.enter / service:platform | demo.entry / private demo authority | apps/api/authentication/demo.py:482 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
@@ -615,9 +634,11 @@
 |---|---|---|---|
 | page:embedded:/ | ui:embedded:/ / service:platform | ui.page / UI navigation only | apps/embedded/app/page.tsx:1 |
 | page:embedded:/admin | ui:embedded:/admin / service:admin | ui.admin / UI navigation only | apps/embedded/app/admin/page.tsx:1 |
+| page:embedded:/admin/demo-campaigns | ui:embedded:/admin/demo-campaigns / service:platform | demo.admin / campaign policy | apps/embedded/app/admin/demo-campaigns/page.tsx:1 |
 | page:embedded:/admin/logs | ui:embedded:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/embedded/app/admin/logs/page.tsx:1 |
 | page:embedded:/admin/progress | ui:embedded:/admin/progress / service:admin/progress | ui.admin / UI navigation only | apps/embedded/app/admin/progress/page.tsx:1 |
 | page:embedded:/analytics/ts-analysis | ui:embedded:/analytics/ts-analysis / service:analytics/ts-analysis | ui.page / UI navigation only | apps/embedded/app/analytics/ts-analysis/page.tsx:1 |
+| page:embedded:/demo | ui:embedded:/demo / service:platform | demo.entry / private demo grant | apps/embedded/app/demo/page.tsx:1 |
 | page:embedded:/eda | ui:embedded:/eda / scientific:eda | ui.page / UI navigation only | apps/embedded/app/eda/page.tsx:1 |
 | page:embedded:/forecasting | ui:embedded:/forecasting / scientific:forecasting | ui.page / UI navigation only | apps/embedded/app/forecasting/page.tsx:1 |
 | page:embedded:/login | ui:embedded:/login / service:platform | ui.login / personal login UI | apps/embedded/app/login/page.tsx:1 |
@@ -629,9 +650,11 @@
 | page:embedded:/validation | ui:embedded:/validation / scientific:validation | ui.page / UI navigation only | apps/embedded/app/validation/page.tsx:1 |
 | page:standalone:/ | ui:standalone:/ / service:platform | ui.page / UI navigation only | apps/standalone/app/page.tsx:1 |
 | page:standalone:/admin | ui:standalone:/admin / service:admin | ui.admin / UI navigation only | apps/standalone/app/admin/page.tsx:1 |
+| page:standalone:/admin/demo-campaigns | ui:standalone:/admin/demo-campaigns / service:platform | demo.admin / campaign policy | apps/standalone/app/admin/demo-campaigns/page.tsx:1 |
 | page:standalone:/admin/logs | ui:standalone:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/standalone/app/admin/logs/page.tsx:1 |
 | page:standalone:/admin/progress | ui:standalone:/admin/progress / service:admin/progress | ui.admin / UI navigation only | apps/standalone/app/admin/progress/page.tsx:1 |
 | page:standalone:/dashboard/ts-analysis | ui:standalone:/dashboard/ts-analysis / service:dashboard/ts-analysis | ui.page / UI navigation only | apps/standalone/app/dashboard/ts-analysis/page.tsx:1 |
+| page:standalone:/demo | ui:standalone:/demo / service:platform | demo.entry / private demo grant | apps/standalone/app/demo/page.tsx:1 |
 | page:standalone:/documentation | ui:standalone:/documentation / service:documentation | ui.page / UI navigation only | apps/standalone/app/documentation/page.tsx:1 |
 | page:standalone:/eda | ui:standalone:/eda / scientific:eda | ui.page / UI navigation only | apps/standalone/app/eda/page.tsx:1 |
 | page:standalone:/education | ui:standalone:/education / service:education | ui.page / UI navigation only | apps/standalone/app/education/page.tsx:1 |
@@ -677,6 +700,7 @@
 | compute.cache | compute.cache / service:platform | compute.calibrated / current-authority signed content-addressed compute result replay | apps/api/billing/compute_cache.py:46 |
 | storage:artifacts | storage:artifacts / service:storage | storage.internal / snapshot/artifact/rendition bytes | apps/api/artifact_store.py:321 |
 | storage:auth.accounts | auth.repository.account / service:platform | auth.storage / Account/tenant/membership/versions | apps/api/accounts/repository.py:6 |
+| storage:auth.demo | storage:auth.demo / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_migrations.py:36 |
 | storage:auth.identities | auth.repository.identity / service:platform | auth.storage / Identity/external issuer-sub mapping | apps/api/authentication/repository.py:8 |
 | storage:auth.mfa | storage:auth.mfa / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa.py:68 |
 | storage:auth.sessions | auth.session.authority / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/sessions.py:68 |

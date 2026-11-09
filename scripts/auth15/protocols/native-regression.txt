@@ -1,0 +1,478 @@
+test_checksum_mismatch_fails_without_silent_reapply (test_auth02_postgres.PostgresTests.test_checksum_mismatch_fails_without_silent_reapply) ... ok
+test_closed_status_cannot_bypass_last_owner_invariant (test_auth02_postgres.PostgresTests.test_closed_status_cannot_bypass_last_owner_invariant) ... ok
+test_concurrent_last_owners_cannot_both_demote (test_auth02_postgres.PostgresTests.test_concurrent_last_owners_cannot_both_demote) ... ok
+test_concurrent_last_seat_cannot_overbook (test_auth02_postgres.PostgresTests.test_concurrent_last_seat_cannot_overbook) ... ok
+test_cross_repository_rollback_and_no_inner_commit (test_auth02_postgres.PostgresTests.test_cross_repository_rollback_and_no_inner_commit) ... ok
+test_downgrade_empty_only_and_reapply (test_auth02_postgres.PostgresTests.test_downgrade_empty_only_and_reapply) ... ok
+test_existing_scientific_migrations_remain_usable_and_untouched (test_auth02_postgres.PostgresTests.test_existing_scientific_migrations_remain_usable_and_untouched) ... ok
+test_external_binding_cannot_be_reassigned (test_auth02_postgres.PostgresTests.test_external_binding_cannot_be_reassigned) ... ok
+test_identity_revoke_version_and_account_suspend_survive_new_repository (test_auth02_postgres.PostgresTests.test_identity_revoke_version_and_account_suspend_survive_new_repository) ... ok
+test_immutable_ids_and_tenant_binding (test_auth02_postgres.PostgresTests.test_immutable_ids_and_tenant_binding) ... ok
+test_issuer_sub_unique_and_conflict_rolls_back_whole_transaction (test_auth02_postgres.PostgresTests.test_issuer_sub_unique_and_conflict_rolls_back_whole_transaction) ... ok
+test_member_and_owner_not_platform_admin (test_auth02_postgres.PostgresTests.test_member_and_owner_not_platform_admin) ... ok
+test_migration_idempotence_checksum_and_transactional_ddl_rollback (test_auth02_postgres.PostgresTests.test_migration_idempotence_checksum_and_transactional_ddl_rollback) ... ok
+test_mono_exactly_one_owner_and_no_empty_account_commit (test_auth02_postgres.PostgresTests.test_mono_exactly_one_owner_and_no_empty_account_commit) ... ok
+test_mono_multi_keeps_ids_and_cas_rejects_stale_writer (test_auth02_postgres.PostgresTests.test_mono_multi_keeps_ids_and_cas_rejects_stale_writer) ... ok
+test_new_python_process_observes_committed_records (test_auth02_postgres.PostgresTests.test_new_python_process_observes_committed_records) ... ok
+test_roundtrip_same_email_not_identity_merge (test_auth02_postgres.PostgresTests.test_roundtrip_same_email_not_identity_merge) ... ok
+test_unique_subject_membership_and_foreign_keys_on_server (test_auth02_postgres.PostgresTests.test_unique_subject_membership_and_foreign_keys_on_server) ... ok
+test_account_suspend_and_closed_denied (test_auth03_postgres.ContextPostgresTests.test_account_suspend_and_closed_denied) ... ok
+test_context_and_subject_keep_stable_ids_and_mfa_evidence (test_auth03_postgres.ContextPostgresTests.test_context_and_subject_keep_stable_ids_and_mfa_evidence) ... ok
+test_foreign_and_absent_account_have_same_error (test_auth03_postgres.ContextPostgresTests.test_foreign_and_absent_account_have_same_error) ... ok
+test_identity_suspend_denied_on_next_resolution (test_auth03_postgres.ContextPostgresTests.test_identity_suspend_denied_on_next_resolution) ... ok
+test_membership_revoke_denied_on_next_resolution (test_auth03_postgres.ContextPostgresTests.test_membership_revoke_denied_on_next_resolution) ... ok
+test_reads_persisted_identity_account_member_and_updated_version (test_auth03_postgres.ContextPostgresTests.test_reads_persisted_identity_account_member_and_updated_version) ... ok
+test_http_all_revoke_drops_cookie_and_next_request_denied (test_auth04_sessions.SessionHTTPTests.test_http_all_revoke_drops_cookie_and_next_request_denied) ... ok
+test_http_auth_db_down_never_uses_research_cookie (test_auth04_sessions.SessionHTTPTests.test_http_auth_db_down_never_uses_research_cookie) ... ok
+test_http_cookie_no_secret_body_and_research_pointer_removed (test_auth04_sessions.SessionHTTPTests.test_http_cookie_no_secret_body_and_research_pointer_removed) ... ok
+test_http_csrf_protects_login_and_cookie_mutations (test_auth04_sessions.SessionHTTPTests.test_http_csrf_protects_login_and_cookie_mutations) ... ok
+test_http_large_body_is_bounded (test_auth04_sessions.SessionHTTPTests.test_http_large_body_is_bounded) ... ok
+test_http_me_then_logout_and_invalid_replay (test_auth04_sessions.SessionHTTPTests.test_http_me_then_logout_and_invalid_replay) ... ok
+test_http_origin_binding_and_cross_site_reads (test_auth04_sessions.SessionHTTPTests.test_http_origin_binding_and_cross_site_reads) ... ok
+test_http_unsafe_context_consumer_requires_csrf (test_auth04_sessions.SessionHTTPTests.test_http_unsafe_context_consumer_requires_csrf) ... ok
+test_http_validation_never_echoes_password_inputs (test_auth04_sessions.SessionHTTPTests.test_http_validation_never_echoes_password_inputs) ... ok
+test_http_verifier_integrates_with_subject_context (test_auth04_sessions.SessionHTTPTests.test_http_verifier_integrates_with_subject_context) ... ok
+test_admin_password_is_not_full_mfa_session (test_auth04_sessions.SessionSQLTests.test_admin_password_is_not_full_mfa_session) ... ok
+test_chosen_or_missing_sid_is_not_used_on_login (test_auth04_sessions.SessionSQLTests.test_chosen_or_missing_sid_is_not_used_on_login) ... ok
+test_concurrent_touch_logout_cannot_resurrect_sid (test_auth04_sessions.SessionSQLTests.test_concurrent_touch_logout_cannot_resurrect_sid) ... ok
+test_connection_outage_is_safe_503 (test_auth04_sessions.SessionSQLTests.test_connection_outage_is_safe_503) ... ok
+test_credential_revoke_invalidates_sessions_and_password (test_auth04_sessions.SessionSQLTests.test_credential_revoke_invalidates_sessions_and_password) ... ok
+test_direct_role_change_invalidates_session_version (test_auth04_sessions.SessionSQLTests.test_direct_role_change_invalidates_session_version) ... ok
+test_durable_throttle_limits_attempts (test_auth04_sessions.SessionSQLTests.test_durable_throttle_limits_attempts) ... ok
+test_existing_postgres_audit_sink_deduplicates_after_lost_ack (test_auth04_sessions.SessionSQLTests.test_existing_postgres_audit_sink_deduplicates_after_lost_ack) ... ok
+test_family_revoke_does_not_affect_other_login (test_auth04_sessions.SessionSQLTests.test_family_revoke_does_not_affect_other_login) ... ok
+test_fixation_login_always_rotates_and_revokes_old (test_auth04_sessions.SessionSQLTests.test_fixation_login_always_rotates_and_revokes_old) ... ok
+test_foreign_or_missing_account_not_adopted (test_auth04_sessions.SessionSQLTests.test_foreign_or_missing_account_not_adopted) ... ok
+test_foreign_session_id_cannot_be_revoked (test_auth04_sessions.SessionSQLTests.test_foreign_session_id_cannot_be_revoked) ... ok
+test_fresh_python_process_observes_persisted_session (test_auth04_sessions.SessionSQLTests.test_fresh_python_process_observes_persisted_session) ... ok
+test_hash_only_persistence_and_safe_public_list (test_auth04_sessions.SessionSQLTests.test_hash_only_persistence_and_safe_public_list) ... ok
+test_idle_touch_does_not_move_absolute_expiry (test_auth04_sessions.SessionSQLTests.test_idle_touch_does_not_move_absolute_expiry) ... ok
+test_inclusive_idle_expiry (test_auth04_sessions.SessionSQLTests.test_inclusive_idle_expiry) ... ok
+test_logout_idempotent_and_replay_rejected (test_auth04_sessions.SessionSQLTests.test_logout_idempotent_and_replay_rejected) ... ok
+test_member_revoke_and_account_close_checked_online (test_auth04_sessions.SessionSQLTests.test_member_revoke_and_account_close_checked_online) ... ok
+test_outbox_failure_rolls_back_issue_and_revoke (test_auth04_sessions.SessionSQLTests.test_outbox_failure_rolls_back_issue_and_revoke) ... ok
+test_outbox_replay_preserves_ids_across_partial_delivery_failure (test_auth04_sessions.SessionSQLTests.test_outbox_replay_preserves_ids_across_partial_delivery_failure) ... ok
+test_password_change_during_verification_never_issues_stale_session (test_auth04_sessions.SessionSQLTests.test_password_change_during_verification_never_issues_stale_session) ... ok
+test_password_change_revokes_all_and_rejects_old_password (test_auth04_sessions.SessionSQLTests.test_password_change_revokes_all_and_rejects_old_password) ... ok
+test_revoke_all_is_subject_scoped_and_terminal (test_auth04_sessions.SessionSQLTests.test_revoke_all_is_subject_scoped_and_terminal) ... ok
+test_revoke_one_does_not_revoke_other (test_auth04_sessions.SessionSQLTests.test_revoke_one_does_not_revoke_other) ... ok
+test_revoked_member_loses_session_without_harming_owner (test_auth04_sessions.SessionSQLTests.test_revoked_member_loses_session_without_harming_owner) ... ok
+test_same_identity_two_accounts_keep_server_bindings (test_auth04_sessions.SessionSQLTests.test_same_identity_two_accounts_keep_server_bindings) ... ok
+test_schema_checksum_drift_denies_session_resolution (test_auth04_sessions.SessionSQLTests.test_schema_checksum_drift_denies_session_resolution) ... ok
+test_schema_outage_never_falls_back_or_exposes_driver_error (test_auth04_sessions.SessionSQLTests.test_schema_outage_never_falls_back_or_exposes_driver_error) ... ok
+test_session_security_fields_cannot_be_rebound_or_unrevoked (test_auth04_sessions.SessionSQLTests.test_session_security_fields_cannot_be_rebound_or_unrevoked) ... ok
+test_suspend_then_reactivate_does_not_resurrect (test_auth04_sessions.SessionSQLTests.test_suspend_then_reactivate_does_not_resurrect) ... ok
+test_wrong_and_unknown_login_same_error (test_auth04_sessions.SessionSQLTests.test_wrong_and_unknown_login_same_error) ... ok
+test_wrong_current_password_does_not_mutate (test_auth04_sessions.SessionSQLTests.test_wrong_current_password_does_not_mutate) ... ok
+test_all_new_commands_require_csrf_and_exact_origin (test_auth05_mfa.MfaHTTPTests.test_all_new_commands_require_csrf_and_exact_origin) ... ok
+test_full_http_enroll_login_me_logout_and_cookie (test_auth05_mfa.MfaHTTPTests.test_full_http_enroll_login_me_logout_and_cookie) ... ok
+test_http_recovery_no_full_session_and_safe_validation (test_auth05_mfa.MfaHTTPTests.test_http_recovery_no_full_session_and_safe_validation) ... ok
+test_http_stepup_and_recovery_rotation_guard (test_auth05_mfa.MfaHTTPTests.test_http_stepup_and_recovery_rotation_guard) ... ok
+test_account_membership_revocation_and_safe_storage (test_auth05_mfa.MfaSQLTests.test_account_membership_revocation_and_safe_storage) ... ok
+test_admin_login_mfa_context_and_totp_replay (test_auth05_mfa.MfaSQLTests.test_admin_login_mfa_context_and_totp_replay) ... ok
+test_attempt_budget_survives_failures_and_new_login (test_auth05_mfa.MfaSQLTests.test_attempt_budget_survives_failures_and_new_login) ... ok
+test_bootstrap_one_use_and_no_second_first_admin (test_auth05_mfa.MfaSQLTests.test_bootstrap_one_use_and_no_second_first_admin) ... ok
+test_concurrent_recovery_codes_cannot_recover_twice (test_auth05_mfa.MfaSQLTests.test_concurrent_recovery_codes_cannot_recover_twice) ... ok
+test_concurrent_totp_accepts_exactly_one (test_auth05_mfa.MfaSQLTests.test_concurrent_totp_accepts_exactly_one) ... ok
+test_enrollment_challenge_never_session_and_replay_closed (test_auth05_mfa.MfaSQLTests.test_enrollment_challenge_never_session_and_replay_closed) ... ok
+test_expiry_credential_epoch_and_authority_failure (test_auth05_mfa.MfaSQLTests.test_expiry_credential_epoch_and_authority_failure) ... ok
+test_factor_replacement_requires_reenrollment_and_fences_sessions (test_auth05_mfa.MfaSQLTests.test_factor_replacement_requires_reenrollment_and_fences_sessions) ... ok
+test_mandatory_audit_failure_rolls_back_recovery (test_auth05_mfa.MfaSQLTests.test_mandatory_audit_failure_rolls_back_recovery) ... ok
+test_membership_and_role_change_fence_challenges (test_auth05_mfa.MfaSQLTests.test_membership_and_role_change_fence_challenges) ... ok
+test_mfa_password_change_requires_action_step_up (test_auth05_mfa.MfaSQLTests.test_mfa_password_change_requires_action_step_up) ... ok
+test_migration_checksum_and_database_guards (test_auth05_mfa.MfaSQLTests.test_migration_checksum_and_database_guards) ... ok
+test_missing_key_fails_closed_and_does_not_consume_challenge (test_auth05_mfa.MfaSQLTests.test_missing_key_fails_closed_and_does_not_consume_challenge) ... ok
+test_new_challenge_does_not_reset_subject_attempt_limit (test_auth05_mfa.MfaSQLTests.test_new_challenge_does_not_reset_subject_attempt_limit) ... ok
+test_new_process_verifies_durable_challenge (test_auth05_mfa.MfaSQLTests.test_new_process_verifies_durable_challenge) ... ok
+test_recovery_lost_response_never_reopens_password_only_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_lost_response_never_reopens_password_only_enrollment) ... ok
+test_recovery_revokes_all_and_requires_new_enrollment (test_auth05_mfa.MfaSQLTests.test_recovery_revokes_all_and_requires_new_enrollment) ... ok
+test_step_up_action_session_binding_and_single_use (test_auth05_mfa.MfaSQLTests.test_step_up_action_session_binding_and_single_use) ... ok
+test_step_up_expiry_and_wrong_session (test_auth05_mfa.MfaSQLTests.test_step_up_expiry_and_wrong_session) ... ok
+test_closed_account_not_selected (test_auth06_transport.AccountSelectionTests.test_closed_account_not_selected) ... ok
+test_only_own_accounts_offered_without_session (test_auth06_transport.AccountSelectionTests.test_only_own_accounts_offered_without_session) ... ok
+test_single_account_auto_selected (test_auth06_transport.AccountSelectionTests.test_single_account_auto_selected) ... ok
+test_actual_me_same_cookie_projects_downgrade (test_auth08_accounts.AccountSQLTests.test_actual_me_same_cookie_projects_downgrade) ... ok
+test_actual_sql_audit_insert_failure_rolls_back_everything (test_auth08_accounts.AccountSQLTests.test_actual_sql_audit_insert_failure_rolls_back_everything) ... ok
+test_audit_failure_rolls_back_account_and_session_revoke (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_account_and_session_revoke) ... ok
+test_audit_failure_rolls_back_membership_and_sid (test_auth08_accounts.AccountSQLTests.test_audit_failure_rolls_back_membership_and_sid) ... ok
+test_bound_admin_in_low_plan_has_admin_permission_but_no_tuning (test_auth08_accounts.AccountSQLTests.test_bound_admin_in_low_plan_has_admin_permission_but_no_tuning) ... ok
+test_capability_dependency_reads_downgrade_on_next_http_request (test_auth08_accounts.AccountSQLTests.test_capability_dependency_reads_downgrade_on_next_http_request) ... ok
+test_closed_terminal_and_no_delete_of_history_or_credentials (test_auth08_accounts.AccountSQLTests.test_closed_terminal_and_no_delete_of_history_or_credentials) ... ok
+test_context_reloaded_in_fresh_process (test_auth08_accounts.AccountSQLTests.test_context_reloaded_in_fresh_process) ... ok
+test_exact_expiry_blocks_session_and_password_login (test_auth08_accounts.AccountSQLTests.test_exact_expiry_blocks_session_and_password_login) ... ok
+test_expired_account_not_in_multi_account_choices (test_auth08_accounts.AccountSQLTests.test_expired_account_not_in_multi_account_choices) ... ok
+test_expiry_blocks_inflight_mfa_challenge_and_resume_consumes_it (test_auth08_accounts.AccountSQLTests.test_expiry_blocks_inflight_mfa_challenge_and_resume_consumes_it) ... ok
+test_expiry_can_be_cleared_explicitly_and_not_reset_by_login (test_auth08_accounts.AccountSQLTests.test_expiry_can_be_cleared_explicitly_and_not_reset_by_login) ... ok
+test_intent_existing_schema_and_noop_does_not_advance_or_audit (test_auth08_accounts.AccountSQLTests.test_intent_existing_schema_and_noop_does_not_advance_or_audit) ... ok
+test_last_owner_cannot_be_revoked_even_when_suspended (test_auth08_accounts.AccountSQLTests.test_last_owner_cannot_be_revoked_even_when_suspended) ... ok
+test_mono_to_multi_keeps_ids_and_capacity (test_auth08_accounts.AccountSQLTests.test_mono_to_multi_keeps_ids_and_capacity) ... ok
+test_plan_change_visible_with_original_sid_and_no_relogin (test_auth08_accounts.AccountSQLTests.test_plan_change_visible_with_original_sid_and_no_relogin) ... ok
+test_restore_also_fences_sessions_from_low_level_legacy_revoke (test_auth08_accounts.AccountSQLTests.test_restore_also_fences_sessions_from_low_level_legacy_revoke) ... ok
+test_restore_into_mono_cannot_add_second_member (test_auth08_accounts.AccountSQLTests.test_restore_into_mono_cannot_add_second_member) ... ok
+test_restore_must_respect_seat_capacity (test_auth08_accounts.AccountSQLTests.test_restore_must_respect_seat_capacity) ... ok
+test_revoke_is_account_scoped_and_restore_does_not_revive_sid (test_auth08_accounts.AccountSQLTests.test_revoke_is_account_scoped_and_restore_does_not_revive_sid) ... ok
+test_stale_expected_version_rejects_and_leaves_no_intent (test_auth08_accounts.AccountSQLTests.test_stale_expected_version_rejects_and_leaves_no_intent) ... ok
+test_suspend_resume_does_not_resurrect_old_sid (test_auth08_accounts.AccountSQLTests.test_suspend_resume_does_not_resurrect_old_sid) ... ok
+test_suspended_or_expired_account_cannot_restore_membership (test_auth08_accounts.AccountSQLTests.test_suspended_or_expired_account_cannot_restore_membership) ... ok
+test_two_writers_one_wins_cas (test_auth08_accounts.AccountSQLTests.test_two_writers_one_wins_cas) ... ok
+test_account_switch_login_rotates_auth_and_clears_research (test_auth09_objects.OwnershipSQLTests.test_account_switch_login_rotates_auth_and_clears_research) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_534cd2470ece4195b60dbfce9d8802e6:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_bound_account_and_provenance_immutable (test_auth09_objects.OwnershipSQLTests.test_bound_account_and_provenance_immutable) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_cc6ed3e18530432392d79a3bd28a5ebd:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse (test_auth09_objects.OwnershipSQLTests.test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_bcfd3506fc494685ab9eeb800db6dbf4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_fresh_process_and_doclog_gate_after_migration (test_auth09_objects.OwnershipSQLTests.test_fresh_process_and_doclog_gate_after_migration) ... Run access: DENY run=RUN-CECBDD22 action=read subject=6984259b-185b-493f-b755-e027ea69cc62 via=auth_session reason=account_boundary
+ok
+test_legacy_cookie_no_auto_claim (test_auth09_objects.OwnershipSQLTests.test_legacy_cookie_no_auto_claim) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_4bd83151c9fe4e92a160bcc7f8adef3b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_member_post_restore_csrf_and_author_preserved (test_auth09_objects.OwnershipSQLTests.test_member_post_restore_csrf_and_author_preserved) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_c6bd50c4f4a84e4097aa17d44ccea83e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_migration_preserves_data_provenance_and_fences_stale_save (test_auth09_objects.OwnershipSQLTests.test_migration_preserves_data_provenance_and_fences_stale_save) ... ok
+test_new_named_run_and_session_account (test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_cd8156e7bcff4bb5bf452a05e5ee9512:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_one_time_and_expected_source (test_auth09_objects.OwnershipSQLTests.test_one_time_and_expected_source) ... ok
+test_real_audit_insert_failure_rolls_back_everything (test_auth09_objects.OwnershipSQLTests.test_real_audit_insert_failure_rolls_back_everything) ... ok
+test_receipt_immutable_and_no_raw_cookie_in_audit (test_auth09_objects.OwnershipSQLTests.test_receipt_immutable_and_no_raw_cookie_in_audit) ... ok
+test_regular_sql_upsert_cannot_claim_legacy (test_auth09_objects.OwnershipSQLTests.test_regular_sql_upsert_cannot_claim_legacy) ... ok
+test_reject_unsupported_non_atomic_topologies (test_auth09_objects.OwnershipSQLTests.test_reject_unsupported_non_atomic_topologies) ... ok
+test_restore_unknown_author_preserves_tenant_and_source_bytes (test_auth09_objects.OwnershipSQLTests.test_restore_unknown_author_preserves_tenant_and_source_bytes) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_ced8108997be4f378963d5d181097ffb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_revoked_member_cannot_fallback_pointer (test_auth09_objects.OwnershipSQLTests.test_revoked_member_cannot_fallback_pointer) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_c8300deec81b4012b502f2d5be9045d4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_same_person_other_account_denied_session_trace_doclog_and_uniform404 (test_auth09_objects.OwnershipSQLTests.test_same_person_other_account_denied_session_trace_doclog_and_uniform404) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_d774a67aa2fa43afb875b46113d5a5e2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Run access: DENY run=RUN-548602F8 action=read subject=88b23df3-a49e-4014-8e0b-17c6a39074ff via=auth_session reason=account_boundary
+Run access: DENY run=RUN-548602F8 action=read subject=88b23df3-a49e-4014-8e0b-17c6a39074ff via=auth_session reason=account_boundary
+Run access: DENY run=RUN-548602F8 action=read subject=88b23df3-a49e-4014-8e0b-17c6a39074ff via=auth_session reason=account_boundary
+Run access: DENY run=RUN-548602F8 action=read subject=88b23df3-a49e-4014-8e0b-17c6a39074ff via=auth_session reason=account_boundary
+ok
+test_sql_new_binding_cannot_have_null_ownership_state (test_auth09_objects.OwnershipSQLTests.test_sql_new_binding_cannot_have_null_ownership_state) ... ok
+test_stale_and_suspended_target_do_not_claim (test_auth09_objects.OwnershipSQLTests.test_stale_and_suspended_target_do_not_claim) ... ok
+test_two_concurrent_targets_one_winner (test_auth09_objects.OwnershipSQLTests.test_two_concurrent_targets_one_winner) ... ok
+test_unknown_author_not_invented (test_auth09_objects.OwnershipSQLTests.test_unknown_author_not_invented) ... ok
+test_account_deadline_caps_key_expiry (test_auth10_keys.KeySQLTests.test_account_deadline_caps_key_expiry) ... ok
+test_account_suspension_scoped_and_terminal (test_auth10_keys.KeySQLTests.test_account_suspension_scoped_and_terminal) ... ok
+test_bad_key_never_falls_back_to_valid_cookie_and_conflicting_accounts (test_auth10_keys.KeySQLTests.test_bad_key_never_falls_back_to_valid_cookie_and_conflicting_accounts) ... ok
+test_cookie_mutations_csrf_origin_and_no_input_echo (test_auth10_keys.KeySQLTests.test_cookie_mutations_csrf_origin_and_no_input_echo) ... ok
+test_cross_person_and_same_person_other_account_uniform404 (test_auth10_keys.KeySQLTests.test_cross_person_and_same_person_other_account_uniform404) ... ok
+test_database_probe_and_load_gate_before_connector (test_auth10_keys.KeySQLTests.test_database_probe_and_load_gate_before_connector) ... ok
+test_expiry_exact_deadline (test_auth10_keys.KeySQLTests.test_expiry_exact_deadline) ... ok
+test_fresh_process_same_subject_and_revoke_persistence (test_auth10_keys.KeySQLTests.test_fresh_process_same_subject_and_revoke_persistence) ... ok
+test_hash_only_secret_once_safe_metadata (test_auth10_keys.KeySQLTests.test_hash_only_secret_once_safe_metadata) ... ok
+test_identity_reactivation_does_not_revive_key (test_auth10_keys.KeySQLTests.test_identity_reactivation_does_not_revive_key) ... ok
+test_issue_audit_fault_atomic (test_auth10_keys.KeySQLTests.test_issue_audit_fault_atomic) ... ok
+test_key_cannot_manage_keys_or_admin_paths (test_auth10_keys.KeySQLTests.test_key_cannot_manage_keys_or_admin_paths) ... ok
+test_key_count_bound (test_auth10_keys.KeySQLTests.test_key_count_bound) ... ok
+test_membership_revoke_races_issue_without_live_survivor (test_auth10_keys.KeySQLTests.test_membership_revoke_races_issue_without_live_survivor) ... ok
+test_membership_revoke_restore_does_not_revive_key (test_auth10_keys.KeySQLTests.test_membership_revoke_restore_does_not_revive_key) ... ok
+test_migration_idempotence_and_checksum_fail_closed (test_auth10_keys.KeySQLTests.test_migration_idempotence_and_checksum_fail_closed) ... ok
+test_plan_disabled_issue_and_rotation (test_auth10_keys.KeySQLTests.test_plan_disabled_issue_and_rotation) ... ok
+test_programmatic_scope_and_current_subject (test_auth10_keys.KeySQLTests.test_programmatic_scope_and_current_subject) ... ok
+test_readiness_guard_drop_fail_closed (test_auth10_keys.KeySQLTests.test_readiness_guard_drop_fail_closed) ... ok
+test_recent_auth_required_while_session_is_active (test_auth10_keys.KeySQLTests.test_recent_auth_required_while_session_is_active) ... ok
+test_required_env_removal_no_revocation_resurrection (test_auth10_keys.KeySQLTests.test_required_env_removal_no_revocation_resurrection) ... ok
+test_revoke_audit_fault_keeps_old_key (test_auth10_keys.KeySQLTests.test_revoke_audit_fault_keeps_old_key) ... ok
+test_revoke_rotation_race (test_auth10_keys.KeySQLTests.test_revoke_rotation_race) ... ok
+test_revoke_terminal_and_no_secret_recovery (test_auth10_keys.KeySQLTests.test_revoke_terminal_and_no_secret_recovery) ... ok
+test_rotation_audit_fault_keeps_old_key (test_auth10_keys.KeySQLTests.test_rotation_audit_fault_keeps_old_key) ... ok
+test_rotation_cannot_widen_scope (test_auth10_keys.KeySQLTests.test_rotation_cannot_widen_scope) ... ok
+test_rotation_stable_identity_expiry_and_old_invalid (test_auth10_keys.KeySQLTests.test_rotation_stable_identity_expiry_and_old_invalid) ... ok
+test_runtime_capability_reloaded_without_key_cache (test_auth10_keys.KeySQLTests.test_runtime_capability_reloaded_without_key_cache) ... ok
+test_service_key_operator_requires_existing_service_membership (test_auth10_keys.KeySQLTests.test_service_key_operator_requires_existing_service_membership) ... ok
+test_sql_immutable_history_and_no_reactivation (test_auth10_keys.KeySQLTests.test_sql_immutable_history_and_no_reactivation) ... ok
+test_suspend_races_issue_without_live_survivor (test_auth10_keys.KeySQLTests.test_suspend_races_issue_without_live_survivor) ... ok
+test_two_rotations_one_winner (test_auth10_keys.KeySQLTests.test_two_rotations_one_winner) ... ok
+test_upload_ownership_survives_key_rotation (test_auth10_keys.KeySQLTests.test_upload_ownership_survives_key_rotation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_a8681166ca744d2ebf8788f87628f643:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-D142EE55 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_actual_engine_input_is_rechecked_after_ingress (test_auth11_scientific.ScientificSQLTests.test_actual_engine_input_is_rechecked_after_ingress) ... ok
+test_all_advanced_tuning_and_step_alternatives_deny_before_kernel (test_auth11_scientific.ScientificSQLTests.test_all_advanced_tuning_and_step_alternatives_deny_before_kernel) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_11031e200c9d4c14b734f6e6116e9c77:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-A77082AF operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_authority_outage_safe_503_never_reaches_scientific_reader (test_auth11_scientific.ScientificSQLTests.test_authority_outage_safe_503_never_reaches_scientific_reader) ... ok
+test_db_limit_is_derived_from_current_cap_and_actual_rows (test_auth11_scientific.ScientificSQLTests.test_db_limit_is_derived_from_current_cap_and_actual_rows) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_dab7fb2936fd4b909fa0c999ade74aa2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-016659BD operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_db_probe_and_load_share_current_own_upload_capability (test_auth11_scientific.ScientificSQLTests.test_db_probe_and_load_share_current_own_upload_capability) ... ok
+test_demo_application_alias_and_history_restore_denied (test_auth11_scientific.ScientificSQLTests.test_demo_application_alias_and_history_restore_denied) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_9251144671414782af845e0c50026f00:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-11B31EDB operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_demo_baseline_internal_uses_actual_series_not_browser_profile (test_auth11_scientific.ScientificSQLTests.test_demo_baseline_internal_uses_actual_series_not_browser_profile) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_df0973e90efe4f7694ec09fc06c6fedd:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-5DE12809 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_demo_session_baseline_pipeline_positive (test_auth11_scientific.ScientificSQLTests.test_demo_session_baseline_pipeline_positive) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_29a96c3f62684e479dff15c190ad4d5e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_passport:start producer_key=passport:start error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_passport_checkpoint producer_key=pgv.checkpoint:pck-172d5236-861e-4cdc-8295-d5607a5b80aa error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/stats/stattools.py:52: RuntimeWarning: invalid value encountered in scalar divide
+  dw = np.sum(diff_resids**2, axis=axis) / np.sum(resids**2, axis=axis)
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  return acorr_lm(
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_model_card producer_key=model_card:53250ee0-6853-48f3-8382-8fba41d7dd50 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:drift error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_oof_backtest producer_key=oof_backtest:naive error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_model_card producer_key=model_card:53250ee0-6853-48f3-8382-8fba41d7dd50 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=promote_forecast producer_key=forecast:a4264d3c-29a9-4ba8-89ea-359a55c83cb6 error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=backfill_passport_checkpoints producer_key=pgv.checkpoint:backfill error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Artifact promotion failed (durable receipt recorded): run=RUN-5C49151E operation=freeze_visual:forecasting.forecast.chart producer_key=pgv.visual_result:forecasting.forecast.chart error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+/workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/statsmodels/regression/linear_model.py:1074: RuntimeWarning: divide by zero encountered in log
+  llf = -nobs2 * np.log(2 * np.pi) - nobs2 * np.log(ssr / nobs) - nobs2
+ok
+test_downgrade_blocks_saved_model_state_card_forecast_export_and_xai (test_auth11_scientific.ScientificSQLTests.test_downgrade_blocks_saved_model_state_card_forecast_export_and_xai) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_6705bba760c8480fa68a5b8d0a09461c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-E49C0711 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_every_scientific_and_research_route_requires_auth_before_payload (test_auth11_scientific.ScientificSQLTests.test_every_scientific_and_research_route_requires_auth_before_payload) ... ok
+test_expanded_dataframe_is_checked_before_session_mutation (test_auth11_scientific.ScientificSQLTests.test_expanded_dataframe_is_checked_before_session_mutation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_2fb4ec14a21741d1b13fa1c467630196:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-EAD917E7 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_foreign_same_person_account_denied_before_db_and_body (test_auth11_scientific.ScientificSQLTests.test_foreign_same_person_account_denied_before_db_and_body) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_423c67e814c64a0db4e04857e03cfe16:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-C3CA3781 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+Run access: DENY run=RUN-C3CA3781 action=read subject=05b8c297-6bb8-44de-aba2-b1d7ae0f5caf via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C3CA3781 action=read subject=05b8c297-6bb8-44de-aba2-b1d7ae0f5caf via=auth_session reason=account_boundary
+ok
+test_global_rule_override_cannot_mutate_other_accounts (test_auth11_scientific.ScientificSQLTests.test_global_rule_override_cannot_mutate_other_accounts) ... ok
+test_internal_analyst_role_cannot_upgrade_demo_account (test_auth11_scientific.ScientificSQLTests.test_internal_analyst_role_cannot_upgrade_demo_account) ... ok
+test_json_suffix_cannot_bypass_actual_series_row_limit (test_auth11_scientific.ScientificSQLTests.test_json_suffix_cannot_bypass_actual_series_row_limit) ... ok
+test_membership_revoke_is_effective_next_request (test_auth11_scientific.ScientificSQLTests.test_membership_revoke_is_effective_next_request) ... ok
+test_missing_content_type_cannot_bypass_actual_rows (test_auth11_scientific.ScientificSQLTests.test_missing_content_type_cannot_bypass_actual_rows) ... ok
+test_oversized_file_never_registers_file_or_session (test_auth11_scientific.ScientificSQLTests.test_oversized_file_never_registers_file_or_session) ... ok
+test_saved_default_baseline_card_remains_readable (test_auth11_scientific.ScientificSQLTests.test_saved_default_baseline_card_remains_readable) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_758c0d71c99c475b9eb70ac224760669:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-CB3F0D22 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_starter_api_baseline_allowed_advanced_and_scope_bypass_denied (test_auth11_scientific.ScientificSQLTests.test_starter_api_baseline_allowed_advanced_and_scope_bypass_denied) ... ok
+test_unauthorized_upload_rejected_before_multipart_decode (test_auth11_scientific.ScientificSQLTests.test_unauthorized_upload_rejected_before_multipart_decode) ... ok
+test_unknown_saved_baseline_provenance_does_not_become_default (test_auth11_scientific.ScientificSQLTests.test_unknown_saved_baseline_provenance_does_not_become_default) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_3e60fa2afedc457b8a8e93439e189e49:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Artifact promotion failed (durable receipt recorded): run=RUN-466E2EA7 operation=promote_data_version:upload producer_key=data_version:upload error=ArtifactRegistry: Postgres backend required, но инициализация не удалась (fail-closed, P21/F14): ArtifactRegistry: Postgres backend required, но недоступен (fail-closed, P21/F14): миграция 0007 не применена
+ok
+test_validation_does_not_echo_database_credentials (test_auth11_scientific.ScientificSQLTests.test_validation_does_not_echo_database_credentials) ... ok
+test_audit_fault_rolls_back_reserve_every_table (test_auth12_ledger.LedgerSQLTests.test_audit_fault_rolls_back_reserve_every_table) ... ok
+test_budget_policy_audit_failure_keeps_limit_and_version (test_auth12_ledger.LedgerSQLTests.test_budget_policy_audit_failure_keeps_limit_and_version) ... ok
+test_common_sponsor_across_accounts_and_grant_atomic (test_auth12_ledger.LedgerSQLTests.test_common_sponsor_across_accounts_and_grant_atomic) ... ok
+test_current_revoked_credential_not_allowed_to_replay (test_auth12_ledger.LedgerSQLTests.test_current_revoked_credential_not_allowed_to_replay) ... ok
+test_downgrade_reduces_cap_without_resetting_spent (test_auth12_ledger.LedgerSQLTests.test_downgrade_reduces_cap_without_resetting_spent) ... ok
+test_expired_account_cannot_reserve (test_auth12_ledger.LedgerSQLTests.test_expired_account_cannot_reserve) ... ok
+test_failed_extension_cannot_change_held_or_postings (test_auth12_ledger.LedgerSQLTests.test_failed_extension_cannot_change_held_or_postings) ... ok
+test_foreign_account_receipt_and_claim_are_not_authority (test_auth12_ledger.LedgerSQLTests.test_foreign_account_receipt_and_claim_are_not_authority) ... ok
+test_fresh_process_ledger_persists (test_auth12_ledger.LedgerSQLTests.test_fresh_process_ledger_persists) ... ok
+test_idempotent_concurrent_and_payload_conflict (test_auth12_ledger.LedgerSQLTests.test_idempotent_concurrent_and_payload_conflict) ... ok
+test_job_outbox_fault_rolls_back_all_budget_changes (test_auth12_ledger.LedgerSQLTests.test_job_outbox_fault_rolls_back_all_budget_changes) ... ok
+test_last_analysis_race_and_same_run_once (test_auth12_ledger.LedgerSQLTests.test_last_analysis_race_and_same_run_once) ... ok
+test_last_api_race_account_not_key (test_auth12_ledger.LedgerSQLTests.test_last_api_race_account_not_key) ... ok
+test_last_concurrency_slot_race (test_auth12_ledger.LedgerSQLTests.test_last_concurrency_slot_race) ... ok
+test_last_cu_race_one_job_all_atomic (test_auth12_ledger.LedgerSQLTests.test_last_cu_race_one_job_all_atomic) ... ok
+test_membership_revoke_deny_new_and_start (test_auth12_ledger.LedgerSQLTests.test_membership_revoke_deny_new_and_start) ... ok
+test_migration_cli_apply_retry_and_check_clean_database (test_auth12_ledger.LedgerSQLTests.test_migration_cli_apply_retry_and_check_clean_database) ... ok
+test_migration_retry_checksum_trigger_drift (test_auth12_ledger.LedgerSQLTests.test_migration_retry_checksum_trigger_drift) ... ok
+test_missing_schema_never_migrates_in_request (test_auth12_ledger.LedgerSQLTests.test_missing_schema_never_migrates_in_request) ... ok
+test_over_estimate_cannot_spend_then_explicit_extend (test_auth12_ledger.LedgerSQLTests.test_over_estimate_cannot_spend_then_explicit_extend) ... ok
+test_overflow_never_wraps_or_partially_commits (test_auth12_ledger.LedgerSQLTests.test_overflow_never_wraps_or_partially_commits) ... ok
+test_pause_and_expiry_block_admission_but_never_refund (test_auth12_ledger.LedgerSQLTests.test_pause_and_expiry_block_admission_but_never_refund) ... ok
+test_paused_running_reservation_cannot_extend (test_auth12_ledger.LedgerSQLTests.test_paused_running_reservation_cannot_extend) ... ok
+test_payload_and_idempotency_plaintext_not_saved (test_auth12_ledger.LedgerSQLTests.test_payload_and_idempotency_plaintext_not_saved) ... ok
+test_pending_cancel_keeps_api_analysis_charged (test_auth12_ledger.LedgerSQLTests.test_pending_cancel_keeps_api_analysis_charged) ... ok
+test_restore_cannot_claim_new_analysis (test_auth12_ledger.LedgerSQLTests.test_restore_cannot_claim_new_analysis) ... ok
+test_rotation_does_not_reset_quota_or_idempotency (test_auth12_ledger.LedgerSQLTests.test_rotation_does_not_reset_quota_or_idempotency) ... ok
+test_running_release_forbidden_and_no_lease_refund (test_auth12_ledger.LedgerSQLTests.test_running_release_forbidden_and_no_lease_refund) ... ok
+test_same_run_concurrency_claim_charged_once (test_auth12_ledger.LedgerSQLTests.test_same_run_concurrency_claim_charged_once) ... ok
+test_scope_binding_invalid_parent_and_no_null_infinity (test_auth12_ledger.LedgerSQLTests.test_scope_binding_invalid_parent_and_no_null_infinity) ... ok
+test_settle_audit_failure_keeps_reserve_and_running_state (test_auth12_ledger.LedgerSQLTests.test_settle_audit_failure_keeps_reserve_and_running_state) ... ok
+test_settle_partial_and_terminal_retry (test_auth12_ledger.LedgerSQLTests.test_settle_partial_and_terminal_retry) ... ok
+test_sql_projection_and_immutable_ledger (test_auth12_ledger.LedgerSQLTests.test_sql_projection_and_immutable_ledger) ... ok
+test_unknown_entry_and_custom_model_current_caps_deny (test_auth12_ledger.LedgerSQLTests.test_unknown_entry_and_custom_model_current_caps_deny) ... ok
+test_utc_month_rollover_keeps_old_postings_and_retry (test_auth12_ledger.LedgerSQLTests.test_utc_month_rollover_keeps_old_postings_and_retry) ... ok
+test_actual_queued_render_completes_with_service_and_no_request_cookie (test_auth13_workers.WorkerSQLTests.test_actual_queued_render_completes_with_service_and_no_request_cookie) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_d93de4c820ef4fb2a7bcadd2f3f65be8:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_actual_queued_render_revoke_cannot_start_or_reclaim (test_auth13_workers.WorkerSQLTests.test_actual_queued_render_revoke_cannot_start_or_reclaim) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_5a80571db7f24951a9cee0d4acf8d411:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_actual_sync_render_ready_and_settled_once (test_auth13_workers.WorkerSQLTests.test_actual_sync_render_ready_and_settled_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_335ebfb55c7747918b5d0234c9ee05ae:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_admission_job_projection_failure_rolls_back_reservation (test_auth13_workers.WorkerSQLTests.test_admission_job_projection_failure_rolls_back_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_568dcd52a97d4f00886b05b94d08d242:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_audit_fault_rolls_back_publish_and_settle (test_auth13_workers.WorkerSQLTests.test_audit_fault_rolls_back_publish_and_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_5c79dfddfbfb4f0588bed78c2156ca70:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_queued_releases_and_no_start (test_auth13_workers.WorkerSQLTests.test_cancel_queued_releases_and_no_start) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_2c27ca56a07440d4965141e8c5ea813f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_cancel_running_fences_then_positive_stop_settles (test_auth13_workers.WorkerSQLTests.test_cancel_running_fences_then_positive_stop_settles) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_d87832e2c5e7482b9fcad5ace15ca55d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_claim_race_single_fence (test_auth13_workers.WorkerSQLTests.test_claim_race_single_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_007771c4e82d46a388bd4682517dc3b1:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_duplicate_publication_single_charge_and_projection (test_auth13_workers.WorkerSQLTests.test_duplicate_publication_single_charge_and_projection) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_f384cb0a2cc04729962f43189d448aaf:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_expired_running_lease_keeps_hold_until_positive_stop (test_auth13_workers.WorkerSQLTests.test_expired_running_lease_keeps_hold_until_positive_stop) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_72e7d54b2f3d4121b8cc858d85995211:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_foreign_job_context_and_session_pointer_deny (test_auth13_workers.WorkerSQLTests.test_foreign_job_context_and_session_pointer_deny) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_3c25c0beaa3849ee9bf558bd6d4b8e02:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_legacy_settle_cannot_bypass_execution_fence (test_auth13_workers.WorkerSQLTests.test_legacy_settle_cannot_bypass_execution_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_6334813173d445d394d8528d71d1b727:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_migration_replay_and_disabled_guard_are_detected (test_auth13_workers.WorkerSQLTests.test_migration_replay_and_disabled_guard_are_detected) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_a94f9cd95d74469ea61b11f46f6ec379:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_old_fence_cannot_publish_next_phase (test_auth13_workers.WorkerSQLTests.test_old_fence_cannot_publish_next_phase) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_5208f977d21b44bdbdf4235c41c8571f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_partial_checkpoints_accrue_once (test_auth13_workers.WorkerSQLTests.test_partial_checkpoints_accrue_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_01e0aa09ead54664a01b69688a5f29ed:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_proof_tampering_cannot_release_reservation (test_auth13_workers.WorkerSQLTests.test_proof_tampering_cannot_release_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_b86e15ae1599431189a0b7cec862d762:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queue_logout_start_no_result_or_refund (test_auth13_workers.WorkerSQLTests.test_queue_logout_start_no_result_or_refund) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_e07c977c10f442b0919cd6e1bef5d6fb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_queued_revoke_reconciles_once_without_execution (test_auth13_workers.WorkerSQLTests.test_queued_revoke_reconciles_once_without_execution) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_f0fdfeaf1e5b434693bc1a4aab224583:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_delivery_mirror_and_ack_atomic (test_auth13_workers.WorkerSQLTests.test_real_delivery_mirror_and_ack_atomic) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_a94dab5ab20a4ae196d87281ef3fad18:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_model_job_and_legacy_tuning_alias_publish_under_fence (test_auth13_workers.WorkerSQLTests.test_real_model_job_and_legacy_tuning_alias_publish_under_fence) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_54b4abe2642944a89eca24da01067e90:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+ok
+test_remote_unknown_proof_never_releases (test_auth13_workers.WorkerSQLTests.test_remote_unknown_proof_never_releases) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_570beb1caa53448db1e5ee6f6fb47198:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_render_missing_service_is_explicit_503_without_reservation (test_auth13_workers.WorkerSQLTests.test_render_missing_service_is_explicit_503_without_reservation) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_03a101e36bfc499f9e3c43109edd919d:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_render_service_reconciles_its_kind_without_modeling_authority (test_auth13_workers.WorkerSQLTests.test_render_service_reconciles_its_kind_without_modeling_authority) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_2d93a0dde525417f813de837ce89ccfb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_running_revoke_before_publish_denies_output (test_auth13_workers.WorkerSQLTests.test_running_revoke_before_publish_denies_output) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_a51f66185ea549c584a8605940d24daf:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_credential_kind_revoke_and_safe_storage (test_auth13_workers.WorkerSQLTests.test_service_credential_kind_revoke_and_safe_storage) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_99ec9e6e7cc242b38c9e7d434d8ec8bf:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_service_replay_reservation_does_not_double_admit (test_auth13_workers.WorkerSQLTests.test_service_replay_reservation_does_not_double_admit) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_06eba723113d48409358efd31eaa5035:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_signed_spool_reconciles_restart_without_reexecuting (test_auth13_workers.WorkerSQLTests.test_signed_spool_reconciles_restart_without_reexecuting) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_4e7d5aef14944da39b18c13d3b5ff7bd:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch (test_auth13_workers.WorkerSQLTests.test_uncertain_job_does_not_starve_expired_queue_in_bounded_batch) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_1fb3b7c1f22f4a869bbe300d6905efcc:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_failure_and_retry_charge_attempted_unit_once (test_auth14_compute.ComputeSQLTests.test_failure_and_retry_charge_attempted_unit_once) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_4064353ab95048508636cb43a3e73e37:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_global_capacity_counts_uncertain_and_queued_can_retry (test_auth14_compute.ComputeSQLTests.test_global_capacity_counts_uncertain_and_queued_can_retry) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_f5053a62eef14181ac33070064841bec:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_mandatory_audit_fault_rolls_back_charge_and_result (test_auth14_compute.ComputeSQLTests.test_mandatory_audit_fault_rolls_back_charge_and_result) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_9ed4f2c4c7f444e9b4a50c9db42e2540:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_missing_work_progress_retains_hold (test_auth14_compute.ComputeSQLTests.test_missing_work_progress_retains_hold) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_5cd65948eea841d8a024a4731341c5af:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_nonapplicable_pelt_does_not_create_a_compute_charge (test_auth14_compute.ComputeSQLTests.test_nonapplicable_pelt_does_not_create_a_compute_charge) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_8ac0a2ff55f745889c8c93cdc8bbb4ff:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_pelt_actual_fits_are_charged_and_get_rejects_corrupted_profile (test_auth14_compute.ComputeSQLTests.test_pelt_actual_fits_are_charged_and_get_rejects_corrupted_profile) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_0973a6f854b44d4ea72b683b4e616afb:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_profile_corruption_has_no_zero_price_fallback (test_auth14_compute.ComputeSQLTests.test_profile_corruption_has_no_zero_price_fallback) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_79958a32bd264728a949824343d08329:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_real_aliases_use_same_paid_tariff_and_no_duplicate_settle (test_auth14_compute.ComputeSQLTests.test_real_aliases_use_same_paid_tariff_and_no_duplicate_settle) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_8fd23c64e7614fd28daae1aa50c2212b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+ok
+test_saved_quote_survives_current_profile_removal (test_auth14_compute.ComputeSQLTests.test_saved_quote_survives_current_profile_removal) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_7b259ef0cd644c6ea1c938855d2ebeb8:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_stateless_inline_tuning_is_reserved_and_settled (test_auth14_compute.ComputeSQLTests.test_stateless_inline_tuning_is_reserved_and_settled) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_777bf7262b004d83a9e979bd0a108dc8:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_stopped_timeout_uses_progress_before_fit (test_auth14_compute.ComputeSQLTests.test_stopped_timeout_uses_progress_before_fit) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_ca9c3205ec774a359b83dd68cd8da2aa:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+test_synchronous_session_tuning_saves_result_with_settlement (test_auth14_compute.ComputeSQLTests.test_synchronous_session_tuning_saves_result_with_settlement) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_c746fb7c35694485a8a696f2b95b3c68:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+ok
+test_audit_fault_rolls_back_grant_and_account_and_counter (test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_grant_and_account_and_counter) ... ok
+test_audit_fault_rolls_back_pause_and_budgets (test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_pause_and_budgets) ... ok
+test_cas_and_stale_mfa (test_auth15_demo.CampaignSQLTests.test_cas_and_stale_mfa) ... ok
+test_common_ledger_uses_single_sponsor_and_participant_limits (test_auth15_demo.CampaignSQLTests.test_common_ledger_uses_single_sponsor_and_participant_limits) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+ok
+test_concurrent_last_grant_and_same_marker (test_auth15_demo.CampaignSQLTests.test_concurrent_last_grant_and_same_marker) ... ok
+test_concurrent_same_marker_has_one_grant_and_one_active_session (test_auth15_demo.CampaignSQLTests.test_concurrent_same_marker_has_one_grant_and_one_active_session) ... ok
+test_expiry_cannot_issue_new_grant_for_known_marker (test_auth15_demo.CampaignSQLTests.test_expiry_cannot_issue_new_grant_for_known_marker) ... ok
+test_http_cookie_csrf_and_no_input_echo (test_auth15_demo.CampaignSQLTests.test_http_cookie_csrf_and_no_input_echo) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+ok
+test_last_grant_bounded_and_retry_does_not_increment (test_auth15_demo.CampaignSQLTests.test_last_grant_bounded_and_retry_does_not_increment) ... ok
+test_migration_retry_and_guards (test_auth15_demo.CampaignSQLTests.test_migration_retry_and_guards) ... ok
+test_pause_resume_and_revoke_close_context_and_ledger_authority (test_auth15_demo.CampaignSQLTests.test_pause_resume_and_revoke_close_context_and_ledger_authority) ... ok
+test_policy_clamps_demo_caps_and_own_upload (test_auth15_demo.CampaignSQLTests.test_policy_clamps_demo_caps_and_own_upload) ... ok
+test_real_demo_upload_foreign_run_document_and_pointer_are_denied (test_auth15_demo.CampaignSQLTests.test_real_demo_upload_foreign_run_document_and_pointer_are_denied) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth15_239f6a6678bd4c138804d95574e5141c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-A93E6E75 action=read subject=3df87f14-48f7-4228-b416-ad11f8378dbe via=auth_session reason=account_boundary
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-A93E6E75 action=read subject=3df87f14-48f7-4228-b416-ad11f8378dbe via=auth_session reason=account_boundary
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+Run access: DENY run=RUN-A93E6E75 action=read subject=3df87f14-48f7-4228-b416-ad11f8378dbe via=auth_session reason=account_boundary
+ok
+test_resume_keeps_expiry_usage_and_revokes_previous_session (test_auth15_demo.CampaignSQLTests.test_resume_keeps_expiry_usage_and_revokes_previous_session) ... ok
+test_rotation_secret_once_old_password_denied_existing_grant_retained (test_auth15_demo.CampaignSQLTests.test_rotation_secret_once_old_password_denied_existing_grant_retained) ... ok
+test_service_db_failure_is_safe_503 (test_auth15_demo.CampaignSQLTests.test_service_db_failure_is_safe_503) ... ok
+test_shared_pair_has_distinct_subject_account_tenant_grant (test_auth15_demo.CampaignSQLTests.test_shared_pair_has_distinct_subject_account_tenant_grant) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:151: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling, name) and getattr(caps, name)))
+ok
+test_wrong_origin_and_secret_and_invalid_resume_do_not_create (test_auth15_demo.CampaignSQLTests.test_wrong_origin_and_secret_and_invalid_resume_do_not_create) ... ok
+
+======================================================================
+FAIL: test_stopped_timeout_uses_progress_before_fit (test_auth14_compute.ComputeSQLTests.test_stopped_timeout_uses_progress_before_fit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/integration/test_auth14_compute.py", line 140, in test_stopped_timeout_uses_progress_before_fit
+    self.assertEqual(proof["usage"]["units"], 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 286 tests in 784.429s
+
+FAILED (failures=1)

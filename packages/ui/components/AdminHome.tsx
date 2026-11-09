@@ -17,6 +17,7 @@ const SECTIONS: ReadonlyArray<{
   title: string;
   description: string;
 }> = [
+  {href:"/admin/demo-campaigns",title:"Демо-кампании",description:"Общая пара с флаера, отдельные участники, конечные сроки и ресурсные бюджеты."},
   {
     href: "/admin/progress",
     title: "Прогресс запусков",

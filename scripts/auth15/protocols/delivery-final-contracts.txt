@@ -1,0 +1,10 @@
+test_half_open_and_pause (test_auth15_demo.DemoContracts.test_half_open_and_pause) ... ok
+test_no_infinite_or_inverted_time (test_auth15_demo.DemoContracts.test_no_infinite_or_inverted_time) ... ok
+test_own_upload_default_off (test_auth15_demo.DemoContracts.test_own_upload_default_off) ... ok
+test_required_finite_policy (test_auth15_demo.DemoContracts.test_required_finite_policy) ... ok
+test_resume_secret_redacted (test_auth15_demo.DemoContracts.test_resume_secret_redacted) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.007s
+
+OK

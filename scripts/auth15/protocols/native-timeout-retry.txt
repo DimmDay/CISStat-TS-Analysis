@@ -1,0 +1,16 @@
+PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+test_stopped_timeout_uses_progress_before_fit (tests.integration.test_auth14_compute.ComputeSQLTests.test_stopped_timeout_uses_progress_before_fit) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_c89eaa4ebd6c404494ee11a17efd9ecc:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+FAIL
+
+======================================================================
+FAIL: test_stopped_timeout_uses_progress_before_fit (tests.integration.test_auth14_compute.ComputeSQLTests.test_stopped_timeout_uses_progress_before_fit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/integration/test_auth14_compute.py", line 140, in test_stopped_timeout_uses_progress_before_fit
+    self.assertEqual(proof["usage"]["units"], 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 1 test in 8.076s
+
+FAILED (failures=1)

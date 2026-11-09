@@ -78,6 +78,8 @@ def _evidence(subject_id: str, *, mfa: bool, scopes=()) -> VerifiedCredential:
 class _Tx:
     def __init__(self, roles):
         self._roles = roles
+        # AUTH-15 resolver checks for optional demo authority in the same tx.
+        self.connection = SimpleNamespace(execute=lambda *a, **kw: SimpleNamespace(fetchone=lambda: {"present": None}))
         self.identities = SimpleNamespace(get=self._identity)
         self.accounts = SimpleNamespace(
             get=self._account,

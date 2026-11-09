@@ -1,0 +1,23 @@
+............................................................/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+....................................Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+......................................................../workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth08_entitlements.py:32: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+..........Run access: DENY run=RUN-A0900001 action=read subject=60a049d8-4d18-41de-92c3-b25e2ce55dac via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=60a049d8-4d18-41de-92c3-b25e2ce55dac via=auth_session reason=account_boundary
+.Run access: DENY run=RUN-A0900001 action=read subject=05731f12-032c-4106-b686-23a100fc2d7d via=auth_session reason=foreign_tenant
+.Run access: DENY run=RUN-A0900001 action=read subject=2877cca2-9fa0-4629-92ca-4619bdb204ef via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=2877cca2-9fa0-4629-92ca-4619bdb204ef via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=2877cca2-9fa0-4629-92ca-4619bdb204ef via=auth_session reason=account_boundary
+......Run access: DENY run=RUN-A0900001 action=read subject=400ce7b3-cc67-4122-a917-28e4eedd914d via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=1327309f-d3ae-4175-b084-7f082f7ca612 via=auth_session reason=legacy_migration_required
+..Run access: DENY run=RUN-A0900001 action=read subject=daec2b8b-0db4-4542-abc3-e4b887281729 via=auth_session reason=account_boundary
+.Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=e98bdd08-ef1f-4f41-bbf6-9e7fb5237cdd via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=e98bdd08-ef1f-4f41-bbf6-9e7fb5237cdd via=auth_session reason=account_boundary
+................................Worker execution stopped: worker_stop_unknown
+.......................
+----------------------------------------------------------------------
+Ran 228 tests in 114.805s
+
+OK

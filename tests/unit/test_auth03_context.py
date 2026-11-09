@@ -81,6 +81,7 @@ class FakeAuthority:
         if self.failure:
             raise self.failure
         yield SimpleNamespace(
+            connection=SimpleNamespace(execute=lambda *a, **kw: SimpleNamespace(fetchone=lambda: {"present": None})),
             identities=SimpleNamespace(get=lambda sid: self.identity),
             accounts=SimpleNamespace(
                 get=lambda aid: self.account_record,

@@ -4,6 +4,7 @@ type Config = { origin: string; apiUrl: string };
 const cookieNames = new Set([
   "__Host-cisstat_auth",
   "__Host-cisstat_csrf",
+  "__Host-cisstat_demo_resume",
   "cisstat_session_id",
 ]);
 const incoming = [

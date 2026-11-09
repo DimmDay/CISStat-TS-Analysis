@@ -1,0 +1,13 @@
+# AUTH-15 — Campaign admin и isolated demo enter
+
+База: main b9af29bf9e359403db16b280fe8c1ab402597e85. PostgreSQL authority, без commit/push/VM изменений.
+
+Один Campaign credential не является Identity. Enter атомарно создаёт external_user Identity, private MONO/Demo Account/tenant, membership, immutable DemoGrant и opaque AuthSession; общий credential в личные password credentials не копируется. Additive 0027 позволяет auth_sessions ссылаться либо на прежний personal password credential, либо на DemoGrant (XOR); прежние migration bytes/checksums сохраняются. Обе семьи проверяет существующий SessionService. Account/object policy и AUTH-11 остаются едиными.
+
+Campaign CRUD/state/rotate доступны только named ADMIN + server permission + MFA не старше пяти минут, CSRF+Origin. На записи полномочия перечитываются в той же транзакции; CAS policy_version и обязательный auth_audit_outbox. Секрет сгенерирован сервером, Argon2id verifier, отображается один раз. Ротация не продлевает grant и по явной команде отзывает старые sessions.
+
+Конечные starts/ends/TTL/max grants/CU/concurrency/analysis/rows/allowed origins обязательны. Activation создаёт иерархию AUTH-12 sponsor→campaign→account→grant; общий sponsor/campaign не размножается при enter. Resource ceilings не денежный credit. Campaign row lock сериализует последнюю выдачу. Resume cookie — отдельный случайный hash-only verifier, не public grant ID; logout auth session его не удаляет. Повтор enter/resume выдаёт новую session того же grant, сохраняя expiry/usage и отзывая прежнюю session этого участника. Вход очищает research pointer, не присваивает старые объекты. Неверный/чужой resume proof не превращается в новую выдачу. Soft entry не доказывает уникальность человека после удаления cookies.
+
+Проверка grant/campaign времени/status на SessionService._load, current RequestContext и billing worker authority закрывает доступ сразу после pause/revoke/hard end. Demo caps пересекаются с authoritative Demo plan независимо от последующего Account plan; own upload по умолчанию запрещён. AUTH-13 workers продолжают проверять текущую делегацию. Квотирование всех дешёвых операций, усиленные admission codes, cleanup/retention и operational cancellation certification — AUTH-16; эти возможности не заявляются выполненными.
+
+Риски/проверки: два участника и известные foreign IDs; последняя выдача; retry/потерянный response (отдельный resume proof до enter); stale CAS; stale MFA; CSRF/direct API; audit rollback; credential rotation; exact expiry; migration retry/readiness; DB outage; no shared login lockout (source/global bounded Argon2 admission, не login bucket). Нативные проверки только disposable PostgreSQL. Production campaign не активируется этой сессией.

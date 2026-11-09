@@ -1,0 +1,8 @@
+(node:5) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/scripts/pgv00/export_registry.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/packages/ui/lib/visualExportRegistry.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/packages/ui/package.json.
+OK: config/visual_registry.json — 93 sites (navigator=16, upload=12, validation=12, preprocessing=20, eda=18, modeling=6, forecasting=8, tasks=1), 9 exclusions

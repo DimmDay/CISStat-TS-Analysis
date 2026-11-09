@@ -1,0 +1,125 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> build:all
+> npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-embedded@0.1.0 build
+> next build
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+
+warn - Your `content` configuration includes a pattern which looks like it's accidentally matching all of `node_modules` and can cause serious performance issues.
+warn - Pattern: `../../packages/ui/**/*.ts`
+warn - See our documentation for recommendations:
+warn - https://tailwindcss.com/docs/content-configuration#pattern-recommendations
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/19) ...
+   Generating static pages (4/19) 
+   Generating static pages (9/19) 
+   Generating static pages (14/19) 
+ ✓ Generating static pages (19/19)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    146 B           593 kB
+├ ○ /_not-found                          876 B          88.4 kB
+├ ƒ /admin                               2.01 kB        91.9 kB
+├ ƒ /admin/demo-campaigns                4.66 kB        94.5 kB
+├ ƒ /admin/logs                          145 B           593 kB
+├ ƒ /admin/progress                      145 B           593 kB
+├ ○ /analytics/ts-analysis               139 B          87.6 kB
+├ ƒ /api/v1/[...path]                    0 B                0 B
+├ ƒ /demo                                2.8 kB         90.3 kB
+├ ○ /eda                                 146 B           593 kB
+├ ○ /forecasting                         145 B           593 kB
+├ ƒ /login                               3.39 kB        93.3 kB
+├ ○ /modeling                            146 B           593 kB
+├ ○ /navigator                           146 B           593 kB
+├ ○ /preprocessing                       146 B           593 kB
+├ ○ /tasks                               146 B           593 kB
+├ ○ /upload                              146 B           593 kB
+└ ○ /validation                          146 B           593 kB
++ First Load JS shared by all            87.5 kB
+  ├ chunks/1dd3208c-dba42b62f914e3d9.js  53.6 kB
+  ├ chunks/528-c06e500d7a8458ce.js       31.9 kB
+  └ other shared chunks (total)          2.01 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-standalone@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+
+warn - Your `content` configuration includes a pattern which looks like it's accidentally matching all of `node_modules` and can cause serious performance issues.
+warn - Pattern: `../../packages/ui/**/*.ts`
+warn - See our documentation for recommendations:
+warn - https://tailwindcss.com/docs/content-configuration#pattern-recommendations
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/25) ...
+   Generating static pages (6/25) 
+   Generating static pages (12/25) 
+   Generating static pages (18/25) 
+ ✓ Generating static pages (25/25)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    146 B           593 kB
+├ ○ /_not-found                          876 B          88.4 kB
+├ ƒ /admin                               2.01 kB        92.1 kB
+├ ƒ /admin/demo-campaigns                4.66 kB        94.7 kB
+├ ƒ /admin/logs                          146 B           593 kB
+├ ƒ /admin/progress                      146 B           593 kB
+├ ƒ /api/v1/[...path]                    0 B                0 B
+├ ○ /dashboard/ts-analysis               139 B          87.6 kB
+├ ƒ /demo                                2.8 kB         90.3 kB
+├ ƒ /documentation                       1.13 kB         594 kB
+├ ○ /eda                                 146 B           593 kB
+├ ○ /education                           145 B           593 kB
+├ ○ /forecasting                         145 B           593 kB
+├ ƒ /login                               3.4 kB         93.5 kB
+├ ○ /modeling                            146 B           593 kB
+├ ○ /navigator                           145 B           593 kB
+├ ○ /preprocessing                       146 B           593 kB
+├ ○ /tasks                               146 B           593 kB
+├ ○ /tasks/causes                        146 B           593 kB
+├ ○ /tasks/decisions                     146 B           593 kB
+├ ○ /tasks/monitoring                    146 B           593 kB
+├ ○ /tasks/scenarios                     146 B           593 kB
+├ ○ /upload                              146 B           593 kB
+└ ○ /validation                          146 B           593 kB
++ First Load JS shared by all            87.5 kB
+  ├ chunks/1dd3208c-dba42b62f914e3d9.js  53.6 kB
+  ├ chunks/528-8d64bde195530c8a.js       31.9 kB
+  └ other shared chunks (total)          2.01 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

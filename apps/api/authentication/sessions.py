@@ -410,6 +410,15 @@ class SessionService:
             "SELECT version,status FROM auth_password_credentials WHERE credential_id=%s",
             (row["credential_id"],),
         ).fetchone()
+        if row.get("demo_grant_id"):
+            from .demo import grant_for_account
+            grant = grant_for_account(c, row["account_id"], now)
+            if not grant or grant["grant_id"] != row["demo_grant_id"] or grant["subject_id"] != row["subject_id"]:
+                auth_error(401, "invalid_credential")
+            if row["origin"] not in grant["policy"]["allowed_origins"]:
+                auth_error(403, "campaign_inactive")
+            # Rotation explicitly revokes sessions; resume keeps the same grant.
+            cred = {"status": "active", "version": grant["credential_version"]}
         epoch = c.execute(
             "SELECT session_epoch FROM auth_subject_security WHERE subject_id=%s",
             (row["subject_id"],),
@@ -460,7 +469,7 @@ class SessionService:
 
             return VerifiedCredential(
                 subject_id=str(row["subject_id"]),
-                credential_id=str(row["credential_id"]),
+                credential_id=str(row["credential_id"] or row["session_id"]),
                 account_id=str(row["account_id"]),
                 auth_method="auth_session",
                 auth_session_id=str(row["session_id"]),
@@ -553,6 +562,8 @@ class SessionService:
                 "SELECT * FROM auth_password_credentials WHERE credential_id=%s",
                 (evidence.credential_id,),
             ).fetchone()
+        if old is None:
+            auth_error(403, "capability_not_included")
         if not self.codec.verify(old["password_hash"], current_password):
             auth_error(401, "invalid_credential")
         encoded = self.codec.hash(new_password)

@@ -1,0 +1,33 @@
+test_shared_pair_has_distinct_subject_account_tenant_grant (tests.integration.test_auth15_demo.CampaignSQLTests.test_shared_pair_has_distinct_subject_account_tenant_grant) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py:91: DeprecationWarning: deprecated
+  setattr(ceiling, name, bool(getattr(ceiling,name) and getattr(caps,name)))
+ERROR
+
+======================================================================
+ERROR: test_shared_pair_has_distinct_subject_account_tenant_grant (tests.integration.test_auth15_demo.CampaignSQLTests.test_shared_pair_has_distinct_subject_account_tenant_grant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/integration/test_auth15_demo.py", line 106, in test_shared_pair_has_distinct_subject_account_tenant_grant
+    ca=resolve_verified_context(ea,store=self.store);cb=resolve_verified_context(eb,store=self.store)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/context.py", line 302, in resolve_verified_context
+    effective_caps, demo_grant_id = restrict_capabilities(
+                                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/apps/api/authentication/demo.py", line 95, in restrict_capabilities
+    ceiling.baseline_limits.max_rows = min(ceiling.baseline_limits.max_rows, ceiling.max_dataset_rows)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/.venv/lib/python3.12/site-packages/pydantic/main.py", line 1111, in __setattr__
+    elif (setattr_handler := self._setattr_handler(name, value)) is not None:
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/.venv/lib/python3.12/site-packages/pydantic/main.py", line 1147, in _setattr_handler
+    _check_frozen(cls, name, value)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/.venv/lib/python3.12/site-packages/pydantic/main.py", line 104, in _check_frozen
+    raise ValidationError.from_exception_data(
+pydantic_core._pydantic_core.ValidationError: 1 validation error for BaselineLimits
+max_rows
+  Instance is frozen [type=frozen_instance, input_value=1000, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.14/v/frozen_instance
+
+----------------------------------------------------------------------
+Ran 1 test in 8.559s
+
+FAILED (errors=1)

@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/e28f7bf5e3d0/AUTH15-baseline
+configfile: pytest.ini
+plugins: syrupy-6.1.1, fugue-0.9.8, typeguard-4.6.0, platformdirs-4.14.5, anyio-4.16.0, cov-7.1.0
+collected 2 items
+
+tests/api/test_doclog3_telemetry_audit.py FF                             [100%]
+
+=================================== FAILURES ===================================
+_______________ TestAuthDenialAudit.test_non_admin_403_recorded ________________
+tests/api/test_doclog3_telemetry_audit.py:946: in test_non_admin_403_recorded
+    require_admin_role(principal=principal)
+E   TypeError: require_admin_role() got an unexpected keyword argument 'principal'
+__________________ TestMainAppWiring.test_no_new_http_surface __________________
+tests/api/test_doclog3_telemetry_audit.py:1165: in test_no_new_http_surface
+    assert any(p.startswith("/v1/documentation") for p in paths)
+E   assert False
+E    +  where False = any(<generator object TestMainAppWiring.test_no_new_http_surface.<locals>.<genexpr> at 0x7f631e170d40>)
+=============================== warnings summary ===============================
+../venv-auth15/lib/python3.12/site-packages/starlette/testclient.py:45
+  /workspace/scratch/e28f7bf5e3d0/venv-auth15/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded
+FAILED tests/api/test_doclog3_telemetry_audit.py::TestMainAppWiring::test_no_new_http_surface
+========================= 2 failed, 1 warning in 7.33s =========================

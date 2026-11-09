@@ -54,6 +54,7 @@ class RouteTests(unittest.TestCase):
             e["id"][4:]
             for e in report["entries"]
             if e["kind"] == "api" and e["path"].startswith("/v1/auth/")
+            and not e["path"].startswith("/v1/auth/demo/")  # Separate AUTH-15 router, verified there.
         }
         self.assertEqual(actual, recorded)
 

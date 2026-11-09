@@ -129,6 +129,8 @@ COPY scripts/auth13/migrate.py ./scripts/auth13/migrate.py
 COPY scripts/auth13/manage_workers.py ./scripts/auth13/manage_workers.py
 COPY scripts/auth14/benchmark.py ./scripts/auth14/benchmark.py
 COPY scripts/auth14/profile.py ./scripts/auth14/profile.py
+COPY scripts/auth15/migrate.py ./scripts/auth15/migrate.py
+RUN python -c "from apps.api.authentication.demo import DemoService, CampaignPolicy; from apps.api.authentication.demo_migrations import check_schema; print('auth15 imports OK')"
 RUN python -c "from apps.api.billing.compute_units import quote_work; from apps.api.billing.compute_profile import Profile; from apps.api.billing.compute_benchmark import calibrate; print('auth14 calibration imports OK')"
 RUN python -c "from apps.api.workers.authority import WorkerAuthority; from apps.api.workers.process import run_bounded; from apps.api.workers.migrations import check_schema; print('auth13 worker/operator imports OK')"
 RUN python -c "from apps.api.billing.coordinator import ReservationCoordinator; from apps.api.billing.migrations import check_schema; from apps.api.billing.policy import BudgetPolicy; print('auth12 coordinator/operator imports OK')"

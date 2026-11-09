@@ -1,0 +1,99 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:ci
+> jest --ci --maxWorkers=2 --json --outputFile=jest-results.json
+
+FAIL packages/ui/lib/visualExportRegistry.coverage.test.ts
+  ● PGV-00: coverage-оракул — unknown scientific site blocks CERT › каждый файл с научным рендер-паттерном зарегистрирован или исключён с причиной
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "packages/ui/components/DemoCampaignAdmin.tsx [html-table]",
+    + ]
+
+      303 |       }
+      304 |     }
+    > 305 |     expect(unknown).toEqual([]);
+          |                     ^
+      306 |   });
+      307 |
+      308 |   it("семейные правила: все файлы научных семейств покрыты (даже без pattern-совпадения)", () => {
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:305:21)
+
+  ● PGV-00: coverage-оракул — unknown scientific site blocks CERT › все 58 эталонных pattern-совпадений разведены по реестру/исключениям (baseline PGV-00)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 59
+    Received: 58
+
+      322 |     expect(scanned.size).toBeGreaterThanOrEqual(58);
+      323 |     const classified = [...scanned.keys()].filter((f) => covered.has(f) || excludedFiles.has(f));
+    > 324 |     expect(classified.length).toBe(scanned.size);
+          |                               ^
+      325 |   });
+      326 |
+      327 |   it("исключения явны: у каждого файла-исключения есть причина и класс", () => {
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:324:31)
+
+
+Summary of all failing tests
+FAIL packages/ui/lib/visualExportRegistry.coverage.test.ts
+  ● PGV-00: coverage-оракул — unknown scientific site blocks CERT › каждый файл с научным рендер-паттерном зарегистрирован или исключён с причиной
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "packages/ui/components/DemoCampaignAdmin.tsx [html-table]",
+    + ]
+
+      303 |       }
+      304 |     }
+    > 305 |     expect(unknown).toEqual([]);
+          |                     ^
+      306 |   });
+      307 |
+      308 |   it("семейные правила: все файлы научных семейств покрыты (даже без pattern-совпадения)", () => {
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:305:21)
+
+  ● PGV-00: coverage-оракул — unknown scientific site blocks CERT › все 58 эталонных pattern-совпадений разведены по реестру/исключениям (baseline PGV-00)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 59
+    Received: 58
+
+      322 |     expect(scanned.size).toBeGreaterThanOrEqual(58);
+      323 |     const classified = [...scanned.keys()].filter((f) => covered.has(f) || excludedFiles.has(f));
+    > 324 |     expect(classified.length).toBe(scanned.size);
+          |                               ^
+      325 |   });
+      326 |
+      327 |   it("исключения явны: у каждого файла-исключения есть причина и класс", () => {
+
+      at Object.<anonymous> (packages/ui/lib/visualExportRegistry.coverage.test.ts:324:31)
+
+
+Test Suites: 1 failed, 1 skipped, 254 passed, 255 of 256 total
+Tests:       2 failed, 2 skipped, 2841 passed, 2845 total
+Snapshots:   0 total
+Time:        220.613 s
+Ran all test suites.
+Test results written to: jest-results.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

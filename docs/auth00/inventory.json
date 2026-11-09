@@ -1,18 +1,18 @@
 {
   "schema_version": "auth00.inventory/1",
-  "baseline": "a16b31bd0c3d49586de24d3556a39e43b9cc3321",
+  "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 239,
+    "api": 253,
     "framework": 8,
-    "internal_operation": 25,
+    "internal_operation": 28,
     "legacy_authority": 1,
     "legacy_widget": 250,
-    "page": 34,
+    "page": 38,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 13,
+    "storage": 14,
     "task_alias": 4,
     "transport": 2,
     "worker": 9
@@ -471,6 +471,34 @@
         "T12",
         "T15"
       ]
+    },
+    "demo.admin": {
+      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared.",
+      "target": "Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance.",
+      "follow_up": [
+        "AUTH-16",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
+      ]
+    },
+    "demo.entry": {
+      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks.",
+      "target": "No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16.",
+      "follow_up": [
+        "AUTH-16",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
+      ]
     }
   },
   "source_fingerprints": {
@@ -486,7 +514,7 @@
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "93c2ececcdb9a59debafa9ccbb9756c95f889bacb8c1f37d5714ad27ca9372c0",
+    "apps/api/access_registry.v1.json": "7ad052703ea5ad76652ddea019898a7d3526efcdd0dbe071accdbb8d0923d46b",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -501,11 +529,13 @@
     "apps/api/authentication/api_key_contract.py": "1ff52f40a941b76fd5f55cd9689cb8b511d6d971926b5fed486534142a9e1107",
     "apps/api/authentication/api_key_migrations.py": "287d1c0a625de8171651f9239c0b85be55408df3d4b6f0418ebaadb99d707484",
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
-    "apps/api/authentication/api_keys.py": "ab48d3763d97a197deaf13f25b97b804a3da815dcea6ee3bb022f12465ac484b",
+    "apps/api/authentication/api_keys.py": "875ca5f7b5d2d5204b06fd4388c42a646e0916e3d27665668969c5b6cfcdda3e",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "be864fd74974d6f5ff54505dd4b3ce1952d7d561089b4c78dd846cbf61089bee",
+    "apps/api/authentication/context.py": "b7d5642e3e99ea11896594ed10d9e60ec5b7ec0fe826d8752513f8d115a78542",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
+    "apps/api/authentication/demo.py": "0f8ef06fe4bdfa894939e188b5ecf690e69c9f1f945ea042e5dcaf56e528df37",
+    "apps/api/authentication/demo_migrations.py": "349d34ff2b7f1d0f233cab271ddf00b19607487eb76aee079b3d7ed52a9cbd04",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
     "apps/api/authentication/http_contract.py": "462f27a1239b7b9f1f48b2ecf5de82dd766fc37e065c7723655355d41ef0bd17",
     "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
@@ -517,7 +547,7 @@
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
-    "apps/api/authentication/sessions.py": "7096dffca6a96a31d99c7d54829aaf0e25215a5cf517147381a0428fcf75cb8c",
+    "apps/api/authentication/sessions.py": "0d5bdb7da9125a6defbd95d2560fe49b591c2136ed9e0e4206953b7d6a507774",
     "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
     "apps/api/backtesting.py": "4f4d17dd0be120a612e9bec585719ecd64cf71dcb9a21486fefe8286090defb9",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
@@ -528,7 +558,7 @@
     "apps/api/billing/compute_runtime.py": "da5c48e9ab325c9f7772149c7a3d6cd3a45648b1fbc71c0d35a491f11cb021ce",
     "apps/api/billing/compute_units.py": "6a27a09984abca5009b78eaf036c25bc2c38b3701273ae9af2ee8207d73a8845",
     "apps/api/billing/contract.py": "d0eceaccb09f7e85e282e4e368a82f07d76a1d6b3ee86a632cfa98844db7af52",
-    "apps/api/billing/coordinator.py": "dc38b0f3888d9a426f5033bce0ff1c5611e718f21e97ed5cfa5e74c9e56b6aff",
+    "apps/api/billing/coordinator.py": "62423aff34707892d2712d92ece2be84682607e80e57af4ca4b0c582f084b115",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
     "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
@@ -565,7 +595,7 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "95db4860d99d7fdf59b6c18d047dabe202895f219221577c1701047d31eb0b8e",
+    "apps/api/main.py": "56c3b7b6fbc2abf4e4c6478f983d2f723356c214c623d82b9907eb219a4dc313",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
@@ -573,6 +603,7 @@
     "apps/api/migrations/0024_auth10_api_keys.sql": "bc3dcd29e5dfa60a94845d0e211534f224ea9aa7f7aa5ddd242e3a5f90e036b1",
     "apps/api/migrations/0025_auth12_reservations.sql": "3a0e68d5d6b34446df937d419a58e05883fc7bfac7883108edf36fc536812261",
     "apps/api/migrations/0026_auth13_workers.sql": "5ad027d8de3e2acbf1611c6450c8dedce335b43680baac5f5994b39bc274190f",
+    "apps/api/migrations/0027_auth15_demo.sql": "f96eece8675ea27ebb20c550688a4e1eeee3b5ea0374c517f7e334c96f842322",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -637,6 +668,7 @@
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
+    "apps/api/routers/demo.py": "08a44693ed839db0dd89aa8d35f1c39522032fed1c5b37e7c638cfb9d165b843",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
@@ -655,13 +687,13 @@
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
     "apps/api/scientific.py": "a1e827c77c35789073ff9bed55f3f49162e4fd9488e8e4eb14d71dde2ac9cdfc",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
-    "apps/api/security_audit.py": "dab1337af7fe7d87a10fcdd686e6496c0c7fd823f5d7a1ad563316f869c587b7",
+    "apps/api/security_audit.py": "10d6b657ab17214772ebac0ff58a47488a68f89a1783c2b5d399223387345d1a",
     "apps/api/session_store.py": "3a81a2750c701c29ca1f1576e6fc33590e20bd4d90b099142289df4278c189c8",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
-    "apps/api/storage_diagnostics.py": "d50ffbcef850133b68515ae6c1b234014e1783d8bf903ec7cb761cbb1bfa7941",
+    "apps/api/storage_diagnostics.py": "ea58b9f56a4e3809b1c28e66a513926da3f0bf09cb2e093116ffeea559da014a",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
     "apps/api/target_column_rule.py": "3a503622feb1b36af3e27bae2e2b7f7b36ce9b75f34a98dc965380f5e5d0fde2",
-    "apps/api/telemetry.py": "04039acf749a9fd86a8bd06e5c201e0096b87e89da4c20c9df0527c2b97fc7ef",
+    "apps/api/telemetry.py": "617b7acddbd78d06f7de8c8f5d711585fd9d14845519d060ec66d03e986add1d",
     "apps/api/text_quality_correction.py": "eb7ffcfa5a515f06d734e5c952b78e6a278f6f9f301ee4dfebc9384f6d82682c",
     "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
     "apps/api/trace_hook.py": "9602855e297297756e4f4378c0b6f782ee0b83f6495f2bc21d736622cf35fb93",
@@ -684,11 +716,13 @@
     "apps/api/workers/render.py": "aedd6b7f2d8d19a2fcbd8bd9f97ef2e6d49039f52f54106d6bcedcd516800e28",
     "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
     "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
+    "apps/embedded/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
     "apps/embedded/app/admin/logs/page.tsx": "f0d27b4c204f5ab9b919872542c7c0015fa841ac2430ab43af35002fcdbceba7",
     "apps/embedded/app/admin/page.tsx": "f9627f14db2aa31acf6bd2aaf02efb1fb6cc7ee2a7a04990aa5e1f6073773375",
     "apps/embedded/app/admin/progress/page.tsx": "a59f7174c6d00b67e1aaa83158d5f691cb7d97489e499acad04fbbb06449df6e",
     "apps/embedded/app/analytics/ts-analysis/page.tsx": "62a8b7a0cf8387f971d8e190b992967b1648bb4461a41a4a5e00b367258046ab",
     "apps/embedded/app/api/v1/[...path]/route.ts": "ae286b95fb2ba083f7350ccfdc92607475b5f5d37fe651b2fc55880d37b9e0b6",
+    "apps/embedded/app/demo/page.tsx": "db789a4b30b312f044b55a98a52fff22cc47cbaf641547f7e9180c2829245331",
     "apps/embedded/app/eda/page.tsx": "687716fd902cb38795e9459e76ab34daa61f369d9b1e9a76a83e18ccafafc831",
     "apps/embedded/app/forecasting/page.tsx": "be9cd5c36d041a94595a07a48103e182d16c6a18ab2035bee17c98650458f7d0",
     "apps/embedded/app/layout.tsx": "ea86f6bd45b44e8115e5bf9dee9bea7141edd8f0521fef113fd4b7c8469c9752",
@@ -704,11 +738,13 @@
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
     "apps/print-renderer/src/renderWorker.ts": "7e49879e365c24cc8a5be61852cfa5fcc96fe5990414be04ea18cc1e4f204e85",
     "apps/print-renderer/src/server.ts": "88df929772d9aae24a15ef66d7e0bb3b5b6fece75840558f7fae040e957752e5",
+    "apps/standalone/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
     "apps/standalone/app/admin/logs/page.tsx": "f2fd61c5f02449ed54c606f56dce77f5fda5c5f22bf945fdcc4278802e98a0fc",
     "apps/standalone/app/admin/page.tsx": "4ba64edca81d46fe03b022bc8d17f61c6c1dbd6fe217465a85005d8f84f9c39a",
     "apps/standalone/app/admin/progress/page.tsx": "be94616f98ed6388b535a9464b1d033ddb94cbde7840c11e743ba26deb89b249",
     "apps/standalone/app/api/v1/[...path]/route.ts": "ae286b95fb2ba083f7350ccfdc92607475b5f5d37fe651b2fc55880d37b9e0b6",
     "apps/standalone/app/dashboard/ts-analysis/page.tsx": "2580a0bda03d89862a7f2165489690de49583c7fc71c22e62817ed8532df5786",
+    "apps/standalone/app/demo/page.tsx": "db789a4b30b312f044b55a98a52fff22cc47cbaf641547f7e9180c2829245331",
     "apps/standalone/app/documentation/page.tsx": "23f066f1ae26f7fa3b6020c4118d7a0bb8847ffb4e37c41481cc24b51acb05e0",
     "apps/standalone/app/eda/page.tsx": "45bb73c9efb537e1d0c25c8e128d49d35912f32c57bd4d50c12040325d6f74bd",
     "apps/standalone/app/education/page.tsx": "5cc38a53799bc119171f9c8c7999e40a6d2f99cb8bec754487aecfe9537ddc79",
@@ -733,7 +769,7 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "33b94929f56496ed3968974dcd1506357719fc836ee2fa9c18adfdaefbc707d6",
+    "docs/auth01/openapi.json": "c6062f0bc9d8a7ee19f1839a2c6353fe4735f65797820a26d284934fbedc7f82",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -753,6 +789,8 @@
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
+    "packages/ui/components/DemoCampaignAdmin.tsx": "09d72dce961fc73ab8ed9054811ead8273b0778119755e666db005d1e1d086ec",
+    "packages/ui/components/DemoEntry.tsx": "d514769d24e0b17a46fe07496fa6b0eb17a7ea7a8400f7e2e6bfa1e298303087",
     "packages/ui/components/EdaDescriptiveOverview.tsx": "153b137fe5a33bc3e22891825f8059bf470de0d07a69de1f16bb03aa7e2401e7",
     "packages/ui/components/EmbeddedHome.tsx": "974bb36b70595d2563264473927fc02303c7e7b79d01232c561040ce2affb9e4",
     "packages/ui/components/LoginScreen.tsx": "f45fea8186e028425e1d9752f69dabaafcb5e641c18cc37bb53b502a8b3fd962",
@@ -807,12 +845,13 @@
     "packages/ui/context/AuthContext.tsx": "5967def62a7d478e420564f612ac9f74ac0449cf5ce89101772a25e815cc7347",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "13a51833fc697fc6199bfae951c76ddbc8ba03460dc6813edeec599f0d16f941",
+    "packages/ui/lib/access-contract.generated.ts": "0323454bc3084a9ca0fffa4fedc1215d0a58668d1052de475084665b1f338d42",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
-    "packages/ui/lib/authClient.ts": "4bd29aaab7448ade3980037287c6192648f3675b0f8fc80234c8a1557c6b1b3e",
+    "packages/ui/lib/authClient.ts": "026740f7260359de875b005e1eba1ab9a8f459a7a5c074d9dc87d8de0e6c9cd3",
     "packages/ui/lib/browserTransport.ts": "17be543b78a93cc1b312d3db10c0209f12a320f9374fc5e389db0c1bf85bf2de",
+    "packages/ui/lib/demo.ts": "b9f65f0974cbbdcd9c912626021c7463a31aff1dc065bbdfd4cc7e4abaa70de0",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
     "packages/ui/lib/forecasting.ts": "5d86c0b1727f120fc5149332d4727f6d9f5778a2df24b6f791d8ce1c544acc5a",
     "packages/ui/lib/mentor.ts": "be9e0e4d85bc089eaa164d3f3a240cef804e603f2646f598f42d2bbb16b8eff5",
@@ -822,8 +861,8 @@
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
-    "packages/ui/server/firstPartyProxy.ts": "f4203907a1fd56e1f74fd7f8069521b2a96c5175a06ebe9fc7228ebf09f13178",
-    "packages/ui/server/proxy-routes.generated.json": "5a841c75bdce2480e19f482c89a02ab0464e2c7ff3fa4bc518d69a0a7ab0e04d",
+    "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
+    "packages/ui/server/proxy-routes.generated.json": "d31506ea457084c5333308249b0651ce9bd7a4f85f9a8079100fac9e415085ed",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -839,16 +878,19 @@
     "scripts/auth13/migrate.py": "681cfab1de868eac5a01e45bf386299f633ebfda28e41d28c7094a53ce9b2613",
     "scripts/auth14/benchmark.py": "28227ce53c4fd2f788ee5a68e21c3be1b1df7f7e91899fb20fd1647d3cea2cac",
     "scripts/auth14/profile.py": "630e12e3b666a012626e8fab1926616841ce64552d012b65af95275beb60081c",
-    "scripts/local_gates.md": "5de6363218fbde034dfcb118541fbee520c7142f4563ca836dddae94d0091b30",
-    "scripts/local_gates.py": "eb0cdc91fc27f366ef92a45ffa30996656d0038b7d00ed6f1e65722b0676cfc6",
+    "scripts/auth15/migrate.py": "d351f76135cc38c426668ec6264d497f33c37f21bb2272cea6ad7c3fa3290594",
+    "scripts/local_gates.md": "002a46c5882fd841d3adea32990688c254f080773180e6565394c1adce77b6c3",
+    "scripts/local_gates.py": "7d015dcfb2851f26c099ee3c8bbf674c56edd500b29dd2522ebbbfb845235c52",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
     "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
+    "tests/integration/test_auth15_demo.py": "65c40ef7c9256fc8d5ae61b4cf8e5afecaac05a4bbe27831a0cefc1d0513e9c8",
     "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
     "tests/unit/test_auth00_precommit.py": "e89b1797e7f2bf98fd6f6c0594336a57c700b36f2e258215ad5aff12a0868e94",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
     "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
+    "tests/unit/test_auth15_demo.py": "9118a6a61a855521caaba027c6df7e0601009a28f8f5f5968fccc5d3f9ffb839",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -912,7 +954,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 261,
+          "line": 262,
           "symbol": "health"
         }
       ],
@@ -938,7 +980,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 266,
+          "line": 267,
           "symbol": "health_ops"
         }
       ],
@@ -1013,6 +1055,72 @@
     {
       "kind": "api",
       "method": "GET",
+      "path": "/v1/admin/demo-campaigns",
+      "operation": "apps.api.routers.demo:campaigns",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 144,
+          "symbol": "campaigns"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/admin/demo-campaigns",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/usage",
+      "operation": "apps.api.routers.demo:usage",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 233,
+          "symbol": "usage"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
       "path": "/v1/api-keys",
       "operation": "apps.api.routers.api_keys:list_api_keys",
       "evidence": [
@@ -1023,7 +1131,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 244,
           "symbol": "include_router"
         }
       ],
@@ -1071,6 +1179,40 @@
       "canonical_operation": "auth.csrf.issue",
       "admission": "authenticate-CSRF-object-before-command",
       "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/auth/demo/me",
+      "operation": "apps.api.routers.demo:demo_me",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 128,
+          "symbol": "demo_me"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_error",
+        "ctx.as_principal"
+      ],
+      "id": "api:GET:/v1/auth/demo/me",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/auth/demo/me",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
     },
     {
       "kind": "api",
@@ -5133,6 +5275,39 @@
     {
       "kind": "api",
       "method": "PATCH",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}",
+      "operation": "apps.api.routers.demo:update",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 160,
+          "symbol": "update"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:PATCH:/v1/admin/demo-campaigns/{campaign_id}",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "PATCH",
       "path": "/v1/internal/rules/update",
       "operation": "apps.api.routers.internal:update_rules",
       "evidence": [
@@ -5210,6 +5385,204 @@
     {
       "kind": "api",
       "method": "POST",
+      "path": "/v1/admin/demo-campaigns",
+      "operation": "apps.api.routers.demo:create",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 149,
+          "symbol": "create"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/activate",
+      "operation": "apps.api.routers.demo:activate",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 173,
+          "symbol": "activate"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/pause",
+      "operation": "apps.api.routers.demo:pause",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 185,
+          "symbol": "pause"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/resume",
+      "operation": "apps.api.routers.demo:resume_campaign",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 197,
+          "symbol": "resume_campaign"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/revoke",
+      "operation": "apps.api.routers.demo:revoke",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 209,
+          "symbol": "revoke"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
+      "operation": "apps.api.routers.demo:rotate",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 221,
+          "symbol": "rotate"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
       "path": "/v1/api-keys",
       "operation": "apps.api.routers.api_keys:issue_api_key",
       "evidence": [
@@ -5220,7 +5593,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 244,
           "symbol": "include_router"
         }
       ],
@@ -5252,7 +5625,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 244,
           "symbol": "include_router"
         }
       ],
@@ -5284,7 +5657,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 244,
           "symbol": "include_router"
         }
       ],
@@ -5302,6 +5675,140 @@
       ],
       "canonical_operation": "auth.api_keys.rotate",
       "admission": "named-session-current-authority; CSRF-Origin-mutations; fresh-proof-issue-rotate"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/demo/enter",
+      "operation": "apps.api.routers.demo:enter",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 90,
+          "symbol": "enter"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/demo/enter",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/enter",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/demo/leave",
+      "operation": "apps.api.routers.demo:leave",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 115,
+          "symbol": "leave"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/demo/leave",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/leave",
+      "admission": "CSRF + private resume credential; atomic revoke and mandatory outbox"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/demo/prepare",
+      "operation": "apps.api.routers.demo:prepare",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 70,
+          "symbol": "prepare"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [],
+      "id": "api:POST:/v1/auth/demo/prepare",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/prepare",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/auth/demo/resume",
+      "operation": "apps.api.routers.demo:resume",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 104,
+          "symbol": "resume"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 243,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/auth/demo/resume",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "api:POST:/v1/auth/demo/resume",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
     },
     {
       "kind": "api",
@@ -10008,6 +10515,31 @@
       "stage_namespace": "service"
     },
     {
+      "id": "auth.demo.schema.apply",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "auth.demo.schema.apply",
+      "operation": "auth.demo.schema.apply",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.demo.schema.apply",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
       "id": "auth.mfa.bootstrap",
       "kind": "internal_operation",
       "method": "INTERNAL",
@@ -10384,6 +10916,56 @@
       ],
       "canonical_operation": "compute.runtime",
       "admission": "trusted AUTH-14 domain boundary; current AUTH-11/13 authority and saved quote; unknown outcome holds; no public writer"
+    },
+    {
+      "id": "demo.campaign.command",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.campaign.command",
+      "operation": "demo.campaign.command",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo.py",
+          "line": 305,
+          "symbol": "command"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.campaign.command",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
+      "id": "demo.grant.enter",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.grant.enter",
+      "operation": "demo.grant.enter",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo.py",
+          "line": 482,
+          "symbol": "enter"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.grant.enter",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
     },
     {
       "id": "execution:model.job_step",
@@ -16906,6 +17488,31 @@
       "stage_namespace": "service"
     },
     {
+      "id": "page:embedded:/admin/demo-campaigns",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin/demo-campaigns",
+      "operation": "ui:embedded:/admin/demo-campaigns",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/embedded/app/admin/demo-campaigns/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
       "id": "page:embedded:/admin/logs",
       "kind": "page",
       "method": "GET",
@@ -16981,6 +17588,31 @@
       "canonical_operation": "ui:embedded:/analytics/ts-analysis",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
+    },
+    {
+      "id": "page:embedded:/demo",
+      "kind": "page",
+      "method": "GET",
+      "path": "/demo",
+      "operation": "ui:embedded:/demo",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/embedded/app/demo/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:embedded:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
     },
     {
       "id": "page:embedded:/eda",
@@ -17258,6 +17890,31 @@
       "stage_namespace": "service"
     },
     {
+      "id": "page:standalone:/admin/demo-campaigns",
+      "kind": "page",
+      "method": "GET",
+      "path": "/admin/demo-campaigns",
+      "operation": "ui:standalone:/admin/demo-campaigns",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/admin/demo-campaigns/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/admin/demo-campaigns",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
       "id": "page:standalone:/admin/logs",
       "kind": "page",
       "method": "GET",
@@ -17333,6 +17990,31 @@
       "canonical_operation": "ui:standalone:/dashboard/ts-analysis",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
+    },
+    {
+      "id": "page:standalone:/demo",
+      "kind": "page",
+      "method": "GET",
+      "path": "/demo",
+      "operation": "ui:standalone:/demo",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/demo/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "navigation"
+      ],
+      "canonical_operation": "page:standalone:/demo",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
     },
     {
       "id": "page:standalone:/documentation",
@@ -17974,6 +18656,31 @@
       ],
       "canonical_operation": "auth.repository.account",
       "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
+      "id": "storage:auth.demo",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:auth.demo",
+      "operation": "storage:auth.demo",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_migrations.py",
+          "line": 36,
+          "symbol": "check_schema"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "storage:auth.demo",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
     },
     {
       "id": "storage:auth.identities",
