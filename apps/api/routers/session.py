@@ -619,6 +619,8 @@ def load_demo_dataset(request: Request, response: Response):
     # first-write-wins, субъект-суррогат = псевдоним cookie.
     session.ensure_owner_binding()
 
+    from apps.api.authentication.demo_lifecycle import prepare_analysis
+    prepare_analysis()
     demo_name = "demo_sales.csv (демо-датасет)"
     demo_size_label = format_size_label(DEMO_DATASET_PATH.stat().st_size)
     # PROGR-5 (§12 п.3): демо регистрируется в файловом слое как

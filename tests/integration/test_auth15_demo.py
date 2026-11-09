@@ -475,6 +475,9 @@ class CampaignSQLTests(unittest.TestCase):
         from apps.api.trace_hook import TraceHookMiddleware
 
         dsn = make_conninfo(DSN, options="-csearch_path=" + self.store.schema)
+        self.store._dsn = dsn  # AUTH-16 bound publication requires exact authority DSN parity.
+        from apps.api.authentication.demo_lifecycle_migrations import apply_migration as apply_lifecycle
+        with self.store.transaction() as tx: apply_lifecycle(tx.connection)
         import psycopg
 
         with psycopg.connect(dsn) as c:

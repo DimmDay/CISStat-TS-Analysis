@@ -457,10 +457,9 @@
       ]
     },
     "demo.admin": {
-      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared.",
-      "target": "Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance.",
+      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared. AUTH-16 bounded code batches, hash-only storage, finite requests/upload/retention policy.",
+      "target": "Current ADMIN/fresh MFA, CAS, mandatory audit; bounded policy and batch issuance.",
       "follow_up": [
-        "AUTH-16",
         "AUTH-CERT"
       ],
       "threats": [
@@ -471,10 +470,9 @@
       ]
     },
     "demo.entry": {
-      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks.",
-      "target": "No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16.",
+      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks. AUTH-16 atomic code redemption, persistent grant/campaign request quotas, atomic analysis admission, current publication/stream checks and bounded cleanup.",
+      "target": "Private grants, hard expiry and quotas; cleanup retains audit/ledger and held/uncertain work, physical GC only quiesced.",
       "follow_up": [
-        "AUTH-16",
         "AUTH-CERT"
       ],
       "threats": [
@@ -7529,6 +7527,88 @@
       "canonical_operation": "worker:document.system_snapshot",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
       "stage_namespace": "service"
+    },
+    "api:GET:/v1/auth/demo/limits": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "demo.limits.read",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "demo.admissions.issue",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    "demo.lifecycle.admission": {
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.admission",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "demo.lifecycle.cleanup": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.cleanup",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "demo.lifecycle.schema": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.schema",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "demo.lifecycle.kernel": {
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.kernel",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    "worker:apps/api/authentication/demo_sweeper.py:47": {
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
+      "effects": [
+        "compute",
+        "stop_process_group"
+      ],
+      "canonical_operation": "demo.lifecycle.sweep",
+      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
     }
   },
   "extra_surfaces": [
@@ -8200,7 +8280,7 @@
       "evidence": [
         {
           "source": "apps/api/authentication/demo.py",
-          "line": 305,
+          "line": 171,
           "symbol": "command"
         }
       ]
@@ -8214,7 +8294,7 @@
       "evidence": [
         {
           "source": "apps/api/authentication/demo.py",
-          "line": 482,
+          "line": 171,
           "symbol": "enter"
         }
       ]
@@ -8244,6 +8324,62 @@
           "source": "apps/api/authentication/demo_migrations.py",
           "line": 36,
           "symbol": "check_schema"
+        }
+      ]
+    },
+    {
+      "id": "demo.lifecycle.admission",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.admission",
+      "operation": "demo.lifecycle.admission",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_lifecycle.py",
+          "line": 68,
+          "symbol": "issue_codes"
+        }
+      ]
+    },
+    {
+      "id": "demo.lifecycle.cleanup",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.cleanup",
+      "operation": "demo.lifecycle.cleanup",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_cleanup.py",
+          "line": 14,
+          "symbol": "sweep"
+        }
+      ]
+    },
+    {
+      "id": "demo.lifecycle.schema",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.schema",
+      "operation": "demo.lifecycle.schema",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_lifecycle_migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "demo.lifecycle.kernel",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.kernel",
+      "operation": "demo.lifecycle.kernel",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_kernel.py",
+          "line": 9,
+          "symbol": "bounded_demo_kernel"
         }
       ]
     }
@@ -8439,6 +8575,15 @@
     "packages/ui/lib/demo.ts",
     "tests/unit/test_auth15_demo.py",
     "tests/integration/test_auth15_demo.py",
-    "scripts/auth15/migrate.py"
+    "scripts/auth15/migrate.py",
+    "apps/api/migrations/0028_auth16_demo_lifecycle.sql",
+    "apps/api/Dockerfile",
+    "packages/ui/components/DemoLimits.tsx",
+    "tests/unit/test_auth16_lifecycle.py",
+    "tests/integration/test_auth16_lifecycle.py",
+    "scripts/auth16/cleanup.py",
+    "scripts/auth16/migrate.py",
+    ".github/workflows/auth16.yml",
+    "packages/ui/components/auth16-demo.test.tsx"
   ]
 }

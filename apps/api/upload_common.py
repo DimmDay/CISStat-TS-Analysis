@@ -24,6 +24,7 @@ TsAnalysisUpload.tsx). В app/data/detectors.py уже есть протести
 confidence, candidates: [{name, score}]}, которую ожидает фронтенд --
 это отдельная по объёму задача (адаптер/скоринг), не подмешивать сюда.
 """
+
 from io import BytesIO
 import uuid
 from typing import Optional
@@ -33,7 +34,12 @@ from fastapi import HTTPException, Request, Response, UploadFile
 
 from apps.api.schemas import ColumnInfoOut, QualityTeaserOut, UploadResponse
 from apps.api.research_runs import get_dataset_file_store
-from apps.api.session_store import DatasetInfo, format_size_label, get_or_create_session_id, get_session_store
+from apps.api.session_store import (
+    DatasetInfo,
+    format_size_label,
+    get_or_create_session_id,
+    get_session_store,
+)
 from apps.api.target_column_rule import auto_fix_and_seed
 from app.data.file_loader import read_uploaded_file
 
@@ -111,14 +117,18 @@ def _compute_parse_warnings(df: pd.DataFrame) -> list[str]:
 
     encoding_suspect = any("\ufffd" in str(c) for c in df.columns)
     if not encoding_suspect:
-        text_cols = df.select_dtypes(include="object").columns[:10]  # сэмплируем, не весь датасет
+        text_cols = df.select_dtypes(include="object").columns[
+            :10
+        ]  # сэмплируем, не весь датасет
         for col in text_cols:
             sample = df[col].dropna().astype(str).head(50)
             if sample.str.contains("\ufffd", regex=False).any():
                 encoding_suspect = True
                 break
     if encoding_suspect:
-        warnings.append("Возможна проблема с кодировкой файла — обнаружены нечитаемые символы (�)")
+        warnings.append(
+            "Возможна проблема с кодировкой файла — обнаружены нечитаемые символы (�)"
+        )
 
     return warnings
 
@@ -152,6 +162,7 @@ def register_uploaded_dataframe(
     трассы).
     """
     from apps.api.scientific import enforce_dataframe
+
     enforce_dataframe(request, df)
     head_rows = df.head(5).values.tolist()
     tail_rows = df.tail(5).values.tolist()
@@ -216,9 +227,34 @@ def register_uploaded_dataframe(
     )
 
 
-async def handle_upload(file: UploadFile, request: Request, response: Response) -> UploadResponse:
+async def handle_upload(
+    file: UploadFile, request: Request, response: Response
+) -> UploadResponse:
     try:
         contents = await file.read()
+        from apps.api.authentication.demo_lifecycle import REQUEST
+
+        if REQUEST.get() is not None:
+            from apps.api.authentication.demo import CampaignPolicy
+            from apps.api.authentication.context import auth_error
+
+            current = getattr(request.state, "_auth11_admission", None)
+            if current and current.context.demo_grant_id:
+                from apps.api.authentication.demo_lifecycle import LifecycleService
+
+                svc = LifecycleService(
+                    store=getattr(request.app.state, "auth_access_store", None)
+                )
+                with svc._tx() as tx:
+                    row = tx.connection.execute(
+                        "SELECT policy FROM auth_demo_campaigns WHERE campaign_id=(SELECT campaign_id FROM auth_demo_grants WHERE grant_id=%s)",
+                        (current.context.demo_grant_id,),
+                    ).fetchone()
+                    if (
+                        len(contents)
+                        > CampaignPolicy.model_validate(row["policy"]).max_upload_bytes
+                    ):
+                        auth_error(413, "demo_upload_limit")
         file.file.seek(0)  # на случай, если вызывающий код тоже читает file
 
         file_like = BytesIO(contents)
@@ -226,8 +262,15 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
 
         df, _ext = read_uploaded_file(file_like)
         from apps.api.scientific import enforce_dataframe
+
         enforce_dataframe(request, df)
 
+        from apps.api.authentication.demo_lifecycle import prepare_analysis
+
+        prepare_analysis()
+        from apps.api.authentication.demo_lifecycle import stage_upload_cleanup
+
+        stage_upload_cleanup(contents)
         size_label = format_size_label(len(contents))
 
         # PROGR-5 (§12 п.3): байты исходного файла -- в файловый слой по

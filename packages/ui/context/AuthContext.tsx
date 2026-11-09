@@ -8,6 +8,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { DemoLimits } from "../components/DemoLimits";
 import { authMe, authCommand, AuthSession } from "../lib/authClient";
 type State = {
   status: "loading" | "anonymous" | "authenticated" | "unavailable";
@@ -84,6 +85,7 @@ export function AuthProvider({
   }, [read]);
   return (
     <AuthContext.Provider value={{ ...state, refresh, logout }}>
+      {state.session?.account_plan === "demo" && <DemoLimits key={state.session.account_id} />}
       {children}
     </AuthContext.Provider>
   );

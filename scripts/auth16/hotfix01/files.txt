@@ -1,0 +1,16 @@
+docs/auth00/inventory.json
+docs/auth16/hotfix01.md
+scripts/auth00/inventory.py
+scripts/auth16/files.txt
+scripts/auth16/hotfix01/files.txt
+scripts/auth16/hotfix01/package_delivery.py
+scripts/auth16/hotfix01/protocols/gate.txt
+scripts/auth16/hotfix01/protocols/green-targeted.txt
+scripts/auth16/hotfix01/protocols/overlay-crlf-index.txt
+scripts/auth16/hotfix01/protocols/red.txt
+scripts/auth16/hotfix01/protocols/routes.txt
+scripts/auth16/hotfix01/protocols/unit.txt
+scripts/local_gates.md
+tests/unit/test_auth00_inventory.py
+tests/unit/test_auth00_precommit.py
+worklog/worklog12.md

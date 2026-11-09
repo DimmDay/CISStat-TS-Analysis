@@ -232,6 +232,32 @@ class InventoryTests(unittest.TestCase):
         path.write_bytes(path.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
         self.mod.check(self.root)
 
+    def test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails(self):
+        self.snapshot_fixture()
+        self.put('apps/api/Dockerfile', 'FROM python:3.12\nRUN true\n')
+        self.edit_review(lambda r: r['reviewed_sources'].append('apps/api/Dockerfile'))
+        report = self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json', self.mod.json_text(report))
+        self.put('docs/auth00/inventory.md', self.mod.markdown(report))
+        path = self.root / 'apps/api/Dockerfile'
+        path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+        self.mod.check(self.root)
+        path.write_bytes(path.read_bytes().replace(b'RUN true', b'RUN false'))
+        with self.assertRaises(ValueError):
+            self.mod.check(self.root)
+
+    def test_binary_fingerprint_does_not_normalize_crlf(self):
+        self.snapshot_fixture()
+        path = self.root / 'payload.bin'
+        path.write_bytes(b'payload\x00\n')
+        self.edit_review(lambda r: r['reviewed_sources'].append('payload.bin'))
+        report = self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json', self.mod.json_text(report))
+        self.put('docs/auth00/inventory.md', self.mod.markdown(report))
+        path.write_bytes(b'payload\x00\r\n')
+        with self.assertRaises(ValueError):
+            self.mod.check(self.root)
+
     def test_reviewed_password_blocklist_fingerprint_is_checkout_portable(self):
         self.snapshot_fixture()
         self.put('apps/api/authentication/password_blocklist.txt', '# password policy\ncommon password\n')

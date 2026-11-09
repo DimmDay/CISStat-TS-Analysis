@@ -35,6 +35,18 @@ export async function apiFetch(
   init?: RequestInit,
 ): Promise<Response> {
   if (!governed(input)) return fetch(input, init);
+  const outgoingMethod = (init?.method ?? "GET").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(outgoingMethod)) {
+    const headers = new Headers(init?.headers);
+    if (!headers.has("Idempotency-Key"))
+      headers.set(
+        "Idempotency-Key",
+        Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+          b.toString(16).padStart(2, "0"),
+        ).join(""),
+      );
+    init = { ...init, headers };
+  }
   const response = await fetch(input, init);
   const method = (
     init?.method ??

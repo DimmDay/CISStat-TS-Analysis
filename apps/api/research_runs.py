@@ -1987,6 +1987,13 @@ class PostgresResearchRunStore(ResearchRunStore):
     def _connect(self):
         import psycopg  # late import -- см. докстринг класса
 
+        # AUTH-16: research events and dataset admission share the authority
+        # transaction. A second connection could wait on our own projection
+        # locks, and would lose atomicity on rollback. Never run DDL here.
+        from apps.api.workers.connection import projection_connection
+        shared = projection_connection(self._dsn)
+        if shared is not None:
+            return shared
         conn = psycopg.connect(self._dsn, autocommit=False)
         if not self._schema_ready:
             with self._lock:

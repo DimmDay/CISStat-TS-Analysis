@@ -161,9 +161,12 @@ async def _lifespan(app: FastAPI):
     # форматов документов (env CISSTAT_DOCUMENT_RENDER_WORKER_*);
     # shutdown останавливает (паритет DeliveryWorker).
     document_render_worker.start_document_render_worker()
+    from apps.api.authentication import demo_sweeper
+    demo_sweeper.start()
     try:
         yield
     finally:
+        demo_sweeper.stop()
         document_render_worker.stop_document_render_worker()
         delivery_worker.stop_delivery_worker()
         telemetry_emit(

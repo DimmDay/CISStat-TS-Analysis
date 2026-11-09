@@ -15,8 +15,16 @@ const initial: Record<string, string> = {
   participant_analyses: "",
   max_rows: "",
   allowed_origins: "",
+  participant_requests: "600",
+  campaign_requests: "60000",
+  max_upload_bytes: "4194304",
+  retention_hours: "24",
 };
 const labels: Record<string, string> = {
+  participant_requests: "Научных запросов участника",
+  campaign_requests: "Научных запросов кампании",
+  max_upload_bytes: "Размер файла, байт (до 4194304)",
+  retention_hours: "Хранение после окончания, часов (1–720)",
   alias: "Логин с флаера",
   starts_at: "Начало (UTC)",
   ends_at: "Окончание (UTC)",
@@ -33,6 +41,9 @@ const labels: Record<string, string> = {
 };
 export function DemoCampaignAdmin() {
   const [loaded, setLoaded] = useState(false);
+  const [admission, setAdmission] = useState(false),
+    [codeCount, setCodeCount] = useState(1),
+    [codes, setCodes] = useState<string[]>([]);
   const [items, setItems] = useState<Campaign[]>([]),
     [form, setForm] = useState(initial),
     [upload, setUpload] = useState(false);
@@ -56,6 +67,7 @@ export function DemoCampaignAdmin() {
     setBusy(true);
     setError("");
     setSecret("");
+    setCodes([]);
     try {
       await action();
       await reload();
@@ -78,7 +90,11 @@ export function DemoCampaignAdmin() {
             ? new Date(form[key] + "Z").toISOString()
             : Number(form[key]);
     }
-    return { ...p, allow_upload: upload } as CampaignPolicy;
+    return {
+      ...p,
+      allow_upload: upload,
+      require_admission: admission,
+    } as CampaignPolicy;
   }
   function edit(c: Campaign) {
     const v: Record<string, string> = { ...initial, alias: c.alias };
@@ -92,6 +108,7 @@ export function DemoCampaignAdmin() {
     }
     setForm(v);
     setUpload(c.policy.allow_upload);
+    setAdmission(c.policy.require_admission ?? false);
     setEditing(c);
     setSecret("");
   }
@@ -181,6 +198,14 @@ export function DemoCampaignAdmin() {
           />{" "}
           Разрешить собственные данные
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={admission}
+            onChange={(e) => setAdmission(e.target.checked)}
+          />{" "}
+          Требовать одноразовый код участника
+        </label>
         <button
           className="rounded bg-brand p-2 text-white"
           disabled={busy || !reason.trim()}
@@ -208,6 +233,30 @@ export function DemoCampaignAdmin() {
           <button onClick={() => setSecret("")}>Скрыть пароль</button>
         </div>
       )}
+      {codes.length > 0 && (
+        <div role="status">
+          <p>
+            Коды показаны один раз. Передайте каждому участнику отдельный код.
+          </p>
+          <textarea
+            aria-label="Выданные коды"
+            readOnly
+            className="w-full border p-2"
+            value={codes.join("\n")}
+          />
+          <button onClick={() => setCodes([])}>Скрыть коды</button>
+        </div>
+      )}
+      <label className="block">
+        Кодов в партии (1–200)
+        <input
+          type="number"
+          min={1}
+          max={200}
+          value={codeCount}
+          onChange={(e) => setCodeCount(Number(e.target.value))}
+        />
+      </label>
       {error && <p role="alert">{error}</p>}
       <button
         disabled={busy}
@@ -248,6 +297,30 @@ export function DemoCampaignAdmin() {
               сроки и расход участников сохранятся.
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
+              {!["revoked", "expired"].includes(c.status) && (
+                <button
+                  disabled={
+                    busy || !reason.trim() || codeCount < 1 || codeCount > 200
+                  }
+                  onClick={() =>
+                    void run(async () => {
+                      const result = await demoRequest(
+                        "admin/demo-campaigns/" + c.campaign_id + "/admissions",
+                        "POST",
+                        {
+                          expected_version: c.policy_version,
+                          reason,
+                          count: codeCount,
+                          expires_at: c.policy.ends_at,
+                        },
+                      );
+                      setCodes(result.codes);
+                    })
+                  }
+                >
+                  Выдать коды до конца кампании
+                </button>
+              )}
               <button disabled={busy} onClick={() => edit(c)}>
                 Редактировать
               </button>

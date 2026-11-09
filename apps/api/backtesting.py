@@ -7,6 +7,8 @@ are never passed to model code.
 """
 from __future__ import annotations
 
+from apps.api.authentication.demo_kernel import bounded_demo_kernel
+
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
@@ -400,6 +402,7 @@ def _feature_execution_context(
     return feature_plan, "granted", []
 
 
+@bounded_demo_kernel
 def run_backtest_plan(
     *, model_id: str, model_name: str, family_id: str,
     series: list[float], labels: list[str], plan: BacktestPlan,

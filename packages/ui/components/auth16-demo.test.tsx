@@ -1,0 +1,33 @@
+import React from "react";
+import {render, screen, fireEvent} from "@testing-library/react";
+import {DemoCampaignAdmin} from "./DemoCampaignAdmin";
+import {DemoEntry} from "./DemoEntry";
+import {demoRequest} from "../lib/demo";
+jest.mock("../lib/demo",()=>({demoRequest:jest.fn()}));
+const request=demoRequest as jest.Mock;
+beforeEach(()=>request.mockReset());
+test("admission code is submitted in the body, optional and never persisted",async()=>{
+ request.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("expired"));
+ render(<DemoEntry/>);
+ fireEvent.change(screen.getByLabelText("Логин кампании"),{target:{value:"forum"}});
+ fireEvent.change(screen.getByLabelText("Пароль с флаера"),{target:{value:"secret"}});
+ fireEvent.change(screen.getByLabelText("Код участника (если выдан)"),{target:{value:"a16_test"}});
+ fireEvent.click(screen.getByRole("button",{name:"Войти в демо"}));
+ await screen.findByRole("alert");
+ expect(request).toHaveBeenLastCalledWith("auth/demo/enter","POST",{login:"forum",password:"secret",admission_code:"a16_test"});
+ expect(localStorage.length).toBe(0);
+});
+test("fresh admin code batch is shown once and can be hidden",async()=>{
+ const campaign={campaign_id:"id",alias:"forum",status:"active",policy_version:7,issued_grants:0,policy:{max_grants:4,ends_at:"2026-11-10T12:00:00Z",grant_minutes:60}};
+ request.mockResolvedValue({campaigns:[campaign]});
+ render(<DemoCampaignAdmin/>);
+ const button=await screen.findByRole("button",{name:"Выдать коды до конца кампании"});
+ expect(button).toBeDisabled();
+ fireEvent.change(screen.getByLabelText("Причина действия"),{target:{value:"forum"}});
+ request.mockImplementation(async(path:string)=>path.endsWith("/admissions")?{codes:["a16_once"]}:{campaigns:[campaign]});
+ fireEvent.click(button);
+ expect(await screen.findByLabelText("Выданные коды")).toHaveValue("a16_once");
+ expect(request).toHaveBeenCalledWith("admin/demo-campaigns/id/admissions","POST",{count:1,expected_version:7,reason:"forum",expires_at:campaign.policy.ends_at});
+ fireEvent.click(screen.getByRole("button",{name:"Скрыть коды"}));
+ expect(screen.queryByLabelText("Выданные коды")).not.toBeInTheDocument();
+});

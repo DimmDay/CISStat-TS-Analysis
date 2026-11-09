@@ -1,0 +1,13 @@
+test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails (test_auth00_inventory.InventoryTests.test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails) ... ok
+test_crlf_index_dockerfile_matches_lf_worktree (test_auth00_precommit.PrecommitTests.test_crlf_index_dockerfile_matches_lf_worktree) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.113s
+
+OK
+test_binary_fingerprint_does_not_normalize_crlf (test_auth00_inventory.InventoryTests.test_binary_fingerprint_does_not_normalize_crlf) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.010s
+
+OK

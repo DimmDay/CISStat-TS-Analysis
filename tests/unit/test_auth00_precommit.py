@@ -177,6 +177,21 @@ class PrecommitTests(unittest.TestCase):
         result = self.run_check()
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_crlf_index_dockerfile_matches_lf_worktree(self):
+        self.fixture.put("apps/api/Dockerfile", "FROM python:3.12\nRUN true\n")
+        self.fixture.edit_review(lambda r: r["reviewed_sources"].append("apps/api/Dockerfile"))
+        self.refresh()
+        path = self.root / "apps/api/Dockerfile"
+        lf = path.read_bytes()
+        path.write_bytes(lf.replace(b"\n", b"\r\n"))
+        self.stage()
+        self.assertIn(b"\r\n", self.git("show", ":apps/api/Dockerfile").stdout)
+        path.write_bytes(lf)
+        before = self.git("ls-files", "--stage").stdout
+        result = self.run_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git("ls-files", "--stage").stdout, before)
+
     def test_head_does_not_silently_fall_back_to_index(self):
         self.stage()
         result = self.run_check("head")

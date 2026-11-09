@@ -1,0 +1,69 @@
+test_atomic_code_race_and_private_resume (test_auth16_lifecycle.LifecycleSQLTests.test_atomic_code_race_and_private_resume) ... ok
+test_audit_fault_rolls_back_code_and_grant (test_auth16_lifecycle.LifecycleSQLTests.test_audit_fault_rolls_back_code_and_grant) ... ok
+test_cleanup_audit_failure_rolls_back (test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_audit_failure_rolls_back) ... ok
+test_cleanup_hold_and_uncertain_keep_data (test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_hold_and_uncertain_keep_data) ... ok
+test_cleanup_retains_minimal_audit_and_ledger (test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_retains_minimal_audit_and_ledger) ... ok
+test_cleanup_running_call_requires_quiesced_recovery (test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_running_call_requires_quiesced_recovery) ... ok
+test_code_required_expired_and_foreign_fail (test_auth16_lifecycle.LifecycleSQLTests.test_code_required_expired_and_foreign_fail) ... ok
+test_expiry_fences_late_publication_and_uncertain_holds_slot (test_auth16_lifecycle.LifecycleSQLTests.test_expiry_fences_late_publication_and_uncertain_holds_slot) ... ok
+test_http_real_upload_replay_limits_and_expiry (test_auth16_lifecycle.LifecycleSQLTests.test_http_real_upload_replay_limits_and_expiry) ... AUTH16 HTTP /v1/auth/demo/prepare
+AUTH16 HTTP /v1/auth/demo/enter
+AUTH16 HTTP /v1/session/demo
+DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55434 options=-csearch_path=auth15_bdd30717cf7a437fbbe573127a437028:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+AUTH16 HTTP /v1/session/demo
+AUTH16 HTTP /v1/internal/models/backtest
+AUTH16 HTTP /v1/session/date-column
+AUTH16 HTTP /v1/session/dataset/passport/start
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+AUTH16 HTTP /v1/session/dataset/passport/modeling_entry
+AUTH16 HTTP /v1/session/modeling/candidates
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+AUTH16 HTTP /v1/session/modeling/baselines
+AUTH16 HTTP /v1/session/modeling/compare
+/workspace/scratch/e28f7bf5e3d0/venv-auth16/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  return acorr_lm(
+AUTH16 HTTP /v1/session/modeling/selection/evaluate
+AUTH16 HTTP /v1/session/modeling/select
+AUTH16 HTTP /v1/session/modeling/card
+Artifact promotion failed (durable receipt recorded): run=RUN-809E7F8D571046719ECC123C23ECB515 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+Artifact promotion failed (durable receipt recorded): run=RUN-809E7F8D571046719ECC123C23ECB515 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+AUTH16 HTTP /v1/session/modeling/forecast
+Artifact promotion failed (durable receipt recorded): run=RUN-809E7F8D571046719ECC123C23ECB515 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+Artifact promotion failed (durable receipt recorded): run=RUN-809E7F8D571046719ECC123C23ECB515 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+AUTH16 HTTP /v1/session/demo
+ok
+test_migration_repeat_and_admission_hash_only (test_auth16_lifecycle.LifecycleSQLTests.test_migration_repeat_and_admission_hash_only) ... ok
+test_quiesced_file_gc_keeps_shared_bytes_and_commits_audit_first (test_auth16_lifecycle.LifecycleSQLTests.test_quiesced_file_gc_keeps_shared_bytes_and_commits_audit_first) ... ok
+test_quota_race_and_idempotency_payload_conflict (test_auth16_lifecycle.LifecycleSQLTests.test_quota_race_and_idempotency_payload_conflict) ... ok
+test_resume_does_not_extend_expiry_or_bypass_expiration (test_auth16_lifecycle.LifecycleSQLTests.test_resume_does_not_extend_expiry_or_bypass_expiration) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 36.819s
+
+OK

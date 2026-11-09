@@ -102,6 +102,9 @@ class WorkerAuthority:
             if not raw or not account_is_active(Account(**raw), now=self.now(c)):
                 auth_error(403, "account_expired")
             account = Account(**raw)
+            from apps.api.authentication.demo import grant_for_account
+
+            grant_for_account(c, account.account_id, self.now(c))
             caps = None
         else:
             ctx = self._ctx(row)
@@ -279,6 +282,19 @@ class WorkerAuthority:
                     auth_error(409, "idempotency_conflict")
                 self._access(c, existing)
                 return existing
+            from apps.api.authentication.demo import grant_for_account
+
+            demo_grant = grant_for_account(c, account.account_id, now)
+            if demo_grant:
+                from apps.api.authentication.demo_lifecycle import REQUEST
+
+                http = REQUEST.get()
+                deadline = min(now + timedelta(seconds=60), demo_grant["expires_at"])
+                if http is not None:
+                    deadline = min(deadline, http.state._auth16_deadline)
+                request = request.model_copy(
+                    update={"deadline": min(request.deadline, deadline)}
+                )
             # Finite technical slot; existing operator policy is never overwritten.
             self.billing._root(c, account, now)
             if request.slots:

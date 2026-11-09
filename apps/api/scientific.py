@@ -359,7 +359,8 @@ class ScientificRoute(APIRoute):
             admission = None
             try:
                 admission = await run_in_threadpool(preflight, request)
-                response = await original(request)
+                from apps.api.authentication.demo_lifecycle import govern
+                response = await govern(request, admission, original)
                 if admission is not None:
                     response.headers["Cache-Control"] = "no-store"
                 return response

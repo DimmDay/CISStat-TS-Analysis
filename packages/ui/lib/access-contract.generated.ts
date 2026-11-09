@@ -3170,6 +3170,14 @@ export const ACCESS_REGISTRY: AccessRegistryDTO = {
     "api:POST:/v1/auth/demo/leave": {
       "operation_id": "demo.entry",
       "programmatic_api": false
+    },
+    "api:GET:/v1/auth/demo/limits": {
+      "operation_id": "demo.entry",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions": {
+      "operation_id": "demo.campaign.admin",
+      "programmatic_api": false
     }
   }
 };

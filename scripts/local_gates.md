@@ -1,6 +1,6 @@
 # Локальные гейты перед передачей в GitHub
 
-AUTH-14 применяется поверх a16b31bd0c3d49586de24d3556a39e43b9cc3321. AUTH-01…13 и исправления INDEX уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
+AUTH-16 применяется поверх 2f4812032240b35f1524d0bb31c58fcaf4bc3c85. AUTH-01…15 уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
 
 ## До коммита: явно подготовить Git index
 
@@ -8,7 +8,7 @@ AUTH-14 применяется поверх a16b31bd0c3d49586de24d3556a39e43b9cc
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth15/files.txt
+git add --pathspec-from-file=scripts/auth16/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -72,16 +72,37 @@ Raw локальный benchmark/отдельный holdout — `scripts/auth14/
 
 Патч поверх AUTH-14 уточняет **какой snapshot** упал: WORKTREE, INDEX или HEAD. Лог содержит reviewed source paths и expected/actual SHA-256, изменения entry fields/metadata; прежняя общая строка не позволяла установить локальную причину. Защита не ослаблена и inventory не перезаписывается автоматически.
 
-После распаковки hotfix явно stage объединённый `scripts/auth15/files.txt` и повторить `python scripts/local_gates.py --only auth00 --skip-install`. Если WORKTREE не согласован, одного git add недостаточно: просмотрите названные файлы/карту против поставки. Не выполняйте `inventory.py --write` только для устранения FAIL. Полная инструкция: `docs/auth14/hotfix01.md`. Неполный INDEX, незаписанный guard и новые/ignored routes по-прежнему дают FAIL.
+После распаковки hotfix явно stage объединённый `scripts/auth16/files.txt` и повторить `python scripts/local_gates.py --only auth00 --skip-install`. Если WORKTREE не согласован, одного git add недостаточно: просмотрите названные файлы/карту против поставки. Не выполняйте `inventory.py --write` только для устранения FAIL. Полная инструкция: `docs/auth14/hotfix01.md`. Неполный INDEX, незаписанный guard и новые/ignored routes по-прежнему дают FAIL.
 
 ## AUTH-15 (база b9af29b)
 
 Добавлены 14 HTTP bindings и страницы /demo и /admin/demo-campaigns в обеих оболочках. Новый default auth15; native — `--with-auth15-postgres` или `--only auth15-postgres`, disposable `CISSTAT_AUTH_TEST_DSN`. Native CI PG16/18; отсутствие DSN/skip не PASS. Локальный WASM proof не заменяет native locking/restart.
 
-После распаковки: `git add --pathspec-from-file=scripts/auth15/files.txt`, затем `python scripts/local_gates.py --skip-install`; до push после вашего commit — `--auth00-target head`. Обновлены AUTH-00 inventory/review, функциональные bindings, generated OpenAPI/TS и proxy allowlist. Production build обеих оболочек — `npm run build:all`. Установка на VM требует api+web build и explicit0027, см. docs/auth15/deploy.md. AUTH-16 admission codes/cleanup и эксплуатационная сертификация остаются отдельной задачей.
+После распаковки: `git add --pathspec-from-file=scripts/auth16/files.txt`, затем `python scripts/local_gates.py --skip-install`; до push после вашего commit — `--auth00-target head`. Обновлены AUTH-00 inventory/review, функциональные bindings, generated OpenAPI/TS и proxy allowlist. Production build обеих оболочек — `npm run build:all`. Установка на VM требует api+web build и explicit0027, см. docs/auth15/deploy.md. AUTH-16 admission codes/cleanup и эксплуатационная сертификация остаются отдельной задачей.
 
 ## AUTH-13-HOTFIX-1 (база 58a46f9) — bootstrap worker-credential (OPS-DIAG-1)
 
 Новых гейтов нет. Существующие паттерны подхватывают новые файлы автоматически: `auth13` (unittest discover `tests/unit -p "test_auth13*.py"`) включает `test_auth13_worker_bootstrap.py` (22 unit-сценария: формат ключа, состояния disabled/missing/invalid, отображение строки, отсутствие утечки секрета/дайджеста, startup_check, legibility ошибок воркера), `auth13-postgres` (`scripts/auth13/verify_postgres.py`) — `tests/integration/test_auth13_bootstrap.py` (6 native-сценариев: воспроизведение дефекта 503 на пустом ключе и на ключе без строки, включая пользовательский admit; bootstrap+восстановление воркера; идемпотентность; запрет воскрешения revoked; запрет продления expired).
 
 AUTH-00: после правок document_render_worker/main.py выполнена официальная перегенерация `inventory.py --write`; в `policy_review.json` две worker-записи пере-ключены на новые строки (676→715, 698→737) с байт-идентичной классификацией; entries 614→614, counts прежние (api 253, page 38, worker 9); отпечатки 390→391 — единственный новый reviewed source `apps/api/workers/bootstrap.py`; прочие изменения записей — только evidence-строки main.py (+10). Роуты не затронуты, actual-ASGI `scripts/auth06/check_routes.py` PASS (added/missing пусто). Обновлены docs/auth00/inventory.md|json и docs/auth13/runbook.md (раздел bootstrap). VM: пересборка ТОЛЬКО api, web байты прежние; доставка `scripts/auth13-hotfix1/files.txt`.
+
+
+## AUTH-16 (база 2f48120)
+
+Default `auth16` проверяет конечные policy/admission contracts; live `--only auth16-postgres` или `--with-auth16-postgres` требует disposable CISSTAT_AUTH_TEST_DSN. CI: PostgreSQL16/18, contracts Linux/Windows. Нет DSN/есть skip — не PASS. `check_routes` подтверждает 255 API методов, 259 bindings и 621 inventory entry; добавлены POST admin admissions и GET own limits. Обновлены review/inventory, OpenAPI/TS, proxy allowlist. `npm run build:all` — production обеих оболочек.
+
+VM требует api+web rebuild, explicit0028 и переноса scientific files в science_data; инструкции `docs/auth16/deploy.md`. Если CU profile настроен, изменённые kernel fingerprints требуют повторной калибровки. `cleanup.py --sweep` — SQL, `--collect-files --quiesced` и восстановление crash HTTP calls — только при остановленных publishers. Retention/holds/uncertain не снимаются принудительно. Общая operational сертификация остаётся AUTH-CERT.
+
+
+## AUTH-16 HOTFIX-01 — Dockerfile LF/CRLF в INDEX
+
+При `INDEX inventory check failed` с единственным `apps/api/Dockerfile` и expected34659093… / actual0da21e1f… причина — CRLF в staged blob, LF в поставке. AUTH-00 теперь нормализует CRLF для текстового basename Dockerfile, как для .py/.sql/.txt. Содержательные изменения Dockerfile и бинарные bytes по-прежнему вызывают FAIL. Runtime/API/routes/образы этим hotfix не меняются.
+
+Применить `cisstat-auth16-hotfix01.zip` поверх уже распакованной AUTH-16 поставки, затем из корня checkout:
+
+```powershell
+git add --pathspec-from-file=scripts/auth16/files.txt
+python scripts/local_gates.py --only auth00 --skip-install
+```
+
+Manifest AUTH-16 объединён с hotfix; git config/core.autocrlf менять, выполнять reset или генерировать inventory локально не требуется. При другом FAIL нужен полный UTF-8 logs/local_gates/auth00.log. Прежние runtime/native/Jest проверки AUTH-16 относятся к тем же bytes; дополнительная пересборка VM из-за hotfix не нужна.

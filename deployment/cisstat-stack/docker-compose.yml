@@ -74,6 +74,8 @@ services:
       CISSTAT_CU_PROFILE: ${CISSTAT_CU_PROFILE:-}
       CISSTAT_CU_PROFILE_SHA256: ${CISSTAT_CU_PROFILE_SHA256:-}
       CISSTAT_COMPUTE_CACHE_DIR: /var/lib/cisstat-compute-cache
+      CISSTAT_DATA_DIR: /var/lib/cisstat-data
+      CISSTAT_DEMO_SWEEPER_ENABLED: ${CISSTAT_DEMO_SWEEPER_ENABLED:-1}
       CISSTAT_AUTH_CSRF_KEY: ${CISSTAT_AUTH_CSRF_KEY:?заполните CISSTAT_AUTH_CSRF_KEY в .env (openssl rand -base64 32)}
       CISSTAT_AUTH_MFA_KEYS: ${CISSTAT_AUTH_MFA_KEYS:?заполните CISSTAT_AUTH_MFA_KEYS в .env (JSON-keyring, docs/auth05/design.md)}
       CISSTAT_AUTH_MFA_ACTIVE_KEY: ${CISSTAT_AUTH_MFA_ACTIVE_KEY:?заполните CISSTAT_AUTH_MFA_ACTIVE_KEY в .env}
@@ -83,6 +85,7 @@ services:
       CISSTAT_AUTH_ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
       ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
     volumes:
+      - science_data:/var/lib/cisstat-data
       - worker_proofs:/var/lib/cisstat-worker-proofs
       - cu_profiles:/var/lib/cisstat-cu-profiles
       - compute_cache:/var/lib/cisstat-compute-cache
@@ -145,6 +148,7 @@ services:
     # не сможет ни слушать, ни пройти HTTP-01 challenge.
 
 volumes:
+  science_data: {}
   worker_proofs: {}
   cu_profiles: {}
   compute_cache: {}

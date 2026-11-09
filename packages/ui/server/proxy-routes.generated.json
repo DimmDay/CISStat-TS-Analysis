@@ -25,6 +25,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/auth/demo/limits"
+  },
+  {
+    "method": "GET",
     "path": "/v1/auth/demo/me"
   },
   {
@@ -474,6 +478,10 @@
   {
     "method": "POST",
     "path": "/v1/admin/demo-campaigns/{campaign_id}/activate"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/demo-campaigns/{campaign_id}/admissions"
   },
   {
     "method": "POST",

@@ -5,6 +5,7 @@ import { demoRequest } from "../lib/demo";
 export function DemoEntry() {
   const [login, setLogin] = useState(""),
     [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   async function enter(resume = false) {
@@ -14,7 +15,11 @@ export function DemoEntry() {
       if (resume) await demoRequest("auth/demo/resume", "POST");
       else {
         await demoRequest("auth/demo/prepare", "POST");
-        await demoRequest("auth/demo/enter", "POST", { login, password });
+        await demoRequest("auth/demo/enter", "POST", {
+          login,
+          password,
+          ...(code ? { admission_code: code } : {}),
+        });
       }
       setPassword("");
       window.location.assign("/upload");
@@ -80,6 +85,16 @@ export function DemoEntry() {
             autoComplete="current-password"
             required
             maxLength={1024}
+          />
+        </label>
+        <label className="block">
+          Код участника (если выдан)
+          <input
+            className="block w-full rounded border p-2"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            maxLength={64}
+            autoComplete="off"
           />
         </label>
         <button

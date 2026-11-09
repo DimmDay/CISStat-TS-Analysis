@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 
 from pydantic import (
     AwareDatetime,
-    BaseModel,
     ConfigDict,
     Field,
     model_validator,
@@ -24,6 +23,7 @@ from .sessions import (
     boundary,
     IDLE,
 )
+from .demo_lifecycle import LifecyclePolicy
 from .demo_migrations import check_schema
 from apps.api.billing.contract import MAX_UNITS
 from apps.api.billing.coordinator import audit
@@ -31,7 +31,7 @@ from apps.api.billing.coordinator import audit
 RESUME_COOKIE = "__Host-cisstat_demo_resume"
 
 
-class CampaignPolicy(BaseModel):
+class CampaignPolicy(LifecyclePolicy):
     model_config = ConfigDict(extra="forbid", frozen=True)
     starts_at: AwareDatetime
     ends_at: AwareDatetime
@@ -66,6 +66,7 @@ class CampaignPolicy(BaseModel):
             self.participant_cu > self.campaign_cu
             or self.participant_concurrency > self.campaign_concurrency
             or self.participant_analyses > self.campaign_analyses
+            or self.participant_requests > self.campaign_requests
         ):
             raise ValueError("participant ceilings exceed campaign")
         for origin in self.allowed_origins:
@@ -480,7 +481,15 @@ class DemoService(SessionService):
 
     @boundary
     def enter(
-        self, alias, password, resume_token, origin, peer="unknown", *, old_token=None
+        self,
+        alias,
+        password,
+        resume_token,
+        origin,
+        peer="unknown",
+        *,
+        old_token=None,
+        admission_code=None,
     ):
         alias = normalize_login(alias)
         digest = resume_digest(resume_token)
@@ -509,6 +518,9 @@ class DemoService(SessionService):
             grant = c.execute(
                 "SELECT * FROM auth_demo_grants WHERE resume_hash=%s", (digest,)
             ).fetchone()
+            from .demo_lifecycle import claim_admission
+
+            claim_admission(c, row, grant, admission_code, now)
             if grant:
                 if grant["campaign_id"] != row["campaign_id"]:
                     auth_error(401, "invalid_credential")
@@ -566,6 +578,7 @@ class DemoService(SessionService):
                     "UPDATE auth_demo_campaigns SET issued_grants=issued_grants+1 WHERE campaign_id=%s",
                     (row["campaign_id"],),
                 )
+                claim_admission(c, row, grant, admission_code, now, consume=True)
                 self._audit_demo(
                     c,
                     u.subject_id,
@@ -578,7 +591,8 @@ class DemoService(SessionService):
             return self._issue_demo(c, grant, origin, now, row["credential_version"])
 
     @boundary
-    def resume(self, resume_token, origin, *, old_token=None):
+    def resume(self, resume_token, origin, *, old_token=None, peer="unknown"):
+        self._entry_rate("resume:" + peer)
         digest = resume_digest(resume_token)
         with self._tx() as tx:
             c = tx.connection

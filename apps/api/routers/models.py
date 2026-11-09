@@ -9,6 +9,8 @@
   POST /v1/models/tune        — grid search гиперпараметров с CV
 """
 from apps.api.scientific import ScientificRoute, scientific_guard, legacy_model_capability
+
+from apps.api.authentication.demo_kernel import bounded_demo_kernel
 import itertools
 import logging
 import random
@@ -676,6 +678,7 @@ def _resolve_seasonal_period(profile) -> int:
     return {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
 
 
+@bounded_demo_kernel
 def _run_backtest_with_series(
     model_id: str,
     model_info: tuple[str, str],

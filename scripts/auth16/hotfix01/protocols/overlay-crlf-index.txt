@@ -1,0 +1,5 @@
+Reproduced exact client INDEX Dockerfile SHA256 0da21e1fb29204145854faa9328446f87d570c3353a69a03460c089dad62a418
+auth00 INDEX-parity: ok (567 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 255, "inventory_api": 255, "registry_bindings": 259, "inventory_entries": 621, "added": [], "missing": []}

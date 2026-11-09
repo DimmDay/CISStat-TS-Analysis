@@ -368,7 +368,10 @@ def build(root=ROOT):
         if 'node_modules' in Path(path.replace('\\', '/')).parts:
             raise ValueError('Dependency source cannot be reviewed: ' + path)
         data = (root / path).read_bytes()
-        if Path(path).suffix in {'.py', '.ts', '.tsx', '.js', '.mjs', '.md', '.json', '.yml', '.yaml', '.sql', '.txt'}:
+        # Dockerfile is reviewed text without an extension. Git/Windows may
+        # store CRLF in INDEX even when the delivered worktree bytes are LF.
+        # Normalize only known text formats; binary hashes stay byte-exact.
+        if Path(path).name == 'Dockerfile' or Path(path).suffix in {'.py', '.ts', '.tsx', '.js', '.mjs', '.md', '.json', '.yml', '.yaml', '.sql', '.txt'}:
             data = data.replace(b'\r\n', b'\n')
         return hashlib.sha256(data).hexdigest()
     fingerprints = {p: source_digest(p) for p in sorted(source_files)}

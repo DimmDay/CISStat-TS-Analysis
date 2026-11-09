@@ -11,19 +11,19 @@
 
 | Вид | Число |
 |---|---:|
-| api | 253 |
+| api | 255 |
 | framework | 8 |
-| internal_operation | 28 |
+| internal_operation | 30 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 38 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 14 |
+| storage | 16 |
 | task_alias | 4 |
 | transport | 2 |
-| worker | 9 |
+| worker | 10 |
 
 ## Классификации
 
@@ -43,8 +43,8 @@
 | browser.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-12 |
 | compute.calibrated | AUTH-14 protected PELT/sync/stateless/async tuning use fixed-point attempted-fit quotes, supervised progress before fit, saved tariff, atomic result/settle and current-authority cache/replay. A configured profile must match measured host/dependencies/kernels/domain; no configured profile explicitly preserves unpriced AUTH-13. Independent Linux wall/group-RSS supervisor and PostgreSQL global running+uncertain capacity. Shipped measurements are LOCAL reference only; VM calibration is not claimed. | Measure and explicitly install representative VM profile before calibrated admission; preserve bounds/replay/holds and complete operational, Demo/wallet and certification tasks separately. | AUTH-15, AUTH-16, AUTH-20, AUTH-21, AUTH-CERT |
 | cors.transport | AUTH-06 exact explicit HTTPS origins; no wildcard preview or implicit localhost credentials. CORS is not AuthN. | Scientific direct API authority rollout remains AUTH-11. | AUTH-11 |
-| demo.admin | AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared. | Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance. | AUTH-16, AUTH-CERT |
-| demo.entry | AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks. | No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16. | AUTH-16, AUTH-CERT |
+| demo.admin | AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared. AUTH-16 bounded code batches, hash-only storage, finite requests/upload/retention policy. | Current ADMIN/fresh MFA, CAS, mandatory audit; bounded policy and batch issuance. | AUTH-CERT |
+| demo.entry | AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks. AUTH-16 atomic code redemption, persistent grant/campaign request quotas, atomic analysis admission, current publication/stream checks and bounded cleanup. | Private grants, hard expiry and quotas; cleanup retains audit/ledger and held/uncertain work, physical GC only quiesced. | AUTH-CERT |
 | document.object | Existing document object/scopes/lifecycle policy consumes AUTH-03 shared context; legacy session surrogate only outside scoped mode. Account ownership bridge remains AUTH-09. AUTH-09 common run gate enforces Account/tenant before role/dev compatibility; original author remains provenance. Lazy visual freeze uses actual caller. | Same unified account-aware object authority for metadata, preview, content, jobs and lifecycle; no ID-as-permission. | AUTH-03, AUTH-09, AUTH-11, AUTH-13 |
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
 | logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
@@ -67,13 +67,14 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:272 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:277 |
-| api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:144 |
-| api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:233 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:275 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:280 |
+| api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:153 |
+| api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:242 |
 | api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
 | api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
-| api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:128 |
+| api:GET:/v1/auth/demo/limits | apps.api.routers.demo:limits / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:269 |
+| api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:137 |
 | api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
 | api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:559 |
@@ -112,62 +113,62 @@
 | api:GET:/v1/public/rules/load/{template_id} | apps.api.routers.public:load_rules_template / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:106 |
 | api:GET:/v1/public/rules/templates | apps.api.routers.public:get_rules_templates / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:100 |
 | api:GET:/v1/session/current | apps.api.routers.session:get_current_session / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:594 |
-| api:GET:/v1/session/dataset | apps.api.routers.session:get_session_dataset / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:665 |
-| api:GET:/v1/session/dataset/consistency-profile | apps.api.routers.session:get_dataset_consistency_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4840 |
-| api:GET:/v1/session/dataset/decomposition | apps.api.routers.session:get_dataset_decomposition / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1802 |
-| api:GET:/v1/session/dataset/decomposition-series | apps.api.routers.session:get_dataset_decomposition_series / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1842 |
-| api:GET:/v1/session/dataset/derived-columns | apps.api.routers.session:get_dataset_derived_columns / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:763 |
-| api:GET:/v1/session/dataset/distribution | apps.api.routers.session:get_dataset_distribution / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1571 |
-| api:GET:/v1/session/dataset/eda-correlation | apps.api.routers.session:get_dataset_eda_correlation / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:958 |
-| api:GET:/v1/session/dataset/eda-distribution | apps.api.routers.session:get_dataset_eda_distribution / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1107 |
-| api:GET:/v1/session/dataset/eda-feature-selection | apps.api.routers.session:get_dataset_eda_feature_selection / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1189 |
-| api:GET:/v1/session/dataset/eda-ih | apps.api.routers.session:get_dataset_eda_ih / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:991 |
-| api:GET:/v1/session/dataset/eda-model-matrix | apps.api.routers.session:get_dataset_eda_model_matrix / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1267 |
-| api:GET:/v1/session/dataset/eda-seasonality | apps.api.routers.session:get_dataset_eda_seasonality / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1033 |
-| api:GET:/v1/session/dataset/eda-stationarity | apps.api.routers.session:get_dataset_eda_stationarity / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1070 |
-| api:GET:/v1/session/dataset/eda-structural-breaks | apps.api.routers.session:get_dataset_eda_structural_breaks / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1144 |
-| api:GET:/v1/session/dataset/eda-validation-strategy | apps.api.routers.session:get_dataset_eda_validation_strategy / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1221 |
-| api:GET:/v1/session/dataset/format-profile | apps.api.routers.session:get_dataset_format_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2208 |
-| api:GET:/v1/session/dataset/inclusion-profile | apps.api.routers.session:get_dataset_inclusion_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3442 |
-| api:GET:/v1/session/dataset/missing-correlation | apps.api.routers.session:get_dataset_missing_correlation / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2515 |
-| api:GET:/v1/session/dataset/missing-distribution | apps.api.routers.session:get_dataset_missing_distribution / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2535 |
-| api:GET:/v1/session/dataset/missing-editor-rows | apps.api.routers.session:get_dataset_missing_editor_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2655 |
-| api:GET:/v1/session/dataset/missing-matrix | apps.api.routers.session:get_dataset_missing_matrix / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2492 |
-| api:GET:/v1/session/dataset/missing-profile | apps.api.routers.session:get_dataset_missing_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2385 |
-| api:GET:/v1/session/dataset/outlier-boxplot | apps.api.routers.session:get_dataset_outlier_boxplot / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3408 |
-| api:GET:/v1/session/dataset/outlier-density | apps.api.routers.session:get_dataset_outlier_density / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3391 |
-| api:GET:/v1/session/dataset/outlier-editor-rows | apps.api.routers.session:get_dataset_outlier_editor_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2890 |
-| api:GET:/v1/session/dataset/outlier-histogram | apps.api.routers.session:get_dataset_outlier_histogram / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3358 |
-| api:GET:/v1/session/dataset/outlier-line | apps.api.routers.session:get_dataset_outlier_line / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3309 |
-| api:GET:/v1/session/dataset/outlier-profile | apps.api.routers.session:get_dataset_outlier_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3108 |
-| api:GET:/v1/session/dataset/panel-balance | apps.api.routers.session:get_panel_balance / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1307 |
-| api:GET:/v1/session/dataset/passport/compare | apps.api.routers.session:compare_dataset_passports / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:5978 |
-| api:GET:/v1/session/dataset/passport/status | apps.api.routers.session:get_dataset_passport_status / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:5934 |
-| api:GET:/v1/session/dataset/preprocessing-check-modes | apps.api.routers.session:get_dataset_preprocessing_check_modes / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:2439 |
-| api:GET:/v1/session/dataset/preprocessing/decomposition-profile | apps.api.routers.session:get_dataset_preprocessing_decomposition_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3948 |
-| api:GET:/v1/session/dataset/preprocessing/feature-generation-profile | apps.api.routers.session:get_dataset_preprocessing_feature_generation_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4530 |
-| api:GET:/v1/session/dataset/preprocessing/regularity-intervals | apps.api.routers.session:get_dataset_preprocessing_regularity_intervals / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3844 |
-| api:GET:/v1/session/dataset/preprocessing/regularity-profile | apps.api.routers.session:get_dataset_preprocessing_regularity_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3802 |
-| api:GET:/v1/session/dataset/preprocessing/regularity-timeline | apps.api.routers.session:get_dataset_preprocessing_regularity_timeline / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3863 |
-| api:GET:/v1/session/dataset/preprocessing/scaling-profile | apps.api.routers.session:get_dataset_preprocessing_scaling_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4654 |
-| api:GET:/v1/session/dataset/preprocessing/smoothing-profile | apps.api.routers.session:get_dataset_preprocessing_smoothing_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4183 |
-| api:GET:/v1/session/dataset/preprocessing/spectral-profile | apps.api.routers.session:get_dataset_preprocessing_spectral_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4434 |
-| api:GET:/v1/session/dataset/preprocessing/stationarity-profile | apps.api.routers.session:get_dataset_preprocessing_stationarity_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4314 |
-| api:GET:/v1/session/dataset/preprocessing/variance-profile | apps.api.routers.session:get_dataset_preprocessing_variance_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4071 |
-| api:GET:/v1/session/dataset/range-profile | apps.api.routers.session:get_dataset_range_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2298 |
-| api:GET:/v1/session/dataset/referential-profile | apps.api.routers.session:get_dataset_referential_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3529 |
-| api:GET:/v1/session/dataset/regularity-profile | apps.api.routers.session:get_dataset_regularity_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3716 |
-| api:GET:/v1/session/dataset/rows | apps.api.routers.session:get_dataset_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:717 |
-| api:GET:/v1/session/dataset/stats | apps.api.routers.session:get_dataset_stats / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:897 |
-| api:GET:/v1/session/dataset/structure-detection | apps.api.routers.session:get_structure_detection / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1692 |
-| api:GET:/v1/session/dataset/sufficiency-profile | apps.api.routers.session:get_dataset_sufficiency_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4737 |
-| api:GET:/v1/session/dataset/text-quality-profile | apps.api.routers.session:get_dataset_text_quality_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3623 |
-| api:GET:/v1/session/dataset/timeseries | apps.api.routers.session:get_dataset_timeseries / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1755 |
-| api:GET:/v1/session/dataset/uniqueness-profile | apps.api.routers.session:get_dataset_uniqueness_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4931 |
-| api:GET:/v1/session/dataset/validate | apps.api.routers.session:get_dataset_validate / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1924 |
-| api:GET:/v1/session/dataset/validation-check-modes | apps.api.routers.session:get_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2157 |
-| api:GET:/v1/session/dataset/validation-rules | apps.api.routers.session:get_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2146 |
-| api:GET:/v1/session/date-column | apps.api.routers.session:get_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5760 |
+| api:GET:/v1/session/dataset | apps.api.routers.session:get_session_dataset / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:667 |
+| api:GET:/v1/session/dataset/consistency-profile | apps.api.routers.session:get_dataset_consistency_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4842 |
+| api:GET:/v1/session/dataset/decomposition | apps.api.routers.session:get_dataset_decomposition / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1804 |
+| api:GET:/v1/session/dataset/decomposition-series | apps.api.routers.session:get_dataset_decomposition_series / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1844 |
+| api:GET:/v1/session/dataset/derived-columns | apps.api.routers.session:get_dataset_derived_columns / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:765 |
+| api:GET:/v1/session/dataset/distribution | apps.api.routers.session:get_dataset_distribution / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1573 |
+| api:GET:/v1/session/dataset/eda-correlation | apps.api.routers.session:get_dataset_eda_correlation / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:960 |
+| api:GET:/v1/session/dataset/eda-distribution | apps.api.routers.session:get_dataset_eda_distribution / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1109 |
+| api:GET:/v1/session/dataset/eda-feature-selection | apps.api.routers.session:get_dataset_eda_feature_selection / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1191 |
+| api:GET:/v1/session/dataset/eda-ih | apps.api.routers.session:get_dataset_eda_ih / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:993 |
+| api:GET:/v1/session/dataset/eda-model-matrix | apps.api.routers.session:get_dataset_eda_model_matrix / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1269 |
+| api:GET:/v1/session/dataset/eda-seasonality | apps.api.routers.session:get_dataset_eda_seasonality / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1035 |
+| api:GET:/v1/session/dataset/eda-stationarity | apps.api.routers.session:get_dataset_eda_stationarity / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1072 |
+| api:GET:/v1/session/dataset/eda-structural-breaks | apps.api.routers.session:get_dataset_eda_structural_breaks / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1146 |
+| api:GET:/v1/session/dataset/eda-validation-strategy | apps.api.routers.session:get_dataset_eda_validation_strategy / scientific:eda | scientific.operation / research session and dataset | apps/api/routers/session.py:1223 |
+| api:GET:/v1/session/dataset/format-profile | apps.api.routers.session:get_dataset_format_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2210 |
+| api:GET:/v1/session/dataset/inclusion-profile | apps.api.routers.session:get_dataset_inclusion_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3444 |
+| api:GET:/v1/session/dataset/missing-correlation | apps.api.routers.session:get_dataset_missing_correlation / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2517 |
+| api:GET:/v1/session/dataset/missing-distribution | apps.api.routers.session:get_dataset_missing_distribution / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2537 |
+| api:GET:/v1/session/dataset/missing-editor-rows | apps.api.routers.session:get_dataset_missing_editor_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2657 |
+| api:GET:/v1/session/dataset/missing-matrix | apps.api.routers.session:get_dataset_missing_matrix / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2494 |
+| api:GET:/v1/session/dataset/missing-profile | apps.api.routers.session:get_dataset_missing_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2387 |
+| api:GET:/v1/session/dataset/outlier-boxplot | apps.api.routers.session:get_dataset_outlier_boxplot / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3410 |
+| api:GET:/v1/session/dataset/outlier-density | apps.api.routers.session:get_dataset_outlier_density / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3393 |
+| api:GET:/v1/session/dataset/outlier-editor-rows | apps.api.routers.session:get_dataset_outlier_editor_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:2892 |
+| api:GET:/v1/session/dataset/outlier-histogram | apps.api.routers.session:get_dataset_outlier_histogram / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3360 |
+| api:GET:/v1/session/dataset/outlier-line | apps.api.routers.session:get_dataset_outlier_line / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:3311 |
+| api:GET:/v1/session/dataset/outlier-profile | apps.api.routers.session:get_dataset_outlier_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3110 |
+| api:GET:/v1/session/dataset/panel-balance | apps.api.routers.session:get_panel_balance / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1309 |
+| api:GET:/v1/session/dataset/passport/compare | apps.api.routers.session:compare_dataset_passports / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:5980 |
+| api:GET:/v1/session/dataset/passport/status | apps.api.routers.session:get_dataset_passport_status / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:5936 |
+| api:GET:/v1/session/dataset/preprocessing-check-modes | apps.api.routers.session:get_dataset_preprocessing_check_modes / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:2441 |
+| api:GET:/v1/session/dataset/preprocessing/decomposition-profile | apps.api.routers.session:get_dataset_preprocessing_decomposition_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3950 |
+| api:GET:/v1/session/dataset/preprocessing/feature-generation-profile | apps.api.routers.session:get_dataset_preprocessing_feature_generation_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4532 |
+| api:GET:/v1/session/dataset/preprocessing/regularity-intervals | apps.api.routers.session:get_dataset_preprocessing_regularity_intervals / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3846 |
+| api:GET:/v1/session/dataset/preprocessing/regularity-profile | apps.api.routers.session:get_dataset_preprocessing_regularity_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3804 |
+| api:GET:/v1/session/dataset/preprocessing/regularity-timeline | apps.api.routers.session:get_dataset_preprocessing_regularity_timeline / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3865 |
+| api:GET:/v1/session/dataset/preprocessing/scaling-profile | apps.api.routers.session:get_dataset_preprocessing_scaling_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4656 |
+| api:GET:/v1/session/dataset/preprocessing/smoothing-profile | apps.api.routers.session:get_dataset_preprocessing_smoothing_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4185 |
+| api:GET:/v1/session/dataset/preprocessing/spectral-profile | apps.api.routers.session:get_dataset_preprocessing_spectral_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4436 |
+| api:GET:/v1/session/dataset/preprocessing/stationarity-profile | apps.api.routers.session:get_dataset_preprocessing_stationarity_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4316 |
+| api:GET:/v1/session/dataset/preprocessing/variance-profile | apps.api.routers.session:get_dataset_preprocessing_variance_profile / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4073 |
+| api:GET:/v1/session/dataset/range-profile | apps.api.routers.session:get_dataset_range_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2300 |
+| api:GET:/v1/session/dataset/referential-profile | apps.api.routers.session:get_dataset_referential_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3531 |
+| api:GET:/v1/session/dataset/regularity-profile | apps.api.routers.session:get_dataset_regularity_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3718 |
+| api:GET:/v1/session/dataset/rows | apps.api.routers.session:get_dataset_rows / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:719 |
+| api:GET:/v1/session/dataset/stats | apps.api.routers.session:get_dataset_stats / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:899 |
+| api:GET:/v1/session/dataset/structure-detection | apps.api.routers.session:get_structure_detection / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1694 |
+| api:GET:/v1/session/dataset/sufficiency-profile | apps.api.routers.session:get_dataset_sufficiency_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4739 |
+| api:GET:/v1/session/dataset/text-quality-profile | apps.api.routers.session:get_dataset_text_quality_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3625 |
+| api:GET:/v1/session/dataset/timeseries | apps.api.routers.session:get_dataset_timeseries / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1757 |
+| api:GET:/v1/session/dataset/uniqueness-profile | apps.api.routers.session:get_dataset_uniqueness_profile / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4933 |
+| api:GET:/v1/session/dataset/validate | apps.api.routers.session:get_dataset_validate / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1926 |
+| api:GET:/v1/session/dataset/validation-check-modes | apps.api.routers.session:get_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2159 |
+| api:GET:/v1/session/dataset/validation-rules | apps.api.routers.session:get_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2148 |
+| api:GET:/v1/session/date-column | apps.api.routers.session:get_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5762 |
 | api:GET:/v1/session/modeling/card | apps.api.routers.modeling_session:list_model_cards / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3339 |
 | api:GET:/v1/session/modeling/card/{card_id} | apps.api.routers.modeling_session:get_model_card / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3362 |
 | api:GET:/v1/session/modeling/context | apps.api.routers.modeling_session:get_modeling_context / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1040 |
@@ -179,24 +180,25 @@
 | api:GET:/v1/session/modeling/jobs/{job_id} | apps.api.routers.modeling_session:get_modeling_job / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2178 |
 | api:GET:/v1/session/modeling/panel/candidates | apps.api.routers.modeling_session:panel_candidates / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:3610 |
 | api:GET:/v1/session/modeling/state | apps.api.routers.modeling_session:get_modeling_state / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1192 |
-| api:GET:/v1/session/target-column | apps.api.routers.session:get_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5607 |
+| api:GET:/v1/session/target-column | apps.api.routers.session:get_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5609 |
 | api:GET:/v1/session/tasks/causes | apps.api.routers.tasks_session:get_tasks_causes / application:causal | scientific.operation / session Model Card and fold importance | apps/api/routers/tasks_session.py:222 |
-| api:PATCH:/v1/admin/demo-campaigns/{campaign_id} | apps.api.routers.demo:update / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:160 |
+| api:PATCH:/v1/admin/demo-campaigns/{campaign_id} | apps.api.routers.demo:update / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:169 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:167 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:165 |
-| api:POST:/v1/admin/demo-campaigns | apps.api.routers.demo:create / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:149 |
-| api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate | apps.api.routers.demo:activate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:173 |
-| api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause | apps.api.routers.demo:pause / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:185 |
-| api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume | apps.api.routers.demo:resume_campaign / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:197 |
-| api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke | apps.api.routers.demo:revoke / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:209 |
-| api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential | apps.api.routers.demo:rotate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:221 |
+| api:POST:/v1/admin/demo-campaigns | apps.api.routers.demo:create / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:158 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate | apps.api.routers.demo:activate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:182 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions | apps.api.routers.demo:admissions / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:252 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/pause | apps.api.routers.demo:pause / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:194 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/resume | apps.api.routers.demo:resume_campaign / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:206 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/revoke | apps.api.routers.demo:revoke / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:218 |
+| api:POST:/v1/admin/demo-campaigns/{campaign_id}/rotate-credential | apps.api.routers.demo:rotate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:230 |
 | api:POST:/v1/api-keys | apps.api.routers.api_keys:issue_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:39 |
 | api:POST:/v1/api-keys/{key_id}/revoke | apps.api.routers.api_keys:revoke_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:53 |
 | api:POST:/v1/api-keys/{key_id}/rotate | apps.api.routers.api_keys:rotate_api_key / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:46 |
-| api:POST:/v1/auth/demo/enter | apps.api.routers.demo:enter / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:90 |
-| api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:115 |
-| api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:70 |
-| api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:104 |
+| api:POST:/v1/auth/demo/enter | apps.api.routers.demo:enter / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:93 |
+| api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:124 |
+| api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:73 |
+| api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:110 |
 | api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:150 |
 | api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
 | api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:286 |
@@ -239,11 +241,11 @@
 | api:POST:/v1/logs/export | apps.api.routers.logs:export_logs_bundle / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:320 |
 | api:POST:/v1/logs/grants | apps.api.routers.logs:create_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:436 |
 | api:POST:/v1/logs/grants/{grant_id}/revoke | apps.api.routers.logs:revoke_grant / service:observability | logs.scoped / audit/telemetry/delivery/support grant | apps/api/routers/logs.py:481 |
-| api:POST:/v1/models/backtest | apps.api.routers.models:run_backtest / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:636 |
-| api:POST:/v1/models/candidates | apps.api.routers.models:get_candidates / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:101 |
+| api:POST:/v1/models/backtest | apps.api.routers.models:run_backtest / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:638 |
+| api:POST:/v1/models/candidates | apps.api.routers.models:get_candidates / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:103 |
 | api:POST:/v1/models/diagnostics | apps.api.routers.diagnostics:run_diagnostics / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/diagnostics.py:208 |
-| api:POST:/v1/models/train | apps.api.routers.models:train_model / scientific:modeling | scientific.operation / placeholder accepted response; reflects raw ENV principal_id/API-key | apps/api/routers/models.py:730 |
-| api:POST:/v1/models/tune | apps.api.routers.models:tune_model / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:742 |
+| api:POST:/v1/models/train | apps.api.routers.models:train_model / scientific:modeling | scientific.operation / placeholder accepted response; reflects raw ENV principal_id/API-key | apps/api/routers/models.py:733 |
+| api:POST:/v1/models/tune | apps.api.routers.models:tune_model / scientific:modeling | scientific.operation / submitted/model dataset and model selection | apps/api/routers/models.py:745 |
 | api:POST:/v1/progress/eda-checks | apps.api.routers.progress:report_eda_checks / service:platform | scientific.operation / session-bound trace/observation | apps/api/routers/progress.py:947 |
 | api:POST:/v1/progress/mentor/sanity-check | apps.api.routers.progress:run_mentor_sanity_check / service:platform | scientific.operation / session-bound trace/observation | apps/api/routers/progress.py:2348 |
 | api:POST:/v1/progress/preprocessing-checks | apps.api.routers.progress:report_preprocessing_checks / service:platform | scientific.operation / session-bound trace/observation | apps/api/routers/progress.py:817 |
@@ -259,33 +261,33 @@
 | api:POST:/v1/public/upload | apps.api.routers.public:upload_file / scientific:upload | scientific.operation / submitted data / rule namespace | apps/api/routers/public.py:181 |
 | api:POST:/v1/public/upload/db/load | apps.api.routers.upload_db:_register.load_db_dataset / scientific:upload | scientific.operation / submitted data / rule namespace | apps/api/routers/upload_db.py:186 |
 | api:POST:/v1/public/upload/db/test | apps.api.routers.upload_db:_register.test_db_connection / scientific:upload | scientific.operation / submitted data / rule namespace | apps/api/routers/upload_db.py:150 |
-| api:POST:/v1/session/dataset/consistency-corrections | apps.api.routers.session:correct_dataset_consistency / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4860 |
-| api:POST:/v1/session/dataset/convert-types | apps.api.routers.session:convert_dataset_types / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5450 |
-| api:POST:/v1/session/dataset/derived-columns/delete | apps.api.routers.session:delete_dataset_derived_columns / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:808 |
-| api:POST:/v1/session/dataset/entity-filter | apps.api.routers.session:filter_dataset_by_entity / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1362 |
-| api:POST:/v1/session/dataset/format-corrections | apps.api.routers.session:correct_dataset_formats / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2227 |
-| api:POST:/v1/session/dataset/inclusion-corrections | apps.api.routers.session:correct_dataset_inclusion / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3458 |
-| api:POST:/v1/session/dataset/missing-corrections | apps.api.routers.session:correct_dataset_missing / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2556 |
-| api:POST:/v1/session/dataset/missing-manual-corrections | apps.api.routers.session:apply_dataset_missing_manual_corrections / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2728 |
-| api:POST:/v1/session/dataset/outlier-corrections | apps.api.routers.session:correct_dataset_outliers / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3178 |
-| api:POST:/v1/session/dataset/outlier-manual-corrections | apps.api.routers.session:apply_dataset_outlier_manual_corrections / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2968 |
-| api:POST:/v1/session/dataset/panel-aggregate | apps.api.routers.session:aggregate_dataset_by_date / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1476 |
-| api:POST:/v1/session/dataset/passport/{stage} | apps.api.routers.session:capture_dataset_passport / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:6098 |
-| api:POST:/v1/session/dataset/preprocessing/decomposition-outputs | apps.api.routers.session:create_dataset_preprocessing_decomposition_outputs / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4004 |
-| api:POST:/v1/session/dataset/preprocessing/feature-generations | apps.api.routers.session:create_dataset_preprocessing_feature_generation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4575 |
-| api:POST:/v1/session/dataset/preprocessing/regularity-corrections | apps.api.routers.session:correct_dataset_preprocessing_regularity / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3886 |
-| api:POST:/v1/session/dataset/preprocessing/scaling-recipes | apps.api.routers.session:create_dataset_preprocessing_scaling_recipe / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4699 |
-| api:POST:/v1/session/dataset/preprocessing/smoothing-transformations | apps.api.routers.session:create_dataset_preprocessing_smoothing_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4240 |
-| api:POST:/v1/session/dataset/preprocessing/spectral-selections | apps.api.routers.session:save_dataset_preprocessing_spectral_selection / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4492 |
-| api:POST:/v1/session/dataset/preprocessing/stationarity-transformations | apps.api.routers.session:create_dataset_preprocessing_stationarity_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4368 |
-| api:POST:/v1/session/dataset/preprocessing/variance-transformations | apps.api.routers.session:create_dataset_preprocessing_variance_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4124 |
-| api:POST:/v1/session/dataset/range-corrections | apps.api.routers.session:correct_dataset_ranges / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2317 |
-| api:POST:/v1/session/dataset/referential-corrections | apps.api.routers.session:correct_dataset_referential / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3552 |
-| api:POST:/v1/session/dataset/regularity-corrections | apps.api.routers.session:correct_dataset_regularity / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3742 |
-| api:POST:/v1/session/dataset/sufficiency-plan | apps.api.routers.session:save_dataset_sufficiency_plan / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4767 |
-| api:POST:/v1/session/dataset/text-quality-corrections | apps.api.routers.session:correct_dataset_text_quality / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3645 |
-| api:POST:/v1/session/dataset/uniqueness-corrections | apps.api.routers.session:correct_dataset_uniqueness / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4950 |
-| api:POST:/v1/session/date-column | apps.api.routers.session:set_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5768 |
+| api:POST:/v1/session/dataset/consistency-corrections | apps.api.routers.session:correct_dataset_consistency / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4862 |
+| api:POST:/v1/session/dataset/convert-types | apps.api.routers.session:convert_dataset_types / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5452 |
+| api:POST:/v1/session/dataset/derived-columns/delete | apps.api.routers.session:delete_dataset_derived_columns / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:810 |
+| api:POST:/v1/session/dataset/entity-filter | apps.api.routers.session:filter_dataset_by_entity / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1364 |
+| api:POST:/v1/session/dataset/format-corrections | apps.api.routers.session:correct_dataset_formats / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2229 |
+| api:POST:/v1/session/dataset/inclusion-corrections | apps.api.routers.session:correct_dataset_inclusion / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3460 |
+| api:POST:/v1/session/dataset/missing-corrections | apps.api.routers.session:correct_dataset_missing / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2558 |
+| api:POST:/v1/session/dataset/missing-manual-corrections | apps.api.routers.session:apply_dataset_missing_manual_corrections / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2730 |
+| api:POST:/v1/session/dataset/outlier-corrections | apps.api.routers.session:correct_dataset_outliers / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3180 |
+| api:POST:/v1/session/dataset/outlier-manual-corrections | apps.api.routers.session:apply_dataset_outlier_manual_corrections / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2970 |
+| api:POST:/v1/session/dataset/panel-aggregate | apps.api.routers.session:aggregate_dataset_by_date / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:1478 |
+| api:POST:/v1/session/dataset/passport/{stage} | apps.api.routers.session:capture_dataset_passport / scientific:upload | scientific.operation / research session and dataset | apps/api/routers/session.py:6100 |
+| api:POST:/v1/session/dataset/preprocessing/decomposition-outputs | apps.api.routers.session:create_dataset_preprocessing_decomposition_outputs / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4006 |
+| api:POST:/v1/session/dataset/preprocessing/feature-generations | apps.api.routers.session:create_dataset_preprocessing_feature_generation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4577 |
+| api:POST:/v1/session/dataset/preprocessing/regularity-corrections | apps.api.routers.session:correct_dataset_preprocessing_regularity / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:3888 |
+| api:POST:/v1/session/dataset/preprocessing/scaling-recipes | apps.api.routers.session:create_dataset_preprocessing_scaling_recipe / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4701 |
+| api:POST:/v1/session/dataset/preprocessing/smoothing-transformations | apps.api.routers.session:create_dataset_preprocessing_smoothing_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4242 |
+| api:POST:/v1/session/dataset/preprocessing/spectral-selections | apps.api.routers.session:save_dataset_preprocessing_spectral_selection / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4494 |
+| api:POST:/v1/session/dataset/preprocessing/stationarity-transformations | apps.api.routers.session:create_dataset_preprocessing_stationarity_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4370 |
+| api:POST:/v1/session/dataset/preprocessing/variance-transformations | apps.api.routers.session:create_dataset_preprocessing_variance_transformation / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:4126 |
+| api:POST:/v1/session/dataset/range-corrections | apps.api.routers.session:correct_dataset_ranges / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2319 |
+| api:POST:/v1/session/dataset/referential-corrections | apps.api.routers.session:correct_dataset_referential / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3554 |
+| api:POST:/v1/session/dataset/regularity-corrections | apps.api.routers.session:correct_dataset_regularity / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3744 |
+| api:POST:/v1/session/dataset/sufficiency-plan | apps.api.routers.session:save_dataset_sufficiency_plan / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4769 |
+| api:POST:/v1/session/dataset/text-quality-corrections | apps.api.routers.session:correct_dataset_text_quality / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:3647 |
+| api:POST:/v1/session/dataset/uniqueness-corrections | apps.api.routers.session:correct_dataset_uniqueness / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:4952 |
+| api:POST:/v1/session/date-column | apps.api.routers.session:set_date_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5770 |
 | api:POST:/v1/session/demo | apps.api.routers.session:load_demo_dataset / scientific:upload | scientific.operation / bundled demo dataset; not AuthSession/DemoGrant/campaign entry | apps/api/routers/session.py:604 |
 | api:POST:/v1/session/modeling/backtest | apps.api.routers.modeling_session:run_modeling_backtest / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1404 |
 | api:POST:/v1/session/modeling/backtest/exclude | apps.api.routers.modeling_session:decide_modeling_backtest_scope / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1621 |
@@ -313,26 +315,26 @@
 | api:POST:/v1/session/modeling/tuning/skip-pending | apps.api.routers.modeling_session:skip_all_pending_modeling_tuning / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1703 |
 | api:POST:/v1/session/modeling/tuning/start | apps.api.routers.modeling_session:start_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2397 |
 | api:POST:/v1/session/modeling/tuning/step | apps.api.routers.modeling_session:step_modeling_tuning / scientific:modeling | scientific.operation / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2500 |
-| api:POST:/v1/session/stage/{stage} | apps.api.routers.session:set_stage / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:6237 |
-| api:POST:/v1/session/target-column | apps.api.routers.session:set_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5641 |
-| api:PUT:/v1/session/dataset/preprocessing-check-modes | apps.api.routers.session:save_dataset_preprocessing_check_modes / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:2455 |
-| api:PUT:/v1/session/dataset/type-schema | apps.api.routers.session:save_dataset_type_schema / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5421 |
-| api:PUT:/v1/session/dataset/validation-check-modes | apps.api.routers.session:save_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2172 |
-| api:PUT:/v1/session/dataset/validation-rules | apps.api.routers.session:save_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5018 |
+| api:POST:/v1/session/stage/{stage} | apps.api.routers.session:set_stage / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:6239 |
+| api:POST:/v1/session/target-column | apps.api.routers.session:set_target_column / service:platform | scientific.operation / research session and dataset | apps/api/routers/session.py:5643 |
+| api:PUT:/v1/session/dataset/preprocessing-check-modes | apps.api.routers.session:save_dataset_preprocessing_check_modes / scientific:preprocessing | scientific.operation / research session and dataset | apps/api/routers/session.py:2457 |
+| api:PUT:/v1/session/dataset/type-schema | apps.api.routers.session:save_dataset_type_schema / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5423 |
+| api:PUT:/v1/session/dataset/validation-check-modes | apps.api.routers.session:save_dataset_validation_check_modes / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:2174 |
+| api:PUT:/v1/session/dataset/validation-rules | apps.api.routers.session:save_dataset_validation_rules / scientific:validation | scientific.operation / research session and dataset | apps/api/routers/session.py:5020 |
 | api:PUT:/v1/session/modeling/feature-regressors | apps.api.routers.modeling_session:set_modeling_feature_regressors / scientific:modeling | scientific.operation / session model/job/card/forecast | apps/api/routers/modeling_session.py:1120 |
 
 ## framework
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
-| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:176 |
+| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
 
 ## internal_operation
 
@@ -355,8 +357,10 @@
 | compute.meter | compute.meter / service:platform | compute.calibrated / attempted fold/PELT fit ceiling before start | apps/api/billing/compute_meter.py:53 |
 | compute.profile | compute.profile / service:platform | compute.calibrated / pinned compatible measured profile | apps/api/billing/compute_profile.py:152 |
 | compute.quote | compute.quote / service:platform | compute.calibrated / measured-domain integer micro-CU quote | apps/api/billing/compute_units.py:73 |
-| demo.campaign.command | demo.campaign.command / service:platform | demo.admin / private demo authority | apps/api/authentication/demo.py:305 |
-| demo.grant.enter | demo.grant.enter / service:platform | demo.entry / private demo authority | apps/api/authentication/demo.py:482 |
+| demo.campaign.command | demo.campaign.command / service:platform | demo.admin / private demo authority | apps/api/authentication/demo.py:171 |
+| demo.grant.enter | demo.grant.enter / service:platform | demo.entry / private demo authority | apps/api/authentication/demo.py:171 |
+| demo.lifecycle.admission | demo.lifecycle.admission / service:platform | demo.admin / private demo authority | apps/api/authentication/demo_lifecycle.py:68 |
+| demo.lifecycle.kernel | demo.lifecycle.kernel / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_kernel.py:9 |
 | execution:model.job_step | execution:model.job_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2208 |
 | execution:model.registry | execution:model.registry / scientific:modeling | worker.authority / model request; dataset; CPU/GPU | apps/api/model_execution.py:374 |
 | execution:model.tuning_step | execution:model.tuning_step / scientific:modeling | worker.authority / persisted tuning job/plan (operation Literal tuning), session context | apps/api/routers/modeling_session.py:2483 |
@@ -698,6 +702,8 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | compute.cache | compute.cache / service:platform | compute.calibrated / current-authority signed content-addressed compute result replay | apps/api/billing/compute_cache.py:46 |
+| demo.lifecycle.cleanup | demo.lifecycle.cleanup / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_cleanup.py:14 |
+| demo.lifecycle.schema | demo.lifecycle.schema / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_lifecycle_migrations.py:18 |
 | storage:artifacts | storage:artifacts / service:storage | storage.internal / snapshot/artifact/rendition bytes | apps/api/artifact_store.py:321 |
 | storage:auth.accounts | auth.repository.account / service:platform | auth.storage / Account/tenant/membership/versions | apps/api/accounts/repository.py:6 |
 | storage:auth.demo | storage:auth.demo / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_migrations.py:36 |
@@ -734,6 +740,7 @@
 |---|---|---|---|
 | compute.runtime | compute.runtime / service:platform | compute.calibrated / protected PELT/tuning isolated runtime | apps/api/billing/compute_runtime.py:183 |
 | execution:worker.subprocess | execution:worker.subprocess / service:platform | worker.authority / bounded pure child process; no database or service credential | apps/api/workers/process.py:123 |
+| worker:apps/api/authentication/demo_sweeper.py:47 | apps/api/authentication/demo_sweeper.py:run / service:platform | compute.calibrated / independent physical wall deadline and aggregate Linux process-group RSS | apps/api/authentication/demo_sweeper.py:47 |
 | worker:apps/api/delivery_worker.py:182 | apps/api/delivery_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/delivery_worker.py:182 |
 | worker:apps/api/document_render_worker.py:715 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:715 |
 | worker:apps/api/document_render_worker.py:737 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:737 |

@@ -24,6 +24,8 @@ preprocessing, performance.backtest_metrics/oof_predictions) и строит
 """
 from __future__ import annotations
 
+from apps.api.authentication.demo_kernel import bounded_demo_kernel
+
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -365,6 +367,7 @@ def forecast_anomaly_flags(
 # ── Главная точка входа ───────────────────────────────────────────
 
 
+@bounded_demo_kernel
 def compute_forecast(
     *,
     model_id: str,

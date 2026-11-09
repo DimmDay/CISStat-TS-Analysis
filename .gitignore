@@ -152,3 +152,6 @@ __pycache__/
 # Explicitly retained, payload-free renderer evidence (not arbitrary logs).
 !scripts/pgv08/protocols/server_main.log
 !scripts/pgv08/protocols/server_dependency.log
+
+# AUTH-16 VM database/scientific/env backups are operator data.
+deployment/cisstat-stack/backups/

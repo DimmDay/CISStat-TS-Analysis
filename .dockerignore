@@ -17,3 +17,6 @@ cisstat-recon
 deployment/cisstat-stack/.env
 .claude
 agent-ctx
+
+# AUTH-16: VM backups never enter API/web build context.
+deployment/cisstat-stack/backups/

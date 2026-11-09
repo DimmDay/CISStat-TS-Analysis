@@ -13,6 +13,11 @@ export type CampaignPolicy = {
   max_rows: number;
   allow_upload: boolean;
   allowed_origins: string[];
+  require_admission?: boolean;
+  participant_requests?: number;
+  campaign_requests?: number;
+  max_upload_bytes?: number;
+  retention_hours?: number;
 };
 export type Campaign = {
   campaign_id: string;
@@ -25,6 +30,10 @@ export type Campaign = {
   secret?: string;
 };
 const messages: Record<string, string> = {
+  admission_consumed:
+    "Код уже использован. Продолжите свой доступ в прежнем браузере.",
+  demo_request_limit: "Лимит запросов демо исчерпан.",
+  demo_upload_limit: "Файл превышает предел демо-доступа.",
   demo_expired:
     "Демо-доступ завершён. Войдите в личный аккаунт или обратитесь на стенд.",
   campaign_inactive:

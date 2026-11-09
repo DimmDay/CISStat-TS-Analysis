@@ -3,19 +3,19 @@
   "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 253,
+    "api": 255,
     "framework": 8,
-    "internal_operation": 28,
+    "internal_operation": 30,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 38,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 14,
+    "storage": 16,
     "task_alias": 4,
     "transport": 2,
-    "worker": 9
+    "worker": 10
   },
   "policies": {
     "public.metadata": {
@@ -473,10 +473,9 @@
       ]
     },
     "demo.admin": {
-      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared.",
-      "target": "Finite campaign policy and isolated temporary Accounts; AUTH-16 admissions/cleanup operational acceptance.",
+      "observed": "AUTH-15 named ADMIN with current role, session MFA <=5m on mutations, CSRF/Origin, policy CAS, atomic mandatory outbox. Hash-only shared credential, no visitor identity shared. AUTH-16 bounded code batches, hash-only storage, finite requests/upload/retention policy.",
+      "target": "Current ADMIN/fresh MFA, CAS, mandatory audit; bounded policy and batch issuance.",
       "follow_up": [
-        "AUTH-16",
         "AUTH-CERT"
       ],
       "threats": [
@@ -487,10 +486,9 @@
       ]
     },
     "demo.entry": {
-      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks.",
-      "target": "No shared ownership; hard end/max grants; strengthened code redemption and cleanup AUTH-16.",
+      "observed": "AUTH-15 shared campaign credential issues private Identity/MONO Account/grant/AuthSession; hash-only preissued resume cookie, immutable expiry, source/global hash throttle, current campaign checks. AUTH-16 atomic code redemption, persistent grant/campaign request quotas, atomic analysis admission, current publication/stream checks and bounded cleanup.",
+      "target": "Private grants, hard expiry and quotas; cleanup retains audit/ledger and held/uncertain work, physical GC only quiesced.",
       "follow_up": [
-        "AUTH-16",
         "AUTH-CERT"
       ],
       "threats": [
@@ -506,15 +504,17 @@
     ".github/workflows/auth11.yml": "41b92b46598103f32e52b07e48b4fba07653612d285ca04f96c04d349cc43416",
     ".github/workflows/auth12.yml": "548d4c32aa6504cc4f61ea479951a308e0a0aae99381e0f06df02ef2e80a428f",
     ".github/workflows/auth14.yml": "0a6c5e17d98ac6bfa5971f658a02e8691b5a3a49e6815565e289055d75866c9d",
+    ".github/workflows/auth16.yml": "dbb30697a844ae172b1ae9125fef20334cd8c78c2201a7b4172662ce807fee25",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
+    "apps/api/Dockerfile": "3465909327f0c2c407fb79b9b41ae877d9c81c3503bffd1ffb08bafcaa65867a",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "7ad052703ea5ad76652ddea019898a7d3526efcdd0dbe071accdbb8d0923d46b",
+    "apps/api/access_registry.v1.json": "cc697309b734fd812b2ada4d9ecbcc09af8b98f17cc8192f10d1a5c98292957c",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -531,11 +531,16 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "875ca5f7b5d2d5204b06fd4388c42a646e0916e3d27665668969c5b6cfcdda3e",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "b7d5642e3e99ea11896594ed10d9e60ec5b7ec0fe826d8752513f8d115a78542",
+    "apps/api/authentication/context.py": "2b05dc2ac86b54251bc215ec2ec558b4d16985fd2a1c1be3a566c91a09a19674",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
-    "apps/api/authentication/demo.py": "0f8ef06fe4bdfa894939e188b5ecf690e69c9f1f945ea042e5dcaf56e528df37",
+    "apps/api/authentication/demo.py": "d9d102b96e1e59b7f38b0599a61d59bfa5bc233aa40cb1edf09cd16dd47c3867",
+    "apps/api/authentication/demo_cleanup.py": "7957c0eeaf48fc747439c05d484e3ea98ab256c8ab3f2baa4be5fd0718085a4c",
+    "apps/api/authentication/demo_kernel.py": "c03376fe5d547a0946fddabb7ff58b34a5adf0150bec27908406dbdd4a664bd8",
+    "apps/api/authentication/demo_lifecycle.py": "ada1b075937394d16971fe154624c122da85da192abd900cf03a118e5542b2ad",
+    "apps/api/authentication/demo_lifecycle_migrations.py": "0b710d0cb3a667fb7275fbdb4825459ee13bfc24435bd07d99e40d7fd0e614f2",
     "apps/api/authentication/demo_migrations.py": "349d34ff2b7f1d0f233cab271ddf00b19607487eb76aee079b3d7ed52a9cbd04",
+    "apps/api/authentication/demo_sweeper.py": "8c696bcccd3de7b749f7b692ae8b627a5bfb7908f768cf5d0c86265af0cba629",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
     "apps/api/authentication/http_contract.py": "462f27a1239b7b9f1f48b2ecf5de82dd766fc37e065c7723655355d41ef0bd17",
     "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
@@ -549,7 +554,7 @@
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
     "apps/api/authentication/sessions.py": "0d5bdb7da9125a6defbd95d2560fe49b591c2136ed9e0e4206953b7d6a507774",
     "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
-    "apps/api/backtesting.py": "4f4d17dd0be120a612e9bec585719ecd64cf71dcb9a21486fefe8286090defb9",
+    "apps/api/backtesting.py": "68ba0434c09e8400389afe9c72db29d49d942565c3c5555932fb1bf5328b326e",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
     "apps/api/billing/compute_benchmark.py": "2af1d78a8b546a0da8cc8edea9ec1b6e7ea0f318fa92ca4f924732e68209631b",
     "apps/api/billing/compute_cache.py": "2e68be8609b679e543a205cafe45acf30aea2e0d2cf4a67927c69abfd956e34e",
@@ -586,7 +591,7 @@
     "apps/api/feature_plan.py": "1d01cd85148cc9713689a7e407a70ce16fc51e5b8952951acdf965979a3d218a",
     "apps/api/final_fit.py": "cebd392cb5f1522fb447eefa0eebdb0c4b0e98bac94b2aedf72abe3c3bcad43b",
     "apps/api/fold_preprocessing.py": "272983704b7310404898db4ebf27c2245b1e2eb49b1051fdaacba5d1c4f15124",
-    "apps/api/forecasting.py": "f2023a24e5bad44f92e0dff99c7e6e31e78195667f06bf8f55dbd0ebceb3ca99",
+    "apps/api/forecasting.py": "728dff178d545e004a704446574b036f85ad34a84c75bb8681a3fb4e1d4f802b",
     "apps/api/forecasting_contract.py": "7b26e55fe16d83f3c2ed6e829437195433c2eb2e141e820ab8e619ce5559284a",
     "apps/api/format_correction.py": "441792d0e61f2b6b0320102c9cd791004a45eef1e3ec7640f0f1dd88c3c074c3",
     "apps/api/identity.py": "4ce52abf874ba8b8125299ec1642bf989e2f1c462210d56ccefa5a535629ab90",
@@ -595,7 +600,7 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "002180a62987d8bcb1d96c85b8c5ff3eb210d613e60a53065d3d66004f2466e2",
+    "apps/api/main.py": "e3b750dc5148af9f252a56ab56c2401d46e4ae1d3b26a753342dbc2787313382",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
@@ -604,6 +609,7 @@
     "apps/api/migrations/0025_auth12_reservations.sql": "3a0e68d5d6b34446df937d419a58e05883fc7bfac7883108edf36fc536812261",
     "apps/api/migrations/0026_auth13_workers.sql": "5ad027d8de3e2acbf1611c6450c8dedce335b43680baac5f5994b39bc274190f",
     "apps/api/migrations/0027_auth15_demo.sql": "f96eece8675ea27ebb20c550688a4e1eeee3b5ea0374c517f7e334c96f842322",
+    "apps/api/migrations/0028_auth16_demo_lifecycle.sql": "fd180d8ef3277c51b00dc97581802f1f216576ca32750a7c58b80d654d045f0f",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -664,11 +670,11 @@
     "apps/api/referential_correction.py": "9022b2e114a20faaa75ba4bc25743eb55cb2f89c81fcf5e9751d11155bee5a21",
     "apps/api/regularity_correction.py": "b2cd7323cbeecaeb58a5935248caf72a19316a90127e518f9da253cd7e058ce6",
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
-    "apps/api/research_runs.py": "9df9e4b860f94fc0f77a15e77706daf047ff2b9bef56d03e60e30ebc83d78c39",
+    "apps/api/research_runs.py": "4cf971f1b2edb7bd16f815f01b58a97d2f37da43dcd3408e760c6f436c4b04ba",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
-    "apps/api/routers/demo.py": "08a44693ed839db0dd89aa8d35f1c39522032fed1c5b37e7c638cfb9d165b843",
+    "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
@@ -677,35 +683,35 @@
     "apps/api/routers/internal.py": "2b305db5940c65c75f2190341b33d7a6d0df6aa81586ea7e38b7661d22234b2c",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
     "apps/api/routers/modeling_session.py": "e518f895c4323c87aa4e9a799368f7241057c7f65ccfe60711715c208d5f1b21",
-    "apps/api/routers/models.py": "0cf302559ff2d39a4b854bc2ff10009177be28a7a6b77930849b29c5ec6c9213",
+    "apps/api/routers/models.py": "8bc6f5f8999ccbf070b7bfdf29a2329241d6d31cac5cfb07ad79f63c25000e18",
     "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
     "apps/api/routers/progress.py": "aaa03337f710af42d882d0008162733cda411872b5e570d53543f98536c77865",
     "apps/api/routers/public.py": "3a342cecaa7f41e529e0cf700d3456edd2227aae7802e97ca259ccbf3470d197",
-    "apps/api/routers/session.py": "adce1f741c9c2af1686a161a19b3419b056bf6a48031873d57e0e5bf37c72f1b",
+    "apps/api/routers/session.py": "10a0bb771705066be7bbe9b48682a9e9cddb8a714badf3b48508f8c54f265046",
     "apps/api/routers/tasks_session.py": "41dc051b9fa354117044a6e7e13a5527a130e9f299f9c9a5f3b4348e453a8123",
     "apps/api/routers/upload_db.py": "a850f675671474126ff32214846d095682cfaa74cbef92b8b7cf9def0290df1c",
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
-    "apps/api/scientific.py": "a1e827c77c35789073ff9bed55f3f49162e4fd9488e8e4eb14d71dde2ac9cdfc",
+    "apps/api/scientific.py": "0d9495f4c60e03e65bd7f0c69857317a69d2747522237e9d4a35bb09d2465c7b",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
     "apps/api/security_audit.py": "10d6b657ab17214772ebac0ff58a47488a68f89a1783c2b5d399223387345d1a",
-    "apps/api/session_store.py": "3a81a2750c701c29ca1f1576e6fc33590e20bd4d90b099142289df4278c189c8",
+    "apps/api/session_store.py": "309148e5c2fa913fd6a5829d94bfe8a457e1d535b2f868cddd9fc9d7e865ca12",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
-    "apps/api/storage_diagnostics.py": "ea58b9f56a4e3809b1c28e66a513926da3f0bf09cb2e093116ffeea559da014a",
+    "apps/api/storage_diagnostics.py": "59d06b788d10f62f418b0ddb2d7ff00b3d9c3eb98f3240cb770de911df27c1d6",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
     "apps/api/target_column_rule.py": "3a503622feb1b36af3e27bae2e2b7f7b36ce9b75f34a98dc965380f5e5d0fde2",
-    "apps/api/telemetry.py": "617b7acddbd78d06f7de8c8f5d711585fd9d14845519d060ec66d03e986add1d",
+    "apps/api/telemetry.py": "6890dcc08a7928ecbf850d2e10ff5a15ba46ced1ea6478aeed0366554fb19f13",
     "apps/api/text_quality_correction.py": "eb7ffcfa5a515f06d734e5c952b78e6a278f6f9f301ee4dfebc9384f6d82682c",
     "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
     "apps/api/trace_hook.py": "9602855e297297756e4f4378c0b6f782ee0b83f6495f2bc21d736622cf35fb93",
     "apps/api/type_conversion.py": "c2a7ad440f3d1c48bfb940ebd0369aed35aa76cb916e563943dcc3a9e046c5a9",
     "apps/api/uniqueness_correction.py": "306cf1bb356f79819859cbc56ad453b16ad14c3999a439eb6df70179f2c85f21",
-    "apps/api/upload_common.py": "e6f53bc01295488bbb4dcb8841048aa71c60ca55d6b73a0cd824f78b05a4e21d",
+    "apps/api/upload_common.py": "64255490462e78fbc9c94489f3f7bc0d685b9d36808be1be66bdd41bb3d032cd",
     "apps/api/visual_artifacts.py": "c0fd49dae7ad8e01454ddc0b1fa8884a255afb9502ee011716747b037fd261f4",
     "apps/api/visual_exports.py": "d56e4372af466ac5f9b71b7699b76f90e34c27ba481e6139cf0f562cb66c8fe4",
     "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
     "apps/api/workers/__init__.py": "ee70622c30146a1d9ead84e0400e61f15458998a6380753fb89757052f273482",
-    "apps/api/workers/authority.py": "81803ef4b7cf6816db90cc2408dc3fca7e301b831641189a862125f3b6bbc20a",
+    "apps/api/workers/authority.py": "0b4d55d31ac7026fcece3c4a169b2be2571ad86a881add02c9bff878daf7d491",
     "apps/api/workers/bootstrap.py": "b589dff581dab806b166bd9121b0095bd4dda0c251e0d99bbd5185a76837f067",
     "apps/api/workers/bridge.py": "19911b9f84cfe46cb0fdd499639fc71c5abfacc23a56baf362f4be5349b6a59f",
     "apps/api/workers/child.py": "055d747987c7e2359b10c8cafaae6cbb4ff36567bada4f47cf6cf8f124068eac",
@@ -765,12 +771,12 @@
     "apps/standalone/app/validation/page.tsx": "dbbff830acf0afa866c7dcff7c7136ddc1f3e676376c46bd806a6679d9b06970",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
-    "deployment/cisstat-stack/docker-compose.yml": "d0c2569c34eed10efd1de1533940e1b3a718330de8ff2c7314551ae7b92f51f6",
+    "deployment/cisstat-stack/docker-compose.yml": "ba0fded15fac63dec0a29530ab48e879a99f8f3cf405332b62e3d22d125807f5",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "c6062f0bc9d8a7ee19f1839a2c6353fe4735f65797820a26d284934fbedc7f82",
+    "docs/auth01/openapi.json": "78492422b84ba61c66c789d2251884e5e475cc8e414376925cac76da7a89d193",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -790,8 +796,9 @@
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
-    "packages/ui/components/DemoCampaignAdmin.tsx": "09d72dce961fc73ab8ed9054811ead8273b0778119755e666db005d1e1d086ec",
-    "packages/ui/components/DemoEntry.tsx": "d514769d24e0b17a46fe07496fa6b0eb17a7ea7a8400f7e2e6bfa1e298303087",
+    "packages/ui/components/DemoCampaignAdmin.tsx": "3dbd8b85fdbdae45866e7d81ad549dd0a0aa9a4bab7e39ea57d0cb688db36027",
+    "packages/ui/components/DemoEntry.tsx": "ce702e15b059db65f76043b62527e0dce8e54c78023666bcc07212ccb3e41863",
+    "packages/ui/components/DemoLimits.tsx": "3dfbd7acdd6f2e9950fef167996d55e7acf3214c9a2ea018381ca97e99ebba23",
     "packages/ui/components/EdaDescriptiveOverview.tsx": "153b137fe5a33bc3e22891825f8059bf470de0d07a69de1f16bb03aa7e2401e7",
     "packages/ui/components/EmbeddedHome.tsx": "974bb36b70595d2563264473927fc02303c7e7b79d01232c561040ce2affb9e4",
     "packages/ui/components/LoginScreen.tsx": "f45fea8186e028425e1d9752f69dabaafcb5e641c18cc37bb53b502a8b3fd962",
@@ -842,17 +849,18 @@
     "packages/ui/components/ValidationTypePipeline.tsx": "536b3a760e09513d158057f9e5bc86787f1473f7ee7e1b1a5d7c2beca56091d3",
     "packages/ui/components/ValidationUniquenessOverview.tsx": "4817f17a5c26f2ef09076f3b9c5660554092e620a8c2bc1cebed6e7c68b381a5",
     "packages/ui/components/ValidationUniquenessPipeline.tsx": "d9852407d50e21528dffe551f227e55ceb4b6b11d56ad451c080a96cbdc19cee",
+    "packages/ui/components/auth16-demo.test.tsx": "45ed4ae30e4d9f8c94cf37f6cc55115f59065ccceb15a9363893ba3ab61a80a6",
     "packages/ui/context/AppShellContext.tsx": "894aa5dc3394b2423dcc9de7a0e5efde4bec629a2b2038fa5f617ababed14dd8",
-    "packages/ui/context/AuthContext.tsx": "5967def62a7d478e420564f612ac9f74ac0449cf5ce89101772a25e815cc7347",
+    "packages/ui/context/AuthContext.tsx": "05583a03ac8a4c20d335cfc028b0dd9a6e7b91f0a0cd11338934d329327c9af6",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "0323454bc3084a9ca0fffa4fedc1215d0a58668d1052de475084665b1f338d42",
+    "packages/ui/lib/access-contract.generated.ts": "887e24581649051557c6bfdd871b4db2cbf9d74f0ee4430529d2b9efeb0a0a26",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
     "packages/ui/lib/authClient.ts": "026740f7260359de875b005e1eba1ab9a8f459a7a5c074d9dc87d8de0e6c9cd3",
-    "packages/ui/lib/browserTransport.ts": "17be543b78a93cc1b312d3db10c0209f12a320f9374fc5e389db0c1bf85bf2de",
-    "packages/ui/lib/demo.ts": "b9f65f0974cbbdcd9c912626021c7463a31aff1dc065bbdfd4cc7e4abaa70de0",
+    "packages/ui/lib/browserTransport.ts": "01cd9a82e44b24cbe5ce26d068cd1221bd957247a844fc86a27a0969ee01de97",
+    "packages/ui/lib/demo.ts": "4a3d17e609499dfbb3ccb5b823b5783bf7b48d45ee772b3f445592f1fec1fbac",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
     "packages/ui/lib/forecasting.ts": "5d86c0b1727f120fc5149332d4727f6d9f5778a2df24b6f791d8ce1c544acc5a",
     "packages/ui/lib/mentor.ts": "be9e0e4d85bc089eaa164d3f3a240cef804e603f2646f598f42d2bbb16b8eff5",
@@ -863,7 +871,7 @@
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
-    "packages/ui/server/proxy-routes.generated.json": "d31506ea457084c5333308249b0651ce9bd7a4f85f9a8079100fac9e415085ed",
+    "packages/ui/server/proxy-routes.generated.json": "d2891122027f1d5f30411a7fad5a3adfde13c7ff5d57b30b51f5ed37b03dbe96",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -880,18 +888,22 @@
     "scripts/auth14/benchmark.py": "28227ce53c4fd2f788ee5a68e21c3be1b1df7f7e91899fb20fd1647d3cea2cac",
     "scripts/auth14/profile.py": "630e12e3b666a012626e8fab1926616841ce64552d012b65af95275beb60081c",
     "scripts/auth15/migrate.py": "d351f76135cc38c426668ec6264d497f33c37f21bb2272cea6ad7c3fa3290594",
-    "scripts/local_gates.md": "6ee20a4e573f1e0f7a59eca01869aa38404b53eb3acd21f59ffbe69748c51ae3",
-    "scripts/local_gates.py": "7d015dcfb2851f26c099ee3c8bbf674c56edd500b29dd2522ebbbfb845235c52",
+    "scripts/auth16/cleanup.py": "e4b349915ce82e878b06141628ac6998655342a5dc02f062225abcbf69aa36eb",
+    "scripts/auth16/migrate.py": "6dcd774a441ffa3d838e41da6a52eb8d6d640cf4a1dfaab086bac2c8f5b9d466",
+    "scripts/local_gates.md": "3eee7053769605a7551d35755914c7d142337d3b1a6bfdd431d504afd12739a1",
+    "scripts/local_gates.py": "fdbc2fbb440f087dd6a1ef343ef89d4f2341b4139e9c117d4ae245fb6eb48084",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
     "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
-    "tests/integration/test_auth15_demo.py": "65c40ef7c9256fc8d5ae61b4cf8e5afecaac05a4bbe27831a0cefc1d0513e9c8",
+    "tests/integration/test_auth15_demo.py": "4a9e28326b8e6cb56ab93aed8934e8705873b86b11b457ab2214cdca4efaf0a6",
+    "tests/integration/test_auth16_lifecycle.py": "234973e338894a17b65f4695527ede73e64ff85b64b70c8e2a9c1384eafd9c55",
     "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
-    "tests/unit/test_auth00_precommit.py": "e89b1797e7f2bf98fd6f6c0594336a57c700b36f2e258215ad5aff12a0868e94",
+    "tests/unit/test_auth00_precommit.py": "d60f5fb6113a1aba5560e72e70df2e3cbaa5d50f8ccf574de0e3a3fcac760639",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
     "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
     "tests/unit/test_auth15_demo.py": "9118a6a61a855521caaba027c6df7e0601009a28f8f5f5968fccc5d3f9ffb839",
+    "tests/unit/test_auth16_lifecycle.py": "ec2a79db830536293bc6e542f8549c54fb0fab39829a787d5f88098f86532bf0",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -906,7 +918,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: docs_url"
         }
       ],
@@ -932,7 +944,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: swagger_ui_oauth2_redirect_url"
         }
       ],
@@ -955,7 +967,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 272,
+          "line": 275,
           "symbol": "health"
         }
       ],
@@ -981,7 +993,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 277,
+          "line": 280,
           "symbol": "health_ops"
         }
       ],
@@ -1012,7 +1024,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: openapi_url"
         }
       ],
@@ -1038,7 +1050,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: redoc_url"
         }
       ],
@@ -1061,12 +1073,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 144,
+          "line": 153,
           "symbol": "campaigns"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -1094,12 +1106,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 233,
+          "line": 242,
           "symbol": "usage"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -1132,7 +1144,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 257,
           "symbol": "include_router"
         }
       ],
@@ -1163,7 +1175,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -1184,17 +1196,51 @@
     {
       "kind": "api",
       "method": "GET",
+      "path": "/v1/auth/demo/limits",
+      "operation": "apps.api.routers.demo:limits",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 269,
+          "symbol": "limits"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 256,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "LifecycleService(store=getattr(request.app.state, 'auth_access_store', None)).remaining",
+        "auth_error"
+      ],
+      "id": "api:GET:/v1/auth/demo/limits",
+      "discovery": "automatic",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo grant",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "demo.limits.read",
+      "admission": "CSRF + shared verifier + current campaign + isolated grant"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
       "path": "/v1/auth/demo/me",
       "operation": "apps.api.routers.demo:demo_me",
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 128,
+          "line": 137,
           "symbol": "demo_me"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -1228,7 +1274,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -1263,7 +1309,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -1299,7 +1345,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1332,7 +1378,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1365,7 +1411,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 250,
+          "line": 253,
           "symbol": "include_router"
         }
       ],
@@ -1398,7 +1444,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1432,7 +1478,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 250,
+          "line": 253,
           "symbol": "include_router"
         }
       ],
@@ -1465,7 +1511,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1498,7 +1544,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1531,7 +1577,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1564,7 +1610,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1598,7 +1644,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1632,7 +1678,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -1666,7 +1712,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -1700,7 +1746,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -1734,7 +1780,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -1768,7 +1814,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -1801,7 +1847,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -1839,7 +1885,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -1877,7 +1923,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 234,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -1908,7 +1954,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 234,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -1939,7 +1985,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -1974,7 +2020,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2008,7 +2054,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2042,7 +2088,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2076,7 +2122,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2110,7 +2156,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2144,7 +2190,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2178,7 +2224,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2213,7 +2259,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2248,7 +2294,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2283,7 +2329,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2319,7 +2365,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2355,7 +2401,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2400,7 +2446,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -2439,7 +2485,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -2478,7 +2524,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -2517,7 +2563,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2550,12 +2596,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 665,
+          "line": 667,
           "symbol": "get_session_dataset"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2588,12 +2634,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4840,
+          "line": 4842,
           "symbol": "get_dataset_consistency_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2627,12 +2673,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1802,
+          "line": 1804,
           "symbol": "get_dataset_decomposition"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2665,12 +2711,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1842,
+          "line": 1844,
           "symbol": "get_dataset_decomposition_series"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2703,12 +2749,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 763,
+          "line": 765,
           "symbol": "get_dataset_derived_columns"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2741,12 +2787,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1571,
+          "line": 1573,
           "symbol": "get_dataset_distribution"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2779,12 +2825,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 958,
+          "line": 960,
           "symbol": "get_dataset_eda_correlation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2817,12 +2863,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1107,
+          "line": 1109,
           "symbol": "get_dataset_eda_distribution"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2855,12 +2901,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1189,
+          "line": 1191,
           "symbol": "get_dataset_eda_feature_selection"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2893,12 +2939,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 991,
+          "line": 993,
           "symbol": "get_dataset_eda_ih"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2931,12 +2977,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1267,
+          "line": 1269,
           "symbol": "get_dataset_eda_model_matrix"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -2969,12 +3015,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1033,
+          "line": 1035,
           "symbol": "get_dataset_eda_seasonality"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3007,12 +3053,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1070,
+          "line": 1072,
           "symbol": "get_dataset_eda_stationarity"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3045,12 +3091,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1144,
+          "line": 1146,
           "symbol": "get_dataset_eda_structural_breaks"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3083,12 +3129,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1221,
+          "line": 1223,
           "symbol": "get_dataset_eda_validation_strategy"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3121,12 +3167,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2208,
+          "line": 2210,
           "symbol": "get_dataset_format_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3160,12 +3206,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3442,
+          "line": 3444,
           "symbol": "get_dataset_inclusion_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3199,12 +3245,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2515,
+          "line": 2517,
           "symbol": "get_dataset_missing_correlation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3237,12 +3283,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2535,
+          "line": 2537,
           "symbol": "get_dataset_missing_distribution"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3275,12 +3321,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2655,
+          "line": 2657,
           "symbol": "get_dataset_missing_editor_rows"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3313,12 +3359,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2492,
+          "line": 2494,
           "symbol": "get_dataset_missing_matrix"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3351,12 +3397,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2385,
+          "line": 2387,
           "symbol": "get_dataset_missing_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3390,12 +3436,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3408,
+          "line": 3410,
           "symbol": "get_dataset_outlier_boxplot"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3428,12 +3474,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3391,
+          "line": 3393,
           "symbol": "get_dataset_outlier_density"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3467,12 +3513,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2890,
+          "line": 2892,
           "symbol": "get_dataset_outlier_editor_rows"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3505,12 +3551,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3358,
+          "line": 3360,
           "symbol": "get_dataset_outlier_histogram"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3543,12 +3589,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3309,
+          "line": 3311,
           "symbol": "get_dataset_outlier_line"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3581,12 +3627,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3108,
+          "line": 3110,
           "symbol": "get_dataset_outlier_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3620,12 +3666,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1307,
+          "line": 1309,
           "symbol": "get_panel_balance"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3658,12 +3704,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5978,
+          "line": 5980,
           "symbol": "compare_dataset_passports"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3699,12 +3745,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5934,
+          "line": 5936,
           "symbol": "get_dataset_passport_status"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3737,12 +3783,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2439,
+          "line": 2441,
           "symbol": "get_dataset_preprocessing_check_modes"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3775,12 +3821,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3948,
+          "line": 3950,
           "symbol": "get_dataset_preprocessing_decomposition_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3813,12 +3859,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4530,
+          "line": 4532,
           "symbol": "get_dataset_preprocessing_feature_generation_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3851,12 +3897,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3844,
+          "line": 3846,
           "symbol": "get_dataset_preprocessing_regularity_intervals"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3889,12 +3935,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3802,
+          "line": 3804,
           "symbol": "get_dataset_preprocessing_regularity_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3928,12 +3974,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3863,
+          "line": 3865,
           "symbol": "get_dataset_preprocessing_regularity_timeline"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -3966,12 +4012,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4654,
+          "line": 4656,
           "symbol": "get_dataset_preprocessing_scaling_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4004,12 +4050,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4183,
+          "line": 4185,
           "symbol": "get_dataset_preprocessing_smoothing_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4042,12 +4088,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4434,
+          "line": 4436,
           "symbol": "get_dataset_preprocessing_spectral_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4080,12 +4126,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4314,
+          "line": 4316,
           "symbol": "get_dataset_preprocessing_stationarity_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4118,12 +4164,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4071,
+          "line": 4073,
           "symbol": "get_dataset_preprocessing_variance_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4156,12 +4202,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2298,
+          "line": 2300,
           "symbol": "get_dataset_range_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4195,12 +4241,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3529,
+          "line": 3531,
           "symbol": "get_dataset_referential_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4234,12 +4280,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3716,
+          "line": 3718,
           "symbol": "get_dataset_regularity_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4274,12 +4320,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 717,
+          "line": 719,
           "symbol": "get_dataset_rows"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4312,12 +4358,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 897,
+          "line": 899,
           "symbol": "get_dataset_stats"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4350,12 +4396,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1692,
+          "line": 1694,
           "symbol": "get_structure_detection"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4388,12 +4434,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4737,
+          "line": 4739,
           "symbol": "get_dataset_sufficiency_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4427,12 +4473,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3623,
+          "line": 3625,
           "symbol": "get_dataset_text_quality_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4466,12 +4512,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1755,
+          "line": 1757,
           "symbol": "get_dataset_timeseries"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4504,12 +4550,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4931,
+          "line": 4933,
           "symbol": "get_dataset_uniqueness_profile"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4543,12 +4589,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1924,
+          "line": 1926,
           "symbol": "get_dataset_validate"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4587,12 +4633,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2157,
+          "line": 2159,
           "symbol": "get_dataset_validation_check_modes"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4625,12 +4671,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2146,
+          "line": 2148,
           "symbol": "get_dataset_validation_rules"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4663,12 +4709,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5760,
+          "line": 5762,
           "symbol": "get_date_column"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -4706,7 +4752,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -4743,7 +4789,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -4781,7 +4827,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -4818,7 +4864,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -4854,7 +4900,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -4891,7 +4937,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -4928,7 +4974,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -4963,7 +5009,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -4998,7 +5044,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -5036,7 +5082,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -5072,7 +5118,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -5103,12 +5149,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5607,
+          "line": 5609,
           "symbol": "get_target_column"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -5146,7 +5192,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 229,
           "symbol": "include_router"
         }
       ],
@@ -5180,7 +5226,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: docs_url"
         }
       ],
@@ -5206,7 +5252,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: swagger_ui_oauth2_redirect_url"
         }
       ],
@@ -5232,7 +5278,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: openapi_url"
         }
       ],
@@ -5258,7 +5304,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 176,
+          "line": 179,
           "symbol": "FastAPI defaults: redoc_url"
         }
       ],
@@ -5281,12 +5327,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 160,
+          "line": 169,
           "symbol": "update"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5319,7 +5365,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -5357,7 +5403,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -5391,12 +5437,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 149,
+          "line": 158,
           "symbol": "create"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5424,12 +5470,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 173,
+          "line": 182,
           "symbol": "activate"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5452,17 +5498,51 @@
     {
       "kind": "api",
       "method": "POST",
+      "path": "/v1/admin/demo-campaigns/{campaign_id}/admissions",
+      "operation": "apps.api.routers.demo:admissions",
+      "evidence": [
+        {
+          "source": "apps/api/routers/demo.py",
+          "line": 252,
+          "symbol": "admissions"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 256,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "LifecycleService(store=getattr(request.app.state, 'auth_access_store', None)).issue_codes",
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions",
+      "discovery": "automatic",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "campaign policy",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "demo.admissions.issue",
+      "admission": "named ADMIN + fresh MFA + CSRF + CAS + audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
       "path": "/v1/admin/demo-campaigns/{campaign_id}/pause",
       "operation": "apps.api.routers.demo:pause",
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 185,
+          "line": 194,
           "symbol": "pause"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5490,12 +5570,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 197,
+          "line": 206,
           "symbol": "resume_campaign"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5523,12 +5603,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 209,
+          "line": 218,
           "symbol": "revoke"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5556,12 +5636,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 221,
+          "line": 230,
           "symbol": "rotate"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5594,7 +5674,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 257,
           "symbol": "include_router"
         }
       ],
@@ -5626,7 +5706,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 257,
           "symbol": "include_router"
         }
       ],
@@ -5658,7 +5738,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 257,
           "symbol": "include_router"
         }
       ],
@@ -5685,12 +5765,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 90,
+          "line": 93,
           "symbol": "enter"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5719,12 +5799,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 115,
+          "line": 124,
           "symbol": "leave"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5753,12 +5833,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 70,
+          "line": 73,
           "symbol": "prepare"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5785,12 +5865,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/demo.py",
-          "line": 104,
+          "line": 110,
           "symbol": "resume"
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 256,
           "symbol": "include_router"
         }
       ],
@@ -5824,7 +5904,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -5859,7 +5939,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -5893,7 +5973,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -5924,7 +6004,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -5959,7 +6039,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -5994,7 +6074,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6029,7 +6109,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6061,7 +6141,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6095,7 +6175,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6130,7 +6210,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6164,7 +6244,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 252,
+          "line": 255,
           "symbol": "include_router"
         }
       ],
@@ -6198,7 +6278,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6232,7 +6312,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6266,7 +6346,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 250,
+          "line": 253,
           "symbol": "include_router"
         }
       ],
@@ -6300,7 +6380,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 250,
+          "line": 253,
           "symbol": "include_router"
         }
       ],
@@ -6334,7 +6414,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6368,7 +6448,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 250,
+          "line": 253,
           "symbol": "include_router"
         }
       ],
@@ -6403,7 +6483,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6437,7 +6517,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6471,7 +6551,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6505,7 +6585,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6539,7 +6619,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6573,7 +6653,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6607,7 +6687,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6642,7 +6722,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -6677,7 +6757,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -6712,7 +6792,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 249,
           "symbol": "include_router"
         }
       ],
@@ -6747,7 +6827,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6781,7 +6861,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 246,
           "symbol": "include_router"
         }
       ],
@@ -6815,7 +6895,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -6853,7 +6933,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -6887,7 +6967,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 219,
           "symbol": "include_router"
         }
       ],
@@ -6925,7 +7005,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -6959,7 +7039,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -6993,7 +7073,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -7031,7 +7111,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 213,
+          "line": 216,
           "symbol": "include_router"
         }
       ],
@@ -7065,7 +7145,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 239,
+          "line": 242,
           "symbol": "include_router"
         }
       ],
@@ -7100,7 +7180,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 239,
+          "line": 242,
           "symbol": "include_router"
         }
       ],
@@ -7134,7 +7214,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 235,
+          "line": 238,
           "symbol": "include_router"
         }
       ],
@@ -7166,7 +7246,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7201,7 +7281,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7236,7 +7316,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 251,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7266,12 +7346,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 636,
+          "line": 638,
           "symbol": "run_backtest"
         },
         {
           "source": "apps/api/main.py",
-          "line": 214,
+          "line": 217,
           "symbol": "include_router"
         }
       ],
@@ -7302,12 +7382,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 101,
+          "line": 103,
           "symbol": "get_candidates"
         },
         {
           "source": "apps/api/main.py",
-          "line": 214,
+          "line": 217,
           "symbol": "include_router"
         }
       ],
@@ -7343,7 +7423,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 218,
           "symbol": "include_router"
         }
       ],
@@ -7374,12 +7454,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 730,
+          "line": 733,
           "symbol": "train_model"
         },
         {
           "source": "apps/api/main.py",
-          "line": 214,
+          "line": 217,
           "symbol": "include_router"
         }
       ],
@@ -7410,12 +7490,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/models.py",
-          "line": 742,
+          "line": 745,
           "symbol": "tune_model"
         },
         {
           "source": "apps/api/main.py",
-          "line": 214,
+          "line": 217,
           "symbol": "include_router"
         }
       ],
@@ -7451,7 +7531,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7485,7 +7565,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7519,7 +7599,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7553,7 +7633,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7593,7 +7673,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7629,7 +7709,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7674,7 +7754,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7710,7 +7790,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7744,7 +7824,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 232,
           "symbol": "include_router"
         }
       ],
@@ -7778,7 +7858,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -7813,7 +7893,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -7848,7 +7928,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -7887,7 +7967,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 212,
+          "line": 215,
           "symbol": "include_router"
         }
       ],
@@ -7922,7 +8002,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 240,
+          "line": 243,
           "symbol": "include_router"
         }
       ],
@@ -7958,7 +8038,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 240,
+          "line": 243,
           "symbol": "include_router"
         }
       ],
@@ -7988,12 +8068,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4860,
+          "line": 4862,
           "symbol": "correct_dataset_consistency"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8028,12 +8108,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5450,
+          "line": 5452,
           "symbol": "convert_dataset_types"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8072,12 +8152,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 808,
+          "line": 810,
           "symbol": "delete_dataset_derived_columns"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8112,12 +8192,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1362,
+          "line": 1364,
           "symbol": "filter_dataset_by_entity"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8151,12 +8231,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2227,
+          "line": 2229,
           "symbol": "correct_dataset_formats"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8191,12 +8271,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3458,
+          "line": 3460,
           "symbol": "correct_dataset_inclusion"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8231,12 +8311,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2556,
+          "line": 2558,
           "symbol": "correct_dataset_missing"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8271,12 +8351,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2728,
+          "line": 2730,
           "symbol": "apply_dataset_missing_manual_corrections"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8311,12 +8391,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3178,
+          "line": 3180,
           "symbol": "correct_dataset_outliers"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8351,12 +8431,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2968,
+          "line": 2970,
           "symbol": "apply_dataset_outlier_manual_corrections"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8393,12 +8473,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 1476,
+          "line": 1478,
           "symbol": "aggregate_dataset_by_date"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8432,12 +8512,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 6098,
+          "line": 6100,
           "symbol": "capture_dataset_passport"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8473,12 +8553,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4004,
+          "line": 4006,
           "symbol": "create_dataset_preprocessing_decomposition_outputs"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8512,12 +8592,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4575,
+          "line": 4577,
           "symbol": "create_dataset_preprocessing_feature_generation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8551,12 +8631,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3886,
+          "line": 3888,
           "symbol": "correct_dataset_preprocessing_regularity"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8590,12 +8670,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4699,
+          "line": 4701,
           "symbol": "create_dataset_preprocessing_scaling_recipe"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8628,12 +8708,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4240,
+          "line": 4242,
           "symbol": "create_dataset_preprocessing_smoothing_transformation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8667,12 +8747,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4492,
+          "line": 4494,
           "symbol": "save_dataset_preprocessing_spectral_selection"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8705,12 +8785,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4368,
+          "line": 4370,
           "symbol": "create_dataset_preprocessing_stationarity_transformation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8744,12 +8824,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4124,
+          "line": 4126,
           "symbol": "create_dataset_preprocessing_variance_transformation"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8783,12 +8863,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2317,
+          "line": 2319,
           "symbol": "correct_dataset_ranges"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8823,12 +8903,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3552,
+          "line": 3554,
           "symbol": "correct_dataset_referential"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8863,12 +8943,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3742,
+          "line": 3744,
           "symbol": "correct_dataset_regularity"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8903,12 +8983,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4767,
+          "line": 4769,
           "symbol": "save_dataset_sufficiency_plan"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8943,12 +9023,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 3645,
+          "line": 3647,
           "symbol": "correct_dataset_text_quality"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8983,12 +9063,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 4950,
+          "line": 4952,
           "symbol": "correct_dataset_uniqueness"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -9023,12 +9103,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5768,
+          "line": 5770,
           "symbol": "set_date_column"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -9066,7 +9146,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -9104,7 +9184,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9148,7 +9228,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9188,7 +9268,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9231,7 +9311,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9272,7 +9352,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9317,7 +9397,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9358,7 +9438,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9397,7 +9477,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9436,7 +9516,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -9474,7 +9554,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -9511,7 +9591,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -9551,7 +9631,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 226,
           "symbol": "include_router"
         }
       ],
@@ -9585,7 +9665,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9625,7 +9705,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9664,7 +9744,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9706,7 +9786,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9745,7 +9825,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9784,7 +9864,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9824,7 +9904,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9866,7 +9946,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9904,7 +9984,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9943,7 +10023,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -9986,7 +10066,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -10025,7 +10105,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -10065,7 +10145,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -10108,7 +10188,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -10146,12 +10226,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 6237,
+          "line": 6239,
           "symbol": "set_stage"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10184,12 +10264,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5641,
+          "line": 5643,
           "symbol": "set_target_column"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10222,12 +10302,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2455,
+          "line": 2457,
           "symbol": "save_dataset_preprocessing_check_modes"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10260,12 +10340,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5421,
+          "line": 5423,
           "symbol": "save_dataset_type_schema"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10298,12 +10378,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 2172,
+          "line": 2174,
           "symbol": "save_dataset_validation_check_modes"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10336,12 +10416,12 @@
       "evidence": [
         {
           "source": "apps/api/routers/session.py",
-          "line": 5018,
+          "line": 5020,
           "symbol": "save_dataset_validation_rules"
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -10379,7 +10459,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 220,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -10927,7 +11007,7 @@
       "evidence": [
         {
           "source": "apps/api/authentication/demo.py",
-          "line": 305,
+          "line": 171,
           "symbol": "command"
         }
       ],
@@ -10952,7 +11032,7 @@
       "evidence": [
         {
           "source": "apps/api/authentication/demo.py",
-          "line": 482,
+          "line": 171,
           "symbol": "enter"
         }
       ],
@@ -10966,6 +11046,106 @@
         "write"
       ],
       "canonical_operation": "demo.grant.enter",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
+      "id": "demo.lifecycle.admission",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.admission",
+      "operation": "demo.lifecycle.admission",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_lifecycle.py",
+          "line": 68,
+          "symbol": "issue_codes"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.admin",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.admission",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
+      "id": "demo.lifecycle.cleanup",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.cleanup",
+      "operation": "demo.lifecycle.cleanup",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_cleanup.py",
+          "line": 14,
+          "symbol": "sweep"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.cleanup",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
+      "id": "demo.lifecycle.kernel",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.kernel",
+      "operation": "demo.lifecycle.kernel",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_kernel.py",
+          "line": 9,
+          "symbol": "bounded_demo_kernel"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.kernel",
+      "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
+    },
+    {
+      "id": "demo.lifecycle.schema",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "demo.lifecycle.schema",
+      "operation": "demo.lifecycle.schema",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_lifecycle_migrations.py",
+          "line": 18,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "demo.entry",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "private demo authority",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "demo.lifecycle.schema",
       "admission": "current named admin or private participant; one PostgreSQL transaction, mandatory outbox"
     },
     {
@@ -19075,6 +19255,31 @@
       "canonical_operation": "transport:streamlit-runtime",
       "admission": "authorize-before-operation",
       "stage_namespace": "service"
+    },
+    {
+      "id": "worker:apps/api/authentication/demo_sweeper.py:47",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "run",
+      "operation": "apps/api/authentication/demo_sweeper.py:run",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/demo_sweeper.py",
+          "line": 47,
+          "symbol": "run"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "compute.calibrated",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "independent physical wall deadline and aggregate Linux process-group RSS",
+      "effects": [
+        "compute",
+        "stop_process_group"
+      ],
+      "canonical_operation": "demo.lifecycle.sweep",
+      "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
     },
     {
       "id": "worker:apps/api/delivery_worker.py:182",

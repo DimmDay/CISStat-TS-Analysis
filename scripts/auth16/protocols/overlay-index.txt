@@ -1,0 +1,1 @@
+auth00 INDEX-parity: ok (567 discovery surfaces; full reviewed inventory/source parity)

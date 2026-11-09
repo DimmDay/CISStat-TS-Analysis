@@ -467,6 +467,8 @@ class AnalysisSession:
         """
         from apps.api.scientific import authorize_dataframe
         authorize_dataframe(dataframe)
+        from apps.api.authentication.demo_lifecycle import prepare_analysis
+        admitted_run = prepare_analysis()
         self.dataset = dataset
         self.dataframe = dataframe
         # AUDIT-C: новая загрузка -- новая ревизия данных (0) и свой
@@ -507,7 +509,7 @@ class AnalysisSession:
         # PROGR-3: новый датасет = новое исследование (§3.1): run_id и
         # слой 1 трассы перезапускаются вместе с остальным прогрессом;
         # новый run_id зафиксируется хуком на upload_completed загрузки.
-        self.run_id = ""
+        self.run_id = admitted_run or ""
         self.pipeline_trace = []
         self.touch()
 

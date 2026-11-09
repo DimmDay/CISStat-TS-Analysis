@@ -1,0 +1,32 @@
+test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails (test_auth00_inventory.InventoryTests.test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails) ... ERROR
+test_crlf_index_dockerfile_matches_lf_worktree (test_auth00_precommit.PrecommitTests.test_crlf_index_dockerfile_matches_lf_worktree) ... FAIL
+
+======================================================================
+ERROR: test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails (test_auth00_inventory.InventoryTests.test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth00_inventory.py", line 244, in test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails
+    self.mod.check(self.root)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/scripts/auth00/inventory.py", line 416, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json
+
+======================================================================
+FAIL: test_crlf_index_dockerfile_matches_lf_worktree (test_auth00_precommit.PrecommitTests.test_crlf_index_dockerfile_matches_lf_worktree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis/tests/unit/test_auth00_precommit.py", line 192, in test_crlf_index_dockerfile_matches_lf_worktree
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : auth00 INDEX-parity: FAIL
+INDEX inventory check failed:
+Inventory drift: docs/auth00/inventory.json
+Reviewed source differs: apps/api/Dockerfile
+  expected SHA-256: 85aaa9483bbfc65784f579c848038c84792f2078232893ee2ec4bbf00f60d327
+  actual SHA-256:   532b34e95095453a31d8d851ab8393b6c7ba5546bdd07057274e3fad221c2c7b
+INDEX may be stale or partially staged. Review the delivery manifests, explicitly git add all matching sources/maps, then retry. No automatic staging or commit was performed.
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.116s
+
+FAILED (failures=1, errors=1)
