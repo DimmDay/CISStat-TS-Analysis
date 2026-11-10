@@ -1843,6 +1843,12 @@
       "stage_namespace": "service",
       "stage": "platform",
       "authority": "external"
+    },
+    "account.team": {
+      "operation_id": "account.team",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "authority": "external"
     }
   },
   "bindings": {
@@ -2880,6 +2886,50 @@
     },
     "api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions": {
       "operation_id": "demo.campaign.admin",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/accounts": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/accounts/{account_id}": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/invitations/accept": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/invitations": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/ownership-transfer": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/seat-requests": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/select": {
+      "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/accounts/{account_id}/type": {
+      "operation_id": "account.team",
       "programmatic_api": false
     }
   }

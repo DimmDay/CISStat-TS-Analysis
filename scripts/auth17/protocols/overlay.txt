@@ -1,0 +1,5 @@
+Final base201a3b1 + ZIP, Dockerfile CRLF INDEX / LF WORKTREE
+auth00 INDEX-parity: ok (580 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 266, "inventory_api": 266, "registry_bindings": 270, "inventory_entries": 638, "added": [], "missing": []}

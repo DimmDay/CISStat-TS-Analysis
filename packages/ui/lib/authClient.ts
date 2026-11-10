@@ -8,6 +8,7 @@ const RETURNS = new Set([
   "/admin/logs",
   "/admin/demo-campaigns",
   "/demo",
+  "/account",
   "/upload",
   "/validation",
   "/preprocessing",

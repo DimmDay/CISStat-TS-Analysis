@@ -365,7 +365,7 @@ class SessionService:
                 return challenge
             return self._issue(c, u, current, a.account_id, origin, now, epoch)
 
-    def _issue(self, c, u, current, account_id, origin, now, epoch, *, auth_time=None):
+    def _issue(self, c, u, current, account_id, origin, now, epoch, *, auth_time=None, absolute_expires_at=None, family_id=None):
         token = "s1_" + secrets.token_urlsafe(32)
         row = c.execute(
             """INSERT INTO auth_sessions(session_id,family_id,token_hash,subject_id,account_id,credential_id,
@@ -373,7 +373,7 @@ class SessionService:
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s) RETURNING *""",
             (
                 uuid4(),
-                uuid4(),
+                family_id or uuid4(),
                 token_digest(token),
                 u["subject_id"],
                 account_id,
@@ -386,8 +386,8 @@ class SessionService:
                 auth_time or now,
                 now,
                 now,
-                now + IDLE,
-                now + ABSOLUTE,
+                min(now + IDLE, absolute_expires_at or now + ABSOLUTE),
+                absolute_expires_at or now + ABSOLUTE,
             ),
         ).fetchone()
         self._audit(

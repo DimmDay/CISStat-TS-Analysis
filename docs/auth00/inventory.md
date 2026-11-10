@@ -11,16 +11,16 @@
 
 | Вид | Число |
 |---|---:|
-| api | 255 |
+| api | 266 |
 | framework | 8 |
-| internal_operation | 30 |
+| internal_operation | 33 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
-| page | 38 |
+| page | 40 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 16 |
+| storage | 17 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 10 |
@@ -29,6 +29,8 @@
 
 | Policy | Observed | Target | Follow-up |
 |---|---|---|---|
+| account.team | AUTH-17 personal opaque session/current membership; OWNER commands with CAS/idempotency/mandatory audit. Recipient target binding and atomic seat admission; Account switch rotates SID without extending lifetime. Seat confirmation is trusted operator only; no browser purchase flag. | One current Account/tenant, no admin bypass or demo team management; last OWNER/capacity/replay protected; provider saga AUTH-18. | AUTH-18, AUTH-CERT |
+| account.team.operator | AUTH-17 explicit migration and trusted interactive capacity confirmation; no HTTP approval endpoint, unique confirmed entitlement reference and mandatory audit; no CU credit or reset. | Only trusted operator/verified AUTH-18 provider handoff may apply a pending OWNER intent; never browser payment claims. | AUTH-18, AUTH-20 |
 | admin.key | AUTH-03 shared request context with AUTH-07 migration: named admin session (auth_session) requires platform_role=admin AND mfa_verified_at (403 admin_role_required/mfa_required otherwise); ADMIN API-key stays as programmatic channel until AUTH-10; missing/invalid credential 401, unavailable authority 503. | Named platform-admin permission + fresh MFA + scoped action + mandatory audit where sensitive. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | api.key | AUTH-10 protected durable PostgreSQL verifier; current Identity/Account/membership and can_use_api; explicit programmatic operation/scope ceiling. ENV only dev compatibility, never csk_ fallback. Full scientific object admission and atomic budgets remain AUTH-11/12. AUTH-11 also enforces current operation workload and kernel inputs on all scientific alternatives. | Valid account-bound API credential + scopes + can_use_api + object/stage/atomic budgets. | AUTH-12 |
 | api.model_key | AUTH-11 operation-aware baseline/tune/custom admission over AUTH-10 durable key, scope and current Account; kernel fence checks actual inputs. Deprecated can_train_models adapter applies only to unbound dev compatibility. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-12, AUTH-13 |
@@ -67,8 +69,10 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:275 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:280 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:277 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:282 |
+| api:GET:/v1/accounts | apps.api.routers.accounts:list_accounts / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:41 |
+| api:GET:/v1/accounts/{account_id} | apps.api.routers.accounts:account / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:46 |
 | api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:153 |
 | api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:242 |
 | api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
@@ -185,6 +189,15 @@
 | api:PATCH:/v1/admin/demo-campaigns/{campaign_id} | apps.api.routers.demo:update / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:169 |
 | api:PATCH:/v1/internal/rules/update | apps.api.routers.internal:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:167 |
 | api:PATCH:/v1/public/rules/update | apps.api.routers.public:update_rules / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/public.py:165 |
+| api:POST:/v1/accounts/invitations/accept | apps.api.routers.accounts:accept / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:51 |
+| api:POST:/v1/accounts/{account_id}/invitations | apps.api.routers.accounts:invite / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:65 |
+| api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke | apps.api.routers.accounts:revoke_invite / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:72 |
+| api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove | apps.api.routers.accounts:remove / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:93 |
+| api:POST:/v1/accounts/{account_id}/ownership-transfer | apps.api.routers.accounts:transfer / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:105 |
+| api:POST:/v1/accounts/{account_id}/seat-requests | apps.api.routers.accounts:request_seats / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:112 |
+| api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel | apps.api.routers.accounts:cancel_seats / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:119 |
+| api:POST:/v1/accounts/{account_id}/select | apps.api.routers.accounts:select / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:56 |
+| api:POST:/v1/accounts/{account_id}/type | apps.api.routers.accounts:convert / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:86 |
 | api:POST:/v1/admin/demo-campaigns | apps.api.routers.demo:create / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:158 |
 | api:POST:/v1/admin/demo-campaigns/{campaign_id}/activate | apps.api.routers.demo:activate / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:182 |
 | api:POST:/v1/admin/demo-campaigns/{campaign_id}/admissions | apps.api.routers.demo:admissions / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:252 |
@@ -340,6 +353,9 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
+| account.seats.confirm | account.seats.confirm / service:platform | account.team.operator / confirmed Account seat capacity/pending entitlement intent | apps/api/accounts/team.py:563 |
+| account.team.accept | account.team.accept / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/accounts/team.py:308 |
+| account.team.commands | account.team.commands / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/accounts/team.py:399 |
 | auth.account.operator | accounts.lifecycle.operator / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth08/manage_account.py:14 |
 | auth.api_keys.operator | auth.api_keys.operator / service:platform | auth.api_keys / existing service Identity/Account membership API keys; emergency revocation | scripts/auth10/manage_keys.py:13 |
 | auth.audit.publish | auth.audit.publish / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/audit_outbox.py:12 |
@@ -637,6 +653,7 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | page:embedded:/ | ui:embedded:/ / service:platform | ui.page / UI navigation only | apps/embedded/app/page.tsx:1 |
+| page:embedded:/account | ui:embedded:/account / service:platform | account.team / current Account/membership/confirmed capacity | apps/embedded/app/account/page.tsx:1 |
 | page:embedded:/admin | ui:embedded:/admin / service:admin | ui.admin / UI navigation only | apps/embedded/app/admin/page.tsx:1 |
 | page:embedded:/admin/demo-campaigns | ui:embedded:/admin/demo-campaigns / service:platform | demo.admin / campaign policy | apps/embedded/app/admin/demo-campaigns/page.tsx:1 |
 | page:embedded:/admin/logs | ui:embedded:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/embedded/app/admin/logs/page.tsx:1 |
@@ -653,6 +670,7 @@
 | page:embedded:/upload | ui:embedded:/upload / scientific:upload | ui.page / UI navigation only | apps/embedded/app/upload/page.tsx:1 |
 | page:embedded:/validation | ui:embedded:/validation / scientific:validation | ui.page / UI navigation only | apps/embedded/app/validation/page.tsx:1 |
 | page:standalone:/ | ui:standalone:/ / service:platform | ui.page / UI navigation only | apps/standalone/app/page.tsx:1 |
+| page:standalone:/account | ui:standalone:/account / service:platform | account.team / current Account/membership/confirmed capacity | apps/standalone/app/account/page.tsx:1 |
 | page:standalone:/admin | ui:standalone:/admin / service:admin | ui.admin / UI navigation only | apps/standalone/app/admin/page.tsx:1 |
 | page:standalone:/admin/demo-campaigns | ui:standalone:/admin/demo-campaigns / service:platform | demo.admin / campaign policy | apps/standalone/app/admin/demo-campaigns/page.tsx:1 |
 | page:standalone:/admin/logs | ui:standalone:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/standalone/app/admin/logs/page.tsx:1 |
@@ -701,6 +719,7 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
+| auth.team.schema | auth.team.schema / service:platform | account.team.operator / auth schema versions and team tables | apps/api/accounts/team_migrations.py:20 |
 | compute.cache | compute.cache / service:platform | compute.calibrated / current-authority signed content-addressed compute result replay | apps/api/billing/compute_cache.py:46 |
 | demo.lifecycle.cleanup | demo.lifecycle.cleanup / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_cleanup.py:14 |
 | demo.lifecycle.schema | demo.lifecycle.schema / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_lifecycle_migrations.py:18 |

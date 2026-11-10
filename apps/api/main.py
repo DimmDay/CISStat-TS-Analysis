@@ -253,6 +253,8 @@ app.include_router(monitoring.router, prefix="/v1/documentation", tags=["monitor
 app.include_router(doc_profiles.router, prefix="/v1/documentation", tags=["doc-profiles"])
 app.include_router(logs.router, prefix="/v1/logs", tags=["logs"])
 app.include_router(authentication.router, prefix="/v1/auth", tags=["auth"])
+from apps.api.routers import accounts
+app.include_router(accounts.router, prefix="/v1/accounts", tags=["accounts"])
 app.include_router(demo.router, prefix="/v1", tags=["demo"])
 app.include_router(api_keys.router, prefix="/v1/api-keys", tags=["api-keys"])
 

@@ -481,6 +481,32 @@
         "T06",
         "T11"
       ]
+    },
+    "account.team": {
+      "observed": "AUTH-17 personal opaque session/current membership; OWNER commands with CAS/idempotency/mandatory audit. Recipient target binding and atomic seat admission; Account switch rotates SID without extending lifetime. Seat confirmation is trusted operator only; no browser purchase flag.",
+      "target": "One current Account/tenant, no admin bypass or demo team management; last OWNER/capacity/replay protected; provider saga AUTH-18.",
+      "follow_up": [
+        "AUTH-18",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
+      ]
+    },
+    "account.team.operator": {
+      "observed": "AUTH-17 explicit migration and trusted interactive capacity confirmation; no HTTP approval endpoint, unique confirmed entitlement reference and mandatory audit; no CU credit or reset.",
+      "target": "Only trusted operator/verified AUTH-18 provider handoff may apply a pending OWNER intent; never browser payment claims.",
+      "follow_up": [
+        "AUTH-18",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T01",
+        "T11"
+      ]
     }
   },
   "entries": {
@@ -7609,6 +7635,227 @@
       ],
       "canonical_operation": "demo.lifecycle.sweep",
       "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
+    },
+    "api:GET:/v1/accounts": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/accounts",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:GET:/v1/accounts/{account_id}": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/accounts/{account_id}",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/invitations/accept": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/invitations/accept",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/invitations": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/invitations",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/ownership-transfer": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/ownership-transfer",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/seat-requests": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/seat-requests",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/select": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/select",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "api:POST:/v1/accounts/{account_id}/type": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/type",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "page:embedded:/account": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "page:embedded:/account",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "page:standalone:/account": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "page:standalone:/account",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "account.team.commands": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.team.commands",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "account.team.accept": {
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.team.accept",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    "account.seats.confirm": {
+      "policy": "account.team.operator",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "confirmed Account seat capacity/pending entitlement intent",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.seats.confirm",
+      "admission": "Trusted interactive operator after external entitlement verification; current request OWNER; CAS + unique confirmation_ref; same SQL audit commit; no CU credit/reset"
+    },
+    "auth.team.schema": {
+      "policy": "account.team.operator",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "auth schema versions and team tables",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "auth.team.schema",
+      "admission": "Explicit trusted migration CLI; checksum/version and enabled guards; never request-time DDL"
     }
   },
   "extra_surfaces": [
@@ -8382,6 +8629,62 @@
           "symbol": "bounded_demo_kernel"
         }
       ]
+    },
+    {
+      "id": "account.team.commands",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.team.commands",
+      "operation": "account.team.commands",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 399,
+          "symbol": "command"
+        }
+      ]
+    },
+    {
+      "id": "account.team.accept",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.team.accept",
+      "operation": "account.team.accept",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 308,
+          "symbol": "accept"
+        }
+      ]
+    },
+    {
+      "id": "account.seats.confirm",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.seats.confirm",
+      "operation": "account.seats.confirm",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 563,
+          "symbol": "confirm_capacity"
+        }
+      ]
+    },
+    {
+      "id": "auth.team.schema",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "auth.team.schema",
+      "operation": "auth.team.schema",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team_migrations.py",
+          "line": 20,
+          "symbol": "apply_migration"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -8584,6 +8887,15 @@
     "scripts/auth16/cleanup.py",
     "scripts/auth16/migrate.py",
     ".github/workflows/auth16.yml",
-    "packages/ui/components/auth16-demo.test.tsx"
+    "packages/ui/components/auth16-demo.test.tsx",
+    "apps/api/migrations/0029_auth17_team.sql",
+    "packages/ui/components/AccountScreen.tsx",
+    "packages/ui/lib/team.ts",
+    "tests/unit/test_auth17_team.py",
+    "tests/integration/test_auth17_team.py",
+    "scripts/auth17/migrate.py",
+    "scripts/auth17/manage_seats.py",
+    "packages/ui/components/auth17-team.test.tsx",
+    ".github/workflows/auth17.yml"
   ]
 }

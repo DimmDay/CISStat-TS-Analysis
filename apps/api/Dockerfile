@@ -131,6 +131,8 @@ COPY scripts/auth14/benchmark.py ./scripts/auth14/benchmark.py
 COPY scripts/auth14/profile.py ./scripts/auth14/profile.py
 COPY scripts/auth15/migrate.py ./scripts/auth15/migrate.py
 COPY scripts/auth16/migrate.py scripts/auth16/cleanup.py ./scripts/auth16/
+COPY scripts/auth17/migrate.py scripts/auth17/manage_seats.py ./scripts/auth17/
+RUN python -c "from apps.api.accounts.team import TeamService; from apps.api.accounts.team_migrations import check_schema; print('auth17 imports OK')"
 RUN python -c "from apps.api.authentication.demo_cleanup import DemoCleanup; from apps.api.authentication.demo_lifecycle_migrations import check_schema; print('auth16 imports OK')"
 RUN python -c "from apps.api.authentication.demo import DemoService, CampaignPolicy; from apps.api.authentication.demo_migrations import check_schema; print('auth15 imports OK')"
 RUN python -c "from apps.api.billing.compute_units import quote_work; from apps.api.billing.compute_profile import Profile; from apps.api.billing.compute_benchmark import calibrate; print('auth14 calibration imports OK')"

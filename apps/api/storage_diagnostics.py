@@ -117,7 +117,7 @@ def safe_error(value: Any, limit: int = _SAFE_ERROR_LIMIT) -> str:
         text = str(value) or type(value).__name__
     else:
         text = str(value)
-    text = re.sub(r"(?:d1_|a16_)[A-Za-z0-9_-]{43}", "<redacted-demo-resume>", text)
+    text = re.sub(r"(?:d1_|a16_|i17_)[A-Za-z0-9_-]{43}", "<redacted-demo-resume>", text)
     text = re.sub(r"csk_[A-Za-z0-9_-]{43}", "<redacted-api-key>", text)
     text = re.sub(r"cwk_[A-Za-z0-9_-]{43}", "<redacted-worker-key>", text)
     text = _URL_RE.sub("<redacted-url>", text)

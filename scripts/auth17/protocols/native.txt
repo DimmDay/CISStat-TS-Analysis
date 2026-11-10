@@ -1,0 +1,22 @@
+test_admin_member_is_not_owner_and_switch_copies_real_mfa_proof (test_auth17_team.TeamSQLTests.test_admin_member_is_not_owner_and_switch_copies_real_mfa_proof) ... ok
+test_audit_failure_rolls_back_invite_accept_and_capacity (test_auth17_team.TeamSQLTests.test_audit_failure_rolls_back_invite_accept_and_capacity) ... ok
+test_capacity_pending_confirmation_replay_and_churn_preserve_budget (test_auth17_team.TeamSQLTests.test_capacity_pending_confirmation_replay_and_churn_preserve_budget) ... ok
+test_changed_inviter_permission_and_stale_owner_login_fail (test_auth17_team.TeamSQLTests.test_changed_inviter_permission_and_stale_owner_login_fail) ... ok
+test_concurrent_owner_transfer_has_one_winner_and_valid_last_owner (test_auth17_team.TeamSQLTests.test_concurrent_owner_transfer_has_one_winner_and_valid_last_owner) ... ok
+test_email_target_requires_unique_verified_contact_no_identity_creation (test_auth17_team.TeamSQLTests.test_email_target_requires_unique_verified_contact_no_identity_creation) ... ok
+test_expiry_and_inviter_revoke_prevent_acceptance (test_auth17_team.TeamSQLTests.test_expiry_and_inviter_revoke_prevent_acceptance) ... ok
+test_http_personal_csrf_roles_accept_and_select_clear_research_pointer (test_auth17_team.TeamSQLTests.test_http_personal_csrf_roles_accept_and_select_clear_research_pointer) ... ok
+test_issue_replay_and_stale_version_or_payload_conflict (test_auth17_team.TeamSQLTests.test_issue_replay_and_stale_version_or_payload_conflict) ... ok
+test_last_owner_guard_and_transfer_invalidates_old_invites (test_auth17_team.TeamSQLTests.test_last_owner_guard_and_transfer_invalidates_old_invites) ... ok
+test_last_seat_race_two_invites_one_member (test_auth17_team.TeamSQLTests.test_last_seat_race_two_invites_one_member) ... ok
+test_member_removal_and_rejoin_never_revives_old_sid (test_auth17_team.TeamSQLTests.test_member_removal_and_rejoin_never_revives_old_sid) ... ok
+test_migration_repeat_hash_only_and_direct_history_guard (test_auth17_team.TeamSQLTests.test_migration_repeat_hash_only_and_direct_history_guard) ... ok
+test_monotype_ids_and_switch_deadline_are_preserved (test_auth17_team.TeamSQLTests.test_monotype_ids_and_switch_deadline_are_preserved) ... ok
+test_raw_sql_last_owner_and_capacity_are_still_deferred_guards (test_auth17_team.TeamSQLTests.test_raw_sql_last_owner_and_capacity_are_still_deferred_guards) ... ok
+test_same_invite_race_and_replay_do_not_duplicate_or_reset (test_auth17_team.TeamSQLTests.test_same_invite_race_and_replay_do_not_duplicate_or_reset) ... ok
+test_transfer_audit_failure_preserves_owner_sessions_and_invites (test_auth17_team.TeamSQLTests.test_transfer_audit_failure_preserves_owner_sessions_and_invites) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 19.597s
+
+OK

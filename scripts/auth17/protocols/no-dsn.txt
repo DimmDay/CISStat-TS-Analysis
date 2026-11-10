@@ -1,0 +1,2 @@
+Set CISSTAT_AUTH_TEST_DSN to a disposable PostgreSQL database. No tests ran.
+exit=2

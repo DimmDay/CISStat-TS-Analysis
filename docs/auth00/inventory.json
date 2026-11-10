@@ -3,16 +3,16 @@
   "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 255,
+    "api": 266,
     "framework": 8,
-    "internal_operation": 30,
+    "internal_operation": 33,
     "legacy_authority": 1,
     "legacy_widget": 250,
-    "page": 38,
+    "page": 40,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 16,
+    "storage": 17,
     "task_alias": 4,
     "transport": 2,
     "worker": 10
@@ -497,6 +497,32 @@
         "T06",
         "T11"
       ]
+    },
+    "account.team": {
+      "observed": "AUTH-17 personal opaque session/current membership; OWNER commands with CAS/idempotency/mandatory audit. Recipient target binding and atomic seat admission; Account switch rotates SID without extending lifetime. Seat confirmation is trusted operator only; no browser purchase flag.",
+      "target": "One current Account/tenant, no admin bypass or demo team management; last OWNER/capacity/replay protected; provider saga AUTH-18.",
+      "follow_up": [
+        "AUTH-18",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T02",
+        "T06",
+        "T11"
+      ]
+    },
+    "account.team.operator": {
+      "observed": "AUTH-17 explicit migration and trusted interactive capacity confirmation; no HTTP approval endpoint, unique confirmed entitlement reference and mandatory audit; no CU credit or reset.",
+      "target": "Only trusted operator/verified AUTH-18 provider handoff may apply a pending OWNER intent; never browser payment claims.",
+      "follow_up": [
+        "AUTH-18",
+        "AUTH-20"
+      ],
+      "threats": [
+        "T01",
+        "T11"
+      ]
     }
   },
   "source_fingerprints": {
@@ -505,22 +531,26 @@
     ".github/workflows/auth12.yml": "548d4c32aa6504cc4f61ea479951a308e0a0aae99381e0f06df02ef2e80a428f",
     ".github/workflows/auth14.yml": "0a6c5e17d98ac6bfa5971f658a02e8691b5a3a49e6815565e289055d75866c9d",
     ".github/workflows/auth16.yml": "dbb30697a844ae172b1ae9125fef20334cd8c78c2201a7b4172662ce807fee25",
+    ".github/workflows/auth17.yml": "ced87344e8713014d05a50a9221f2dd82a76a55da6eb888a05dda65f838a8afb",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "3465909327f0c2c407fb79b9b41ae877d9c81c3503bffd1ffb08bafcaa65867a",
+    "apps/api/Dockerfile": "ceff978576f8fad083ac0cd7a2c5d0c238c95bafbe5ef426c014843ae26fd7d3",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "cc697309b734fd812b2ada4d9ecbcc09af8b98f17cc8192f10d1a5c98292957c",
+    "apps/api/access_registry.v1.json": "322c80307e16fa2dcb0d8c1a9f7a4565b331bedaabd05eeaa773a224f963c8da",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
     "apps/api/accounts/models.py": "4a3dfb8fdd135bd2b8bff0259a0baff396a262c2485d655c3be310a354587b4a",
     "apps/api/accounts/ownership_migration.py": "5749560846b527916ef653b7354370dc81700c14496b22c39b24043fd6952ced",
     "apps/api/accounts/repository.py": "b9eed272454419f0e1a969f3c3dd7cd6f3ed586efa2889de743217b81c621a76",
+    "apps/api/accounts/team.py": "18b6abf02bfad0e25819f4cac57165a03dc318f352855dc3797bfb56bc64fddb",
+    "apps/api/accounts/team_contract.py": "beb3c2401ea0e56a90063c7858c476bd59a04c245cfeef97ffca87f76cddf416",
+    "apps/api/accounts/team_migrations.py": "5b664cf459b76667701595e685cb7babbcfc6a99fd737bd43df177c82550428d",
     "apps/api/admin_logs.py": "ea10b6722a7ca361e4ac1ecbf07d02062cb6b94147594a838bbe47d6fa887ad2",
     "apps/api/artifact_promotion.py": "1455d57c7d532a06815d7e1007aa53a71379b4945d6c312a6aa273005c8cb80f",
     "apps/api/artifact_store.py": "83f8bb7b8ab5d56a1648d9755bd949e8604a618bd120512877a76480d6ab40a0",
@@ -531,7 +561,7 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "875ca5f7b5d2d5204b06fd4388c42a646e0916e3d27665668969c5b6cfcdda3e",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "2b05dc2ac86b54251bc215ec2ec558b4d16985fd2a1c1be3a566c91a09a19674",
+    "apps/api/authentication/context.py": "f36d9ca1a79ab814165a3138f8fa4fc3e15462fcb7b0811554d888d08ae0cccb",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/demo.py": "d9d102b96e1e59b7f38b0599a61d59bfa5bc233aa40cb1edf09cd16dd47c3867",
@@ -552,7 +582,7 @@
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
-    "apps/api/authentication/sessions.py": "0d5bdb7da9125a6defbd95d2560fe49b591c2136ed9e0e4206953b7d6a507774",
+    "apps/api/authentication/sessions.py": "404be50507924b74557135f63f5010f5731c813741678a92c5d5dee0271e7f60",
     "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
     "apps/api/backtesting.py": "68ba0434c09e8400389afe9c72db29d49d942565c3c5555932fb1bf5328b326e",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
@@ -600,7 +630,7 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "e3b750dc5148af9f252a56ab56c2401d46e4ae1d3b26a753342dbc2787313382",
+    "apps/api/main.py": "1f9e8bce942cf0eb29d5d13b4e54af1cbffb1fc866bbb939631b0698926f863b",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
@@ -610,6 +640,7 @@
     "apps/api/migrations/0026_auth13_workers.sql": "5ad027d8de3e2acbf1611c6450c8dedce335b43680baac5f5994b39bc274190f",
     "apps/api/migrations/0027_auth15_demo.sql": "f96eece8675ea27ebb20c550688a4e1eeee3b5ea0374c517f7e334c96f842322",
     "apps/api/migrations/0028_auth16_demo_lifecycle.sql": "fd180d8ef3277c51b00dc97581802f1f216576ca32750a7c58b80d654d045f0f",
+    "apps/api/migrations/0029_auth17_team.sql": "0f2b2c4f347ca584f0d50848b90dfc008f749c7a05225f1a4d65619b3fd2a137",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -672,6 +703,7 @@
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
     "apps/api/research_runs.py": "4cf971f1b2edb7bd16f815f01b58a97d2f37da43dcd3408e760c6f436c4b04ba",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "apps/api/routers/accounts.py": "11c85c988cb41c7e7037f840993fce05fbbfa20104b63701760c561f7365b348",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
     "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
@@ -696,10 +728,10 @@
     "apps/api/security_audit.py": "10d6b657ab17214772ebac0ff58a47488a68f89a1783c2b5d399223387345d1a",
     "apps/api/session_store.py": "309148e5c2fa913fd6a5829d94bfe8a457e1d535b2f868cddd9fc9d7e865ca12",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
-    "apps/api/storage_diagnostics.py": "59d06b788d10f62f418b0ddb2d7ff00b3d9c3eb98f3240cb770de911df27c1d6",
+    "apps/api/storage_diagnostics.py": "44b4348989c5c605f243772010969916e5893351abdd9859c8a8a20e4a0715ef",
     "apps/api/sufficiency_plan.py": "12409810e35b6476c23e61d07f8539083ec5059c0850490246d2dcc9f740a2a7",
     "apps/api/target_column_rule.py": "3a503622feb1b36af3e27bae2e2b7f7b36ce9b75f34a98dc965380f5e5d0fde2",
-    "apps/api/telemetry.py": "6890dcc08a7928ecbf850d2e10ff5a15ba46ced1ea6478aeed0366554fb19f13",
+    "apps/api/telemetry.py": "4c55ab2ee9ee9cb6ed71a95e337ae1b6ff23af1deca786c774655cb1981998a8",
     "apps/api/text_quality_correction.py": "eb7ffcfa5a515f06d734e5c952b78e6a278f6f9f301ee4dfebc9384f6d82682c",
     "apps/api/trace_events.py": "ed9d34de868930b38e278ec156c98f37af0e496d213510cdac889712589d97ba",
     "apps/api/trace_hook.py": "9602855e297297756e4f4378c0b6f782ee0b83f6495f2bc21d736622cf35fb93",
@@ -723,6 +755,7 @@
     "apps/api/workers/render.py": "aedd6b7f2d8d19a2fcbd8bd9f97ef2e6d49039f52f54106d6bcedcd516800e28",
     "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
     "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
+    "apps/embedded/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
     "apps/embedded/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
     "apps/embedded/app/admin/logs/page.tsx": "f0d27b4c204f5ab9b919872542c7c0015fa841ac2430ab43af35002fcdbceba7",
     "apps/embedded/app/admin/page.tsx": "f9627f14db2aa31acf6bd2aaf02efb1fb6cc7ee2a7a04990aa5e1f6073773375",
@@ -745,6 +778,7 @@
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
     "apps/print-renderer/src/renderWorker.ts": "7e49879e365c24cc8a5be61852cfa5fcc96fe5990414be04ea18cc1e4f204e85",
     "apps/print-renderer/src/server.ts": "88df929772d9aae24a15ef66d7e0bb3b5b6fece75840558f7fae040e957752e5",
+    "apps/standalone/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
     "apps/standalone/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
     "apps/standalone/app/admin/logs/page.tsx": "f2fd61c5f02449ed54c606f56dce77f5fda5c5f22bf945fdcc4278802e98a0fc",
     "apps/standalone/app/admin/page.tsx": "4ba64edca81d46fe03b022bc8d17f61c6c1dbd6fe217465a85005d8f84f9c39a",
@@ -776,7 +810,7 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "78492422b84ba61c66c789d2251884e5e475cc8e414376925cac76da7a89d193",
+    "docs/auth01/openapi.json": "cc1e99a4159ea0a0a71afa5d73b759eff660ca079ae3a2d1acfe6e1b22ebf777",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -793,6 +827,7 @@
     "docs/auth14/design.md": "c60e066ca1ac6f839fea1151cfd20d8ec4da4c337e789db101a5e9049cfa8dc7",
     "docs/auth14/hotfix01.md": "b9d8d86de911222871bfab3525135daabaa76e4df6aa622fb6a6f4a256142534",
     "docs/auth14/runbook.md": "2137621383e776a15254886417bc5448e669089bfd12207fdd81e954f4c851a3",
+    "packages/ui/components/AccountScreen.tsx": "31b5b78abe5d915ddc72dcb70cc1385902f80e1be0a1e080fb76a5d3539cafcc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -801,7 +836,7 @@
     "packages/ui/components/DemoLimits.tsx": "3dfbd7acdd6f2e9950fef167996d55e7acf3214c9a2ea018381ca97e99ebba23",
     "packages/ui/components/EdaDescriptiveOverview.tsx": "153b137fe5a33bc3e22891825f8059bf470de0d07a69de1f16bb03aa7e2401e7",
     "packages/ui/components/EmbeddedHome.tsx": "974bb36b70595d2563264473927fc02303c7e7b79d01232c561040ce2affb9e4",
-    "packages/ui/components/LoginScreen.tsx": "f45fea8186e028425e1d9752f69dabaafcb5e641c18cc37bb53b502a8b3fd962",
+    "packages/ui/components/LoginScreen.tsx": "8019a9c40655098474aed7570f8dd4b6dc18fe2acccf104fdfcff298903ce4bd",
     "packages/ui/components/ModelingWorkflowOverview.tsx": "dc6f1f235f223202f11bda3181bc58be1586e7ad8495e6fe431df11141cb2431",
     "packages/ui/components/PreprocessingDecompositionPipeline.tsx": "5d257fd64d4b10ebaa04a087a4f0e11e1da5664f6d6106678c978b70915ba806",
     "packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx": "b06fe06c733e9c3360a0f0d761b69d2f91f227b999a16f52a67fb04cfc6fc251",
@@ -850,15 +885,16 @@
     "packages/ui/components/ValidationUniquenessOverview.tsx": "4817f17a5c26f2ef09076f3b9c5660554092e620a8c2bc1cebed6e7c68b381a5",
     "packages/ui/components/ValidationUniquenessPipeline.tsx": "d9852407d50e21528dffe551f227e55ceb4b6b11d56ad451c080a96cbdc19cee",
     "packages/ui/components/auth16-demo.test.tsx": "45ed4ae30e4d9f8c94cf37f6cc55115f59065ccceb15a9363893ba3ab61a80a6",
+    "packages/ui/components/auth17-team.test.tsx": "78ea788512a64ad4e42e80aea476f89472fd2c02b7379bffa59f0fa9a509d51d",
     "packages/ui/context/AppShellContext.tsx": "894aa5dc3394b2423dcc9de7a0e5efde4bec629a2b2038fa5f617ababed14dd8",
     "packages/ui/context/AuthContext.tsx": "05583a03ac8a4c20d335cfc028b0dd9a6e7b91f0a0cd11338934d329327c9af6",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "887e24581649051557c6bfdd871b4db2cbf9d74f0ee4430529d2b9efeb0a0a26",
+    "packages/ui/lib/access-contract.generated.ts": "c15da902a64f32f13c7e7b9e43fd9eab131a39def8811f392d58947858adff39",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
-    "packages/ui/lib/authClient.ts": "026740f7260359de875b005e1eba1ab9a8f459a7a5c074d9dc87d8de0e6c9cd3",
+    "packages/ui/lib/authClient.ts": "b2af495cf5c423954c305b4d1dafdac1e864d822c0bebb863511312ec2cf8daf",
     "packages/ui/lib/browserTransport.ts": "01cd9a82e44b24cbe5ce26d068cd1221bd957247a844fc86a27a0969ee01de97",
     "packages/ui/lib/demo.ts": "4a3d17e609499dfbb3ccb5b823b5783bf7b48d45ee772b3f445592f1fec1fbac",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
@@ -869,9 +905,10 @@
     "packages/ui/lib/researchOwnership.ts": "7ce2623276a2cd8eac26372d7e2ff68a49a9af83a2d4765a6146bcba7eb8dd9b",
     "packages/ui/lib/task-stops.ts": "a287b2ded2af72f92b58d1c2affc167ff5e729a209eb8dd82b0ba7a1bd10eab5",
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
+    "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
-    "packages/ui/server/proxy-routes.generated.json": "d2891122027f1d5f30411a7fad5a3adfde13c7ff5d57b30b51f5ed37b03dbe96",
+    "packages/ui/server/proxy-routes.generated.json": "2ed1bf53a377401900c557fedcfe4c82e4bc4e26d857ee8af6bfaac42ac8b70c",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -890,23 +927,105 @@
     "scripts/auth15/migrate.py": "d351f76135cc38c426668ec6264d497f33c37f21bb2272cea6ad7c3fa3290594",
     "scripts/auth16/cleanup.py": "e4b349915ce82e878b06141628ac6998655342a5dc02f062225abcbf69aa36eb",
     "scripts/auth16/migrate.py": "6dcd774a441ffa3d838e41da6a52eb8d6d640cf4a1dfaab086bac2c8f5b9d466",
-    "scripts/local_gates.md": "3eee7053769605a7551d35755914c7d142337d3b1a6bfdd431d504afd12739a1",
-    "scripts/local_gates.py": "fdbc2fbb440f087dd6a1ef343ef89d4f2341b4139e9c117d4ae245fb6eb48084",
+    "scripts/auth17/manage_seats.py": "49cc054dac1cdc5049f89a97e46338b1beac1124533bd91ca027bb56b0d1a360",
+    "scripts/auth17/migrate.py": "1e16f651b4ab4b4554b70edccaa0e071557e10104671e9b91cd131cca41fe1e0",
+    "scripts/local_gates.md": "78594d98f380501bd3b560b6069407e66aaef1a7a82c6e9356e7180dbf7df666",
+    "scripts/local_gates.py": "c3a77d19a61c987851a1f31fd65ff3080a648dd76256db818143b7b4ff22eb34",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
     "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
     "tests/integration/test_auth15_demo.py": "4a9e28326b8e6cb56ab93aed8934e8705873b86b11b457ab2214cdca4efaf0a6",
     "tests/integration/test_auth16_lifecycle.py": "234973e338894a17b65f4695527ede73e64ff85b64b70c8e2a9c1384eafd9c55",
+    "tests/integration/test_auth17_team.py": "e8bee1bdd93977e6ffe8d38e5a0232bf89fce64e3dbcf6f8def486c1f30d82fd",
     "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
     "tests/unit/test_auth00_precommit.py": "d60f5fb6113a1aba5560e72e70df2e3cbaa5d50f8ccf574de0e3a3fcac760639",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
     "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
     "tests/unit/test_auth15_demo.py": "9118a6a61a855521caaba027c6df7e0601009a28f8f5f5968fccc5d3f9ffb839",
     "tests/unit/test_auth16_lifecycle.py": "ec2a79db830536293bc6e542f8549c54fb0fab39829a787d5f88098f86532bf0",
+    "tests/unit/test_auth17_team.py": "36dc322cf3192808687c4baec9f646a6e581c52aab4933dff9859e7cc5c31784",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
+    {
+      "id": "account.seats.confirm",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.seats.confirm",
+      "operation": "account.seats.confirm",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 563,
+          "symbol": "confirm_capacity"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "account.team.operator",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "confirmed Account seat capacity/pending entitlement intent",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.seats.confirm",
+      "admission": "Trusted interactive operator after external entitlement verification; current request OWNER; CAS + unique confirmation_ref; same SQL audit commit; no CU credit/reset"
+    },
+    {
+      "id": "account.team.accept",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.team.accept",
+      "operation": "account.team.accept",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 308,
+          "symbol": "accept"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.team.accept",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "id": "account.team.commands",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "account.team.commands",
+      "operation": "account.team.commands",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team.py",
+          "line": 399,
+          "symbol": "command"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "account.team.commands",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
     {
       "id": "api:GET:/docs",
       "kind": "framework",
@@ -967,7 +1086,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 275,
+          "line": 277,
           "symbol": "health"
         }
       ],
@@ -993,7 +1112,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 280,
+          "line": 282,
           "symbol": "health_ops"
         }
       ],
@@ -1068,6 +1187,76 @@
     {
       "kind": "api",
       "method": "GET",
+      "path": "/v1/accounts",
+      "operation": "apps.api.routers.accounts:list_accounts",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 41,
+          "symbol": "list_accounts"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/accounts",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/accounts",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/accounts/{account_id}",
+      "operation": "apps.api.routers.accounts:account",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 46,
+          "symbol": "account"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/accounts/{account_id}",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/accounts/{account_id}",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
       "path": "/v1/admin/demo-campaigns",
       "operation": "apps.api.routers.demo:campaigns",
       "evidence": [
@@ -1078,7 +1267,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -1111,7 +1300,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -1144,7 +1333,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -1206,7 +1395,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -1240,7 +1429,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5332,7 +5521,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5432,6 +5621,322 @@
     {
       "kind": "api",
       "method": "POST",
+      "path": "/v1/accounts/invitations/accept",
+      "operation": "apps.api.routers.accounts:accept",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 51,
+          "symbol": "accept"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/invitations/accept",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/invitations/accept",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/invitations",
+      "operation": "apps.api.routers.accounts:invite",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 65,
+          "symbol": "invite"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/invitations",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/invitations",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/invitations/{invitation_id}/revoke",
+      "operation": "apps.api.routers.accounts:revoke_invite",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 72,
+          "symbol": "revoke_invite"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/invitations/{invitation_id}/revoke",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/members/{subject_id}/remove",
+      "operation": "apps.api.routers.accounts:remove",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 93,
+          "symbol": "remove"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/members/{subject_id}/remove",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/ownership-transfer",
+      "operation": "apps.api.routers.accounts:transfer",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 105,
+          "symbol": "transfer"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/ownership-transfer",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/ownership-transfer",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/seat-requests",
+      "operation": "apps.api.routers.accounts:request_seats",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 112,
+          "symbol": "request_seats"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/seat-requests",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/seat-requests",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/seat-requests/{request_id}/cancel",
+      "operation": "apps.api.routers.accounts:cancel_seats",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 119,
+          "symbol": "cancel_seats"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/seat-requests/{request_id}/cancel",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/select",
+      "operation": "apps.api.routers.accounts:select",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 56,
+          "symbol": "select"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "_authenticated",
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/select",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/select",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/type",
+      "operation": "apps.api.routers.accounts:convert",
+      "evidence": [
+        {
+          "source": "apps/api/routers/accounts.py",
+          "line": 86,
+          "symbol": "convert"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 257,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/accounts/{account_id}/type",
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/accounts/{account_id}/type",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
       "path": "/v1/admin/demo-campaigns",
       "operation": "apps.api.routers.demo:create",
       "evidence": [
@@ -5442,7 +5947,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5475,7 +5980,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5508,7 +6013,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5542,7 +6047,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5575,7 +6080,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5608,7 +6113,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5641,7 +6146,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5674,7 +6179,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5706,7 +6211,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5738,7 +6243,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5770,7 +6275,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5804,7 +6309,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5838,7 +6343,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -5870,7 +6375,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 256,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -10747,6 +11252,32 @@
       "canonical_operation": "auth.sessions.schema.apply",
       "admission": "trusted-authority-writer",
       "stage_namespace": "service"
+    },
+    {
+      "id": "auth.team.schema",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "auth.team.schema",
+      "operation": "auth.team.schema",
+      "evidence": [
+        {
+          "source": "apps/api/accounts/team_migrations.py",
+          "line": 20,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "account.team.operator",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "auth schema versions and team tables",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "auth.team.schema",
+      "admission": "Explicit trusted migration CLI; checksum/version and enabled guards; never request-time DDL"
     },
     {
       "id": "billing.policy.operator",
@@ -17644,6 +18175,33 @@
       "stage_namespace": "service"
     },
     {
+      "id": "page:embedded:/account",
+      "kind": "page",
+      "method": "GET",
+      "path": "/account",
+      "operation": "ui:embedded:/account",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/embedded/app/account/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "page:embedded:/account",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
+    },
+    {
       "id": "page:embedded:/admin",
       "kind": "page",
       "method": "GET",
@@ -18044,6 +18602,33 @@
       "canonical_operation": "ui:standalone:/",
       "admission": "UI does not replace backend enforcement",
       "stage_namespace": "service"
+    },
+    {
+      "id": "page:standalone:/account",
+      "kind": "page",
+      "method": "GET",
+      "path": "/account",
+      "operation": "ui:standalone:/account",
+      "redirects": [],
+      "evidence": [
+        {
+          "source": "apps/standalone/app/account/page.tsx",
+          "line": 1,
+          "symbol": "Page"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "account.team",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "current Account/membership/confirmed capacity",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "page:standalone:/account",
+      "admission": "Personal auth_session, current account membership; OWNER for management; target-bound recipient for accept; CSRF unsafe; atomic SQL capacity/version/audit"
     },
     {
       "id": "page:standalone:/admin",

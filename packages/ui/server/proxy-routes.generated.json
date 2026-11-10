@@ -9,6 +9,14 @@
   },
   {
     "method": "GET",
+    "path": "/v1/accounts"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/accounts/{account_id}"
+  },
+  {
+    "method": "GET",
     "path": "/v1/admin/demo-campaigns"
   },
   {
@@ -470,6 +478,42 @@
   {
     "method": "PATCH",
     "path": "/v1/public/rules/update"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/invitations/accept"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/invitations"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/invitations/{invitation_id}/revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/members/{subject_id}/remove"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/ownership-transfer"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/seat-requests"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/seat-requests/{request_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/select"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/accounts/{account_id}/type"
   },
   {
     "method": "POST",

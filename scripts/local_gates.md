@@ -1,6 +1,6 @@
 # Локальные гейты перед передачей в GitHub
 
-AUTH-16 применяется поверх 2f4812032240b35f1524d0bb31c58fcaf4bc3c85. AUTH-01…15 уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
+AUTH-17 применяется поверх 201a3b1f12eac55525fb07301b5e37f8e962d938. AUTH-01…16 и Dockerfile CRLF hotfix уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
 
 ## До коммита: явно подготовить Git index
 
@@ -8,7 +8,7 @@ AUTH-16 применяется поверх 2f4812032240b35f1524d0bb31c58fcaf4bc
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth16/files.txt
+git add --pathspec-from-file=scripts/auth17/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -106,3 +106,10 @@ python scripts/local_gates.py --only auth00 --skip-install
 ```
 
 Manifest AUTH-16 объединён с hotfix; git config/core.autocrlf менять, выполнять reset или генерировать inventory локально не требуется. При другом FAIL нужен полный UTF-8 logs/local_gates/auth00.log. Прежние runtime/native/Jest проверки AUTH-16 относятся к тем же bytes; дополнительная пересборка VM из-за hotfix не нужна.
+
+
+## AUTH-17 (база201a3b1)
+
+Default `auth17`: portable team command/target/hash/finite-limit tests. `--only auth17-postgres` или `--with-auth17-postgres` — native Invitations/seats/OWNER/concurrency/rollback и реальный HTTP, нужен disposable CISSTAT_AUTH_TEST_DSN; отсутствие DSN/skip не PASS. CI: contracts Linux/Windows, native PG16/18. Новые11 API routes и /account в обеих оболочках; reviewed inventory/registry/OpenAPI/TS/proxy allowlist обновлены. Не ослаблять strict INDEX и нормализацию CRLF Dockerfile.
+
+После распаковки stage scripts/auth17/files.txt и прогнать default gates; production builds: npm run build:all. На VM: api+web rebuild, explicit0029 --apply/--check, настройки/volumes/worker/MFA/CU profile сохранять. Pending seat request не оплачивает/не активирует место; trusted CLI manage_seats.py только после внешней проверки entitlement. Provider/proration/credit saga AUTH-18. Полная инструкция docs/auth17/deploy.md.

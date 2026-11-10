@@ -300,6 +300,7 @@ export function LoginScreen({
       ) : auth.status === "authenticated" ? (
         <div className="space-y-4">
           <p role="status">Вы вошли в личную учётную запись.</p>
+          <a className="block text-brand underline" href="/account">Аккаунт и команда</a>
           <button
             className={button}
             disabled={busy}

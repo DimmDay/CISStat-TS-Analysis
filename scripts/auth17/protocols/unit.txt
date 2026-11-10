@@ -1,0 +1,9 @@
+test_finite_versions_seats_and_nonempty_reason (test_auth17_team.TeamContracts.test_finite_versions_seats_and_nonempty_reason) ... ok
+test_invitation_domain_hash_and_no_secret_repr (test_auth17_team.TeamContracts.test_invitation_domain_hash_and_no_secret_repr) ... ok
+test_invitation_is_redacted_and_secret_body_repr_is_safe (test_auth17_team.TeamContracts.test_invitation_is_redacted_and_secret_body_repr_is_safe) ... ok
+test_invite_requires_exactly_one_target_and_bounded_expiry (test_auth17_team.TeamContracts.test_invite_requires_exactly_one_target_and_bounded_expiry) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.003s
+
+OK
