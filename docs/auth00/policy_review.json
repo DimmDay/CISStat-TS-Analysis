@@ -532,6 +532,22 @@
         "T11",
         "T14"
       ]
+    },
+    "auth.external": {
+      "observed": "Новые OIDC/email entry endpoints (AUTH-19): OIDC Code+PKCE+state+nonce с binding по issuer+subject; email challenge с keyed-токеном и POST-consume. Ответы uniform, конфигурация выключена по умолчанию, при отсутствии настройки 503.",
+      "target": "Вход только через проверенную внешнюю identity: RS256 id_token/iss/aud/exp/nb/nonce, одноразовый state, mail scanner не consume (POST-only), email не auto-merge, trial создаёт личный MONO starter Account, ADMIN через OIDC требует локальный MFA-путь (403 mfa_required). Неизвестный binding -- отказ без регистрации.",
+      "follow_up": [
+        "AUTH-19",
+        "AUTH-20",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T11",
+        "T13",
+        "T15"
+      ]
     }
   },
   "entries": {
@@ -7985,6 +8001,52 @@
       ],
       "canonical_operation": "billing.reconcile.operator",
       "admission": "Interactive trusted operator supplies provider payment reference, never paid flag; durable queue still requires authenticated current-object proof"
+    },
+    "api:POST:/v1/auth/oidc/start": {
+      "policy": "auth.external",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self authentication session",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.oidc.start",
+      "admission": "CSRF + optional session proof for link + IdP discovery + durable one-time state"
+    },
+    "api:POST:/v1/auth/oidc/callback": {
+      "policy": "auth.external",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.oidc.callback",
+      "admission": "CSRF + one-time state consume + RS256 id_token (iss/aud/exp/nonce) + issuer+subject binding, no email merge"
+    },
+    "api:POST:/v1/auth/email/start": {
+      "policy": "auth.external",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self authentication session",
+      "effects": [
+        "write"
+      ],
+      "canonical_operation": "auth.email.start",
+      "admission": "CSRF + normalized email + durable rate limits + keyed challenge; uniform answer, session proof for bind"
+    },
+    "api:POST:/v1/auth/email/consume": {
+      "policy": "auth.external",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "self authentication session",
+      "effects": [
+        "write",
+        "set_cookie"
+      ],
+      "canonical_operation": "auth.email.consume",
+      "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge"
     }
   },
   "extra_surfaces": [
@@ -9095,6 +9157,15 @@
     "scripts/auth18/reconcile.py",
     "tests/api/test_cisstat_stack_deployment.py",
     "deployment/cisstat-stack/.env.example",
-    "apps/api/requirements.txt"
+    "apps/api/requirements.txt",
+    "apps/api/authentication/providers/oidc.py",
+    "apps/api/authentication/providers/email_delivery.py",
+    "apps/api/authentication/email_challenges.py",
+    "apps/api/authentication/oidc.py",
+    "apps/api/authentication/auth19_migrations.py",
+    "apps/api/migrations/0031_auth19_email_oidc.sql",
+    "docs/auth19/design.md",
+    "tests/unit/test_auth19_challenges.py",
+    "tests/unit/test_auth19_routes.py"
   ]
 }

@@ -1,5 +1,6 @@
 /** CSRF adapter; never monkey-patches global fetch. */
 export const AUTH_PREFIX = "/api/v1/auth";
+export type EntryFlags = { oidc: boolean; email_trial: boolean };
 export async function csrfProof(signal?: AbortSignal): Promise<string> {
   const r = await fetch(AUTH_PREFIX + "/csrf", {
     credentials: "same-origin",
@@ -16,6 +17,24 @@ export async function csrfProof(signal?: AbortSignal): Promise<string> {
   )
     throw new Error("Некорректный ответ сервиса входа.");
   return data.csrf_token;
+}
+export async function authEntryFlags(
+  signal?: AbortSignal,
+): Promise<EntryFlags> {
+  // AUTH-19: additive availability flags on the same bootstrap response.
+  const r = await fetch(AUTH_PREFIX + "/csrf", {
+    credentials: "same-origin",
+    cache: "no-store",
+    redirect: "error",
+    headers: { "X-CSRF-Request": "1" },
+    signal,
+  });
+  if (!r.ok) throw new Error("Не удалось получить способы входа.");
+  const data = await r.json();
+  return {
+    oidc: data.oidc === true,
+    email_trial: data.email_trial === true,
+  };
 }
 function governed(input: RequestInfo | URL) {
   if (typeof window === "undefined") return false;

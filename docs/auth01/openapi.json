@@ -2665,6 +2665,38 @@
         "capability": null,
         "selector": "none",
         "authority": "external"
+      },
+      "auth.oidc.start": {
+        "operation_id": "auth.oidc.start",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.oidc.callback": {
+        "operation_id": "auth.oidc.callback",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.email.start": {
+        "operation_id": "auth.email.start",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
+      "auth.email.consume": {
+        "operation_id": "auth.email.consume",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
       }
     },
     "bindings": {
@@ -3762,6 +3794,22 @@
       },
       "api:POST:/v1/billing/webhooks/yookassa": {
         "operation_id": "billing.provider",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/oidc/start": {
+        "operation_id": "auth.oidc.start",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/oidc/callback": {
+        "operation_id": "auth.oidc.callback",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/email/start": {
+        "operation_id": "auth.email.start",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/auth/email/consume": {
+        "operation_id": "auth.email.consume",
         "programmatic_api": false
       }
     }

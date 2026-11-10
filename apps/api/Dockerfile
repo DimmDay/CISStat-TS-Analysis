@@ -133,6 +133,9 @@ COPY scripts/auth15/migrate.py ./scripts/auth15/migrate.py
 COPY scripts/auth16/migrate.py scripts/auth16/cleanup.py ./scripts/auth16/
 COPY scripts/auth18/migrate.py scripts/auth18/provision_cycle.py scripts/auth18/reconcile.py scripts/auth18/worker.py ./scripts/auth18/
 RUN python -c "from apps.api.billing.subscriptions import SubscriptionService; from apps.api.billing.subscription_migrations import check_schema; print('auth18 imports OK')"
+# AUTH-19: explicit migration; OIDC/email entry disabled by default.
+COPY scripts/auth19/migrate.py ./scripts/auth19/
+RUN python -c "from apps.api.authentication.oidc import OidcService; from apps.api.authentication.email_challenges import EmailChallengeService, email_configured; from apps.api.authentication.auth19_migrations import check_schema; assert email_configured() is False; print('auth19 imports OK; entry disabled by default')"
 COPY scripts/auth17/migrate.py scripts/auth17/manage_seats.py ./scripts/auth17/
 RUN python -c "from apps.api.accounts.team import TeamService; from apps.api.accounts.team_migrations import check_schema; print('auth17 imports OK')"
 RUN python -c "from apps.api.authentication.demo_cleanup import DemoCleanup; from apps.api.authentication.demo_lifecycle_migrations import check_schema; print('auth16 imports OK')"

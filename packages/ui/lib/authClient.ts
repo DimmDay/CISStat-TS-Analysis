@@ -39,7 +39,12 @@ export type LoginResult =
   | {
       status: "account_required";
       accounts: { account_id: string; label: string }[];
-    };
+      // AUTH-19: one-time external selection token (absent for password login).
+      selection_token?: string;
+    }
+  | { status: "linked" }
+  | { status: "email_bound" }
+  | { status: "email_sent" };
 const messages: Record<string, string> = {
   demo_expired: "Демо-доступ завершён. Войдите в личный аккаунт или обратитесь на стенд.",
   campaign_inactive: "Демо-кампания приостановлена или ещё не началась. Обратитесь на стенд.",
@@ -50,6 +55,11 @@ const messages: Record<string, string> = {
   password_policy: "Пароль не соответствует политике безопасности.",
   account_expired: "Срок доступа аккаунта истёк. Обратитесь к владельцу или администратору.",
   account_access_denied: "Доступ к аккаунту запрещён. Обратитесь к владельцу или администратору.",
+  oidc_unavailable: "Корпоративный вход не настроен.",
+  oidc_already_linked: "Этот корпоративный вход уже привязан к другой учётной записи.",
+  email_unavailable: "Вход по email не настроен.",
+  email_delivery_unavailable: "Отправка письма недоступна; попробуйте позже.",
+  email_already_bound: "Этот адрес уже привязан к другой учётной записи.",
 };
 export class AuthFailure extends Error {
   constructor(
@@ -126,6 +136,11 @@ const commands = new Set([
   "logout",
   "password",
   "sessions/revoke-all",
+  // AUTH-19 external entry commands; consume is POST-only by contract.
+  "oidc/start",
+  "oidc/callback",
+  "email/start",
+  "email/consume",
 ]);
 export async function authCommand<T = LoginResult>(
   command: string,

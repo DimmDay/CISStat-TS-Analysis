@@ -1312,9 +1312,12 @@ class TestStaticCatalogs:
         # AUTH-04 adds two mandatory session/password mutation actions;
         # AUTH-05 adds one mandatory MFA/bootstrap/recovery action.
         # AUTH-08: two mandatory Account/membership lifecycle actions.
-        assert len(security_audit.AUDIT_ACTIONS) == 36
+        # AUTH-19: one mandatory identity-binding action (trial identity,
+        # verified email binding, OIDC link); 36 + 1 = 37.
+        assert len(security_audit.AUDIT_ACTIONS) == 37
         assert security_audit.AUDIT_REQUIREMENTS["auth_api_key_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_ownership_migrated"] == "mandatory"
+        assert security_audit.AUDIT_REQUIREMENTS["auth_identity_changed"] == "mandatory"
         assert {"auth_account_changed", "auth_membership_changed"} <= security_audit.AUDIT_ACTIONS
         assert {"auth_session_changed","auth_password_changed","auth_mfa_changed"} <= security_audit.AUDIT_ACTIONS
 

@@ -115,6 +115,8 @@ ACTION_AUTH_BUDGET_CHANGED = "auth_budget_changed"
 ACTION_AUTH_RESERVATION_CHANGED = "auth_reservation_changed"
 ACTION_AUTH_ACCOUNT_CHANGED = "auth_account_changed"
 ACTION_AUTH_MEMBERSHIP_CHANGED = "auth_membership_changed"
+# AUTH-19: trial identity creation, verified email binding, OIDC linking.
+ACTION_AUTH_IDENTITY_CHANGED = "auth_identity_changed"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTH_DEMO_CHANGED,
@@ -125,6 +127,7 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTH_OWNERSHIP_MIGRATED,
     ACTION_AUTH_ACCOUNT_CHANGED,
     ACTION_AUTH_MEMBERSHIP_CHANGED,
+    ACTION_AUTH_IDENTITY_CHANGED,
     ACTION_AUTH_SESSION_CHANGED,
     ACTION_AUTH_PASSWORD_CHANGED,
     ACTION_AUTH_MFA_CHANGED,
@@ -170,6 +173,8 @@ AUDIT_REQUIREMENTS: dict[str, str] = {
     ACTION_AUTH_OWNERSHIP_MIGRATED: "mandatory",
     ACTION_AUTH_ACCOUNT_CHANGED: "mandatory",
     ACTION_AUTH_MEMBERSHIP_CHANGED: "mandatory",
+    # AUTH-19: связывание/создание identity -- обязательное, fail-closed.
+    ACTION_AUTH_IDENTITY_CHANGED: "mandatory",
     ACTION_AUTH_SESSION_CHANGED: "mandatory",
     ACTION_AUTH_PASSWORD_CHANGED: "mandatory",
     ACTION_AUTH_MFA_CHANGED: "mandatory",

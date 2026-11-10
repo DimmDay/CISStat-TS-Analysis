@@ -16,12 +16,20 @@ from .storage import PostgresAccessStore
 ABSOLUTE = timedelta(hours=8)
 IDLE = timedelta(minutes=15)
 TOKEN = re.compile(r"s1_[A-Za-z0-9_-]{43}\Z")
+LOGIN_STATE = re.compile(r"[ok][12]_[A-Za-z0-9_-]{43}\Z")
 
 
 def token_digest(token):
     if not isinstance(token, str) or not TOKEN.fullmatch(token):
         auth_error(401, "invalid_credential")
     return hashlib.sha256(("cisstat.authsession/1\0" + token).encode()).hexdigest()
+
+
+def state_digest(token):
+    """AUTH-19 one-time entry state/selection token digest (hash-only storage)."""
+    if not isinstance(token, str) or not LOGIN_STATE.fullmatch(token):
+        auth_error(401, "invalid_credential")
+    return hashlib.sha256(("cisstat.login_state/1\0" + token).encode()).hexdigest()
 
 
 def boundary(fn):
@@ -69,6 +77,42 @@ class IssuedSession:
 class AccountChoices:
     # Password-verified projection only, not a credential.
     accounts: tuple
+
+
+ACCOUNT_LABELS = {"mono": "Личный", "multi": "Командный"}
+ACCOUNT_PLANS = {
+    "internal": "Внутренний",
+    "demo": "Демо",
+    "starter": "Стартовый",
+    "professional": "Профессиональный",
+    "enterprise": "Корпоративный",
+}
+
+
+def available_accounts(tx, subject_id, now):
+    """('single', account_id) | ('multiple', AccountChoices) | ('none', None).
+
+    Shared by password login (AUTH-04) and external entry (AUTH-19):
+    only active memberships of active, non-expired accounts are offered.
+    """
+    from apps.api.accounts.entitlements import account_is_active
+
+    active = [
+        a
+        for a in tx.accounts.for_subject(subject_id)
+        if account_is_active(a, now=now)
+    ]
+    if len(active) > 1:
+        return "multiple", AccountChoices(
+            tuple(
+                {
+                    "account_id": str(a.account_id),
+                    "label": f"{ACCOUNT_LABELS[a.account_type]} аккаунт {i + 1} — {ACCOUNT_PLANS[a.plan]}",
+                }
+                for i, a in enumerate(active)
+            )
+        )
+    return "single", (active[0].account_id if active else None)
 
 
 class SessionService:
@@ -182,6 +226,25 @@ class SessionService:
                 if row["attempts"] > limit:
                     auth_error(429, "too_many_attempts")
 
+    def _limit(self, key, limit, *, window=600):
+        """AUTH-19 durable fixed-window limiter for external entry surfaces."""
+        with self._tx() as tx:
+            c = tx.connection
+            now = self._now(c)
+            c.execute(
+                "DELETE FROM auth_login_limits WHERE bucket IN (SELECT bucket FROM auth_login_limits WHERE resets_at<=%s LIMIT 100)",
+                (now,),
+            )
+            row = c.execute(
+                """INSERT INTO auth_login_limits(bucket,attempts,resets_at) VALUES (%s,1,%s)
+                ON CONFLICT(bucket) DO UPDATE SET attempts=CASE WHEN auth_login_limits.resets_at<=%s THEN 1 ELSE auth_login_limits.attempts+1 END,
+                resets_at=CASE WHEN auth_login_limits.resets_at<=%s THEN EXCLUDED.resets_at ELSE auth_login_limits.resets_at END
+                RETURNING attempts""",
+                (key, now + timedelta(seconds=window), now, now),
+            ).fetchone()
+            if row["attempts"] > limit:
+                auth_error(429, "too_many_attempts")
+
     @boundary
     def set_password(
         self, subject_id, login, password, *, expected_version=None, scopes=()
@@ -286,32 +349,11 @@ class SessionService:
             ):
                 auth_error(401, "invalid_credential")
             if account_id is None:
-                from apps.api.accounts.entitlements import account_is_active
                 selection_now = self._now(c)
-                available = [
-                    a
-                    for a in tx.accounts.for_subject(u["subject_id"])
-                    if account_is_active(a, now=selection_now)
-                ]
-                if len(available) > 1:
-                    names = {"mono": "Личный", "multi": "Командный"}
-                    plans = {
-                        "internal": "Внутренний",
-                        "demo": "Демо",
-                        "starter": "Стартовый",
-                        "professional": "Профессиональный",
-                        "enterprise": "Корпоративный",
-                    }
-                    return AccountChoices(
-                        tuple(
-                            {
-                                "account_id": str(a.account_id),
-                                "label": f"{names[a.account_type]} аккаунт {i + 1} — {plans[a.plan]}",
-                            }
-                            for i, a in enumerate(available)
-                        )
-                    )
-                account_id = available[0].account_id if available else None
+                kind, value = available_accounts(tx, u["subject_id"], selection_now)
+                if kind == "multiple":
+                    return value
+                account_id = value
             a = tx.accounts.get(account_id) if account_id else None
             members = tx.accounts.memberships(account_id) if a else ()
             if (
@@ -395,6 +437,42 @@ class SessionService:
         )
         return IssuedSession(token, public_session(row))
 
+    def _issue_external(
+        self, c, u, account_id, origin, now, epoch, *, method, auth_time=None, operation=None
+    ):
+        """AUTH-19 session for a verified external identity: no password
+        credential row, no scopes. Fencing stays on identity status/version,
+        session epoch and account membership."""
+        token = "s1_" + secrets.token_urlsafe(32)
+        row = c.execute(
+            """INSERT INTO auth_sessions(session_id,family_id,token_hash,subject_id,account_id,credential_id,
+            credential_version,subject_version,session_epoch,scopes,origin,auth_time,issued_at,last_seen_at,idle_expires_at,absolute_expires_at)
+            VALUES (%s,%s,%s,%s,%s,NULL,NULL,%s,%s,'[]'::jsonb,%s,%s,%s,%s,%s,%s) RETURNING *""",
+            (
+                uuid4(),
+                uuid4(),
+                token_digest(token),
+                u["subject_id"],
+                account_id,
+                u["subject_version"],
+                epoch,
+                origin,
+                min(auth_time, now) if auth_time else now,
+                now,
+                now,
+                now + IDLE,
+                now + ABSOLUTE,
+            ),
+        ).fetchone()
+        self._audit(
+            c,
+            "auth_session_changed",
+            u["subject_id"],
+            row["session_id"],
+            operation or (method + "_login"),
+        )
+        return IssuedSession(token, public_session(row))
+
     def _load(self, c, digest, *, touch):
         hint = c.execute(
             "SELECT subject_id FROM auth_sessions WHERE token_hash=%s", (digest,)
@@ -406,10 +484,15 @@ class SessionService:
             "SELECT * FROM auth_sessions WHERE token_hash=%s FOR UPDATE", (digest,)
         ).fetchone()
         now = self._now(c)
-        cred = c.execute(
-            "SELECT version,status FROM auth_password_credentials WHERE credential_id=%s",
-            (row["credential_id"],),
-        ).fetchone()
+        if row["credential_id"] is None:
+            # AUTH-19 external session: no password credential to fence with.
+            # Identity status/version/epoch/membership checks below still apply.
+            cred = {"status": "active", "version": None}
+        else:
+            cred = c.execute(
+                "SELECT version,status FROM auth_password_credentials WHERE credential_id=%s",
+                (row["credential_id"],),
+            ).fetchone()
         if row.get("demo_grant_id"):
             from .demo import grant_for_account
             grant = grant_for_account(c, row["account_id"], now)
@@ -616,6 +699,96 @@ class SessionService:
             self._audit(
                 c, "auth_password_changed", subject_id, cred["credential_id"], "revoked"
             )
+
+    @boundary
+    def select_login(self, selection, account_id, origin, *, old_token=None):
+        """AUTH-19 one-time account selection after external verification.
+
+        The selection token is subject-bound, origin-bound and single-use;
+        the account binding is re-checked here, never trusted from the token.
+        """
+        digest = state_digest(selection)
+        with self._tx() as tx:
+            c = tx.connection
+            now = self._now(c)
+            hint = c.execute(
+                "SELECT subject_id FROM auth_login_states WHERE state_hash=%s",
+                (digest,),
+            ).fetchone()
+            if not hint:
+                auth_error(401, "invalid_credential")
+            u = self._identity(c, hint["subject_id"])
+            row = c.execute(
+                """UPDATE auth_login_states SET consumed_at=%s
+                WHERE state_hash=%s AND purpose IN ('oidc_select','email_select')
+                AND consumed_at IS NULL AND expires_at>%s AND issued_at<=%s AND origin=%s
+                RETURNING purpose""",
+                (now, digest, now, now, origin),
+            ).fetchone()
+            if not row or not u or u["status"] != "active" or u["kind"] != "person":
+                auth_error(401, "invalid_credential")
+            a = tx.accounts.get(account_id) if account_id else None
+            members = tx.accounts.memberships(account_id) if a else ()
+            if (
+                not a
+                or a.status != "active"
+                or not any(
+                    m.subject_id == u["subject_id"] and m.status == "active"
+                    for m in members
+                )
+            ):
+                auth_error(403, "account_access_denied")
+            from apps.api.accounts.entitlements import account_is_active
+
+            if not account_is_active(a, now=now):
+                auth_error(403, "account_expired")
+            epoch = self._epoch(c, u["subject_id"])
+            self._retire_old(c, old_token, now)
+            method = "oidc" if row["purpose"] == "oidc_select" else "email"
+            return self._issue_external(
+                c,
+                u,
+                a.account_id,
+                origin,
+                now,
+                epoch,
+                method=method,
+                operation=method + "_select",
+            )
+
+    def _retire_old(self, c, old_token, now):
+        """Revoke the caller's previous browser session on a new login."""
+        if isinstance(old_token, str) and TOKEN.fullmatch(old_token):
+            old = c.execute(
+                "UPDATE auth_sessions SET revoked_at=%s WHERE token_hash=%s AND revoked_at IS NULL RETURNING session_id,subject_id",
+                (now, token_digest(old_token)),
+            ).fetchone()
+            if old:
+                self._audit(
+                    c,
+                    "auth_session_changed",
+                    old["subject_id"],
+                    old["session_id"],
+                    "login_replaced",
+                )
+
+    def _insert_select_state(self, c, purpose, origin, now, subject_id):
+        """AUTH-19 one-time subject-bound selection token (TTL 5 minutes)."""
+        token = "k1_" + secrets.token_urlsafe(32)
+        c.execute(
+            """INSERT INTO auth_login_states(state_id,purpose,state_hash,nonce,pkce_verifier,subject_id,origin,issued_at,expires_at)
+            VALUES (%s,%s,%s,NULL,NULL,%s,%s,%s,%s)""",
+            (
+                uuid4(),
+                purpose,
+                state_digest(token),
+                subject_id,
+                origin,
+                now,
+                now + timedelta(minutes=5),
+            ),
+        )
+        return token
 
     @boundary
     def readiness(self):

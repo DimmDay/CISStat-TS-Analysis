@@ -11,7 +11,7 @@
 
 | Вид | Число |
 |---|---:|
-| api | 270 |
+| api | 274 |
 | framework | 8 |
 | internal_operation | 36 |
 | legacy_authority | 1 |
@@ -36,6 +36,7 @@
 | api.model_key | AUTH-11 operation-aware baseline/tune/custom admission over AUTH-10 durable key, scope and current Account; kernel fence checks actual inputs. Deprecated can_train_models adapter applies only to unbound dev compatibility. | Operation/model-aware split baseline/tune/custom, API/account scopes, atomic compute reservation. | AUTH-12, AUTH-13 |
 | auth.api_keys | AUTH-10 personal self/current Account only; named session + Origin/CSRF mutations; fresh authentication for issue/rotate; hash-only durable keys, immutable history, CAS rotation/revoke and mandatory outbox atomic. Keys cannot manage keys. Interactive trusted CLI for existing service membership. | Preserve stable subject/account across rotation and terminal revoke across lifecycle changes. No scope/admin delegation beyond reviewed programmatic operations. | AUTH-11, AUTH-12, AUTH-17, AUTH-20 |
 | auth.entry | AUTH-04 explicit HTTPS cookie entry: CSRF issuance or password proof + account membership. Signed host-only CSRF, rate/hash bounds, no password-only ADMIN session; safe 422/no-store. AUTH-05 named ADMIN password proof yields enrollment/login challenge only; no full session before MFA. AUTH-08 selects only active, unexpired Accounts and rechecks half-open Account expiry in session/MFA verification. | Preserve entry/challenge distinction; MFA AUTH-05, full proxy/UI AUTH-06, OIDC AUTH-19. No caller-supplied identity authority. | AUTH-04, AUTH-05, AUTH-06, AUTH-19 |
+| auth.external | Новые OIDC/email entry endpoints (AUTH-19): OIDC Code+PKCE+state+nonce с binding по issuer+subject; email challenge с keyed-токеном и POST-consume. Ответы uniform, конфигурация выключена по умолчанию, при отсутствии настройки 503. | Вход только через проверенную внешнюю identity: RS256 id_token/iss/aud/exp/nb/nonce, одноразовый state, mail scanner не consume (POST-only), email не auto-merge, trial создаёт личный MONO starter Account, ADMIN через OIDC требует локальный MFA-путь (403 mfa_required). Неизвестный binding -- отказ без регистрации. | AUTH-19, AUTH-20, AUTH-CERT |
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
@@ -78,11 +79,11 @@
 | api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:153 |
 | api:GET:/v1/admin/demo-campaigns/{campaign_id}/usage | apps.api.routers.demo:usage / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:242 |
 | api:GET:/v1/api-keys | apps.api.routers.api_keys:list_api_keys / service:platform | auth.api_keys / own API keys in current session Account | apps/api/routers/api_keys.py:33 |
-| api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:134 |
+| api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:136 |
 | api:GET:/v1/auth/demo/limits | apps.api.routers.demo:limits / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:269 |
 | api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:137 |
-| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
-| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
+| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:199 |
+| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
 | api:GET:/v1/billing/{account_id}/subscription | apps.api.routers.billing:subscription / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:23 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:559 |
 | api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:748 |
@@ -215,17 +216,21 @@
 | api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:124 |
 | api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:73 |
 | api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:110 |
-| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:150 |
-| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
-| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:286 |
-| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:331 |
-| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:299 |
-| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:254 |
-| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:344 |
-| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:356 |
-| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:235 |
-| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:244 |
-| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:317 |
+| api:POST:/v1/auth/email/consume | apps.api.routers.authentication:email_consume / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:483 |
+| api:POST:/v1/auth/email/start | apps.api.routers.authentication:email_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:471 |
+| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:158 |
+| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:236 |
+| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:294 |
+| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:339 |
+| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:307 |
+| api:POST:/v1/auth/oidc/callback | apps.api.routers.authentication:oidc_callback / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:439 |
+| api:POST:/v1/auth/oidc/start | apps.api.routers.authentication:oidc_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:428 |
+| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:262 |
+| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:352 |
+| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:364 |
+| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:243 |
+| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:252 |
+| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:325 |
 | api:POST:/v1/billing/webhooks/yookassa | apps.api.routers.billing:webhook / service:platform | billing.provider / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:42 |
 | api:POST:/v1/billing/{account_id}/quotes | apps.api.routers.billing:quote / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:28 |
 | api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm | apps.api.routers.billing:confirm / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:35 |

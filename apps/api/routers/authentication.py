@@ -25,6 +25,8 @@ from apps.api.authentication.csrf import (
 from apps.api.authentication.sessions import service_for_request, AccountChoices
 from apps.api.authentication.http_contract import AuthMeResponse
 from apps.api.authentication.mfa import IssuedChallenge, mfa_for_request
+from apps.api.authentication.email_challenges import EmailChallengeService, email_configured
+from apps.api.authentication.oidc import OidcService, oidc_configured
 
 
 class SafeAuthRoute(APIRoute):
@@ -144,7 +146,13 @@ def csrf(request: Request, response: Response):
         samesite="lax",
         path="/",
     )
-    return {"csrf_token": proof, "expires_in": 600}
+    # AUTH-19 availability flags: additive entry metadata, no secrets.
+    return {
+        "csrf_token": proof,
+        "expires_in": 600,
+        "oidc": oidc_configured(),
+        "email_trial": email_configured(),
+    }
 
 
 @router.post("/login")
@@ -363,3 +371,140 @@ def recovery_rotate(request: Request, payload: ProofBody):
         origin=trusted_origin(request),
     )
     return {"recovery_codes": codes}
+
+
+# --- AUTH-19: OIDC and personal email entry. Same SafeAuthRoute envelope,
+# same CSRF/Origin gate, same cookie authority. All four commands are POST
+# only: a mail scanner fetching a magic link performs a GET and consumes
+# nothing.
+
+
+def oidc_service(request):
+    state = getattr(getattr(request, "scope", {}).get("app"), "state", None)
+    provided = getattr(state, "auth_oidc_service", None)
+    if provided is not None:
+        return provided
+    return OidcService(store=getattr(state, "auth_access_store", None))
+
+
+def email_service(request):
+    state = getattr(getattr(request, "scope", {}).get("app"), "state", None)
+    provided = getattr(state, "auth_email_service", None)
+    if provided is not None:
+        return provided
+    return EmailChallengeService(store=getattr(state, "auth_access_store", None))
+
+
+class OidcStartBody(AuthBody):
+    purpose: Literal["login", "link"] = "login"
+
+
+class OidcCallbackBody(AuthBody):
+    code: SecretStr | None = Field(default=None, min_length=1, max_length=512)
+    state: SecretStr | None = Field(default=None, min_length=10, max_length=128)
+    selection: SecretStr | None = Field(default=None, min_length=10, max_length=128)
+    account_id: UUID | None = None
+
+
+class EmailStartBody(AuthBody):
+    email: str = Field(min_length=6, max_length=320)
+    purpose: Literal["trial_login", "email_bind"] = "trial_login"
+
+
+class EmailConsumeBody(AuthBody):
+    token: SecretStr | None = Field(default=None, min_length=10, max_length=128)
+    email: str | None = Field(default=None, min_length=6, max_length=320)
+    code: SecretStr | None = Field(default=None, min_length=8, max_length=8)
+    selection: SecretStr | None = Field(default=None, min_length=10, max_length=128)
+    account_id: UUID | None = None
+
+
+def _external_result(response, result):
+    if isinstance(result, dict):
+        return result
+    return _authenticated(response, result)
+
+
+@router.post("/oidc/start")
+def oidc_start(request: Request, payload: OidcStartBody):
+    _entry(request, True)
+    return oidc_service(request).start(
+        payload.purpose,
+        trusted_origin(request),
+        request.client.host if request.client else "unknown",
+        session_token=auth_cookie(request),
+    )
+
+
+@router.post("/oidc/callback")
+def oidc_callback(request: Request, response: Response, payload: OidcCallbackBody):
+    _entry(request, True)
+    origin = trusted_origin(request)
+    service = oidc_service(request)
+    if payload.selection:
+        if not payload.account_id:
+            auth_error(422, "invalid_request")
+        return _external_result(
+            response,
+            service.select_login(
+                payload.selection.get_secret_value(),
+                payload.account_id,
+                origin,
+                old_token=auth_cookie(request),
+            ),
+        )
+    if not payload.code or not payload.state:
+        auth_error(422, "invalid_request")
+    return _external_result(
+        response,
+        service.callback(
+            payload.code.get_secret_value(),
+            payload.state.get_secret_value(),
+            origin,
+            request.client.host if request.client else "unknown",
+            old_token=auth_cookie(request),
+            session_token=auth_cookie(request),
+        ),
+    )
+
+
+@router.post("/email/start")
+def email_start(request: Request, payload: EmailStartBody):
+    _entry(request, True)
+    return email_service(request).start(
+        payload.email,
+        payload.purpose,
+        trusted_origin(request),
+        request.client.host if request.client else "unknown",
+        session_token=auth_cookie(request),
+    )
+
+
+@router.post("/email/consume")
+def email_consume(request: Request, response: Response, payload: EmailConsumeBody):
+    _entry(request, True)
+    origin = trusted_origin(request)
+    service = email_service(request)
+    if payload.selection:
+        if not payload.account_id:
+            auth_error(422, "invalid_request")
+        return _external_result(
+            response,
+            service.select_login(
+                payload.selection.get_secret_value(),
+                payload.account_id,
+                origin,
+                old_token=auth_cookie(request),
+            ),
+        )
+    return _external_result(
+        response,
+        service.consume(
+            token=payload.token.get_secret_value() if payload.token else None,
+            code=payload.code.get_secret_value() if payload.code else None,
+            email=payload.email,
+            origin=origin,
+            old_token=auth_cookie(request),
+            session_token=auth_cookie(request),
+        ),
+    )

@@ -28,6 +28,11 @@ EXPECTED = {
     "POST:/v1/auth/mfa/replace",
     "POST:/v1/auth/recovery",
     "POST:/v1/auth/recovery/rotate",
+    # AUTH-19 external entry commands (same router, same envelope).
+    "POST:/v1/auth/oidc/start",
+    "POST:/v1/auth/oidc/callback",
+    "POST:/v1/auth/email/start",
+    "POST:/v1/auth/email/consume",
 
 }
 

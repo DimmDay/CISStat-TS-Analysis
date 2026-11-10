@@ -126,3 +126,16 @@ python scripts/local_gates.py --only auth18,auth18-postgres --skip-install
 ```
 
 Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает2; skip не PASS. CI `.github/workflows/auth18.yml`: Windows/Linux contracts, PG16/18 native. Протоколы `scripts/auth18/protocols/`. Настоящие provider credentials не нужны для gates, все HTTP ответы controlled MockTransport; реальная сеть магазина не вызывается. После commit перед push — `--auth00-target head`. `check_routes` подтверждает четыре добавленных API surfaces. Live checkout запрещён кодом; инструкция тестового магазина — `docs/auth18/deploy.md`.
+
+## AUTH-19 — OIDC / personal trial / email self-service (база 8ec771d)
+
+`auth19` входит в default прогон и проверяет OIDC adapter (PKCE/state/nonce/RS256 JWKS), email-секреты (keyed HMAC, uniform ответы) и POST-only consume контракты без сети.
+`auth19-postgres` — обязательный отдельный native gate, DSN disposable PostgreSQL16/18:
+
+```bash
+git add --pathspec-from-file=scripts/auth19/files.txt
+python scripts/local_gates.py --skip-install
+python scripts/local_gates.py --only auth19,auth19-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth19.yml`: Windows/Linux contracts, PG16/18 native. IdP/SMTP заменяются controlled fakes (httpx.MockTransport/FakeDelivery), RSA-ключи генерируются в тесте; реальная сеть не вызывается. После commit перед push — `--auth00-target head`. `check_routes` подтверждает четыре добавленных POST surfaces (`/v1/auth/oidc/start`, `/v1/auth/oidc/callback`, `/v1/auth/email/start`, `/v1/auth/email/consume`) и расширение каталога audit 36→37 (`auth_identity_changed` mandatory). Оба контура выключены по умолчанию (OIDC: ISSUER+CLIENT_ID; email: EMAIL_KEY+SMTP_HOST) — флаги видны в GET /v1/auth/csrf. Миграция 0031 расширяет AUTH-15 `auth15_session_family` на третий тип сессии (credential NULL + grant NULL); checksums 0019–0030 не меняются. Миграция/готовность — `scripts/auth19/migrate.py --apply/--check`; инструкция `docs/auth19/deploy.md`.
