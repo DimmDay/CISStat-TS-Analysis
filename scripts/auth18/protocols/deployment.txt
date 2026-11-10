@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18
+configfile: pytest.ini
+plugins: fugue-0.9.8, anyio-4.16.0, syrupy-6.1.1, platformdirs-4.14.5, typeguard-4.6.0
+collected 21 items
+
+tests/api/test_cisstat_stack_deployment.py .................             [ 80%]
+tests/api/test_docker_image_layout.py ....                               [100%]
+
+============================== 21 passed in 5.56s ==============================

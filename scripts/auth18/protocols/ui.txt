@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        2.586 s
+Ran all test suites matching packages/ui/components/auth18-billing.test.tsx|packages/ui/components/auth17-team.test.tsx.

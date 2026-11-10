@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { commandKey, teamRequest, TeamAccount } from "../lib/team";
+import { BillingPanel } from "./BillingPanel";
 export function AccountScreen() {
   const auth = useAuth();
   const [account, setAccount] = useState<TeamAccount | null>(null),
@@ -307,6 +308,14 @@ export function AccountScreen() {
                       начисляют CU.
                     </p>
                   </div>
+                  {account.plan !== "internal" && (
+                    <BillingPanel
+                      key={
+                        account.account_id + ":" + account.entitlement_version
+                      }
+                      account={account}
+                    />
+                  )}
                   <ul>
                     {account.seat_requests.map((r) => (
                       <li key={r.request_id}>

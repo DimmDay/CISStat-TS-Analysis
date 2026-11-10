@@ -1,0 +1,13 @@
+auth00 INDEX-parity: FAIL
+INDEX inventory check failed:
+Inventory drift: docs/auth00/inventory.json
+Reviewed source differs: deployment/cisstat-stack/.env.example
+  expected SHA-256: 7d7d08b476807691f1abb47705909799e04c09fb7b28ac71cd94c399ef66fad1
+  actual SHA-256:   3e68ecabfcc2782ccd8289c0d0ac84312ef73f0fd28c429a72f4009f54e7afaf
+INDEX may be stale or partially staged. Review the delivery manifests, explicitly git add all matching sources/maps, then retry. No automatic staging or commit was performed.
+Original delivery: exact incident hash reproduced with CRLF INDEX / LF WORKTREE.
+auth00 INDEX-parity: ok (584 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 270, "inventory_api": 270, "registry_bindings": 274, "inventory_entries": 646, "added": [], "missing": []}
+Fixed delivery: strict INDEX PASS with .env.example + Dockerfile CRLF and LF WORKTREE. No source INDEX/refs/VM changes.

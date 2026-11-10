@@ -507,6 +507,31 @@
         "T01",
         "T11"
       ]
+    },
+    "billing.owner": {
+      "observed": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof.",
+      "target": "Confirmed provider entitlement; bounded durable outbox; source-aware wallet follows AUTH-21.",
+      "follow_up": [
+        "AUTH-21",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T05",
+        "T11"
+      ]
+    },
+    "billing.provider": {
+      "observed": "AUTH-18 untrusted callback wake-up only; bounded known-order enqueue, no cookie authority. Authenticated fixed-origin YooKassa GET validates exact shop/test/amount/currency/metadata before atomic seats/audit.",
+      "target": "No unpaid seats under spoof/replay/order/outage. Live checkout disabled pending approved launch.",
+      "follow_up": [
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T05",
+        "T11",
+        "T14"
+      ]
     }
   },
   "entries": {
@@ -7856,6 +7881,110 @@
       ],
       "canonical_operation": "auth.team.schema",
       "admission": "Explicit trusted migration CLI; checksum/version and enabled guards; never request-time DDL"
+    },
+    "api:GET:/v1/billing/{account_id}/subscription": {
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/billing/{account_id}/subscription",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
+    },
+    "api:POST:/v1/billing/{account_id}/quotes": {
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/{account_id}/quotes",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
+    },
+    "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm": {
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
+    },
+    "api:POST:/v1/billing/webhooks/yookassa": {
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/webhooks/yookassa",
+      "admission": "AUTH-18 untrusted callback wake-up only; bounded known-order enqueue, no cookie authority. Authenticated fixed-origin YooKassa GET validates exact shop/test/amount/currency/metadata before atomic seats/audit."
+    },
+    "billing.saga": {
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.saga",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
+    },
+    "billing.cycles.operator": {
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.cycles.operator",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
+    },
+    "storage:auth.billing": {
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "storage:auth.billing",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
+    },
+    "billing.reconcile.operator": {
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.reconcile.operator",
+      "admission": "Interactive trusted operator supplies provider payment reference, never paid flag; durable queue still requires authenticated current-object proof"
     }
   },
   "extra_surfaces": [
@@ -8685,6 +8814,62 @@
           "symbol": "apply_migration"
         }
       ]
+    },
+    {
+      "id": "billing.saga",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.saga",
+      "operation": "billing.saga",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 427,
+          "symbol": "step"
+        }
+      ]
+    },
+    {
+      "id": "billing.cycles.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.cycles.operator",
+      "operation": "billing.cycles.operator",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 284,
+          "symbol": "provision_cycle"
+        }
+      ]
+    },
+    {
+      "id": "storage:auth.billing",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:auth.billing",
+      "operation": "storage:auth.billing",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscription_migrations.py",
+          "line": 20,
+          "symbol": "apply_migration"
+        }
+      ]
+    },
+    {
+      "id": "billing.reconcile.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.reconcile.operator",
+      "operation": "billing.reconcile.operator",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 358,
+          "symbol": "reconcile"
+        }
+      ]
     }
   ],
   "reviewed_sources": [
@@ -8896,6 +9081,20 @@
     "scripts/auth17/migrate.py",
     "scripts/auth17/manage_seats.py",
     "packages/ui/components/auth17-team.test.tsx",
-    ".github/workflows/auth17.yml"
+    ".github/workflows/auth17.yml",
+    "apps/api/migrations/0030_auth18_provider.sql",
+    "tests/unit/test_auth18_provider.py",
+    "tests/integration/test_auth18_saga.py",
+    "scripts/auth18/migrate.py",
+    "scripts/auth18/provision_cycle.py",
+    "scripts/auth18/worker.py",
+    "packages/ui/components/BillingPanel.tsx",
+    "packages/ui/components/auth18-billing.test.tsx",
+    "packages/ui/lib/billing.ts",
+    ".github/workflows/auth18.yml",
+    "scripts/auth18/reconcile.py",
+    "tests/api/test_cisstat_stack_deployment.py",
+    "deployment/cisstat-stack/.env.example",
+    "apps/api/requirements.txt"
   ]
 }

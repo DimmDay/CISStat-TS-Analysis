@@ -1849,6 +1849,18 @@
       "stage_namespace": "service",
       "stage": "platform",
       "authority": "external"
+    },
+    "billing.provider": {
+      "operation_id": "billing.provider",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "authority": "external"
+    },
+    "billing.owner": {
+      "operation_id": "billing.owner",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "authority": "external"
     }
   },
   "bindings": {
@@ -2930,6 +2942,22 @@
     },
     "api:POST:/v1/accounts/{account_id}/type": {
       "operation_id": "account.team",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/billing/{account_id}/subscription": {
+      "operation_id": "billing.owner",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/billing/{account_id}/quotes": {
+      "operation_id": "billing.owner",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm": {
+      "operation_id": "billing.owner",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/billing/webhooks/yookassa": {
+      "operation_id": "billing.provider",
       "programmatic_api": false
     }
   }

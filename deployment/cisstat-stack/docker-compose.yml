@@ -56,6 +56,9 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     environment:
+      CISSTAT_YOOKASSA_ENABLED: ${CISSTAT_YOOKASSA_ENABLED:-off}
+      CISSTAT_YOOKASSA_SHOP_ID: ${CISSTAT_YOOKASSA_SHOP_ID:-}
+      CISSTAT_YOOKASSA_SECRET_KEY: ${CISSTAT_YOOKASSA_SECRET_KEY:-}
       PORT: "8000"
       # DSN в libpq-формате: все durable-сторы (auth storage.py,
       # research_runs.py, doc_profiles.py, ...) вызывают psycopg.connect
@@ -101,6 +104,24 @@ services:
     networks:
       - cisstat-internal
     # ports ОТСУТСТВУЕТ: наружу api отдаёт только caddy (api.datasetup.ru).
+
+  billing-worker:
+    profiles: [billing-test]
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    command: ["python", "scripts/auth18/worker.py", "--loop"]
+    environment:
+      DATABASE_URL: postgresql://cisstat:${CISSTAT_PG_PASSWORD}@postgres:5432/cisstat
+      CISSTAT_YOOKASSA_ENABLED: ${CISSTAT_YOOKASSA_ENABLED:-off}
+      CISSTAT_YOOKASSA_SHOP_ID: ${CISSTAT_YOOKASSA_SHOP_ID:-}
+      CISSTAT_YOOKASSA_SECRET_KEY: ${CISSTAT_YOOKASSA_SECRET_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cisstat-internal
 
   web:
     build:

@@ -1,0 +1,21 @@
+test_auth18_provider (unittest.loader._FailedTest.test_auth18_provider) ... ERROR
+
+======================================================================
+ERROR: test_auth18_provider (unittest.loader._FailedTest.test_auth18_provider)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_auth18_provider
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18/tests/unit/test_auth18_provider.py", line 5, in <module>
+    from apps.api.billing.provider import YooKassa, ProviderUnavailable, ProviderMismatch
+ModuleNotFoundError: No module named 'apps.api.billing.provider'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

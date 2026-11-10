@@ -1,0 +1,32 @@
+test_reviewed_env_example_crlf_portable_content_change_fails (tests.unit.test_auth00_inventory.InventoryTests.test_reviewed_env_example_crlf_portable_content_change_fails) ... ERROR
+test_crlf_index_env_example_matches_lf_worktree_without_staging (tests.unit.test_auth00_precommit.PrecommitTests.test_crlf_index_env_example_matches_lf_worktree_without_staging) ... FAIL
+
+======================================================================
+ERROR: test_reviewed_env_example_crlf_portable_content_change_fails (tests.unit.test_auth00_inventory.InventoryTests.test_reviewed_env_example_crlf_portable_content_change_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18/tests/unit/test_auth00_inventory.py", line 258, in test_reviewed_env_example_crlf_portable_content_change_fails
+    self.mod.check(self.root)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18/scripts/auth00/inventory.py", line 419, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json
+
+======================================================================
+FAIL: test_crlf_index_env_example_matches_lf_worktree_without_staging (tests.unit.test_auth00_precommit.PrecommitTests.test_crlf_index_env_example_matches_lf_worktree_without_staging)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18/tests/unit/test_auth00_precommit.py", line 208, in test_crlf_index_env_example_matches_lf_worktree_without_staging
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : auth00 INDEX-parity: FAIL
+INDEX inventory check failed:
+Inventory drift: docs/auth00/inventory.json
+Reviewed source differs: deployment/cisstat-stack/.env.example
+  expected SHA-256: 633c5c706f9c660315a2bc98c73715c80574c5670d24fe3b06911c2ebfa1a6de
+  actual SHA-256:   8f7283491635ad5ec929430100596055e70b2bc5e70909c447de8f4e492212ce
+INDEX may be stale or partially staged. Review the delivery manifests, explicitly git add all matching sources/maps, then retry. No automatic staging or commit was performed.
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.093s
+
+FAILED (failures=1, errors=1)

@@ -1,0 +1,15 @@
+test_live_shop_never_receives_create_payment (tests.unit.test_auth18_provider.ShopPreflightTests.test_live_shop_never_receives_create_payment) ... FAIL
+
+======================================================================
+FAIL: test_live_shop_never_receives_create_payment (tests.unit.test_auth18_provider.ShopPreflightTests.test_live_shop_never_receives_create_payment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-auth18/tests/unit/test_auth18_provider.py", line 122, in test_live_shop_never_receives_create_payment
+    with self.assertRaises(ProviderMismatch):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ProviderMismatch not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

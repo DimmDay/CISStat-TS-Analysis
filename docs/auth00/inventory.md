@@ -11,16 +11,16 @@
 
 | Вид | Число |
 |---|---:|
-| api | 266 |
+| api | 270 |
 | framework | 8 |
-| internal_operation | 33 |
+| internal_operation | 36 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 40 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
-| storage | 17 |
+| storage | 18 |
 | task_alias | 4 |
 | transport | 2 |
 | worker | 10 |
@@ -41,6 +41,8 @@
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
 | auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | billing.authority | AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit. | Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21. | AUTH-13, AUTH-14, AUTH-20, AUTH-21 |
+| billing.owner | AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof. | Confirmed provider entitlement; bounded durable outbox; source-aware wallet follows AUTH-21. | AUTH-21, AUTH-CERT |
+| billing.provider | AUTH-18 untrusted callback wake-up only; bounded known-order enqueue, no cookie authority. Authenticated fixed-origin YooKassa GET validates exact shop/test/amount/currency/metadata before atomic seats/audit. | No unpaid seats under spoof/replay/order/outage. Live checkout disabled pending approved launch. | AUTH-CERT |
 | browser.internal | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | Unified authenticated context, object/stage/capability/grant checks; CSRF mutations; same direct-API policy. | AUTH-03, AUTH-06, AUTH-12 |
 | browser.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | AuthSession отдельно от research pointer; account object policy + stage/grant/budget на каждом входе. | AUTH-03, AUTH-04, AUTH-06, AUTH-09, AUTH-12 |
 | compute.calibrated | AUTH-14 protected PELT/sync/stateless/async tuning use fixed-point attempted-fit quotes, supervised progress before fit, saved tariff, atomic result/settle and current-authority cache/replay. A configured profile must match measured host/dependencies/kernels/domain; no configured profile explicitly preserves unpriced AUTH-13. Independent Linux wall/group-RSS supervisor and PostgreSQL global running+uncertain capacity. Shipped measurements are LOCAL reference only; VM calibration is not claimed. | Measure and explicitly install representative VM profile before calibrated admission; preserve bounds/replay/holds and complete operational, Demo/wallet and certification tasks separately. | AUTH-15, AUTH-16, AUTH-20, AUTH-21, AUTH-CERT |
@@ -69,8 +71,8 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:277 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:282 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:279 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:284 |
 | api:GET:/v1/accounts | apps.api.routers.accounts:list_accounts / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:41 |
 | api:GET:/v1/accounts/{account_id} | apps.api.routers.accounts:account / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:46 |
 | api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:153 |
@@ -81,6 +83,7 @@
 | api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:137 |
 | api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:191 |
 | api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:220 |
+| api:GET:/v1/billing/{account_id}/subscription | apps.api.routers.billing:subscription / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:23 |
 | api:GET:/v1/documentation/documents/{document_id}/revisions | apps.api.routers.documentation:list_document_revisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:559 |
 | api:GET:/v1/documentation/jobs/{job_id} | apps.api.routers.documentation:get_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:748 |
 | api:GET:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:list_org_profiles / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:60 |
@@ -223,6 +226,9 @@
 | api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:235 |
 | api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:244 |
 | api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:317 |
+| api:POST:/v1/billing/webhooks/yookassa | apps.api.routers.billing:webhook / service:platform | billing.provider / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:42 |
+| api:POST:/v1/billing/{account_id}/quotes | apps.api.routers.billing:quote / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:28 |
+| api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm | apps.api.routers.billing:confirm / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:35 |
 | api:POST:/v1/documentation/documents/{document_id}/retention | apps.api.routers.documentation:document_retention / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1035 |
 | api:POST:/v1/documentation/jobs/{job_id}/cancel | apps.api.routers.documentation:cancel_job / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:761 |
 | api:POST:/v1/documentation/org-profiles | apps.api.routers.doc_profiles:create_org_profile / service:documentation | profile.policy / run/document/revision/rendition/job/profile | apps/api/routers/doc_profiles.py:86 |
@@ -365,8 +371,11 @@
 | auth.ownership.migrate | auth.ownership.migrate / service:platform | auth.storage / Account entitlements / existing memberships / scoped auth sessions and challenges | scripts/auth09/migrate_ownership.py:17 |
 | auth.schema.apply | auth.schema.apply / service:platform | auth.storage / DDL + schema checksum ledger | apps/api/authentication/migrations.py:13 |
 | auth.sessions.schema.apply | auth.sessions.schema.apply / service:platform | auth.storage / auth session authority or audit delivery | apps/api/authentication/session_migrations.py:17 |
+| billing.cycles.operator | billing.cycles.operator / service:platform | billing.provider / durable provider authority / immutable quote / included allocation | apps/api/billing/subscriptions.py:284 |
 | billing.policy.operator | billing.policy.operator / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | scripts/auth12/manage_budget.py:11 |
+| billing.reconcile.operator | billing.reconcile.operator / service:platform | billing.provider / durable provider authority / immutable quote / included allocation | apps/api/billing/subscriptions.py:358 |
 | billing.reserve | billing.reserve / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:260 |
+| billing.saga | billing.saga / service:platform | billing.provider / durable provider authority / immutable quote / included allocation | apps/api/billing/subscriptions.py:427 |
 | billing.schema.apply | billing.schema.apply / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/migrations.py:18 |
 | billing.settle | billing.settle / service:platform | billing.authority / Account-scoped resource reservation / ledger / transactional job intent | apps/api/billing/coordinator.py:578 |
 | compute.calibration | compute.calibration / service:platform | compute.calibrated / real CPU/wall/RSS training/holdout/capacity evidence | apps/api/billing/compute_benchmark.py:246 |
@@ -725,6 +734,7 @@
 | demo.lifecycle.schema | demo.lifecycle.schema / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_lifecycle_migrations.py:18 |
 | storage:artifacts | storage:artifacts / service:storage | storage.internal / snapshot/artifact/rendition bytes | apps/api/artifact_store.py:321 |
 | storage:auth.accounts | auth.repository.account / service:platform | auth.storage / Account/tenant/membership/versions | apps/api/accounts/repository.py:6 |
+| storage:auth.billing | storage:auth.billing / service:platform | billing.provider / durable provider authority / immutable quote / included allocation | apps/api/billing/subscription_migrations.py:20 |
 | storage:auth.demo | storage:auth.demo / service:platform | demo.entry / private demo authority | apps/api/authentication/demo_migrations.py:36 |
 | storage:auth.identities | auth.repository.identity / service:platform | auth.storage / Identity/external issuer-sub mapping | apps/api/authentication/repository.py:8 |
 | storage:auth.mfa | storage:auth.mfa / service:platform | auth.storage / MFA durable authority / operator-only singleton bootstrap | apps/api/authentication/mfa.py:68 |

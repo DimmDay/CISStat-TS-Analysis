@@ -1,0 +1,21 @@
+test_bad_provider_amount_no_activation (test_auth18_saga.SagaSQLTests.test_bad_provider_amount_no_activation) ... ok
+test_callback_before_response_proof_and_forgery (test_auth18_saga.SagaSQLTests.test_callback_before_response_proof_and_forgery) ... ok
+test_claim_fencing_and_atomic_audit_rollback (test_auth18_saga.SagaSQLTests.test_claim_fencing_and_atomic_audit_rollback) ... ok
+test_expired_accepted_but_never_attempted_order_is_held (test_auth18_saga.SagaSQLTests.test_expired_accepted_but_never_attempted_order_is_held) ... ok
+test_forged_candidate_cannot_poison_or_grant (test_auth18_saga.SagaSQLTests.test_forged_candidate_cannot_poison_or_grant) ... ok
+test_http_cookie_csrf_callback_and_body_boundaries (test_auth18_saga.SagaSQLTests.test_http_cookie_csrf_callback_and_body_boundaries) ... ok
+test_migration_quote_snapshot_owner_and_confirmation_replay (test_auth18_saga.SagaSQLTests.test_migration_quote_snapshot_owner_and_confirmation_replay) ... ok
+test_outage_response_loss_and_24h_hold (test_auth18_saga.SagaSQLTests.test_outage_response_loss_and_24h_hold) ... ok
+test_paid_dedup_out_of_order_and_allocation (test_auth18_saga.SagaSQLTests.test_paid_dedup_out_of_order_and_allocation) ... ok
+test_provider_outage_and_expired_quote_do_not_charge (test_auth18_saga.SagaSQLTests.test_provider_outage_and_expired_quote_do_not_charge) ... ok
+test_quote_expiry_and_exact_snapshot_guard (test_auth18_saga.SagaSQLTests.test_quote_expiry_and_exact_snapshot_guard) ... ok
+test_reduction_does_not_refund_or_reset_usage (test_auth18_saga.SagaSQLTests.test_reduction_does_not_refund_or_reset_usage) ... ok
+test_seat_churn_keeps_signed_allocation_history (test_auth18_saga.SagaSQLTests.test_seat_churn_keeps_signed_allocation_history) ... ok
+test_stale_paid_request_is_preserved_for_review (test_auth18_saga.SagaSQLTests.test_stale_paid_request_is_preserved_for_review) ... ok
+test_unknown_over_window_no_second_post (test_auth18_saga.SagaSQLTests.test_unknown_over_window_no_second_post) ... ok
+test_unknown_reconcile_still_requires_provider_proof (test_auth18_saga.SagaSQLTests.test_unknown_reconcile_still_requires_provider_proof) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 19.397s
+
+OK

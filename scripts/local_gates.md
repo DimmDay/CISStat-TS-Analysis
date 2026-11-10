@@ -113,3 +113,16 @@ Manifest AUTH-16 объединён с hotfix; git config/core.autocrlf меня
 Default `auth17`: portable team command/target/hash/finite-limit tests. `--only auth17-postgres` или `--with-auth17-postgres` — native Invitations/seats/OWNER/concurrency/rollback и реальный HTTP, нужен disposable CISSTAT_AUTH_TEST_DSN; отсутствие DSN/skip не PASS. CI: contracts Linux/Windows, native PG16/18. Новые11 API routes и /account в обеих оболочках; reviewed inventory/registry/OpenAPI/TS/proxy allowlist обновлены. Не ослаблять strict INDEX и нормализацию CRLF Dockerfile.
 
 После распаковки stage scripts/auth17/files.txt и прогнать default gates; production builds: npm run build:all. На VM: api+web rebuild, explicit0029 --apply/--check, настройки/volumes/worker/MFA/CU profile сохранять. Pending seat request не оплачивает/не активирует место; trusted CLI manage_seats.py только после внешней проверки entitlement. Provider/proration/credit saga AUTH-18. Полная инструкция docs/auth17/deploy.md.
+
+## AUTH-18 — ЮKassa / subscription seats
+
+`auth18` входит в default прогон и проверяет HTTP adapter + integer proration без магазина.
+`auth18-postgres` — обязательный отдельный native gate, DSN disposable PostgreSQL16/18:
+
+```powershell
+git add --pathspec-from-file=scripts/auth18/files.txt
+python scripts/local_gates.py --skip-install
+python scripts/local_gates.py --only auth18,auth18-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает2; skip не PASS. CI `.github/workflows/auth18.yml`: Windows/Linux contracts, PG16/18 native. Протоколы `scripts/auth18/protocols/`. Настоящие provider credentials не нужны для gates, все HTTP ответы controlled MockTransport; реальная сеть магазина не вызывается. После commit перед push — `--auth00-target head`. `check_routes` подтверждает четыре добавленных API surfaces. Live checkout запрещён кодом; инструкция тестового магазина — `docs/auth18/deploy.md`.

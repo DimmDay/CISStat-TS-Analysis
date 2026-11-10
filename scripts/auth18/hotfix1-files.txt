@@ -1,0 +1,12 @@
+docs/auth00/inventory.json
+docs/auth18/hotfix1.md
+scripts/auth00/inventory.py
+scripts/auth18/hotfix1-files.txt
+scripts/auth18/protocols/hotfix1/build-all.txt
+scripts/auth18/protocols/hotfix1/green.txt
+scripts/auth18/protocols/hotfix1/overlay.txt
+scripts/auth18/protocols/hotfix1/red.txt
+scripts/auth18/protocols/hotfix1/routes.txt
+tests/unit/test_auth00_inventory.py
+tests/unit/test_auth00_precommit.py
+worklog/worklog12.md

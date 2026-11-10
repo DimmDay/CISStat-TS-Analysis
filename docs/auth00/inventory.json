@@ -3,16 +3,16 @@
   "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 266,
+    "api": 270,
     "framework": 8,
-    "internal_operation": 33,
+    "internal_operation": 36,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 40,
     "proxy": 2,
     "renderer": 4,
     "static_asset": 1,
-    "storage": 17,
+    "storage": 18,
     "task_alias": 4,
     "transport": 2,
     "worker": 10
@@ -523,6 +523,31 @@
         "T01",
         "T11"
       ]
+    },
+    "billing.owner": {
+      "observed": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof.",
+      "target": "Confirmed provider entitlement; bounded durable outbox; source-aware wallet follows AUTH-21.",
+      "follow_up": [
+        "AUTH-21",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T01",
+        "T05",
+        "T11"
+      ]
+    },
+    "billing.provider": {
+      "observed": "AUTH-18 untrusted callback wake-up only; bounded known-order enqueue, no cookie authority. Authenticated fixed-origin YooKassa GET validates exact shop/test/amount/currency/metadata before atomic seats/audit.",
+      "target": "No unpaid seats under spoof/replay/order/outage. Live checkout disabled pending approved launch.",
+      "follow_up": [
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T05",
+        "T11",
+        "T14"
+      ]
     }
   },
   "source_fingerprints": {
@@ -532,16 +557,17 @@
     ".github/workflows/auth14.yml": "0a6c5e17d98ac6bfa5971f658a02e8691b5a3a49e6815565e289055d75866c9d",
     ".github/workflows/auth16.yml": "dbb30697a844ae172b1ae9125fef20334cd8c78c2201a7b4172662ce807fee25",
     ".github/workflows/auth17.yml": "ced87344e8713014d05a50a9221f2dd82a76a55da6eb888a05dda65f838a8afb",
+    ".github/workflows/auth18.yml": "283abc400fd1164854a5d003805be32d233fde7f4a3d7a8dbc20dc097123d20e",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "ceff978576f8fad083ac0cd7a2c5d0c238c95bafbe5ef426c014843ae26fd7d3",
+    "apps/api/Dockerfile": "e7726cd84ccad88babc127f7270f8c9c7017481912ab2bcd11e54131587fbb67",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "322c80307e16fa2dcb0d8c1a9f7a4565b331bedaabd05eeaa773a224f963c8da",
+    "apps/api/access_registry.v1.json": "70674096c3f76e4780b422d5252fe9985c84d730c14e3b9df3eeb40e6ab51bbe",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -561,7 +587,7 @@
     "apps/api/authentication/api_key_policy.py": "659f5dfd080399ba4b6181c91b72b1d4646ae2e9c41407760a9c88e32b58ebe4",
     "apps/api/authentication/api_keys.py": "875ca5f7b5d2d5204b06fd4388c42a646e0916e3d27665668969c5b6cfcdda3e",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
-    "apps/api/authentication/context.py": "f36d9ca1a79ab814165a3138f8fa4fc3e15462fcb7b0811554d888d08ae0cccb",
+    "apps/api/authentication/context.py": "28fb43b20ce1cda44a5764421e5c5d1ed67ce577b89306157c2e2def6a26a1e4",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/demo.py": "d9d102b96e1e59b7f38b0599a61d59bfa5bc233aa40cb1edf09cd16dd47c3867",
@@ -596,6 +622,10 @@
     "apps/api/billing/coordinator.py": "62423aff34707892d2712d92ece2be84682607e80e57af4ca4b0c582f084b115",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
     "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
+    "apps/api/billing/provider.py": "75d3366aa7c8569131c6b0c75566b862aba6c2ec2735faafc8b441734a71ae1c",
+    "apps/api/billing/subscription_contract.py": "a6a2d2d5c736fddcbf8c8501f359e08d5aee923c526cfe3979d237fd0abb7b3b",
+    "apps/api/billing/subscription_migrations.py": "4763181fdb578a12267ba3ad59617d04e671af55bf0adba205f7576f1c194307",
+    "apps/api/billing/subscriptions.py": "fc3c626f46dc8061a3e2f084684307c4b4b6b6933386e6ec406a8d0cec5f1fe6",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
     "apps/api/consistency_correction.py": "84d931a97b0931fe28a0de936d1fd9b0da342a7873bbae7c163863126e281731",
@@ -630,7 +660,7 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "1f9e8bce942cf0eb29d5d13b4e54af1cbffb1fc866bbb939631b0698926f863b",
+    "apps/api/main.py": "d3c65eea038f2cb5f561d16d17f86b270615789cc3fb747000224992acddd5dc",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
@@ -641,6 +671,7 @@
     "apps/api/migrations/0027_auth15_demo.sql": "f96eece8675ea27ebb20c550688a4e1eeee3b5ea0374c517f7e334c96f842322",
     "apps/api/migrations/0028_auth16_demo_lifecycle.sql": "fd180d8ef3277c51b00dc97581802f1f216576ca32750a7c58b80d654d045f0f",
     "apps/api/migrations/0029_auth17_team.sql": "0f2b2c4f347ca584f0d50848b90dfc008f749c7a05225f1a4d65619b3fd2a137",
+    "apps/api/migrations/0030_auth18_provider.sql": "19afd3d6b213d7fdbc9b916d3171818fcdc72d1612d4aab676c9653c2a649121",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -701,11 +732,13 @@
     "apps/api/referential_correction.py": "9022b2e114a20faaa75ba4bc25743eb55cb2f89c81fcf5e9751d11155bee5a21",
     "apps/api/regularity_correction.py": "b2cd7323cbeecaeb58a5935248caf72a19316a90127e518f9da253cd7e058ce6",
     "apps/api/report_snapshot.py": "f8d7db6a58353af693e56676eb8f1ca9cddf1439eeeec0d2d0a264b9ec6f637d",
+    "apps/api/requirements.txt": "045c9dc3e4ff205fe30ff1032e2bda59ad886d6251614b0fa3987c70419ee9d1",
     "apps/api/research_runs.py": "4cf971f1b2edb7bd16f815f01b58a97d2f37da43dcd3408e760c6f436c4b04ba",
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/routers/accounts.py": "11c85c988cb41c7e7037f840993fce05fbbfa20104b63701760c561f7365b348",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "265e07bec903ec541a1d52a1fd7ff2b36949a3ced42a9cd8bff0cae64cbf63d2",
+    "apps/api/routers/billing.py": "0a72b9fca148b8622abfde7676788a7dcf7cdad05b6997e3ba00c92d1442ba55",
     "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
@@ -805,12 +838,13 @@
     "apps/standalone/app/validation/page.tsx": "dbbff830acf0afa866c7dcff7c7136ddc1f3e676376c46bd806a6679d9b06970",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
-    "deployment/cisstat-stack/docker-compose.yml": "ba0fded15fac63dec0a29530ab48e879a99f8f3cf405332b62e3d22d125807f5",
+    "deployment/cisstat-stack/.env.example": "7d7d08b476807691f1abb47705909799e04c09fb7b28ac71cd94c399ef66fad1",
+    "deployment/cisstat-stack/docker-compose.yml": "adf9c2ccdcedede36610a06e94833513fff1fb843b31f88fe3c604dc1750019f",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "cc1e99a4159ea0a0a71afa5d73b759eff660ca079ae3a2d1acfe6e1b22ebf777",
+    "docs/auth01/openapi.json": "f010bc5e384c5b973819c3881ceef3a6627cb803158c732e9e0ea965c51e7d05",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -827,7 +861,8 @@
     "docs/auth14/design.md": "c60e066ca1ac6f839fea1151cfd20d8ec4da4c337e789db101a5e9049cfa8dc7",
     "docs/auth14/hotfix01.md": "b9d8d86de911222871bfab3525135daabaa76e4df6aa622fb6a6f4a256142534",
     "docs/auth14/runbook.md": "2137621383e776a15254886417bc5448e669089bfd12207fdd81e954f4c851a3",
-    "packages/ui/components/AccountScreen.tsx": "31b5b78abe5d915ddc72dcb70cc1385902f80e1be0a1e080fb76a5d3539cafcc",
+    "packages/ui/components/AccountScreen.tsx": "fbe178f47c77588ad6afcd5211e429e9c9fe76a6299fc347ff4070bbf6014f0b",
+    "packages/ui/components/BillingPanel.tsx": "61c9539ea06f76d20ad0f324fb9bc280f7519b184cd2e12dbfa5f943ef246adc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
     "packages/ui/components/DbConnectionForm.tsx": "7a4e2e1bf9be330331c9c16197b04b4ff3f80d03bd28ecc597bac601e31f2ba9",
@@ -886,15 +921,17 @@
     "packages/ui/components/ValidationUniquenessPipeline.tsx": "d9852407d50e21528dffe551f227e55ceb4b6b11d56ad451c080a96cbdc19cee",
     "packages/ui/components/auth16-demo.test.tsx": "45ed4ae30e4d9f8c94cf37f6cc55115f59065ccceb15a9363893ba3ab61a80a6",
     "packages/ui/components/auth17-team.test.tsx": "78ea788512a64ad4e42e80aea476f89472fd2c02b7379bffa59f0fa9a509d51d",
+    "packages/ui/components/auth18-billing.test.tsx": "bcb23b0bfcfc63e4bd3f8bafd92b7210e3642dd5b0fd5b90ef2277612b92bd0c",
     "packages/ui/context/AppShellContext.tsx": "894aa5dc3394b2423dcc9de7a0e5efde4bec629a2b2038fa5f617ababed14dd8",
     "packages/ui/context/AuthContext.tsx": "05583a03ac8a4c20d335cfc028b0dd9a6e7b91f0a0cd11338934d329327c9af6",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "c15da902a64f32f13c7e7b9e43fd9eab131a39def8811f392d58947858adff39",
+    "packages/ui/lib/access-contract.generated.ts": "2501e45441e7e2002c2173fda76be8d06dd71a5e7c3e893ae67db508152af3f6",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
     "packages/ui/lib/authClient.ts": "b2af495cf5c423954c305b4d1dafdac1e864d822c0bebb863511312ec2cf8daf",
+    "packages/ui/lib/billing.ts": "3d3152536c4a21a06f837f2cdc917becee7bbb38e67a143cd116c685fbd6cdba",
     "packages/ui/lib/browserTransport.ts": "01cd9a82e44b24cbe5ce26d068cd1221bd957247a844fc86a27a0969ee01de97",
     "packages/ui/lib/demo.ts": "4a3d17e609499dfbb3ccb5b823b5783bf7b48d45ee772b3f445592f1fec1fbac",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
@@ -908,7 +945,7 @@
     "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
-    "packages/ui/server/proxy-routes.generated.json": "2ed1bf53a377401900c557fedcfe4c82e4bc4e26d857ee8af6bfaac42ac8b70c",
+    "packages/ui/server/proxy-routes.generated.json": "a2c2ea45997a455b87c220879c4baad72a0562010f7dbff14c9a1d1a585d08d7",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -929,22 +966,29 @@
     "scripts/auth16/migrate.py": "6dcd774a441ffa3d838e41da6a52eb8d6d640cf4a1dfaab086bac2c8f5b9d466",
     "scripts/auth17/manage_seats.py": "49cc054dac1cdc5049f89a97e46338b1beac1124533bd91ca027bb56b0d1a360",
     "scripts/auth17/migrate.py": "1e16f651b4ab4b4554b70edccaa0e071557e10104671e9b91cd131cca41fe1e0",
-    "scripts/local_gates.md": "78594d98f380501bd3b560b6069407e66aaef1a7a82c6e9356e7180dbf7df666",
-    "scripts/local_gates.py": "c3a77d19a61c987851a1f31fd65ff3080a648dd76256db818143b7b4ff22eb34",
+    "scripts/auth18/migrate.py": "47d169ce92e8868f373c8ef23f76899a56672f68009a74ba203ab608e75701ab",
+    "scripts/auth18/provision_cycle.py": "8974bef858ed9723a40d66a836eadfbd364ce2b9ad9346344f2572c0b9d3aa09",
+    "scripts/auth18/reconcile.py": "aafe0b010380696d5b9b37bc45ad7282f3bebc6aa8d122c28d41a10f4083c989",
+    "scripts/auth18/worker.py": "54d5115948d2cfc2eb06c2246da1da28197393bdc22c29c5c27118700be4615e",
+    "scripts/local_gates.md": "95930bf86e137b8789bcc76d4638f3815dae4bb8972680bbc51423e414041fd6",
+    "scripts/local_gates.py": "085022dce9c4bbf392f6210b7b124171deafe2dcb84e300e08606b3167236a60",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
+    "tests/api/test_cisstat_stack_deployment.py": "eda29c39c8710d7974911867de66cbbe0d04ba3030d0234fc58c007143d64cc9",
     "tests/integration/test_auth12_ledger.py": "5bb663f6e1abffe6af47cf68c51c394bd457fd8633305649de96197bfe9a5699",
     "tests/integration/test_auth15_demo.py": "4a9e28326b8e6cb56ab93aed8934e8705873b86b11b457ab2214cdca4efaf0a6",
     "tests/integration/test_auth16_lifecycle.py": "234973e338894a17b65f4695527ede73e64ff85b64b70c8e2a9c1384eafd9c55",
     "tests/integration/test_auth17_team.py": "e8bee1bdd93977e6ffe8d38e5a0232bf89fce64e3dbcf6f8def486c1f30d82fd",
+    "tests/integration/test_auth18_saga.py": "2c1cd66fdd7d65d3ff5b714e8a8267396ab2b92a9ac9257a53cb2d2ae99b8c66",
     "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
-    "tests/unit/test_auth00_precommit.py": "d60f5fb6113a1aba5560e72e70df2e3cbaa5d50f8ccf574de0e3a3fcac760639",
+    "tests/unit/test_auth00_precommit.py": "75799d1035f3b67a4fa71d8a088ed891895f009b466862bc85887d31774b0513",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
     "tests/unit/test_auth12_ledger.py": "b518586f946dcd2a7b3171ee88e8c4a05ece7a361a6940561c51786c3f652340",
     "tests/unit/test_auth15_demo.py": "9118a6a61a855521caaba027c6df7e0601009a28f8f5f5968fccc5d3f9ffb839",
     "tests/unit/test_auth16_lifecycle.py": "ec2a79db830536293bc6e542f8549c54fb0fab39829a787d5f88098f86532bf0",
     "tests/unit/test_auth17_team.py": "36dc322cf3192808687c4baec9f646a6e581c52aab4933dff9859e7cc5c31784",
+    "tests/unit/test_auth18_provider.py": "ce1a86c6bff4f9dbefcbc81413ebe65ce7422becd6f03fd1d04cccf70e19d02d",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -1086,7 +1130,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 277,
+          "line": 279,
           "symbol": "health"
         }
       ],
@@ -1112,7 +1156,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 282,
+          "line": 284,
           "symbol": "health_ops"
         }
       ],
@@ -1197,7 +1241,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -1232,7 +1276,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -1267,7 +1311,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1300,7 +1344,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1333,7 +1377,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 261,
           "symbol": "include_router"
         }
       ],
@@ -1395,7 +1439,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1429,7 +1473,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1520,6 +1564,41 @@
       "canonical_operation": "auth.session.list",
       "admission": "authenticate-CSRF-object-before-command",
       "stage_namespace": "service"
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/billing/{account_id}/subscription",
+      "operation": "apps.api.routers.billing:subscription",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 23,
+          "symbol": "subscription"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 258,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/billing/{account_id}/subscription",
+      "discovery": "automatic",
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:GET:/v1/billing/{account_id}/subscription",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
     },
     {
       "kind": "api",
@@ -5521,7 +5600,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -5631,7 +5710,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5666,7 +5745,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5701,7 +5780,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5736,7 +5815,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5771,7 +5850,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5806,7 +5885,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5841,7 +5920,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5876,7 +5955,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5912,7 +5991,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 257,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -5947,7 +6026,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -5980,7 +6059,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6013,7 +6092,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6047,7 +6126,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6080,7 +6159,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6113,7 +6192,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6146,7 +6225,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6179,7 +6258,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 261,
           "symbol": "include_router"
         }
       ],
@@ -6211,7 +6290,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 261,
           "symbol": "include_router"
         }
       ],
@@ -6243,7 +6322,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 261,
           "symbol": "include_router"
         }
       ],
@@ -6275,7 +6354,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6309,7 +6388,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6343,7 +6422,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6375,7 +6454,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6769,6 +6848,111 @@
       ],
       "canonical_operation": "auth.mfa.step_up",
       "admission": "CSRF-Origin-challenge-or-session-step-up-before-command"
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/billing/webhooks/yookassa",
+      "operation": "apps.api.routers.billing:webhook",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 42,
+          "symbol": "webhook"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 258,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_error"
+      ],
+      "id": "api:POST:/v1/billing/webhooks/yookassa",
+      "discovery": "automatic",
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/webhooks/yookassa",
+      "admission": "AUTH-18 untrusted callback wake-up only; bounded known-order enqueue, no cookie authority. Authenticated fixed-origin YooKassa GET validates exact shop/test/amount/currency/metadata before atomic seats/audit."
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/billing/{account_id}/quotes",
+      "operation": "apps.api.routers.billing:quote",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 28,
+          "symbol": "quote"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 258,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/billing/{account_id}/quotes",
+      "discovery": "automatic",
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/{account_id}/quotes",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/billing/{account_id}/quotes/{quote_id}/confirm",
+      "operation": "apps.api.routers.billing:confirm",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 35,
+          "symbol": "confirm"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 258,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm",
+      "discovery": "automatic",
+      "policy": "billing.owner",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "subscription seat quote/order/provider inbox",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm",
+      "admission": "AUTH-18 personal current OWNER; immutable quote, cookie/Origin/CSRF; quote confirmation has recent login/MFA. No browser payment proof."
     },
     {
       "kind": "api",
@@ -11280,6 +11464,32 @@
       "admission": "Explicit trusted migration CLI; checksum/version and enabled guards; never request-time DDL"
     },
     {
+      "id": "billing.cycles.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.cycles.operator",
+      "operation": "billing.cycles.operator",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 284,
+          "symbol": "provision_cycle"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.cycles.operator",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
+    },
+    {
       "id": "billing.policy.operator",
       "kind": "internal_operation",
       "method": "INTERNAL",
@@ -11305,6 +11515,32 @@
       "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
     },
     {
+      "id": "billing.reconcile.operator",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.reconcile.operator",
+      "operation": "billing.reconcile.operator",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 358,
+          "symbol": "reconcile"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.reconcile.operator",
+      "admission": "Interactive trusted operator supplies provider payment reference, never paid flag; durable queue still requires authenticated current-object proof"
+    },
+    {
       "id": "billing.reserve",
       "kind": "internal_operation",
       "method": "INTERNAL",
@@ -11328,6 +11564,32 @@
       ],
       "canonical_operation": "billing.reserve",
       "admission": "trusted server/operator interface; no public route; object gate belongs to AUTH-11 caller"
+    },
+    {
+      "id": "billing.saga",
+      "kind": "internal_operation",
+      "method": "INTERNAL",
+      "path": "billing.saga",
+      "operation": "billing.saga",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscriptions.py",
+          "line": 427,
+          "symbol": "step"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "billing.saga",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
     },
     {
       "id": "billing.schema.apply",
@@ -19422,6 +19684,32 @@
       ],
       "canonical_operation": "auth.repository.account",
       "admission": "trusted server/coordinator only; repository is not caller authorization"
+    },
+    {
+      "id": "storage:auth.billing",
+      "kind": "storage",
+      "method": "INTERNAL",
+      "path": "storage:auth.billing",
+      "operation": "storage:auth.billing",
+      "evidence": [
+        {
+          "source": "apps/api/billing/subscription_migrations.py",
+          "line": 20,
+          "symbol": "apply_migration"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "billing.provider",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "durable provider authority / immutable quote / included allocation",
+      "effects": [
+        "read",
+        "write",
+        "mandatory audit"
+      ],
+      "canonical_operation": "storage:auth.billing",
+      "admission": "Trusted operator provisioning; fenced worker with provider proof; no HTTP financial authority and no I/O in SQL transaction"
     },
     {
       "id": "storage:auth.demo",

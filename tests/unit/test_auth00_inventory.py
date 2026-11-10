@@ -246,6 +246,20 @@ class InventoryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.mod.check(self.root)
 
+    def test_reviewed_env_example_crlf_portable_content_change_fails(self):
+        self.snapshot_fixture()
+        self.put('deployment/cisstat-stack/.env.example', 'BILLING_ENABLED=off\n')
+        self.edit_review(lambda r: r['reviewed_sources'].append('deployment/cisstat-stack/.env.example'))
+        report = self.mod.build(self.root)
+        self.put('docs/auth00/inventory.json', self.mod.json_text(report))
+        self.put('docs/auth00/inventory.md', self.mod.markdown(report))
+        path = self.root / 'deployment/cisstat-stack/.env.example'
+        path.write_bytes(path.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
+        self.mod.check(self.root)
+        path.write_bytes(path.read_bytes().replace(b'=off', b'=test'))
+        with self.assertRaises(ValueError):
+            self.mod.check(self.root)
+
     def test_binary_fingerprint_does_not_normalize_crlf(self):
         self.snapshot_fixture()
         path = self.root / 'payload.bin'

@@ -1,0 +1,11 @@
+test_cumulative_rounding_preserves_signed_debt (test_auth18_provider.MalformedProviderTests.test_cumulative_rounding_preserves_signed_debt) ... ok
+test_oversized_and_unavailable_responses (test_auth18_provider.MalformedProviderTests.test_oversized_and_unavailable_responses) ... ok
+test_outage_and_no_live (test_auth18_provider.ProviderTests.test_outage_and_no_live) ... ok
+test_proration_integer_and_churn (test_auth18_provider.ProviderTests.test_proration_integer_and_churn) ... ok
+test_yookassa_fixed_origin_and_proof (test_auth18_provider.ProviderTests.test_yookassa_fixed_origin_and_proof) ... ok
+test_live_shop_never_receives_create_payment (test_auth18_provider.ShopPreflightTests.test_live_shop_never_receives_create_payment) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.002s
+
+OK

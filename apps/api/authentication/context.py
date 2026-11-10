@@ -112,6 +112,15 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "billing_not_configured": "Оплата ещё не настроена",
+    "billing_unavailable": "Оплата недоступна для этого аккаунта",
+    "billing_cycle_unavailable": "Платёжный цикл недоступен; обратитесь к оператору",
+    "billing_order_exists": "По заявке уже создан заказ",
+    "billing_reduction_not_approved": "Условия уменьшения мест ещё не утверждены",
+    "billing_quote_not_found": "Предложение не найдено",
+    "billing_quote_changed": "Предложение изменилось; обновите данные",
+    "billing_quote_expired": "Предложение устарело; запросите новое",
+    "billing_quote_limit": "Лимит предложений по заявке исчерпан",
     "account_not_found":"Аккаунт не найден",
     "invalid_request":"Некорректные параметры запроса",
     'invitation_unavailable': 'Приглашение недоступно, истекло или предназначено другому пользователю',

@@ -81,9 +81,14 @@ def test_compose_services_topology() -> None:
         "compose `version:` устарел и удалён в новых CLI -- не возвращать"
     )
     services = doc.get("services") or {}
-    assert set(services) == {"postgres", "api", "web", "caddy"}, (
+    assert set(services) == {"postgres", "api", "web", "caddy", "billing-worker"}, (
         f"topology drifted: {sorted(services)}"
     )
+    worker = services["billing-worker"]
+    assert worker.get("profiles") == ["billing-test"]
+    assert not worker.get("ports")
+    assert worker.get("command") == ["python", "scripts/auth18/worker.py", "--loop"]
+    assert worker["environment"]["CISSTAT_YOOKASSA_ENABLED"] == "${CISSTAT_YOOKASSA_ENABLED:-off}"
     for name, svc in services.items():
         assert svc.get("restart") == "unless-stopped", f"{name}: restart policy"
         networks = svc.get("networks") or []

@@ -49,6 +49,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/billing/{account_id}/subscription"
+  },
+  {
+    "method": "GET",
     "path": "/v1/documentation/documents/{document_id}/revisions"
   },
   {
@@ -614,6 +618,18 @@
   {
     "method": "POST",
     "path": "/v1/auth/step-up"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/webhooks/yookassa"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/{account_id}/quotes"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/{account_id}/quotes/{quote_id}/confirm"
   },
   {
     "method": "POST",

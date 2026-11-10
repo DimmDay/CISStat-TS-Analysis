@@ -192,6 +192,22 @@ class PrecommitTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git("ls-files", "--stage").stdout, before)
 
+    def test_crlf_index_env_example_matches_lf_worktree_without_staging(self):
+        name = "deployment/cisstat-stack/.env.example"
+        self.fixture.put(name, "BILLING_ENABLED=off\n")
+        self.fixture.edit_review(lambda r: r["reviewed_sources"].append(name))
+        self.refresh()
+        path = self.root / name
+        lf = path.read_bytes()
+        path.write_bytes(lf.replace(b"\n", b"\r\n"))
+        self.stage()
+        self.assertIn(b"\r\n", self.git("show", ":" + name).stdout)
+        path.write_bytes(lf)
+        before = self.git("ls-files", "--stage").stdout
+        result = self.run_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git("ls-files", "--stage").stdout, before)
+
     def test_head_does_not_silently_fall_back_to_index(self):
         self.stage()
         result = self.run_check("head")
