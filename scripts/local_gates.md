@@ -154,3 +154,15 @@ python scripts/local_gates.py --only auth19,auth19-postgres --skip-install
 ```
 
 Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth19.yml`: Windows/Linux contracts, PG16/18 native. IdP/SMTP заменяются controlled fakes (httpx.MockTransport/FakeDelivery), RSA-ключи генерируются в тесте; реальная сеть не вызывается. После commit перед push — `--auth00-target head`. `check_routes` подтверждает четыре добавленных POST surfaces (`/v1/auth/oidc/start`, `/v1/auth/oidc/callback`, `/v1/auth/email/start`, `/v1/auth/email/consume`) и расширение каталога audit 36→37 (`auth_identity_changed` mandatory). Оба контура выключены по умолчанию (OIDC: ISSUER+CLIENT_ID; email: EMAIL_KEY+SMTP_HOST) — флаги видны в GET /v1/auth/csrf. Миграция 0031 расширяет AUTH-15 `auth15_session_family` на третий тип сессии (credential NULL + grant NULL); checksums 0019–0030 не меняются. Миграция/готовность — `scripts/auth19/migrate.py --apply/--check`; инструкция `docs/auth19/deploy.md`.
+
+## AUTH-21 — Source-aware Wallet/CreditLot (поверх a0a2af6)
+
+`auth21` входит в default прогон первым и проверяет контракты FEFO/выдачи/классификации хвостов без БД. `auth21-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн запуска прежний:
+
+```bash
+git add --pathspec-from-file=scripts/auth21/files.txt
+python scripts/local_gates.py --skip-install
+python scripts/local_gates.py --only auth21,auth21-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth21.yml`: Ubuntu/Windows contracts + PG16/18 native. Роуты НЕ затронуты: ни одного нового/удалённого HTTP-маршрута (actual 274 = inventory 274, bindings 278, added/missing=[]); изменения исполнения — хуки кошелька внутри существующих AUTH-12 handlers (reserve/extend/settle/release), inventory 651, отпечатки 456→464. Каталог audit 42→43: новое обязательное `auth_wallet_changed` (пины test_auth20_ops/test_doclog8 обновлены с обоснованием). До операторского `create-wallet` поведение платформы идентично AUTH-20: строка кошелька — аддитивный выключатель; деньги/платежи — AUTH-22/23, UI — AUTH-24. Инструкция VM — `docs/auth21/deploy.md` (пересборка только api, миграция explicit 0033; web/compose/env не менялись).

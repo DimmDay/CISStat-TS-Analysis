@@ -119,6 +119,9 @@ ACTION_AUTH_MEMBERSHIP_CHANGED = "auth_membership_changed"
 ACTION_AUTH_IDENTITY_CHANGED = "auth_identity_changed"
 # AUTH-20: quarantine/reconcile/marks-export operations (ops authority).
 ACTION_AUTH_OPS_CHANGED = "auth_ops_changed"
+# AUTH-21: wallet/credit-lot provisioning and lifecycle (trusted operator
+# authority; reservation-level movements stay under auth_reservation_changed).
+ACTION_AUTH_WALLET_CHANGED = "auth_wallet_changed"
 
 AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTH_DEMO_CHANGED,
@@ -131,6 +134,7 @@ AUDIT_ACTIONS: frozenset[str] = frozenset({
     ACTION_AUTH_MEMBERSHIP_CHANGED,
     ACTION_AUTH_IDENTITY_CHANGED,
     ACTION_AUTH_OPS_CHANGED,
+    ACTION_AUTH_WALLET_CHANGED,
     ACTION_AUTH_SESSION_CHANGED,
     ACTION_AUTH_PASSWORD_CHANGED,
     ACTION_AUTH_MFA_CHANGED,
@@ -180,6 +184,9 @@ AUDIT_REQUIREMENTS: dict[str, str] = {
     ACTION_AUTH_IDENTITY_CHANGED: "mandatory",
     # AUTH-20: ops-мутации (quarantine/reconcile/export marks) -- обязательные.
     ACTION_AUTH_OPS_CHANGED: "mandatory",
+    # AUTH-21: кошелёк/кредитные лоты (provisioning/issue/sweep/lock) --
+    # обязательное, fail-closed (финансовый класс операций).
+    ACTION_AUTH_WALLET_CHANGED: "mandatory",
     ACTION_AUTH_SESSION_CHANGED: "mandatory",
     ACTION_AUTH_PASSWORD_CHANGED: "mandatory",
     ACTION_AUTH_MFA_CHANGED: "mandatory",

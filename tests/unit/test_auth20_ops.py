@@ -97,8 +97,13 @@ class AuditCatalogTests(unittest.TestCase):
         self.assertIn("auth_ops_changed", AUDIT_ACTIONS)
         self.assertEqual(AUDIT_REQUIREMENTS.get("auth_ops_changed"), "mandatory")
 
-    def test_catalog_size_42(self):
-        self.assertEqual(len(AUDIT_ACTIONS), 42)
+    def test_catalog_size_43(self):
+        # AUTH-21 (честное versioned-обновление пина): +1 обязательное
+        # auth_wallet_changed (кошелёк/кредитные лоты: provisioning/issue/
+        # sweep/lock, fail-closed); 42 + 1 = 43. Движения резерваций
+        # (reserve/settle/release) остаются под auth_reservation_changed.
+        self.assertEqual(len(AUDIT_ACTIONS), 43)
+        self.assertEqual(AUDIT_REQUIREMENTS.get("auth_wallet_changed"), "mandatory")
         mandatory = {k for k, v in AUDIT_REQUIREMENTS.items() if v == "mandatory"}
         self.assertIn("auth_ops_changed", mandatory)
 

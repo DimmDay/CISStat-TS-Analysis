@@ -1321,7 +1321,12 @@ class TestStaticCatalogs:
         # обновления пина) и получает 42-е -- обязательное
         # auth_ops_changed (quarantine/reconcile/marks-export intent в
         # auth_audit_outbox, fail-closed).
-        assert len(security_audit.AUDIT_ACTIONS) == 42
+        # AUTH-21 (честное versioned-обновление пина): +1 обязательное
+        # auth_wallet_changed (кошелёк/кредитные лоты — provisioning/issue/
+        # sweep/lock); 42 + 1 = 43. Резервационные движения остаются под
+        # auth_reservation_changed.
+        assert len(security_audit.AUDIT_ACTIONS) == 43
+        assert security_audit.AUDIT_REQUIREMENTS["auth_wallet_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_ops_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_api_key_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_ownership_migrated"] == "mandatory"

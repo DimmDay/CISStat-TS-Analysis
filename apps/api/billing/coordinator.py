@@ -387,6 +387,14 @@ class ReservationCoordinator:
                     "INSERT INTO auth_reservation_allocations(reservation_id,budget_id,units,metric) VALUES (%s,%s,%s,%s)",
                     (rid, b["budget_id"], n, b["metric"]),
                 )
+            if amounts["cu"]:
+                # AUTH-21: source-aware credit backing inside the same
+                # transaction; no wallet row -> exactly the previous behavior.
+                from .wallet import allocate_for_reservation
+
+                allocate_for_reservation(
+                    c, a.account_id, rid, req.cost.micro_cu, now
+                )
             if amounts["analysis"]:
                 c.execute(
                     "INSERT INTO auth_analysis_claims(account_id,run_id,reservation_id) VALUES (%s,%s,%s)",
@@ -572,6 +580,17 @@ class ReservationCoordinator:
                 "UPDATE auth_reservations SET held_cu=held_cu+%s,version=version+1 WHERE reservation_id=%s RETURNING *",
                 (additional_cu, row["reservation_id"]),
             ).fetchone()
+            if additional_cu:
+                from .wallet import allocate_for_reservation
+
+                allocate_for_reservation(
+                    c,
+                    account.account_id,
+                    row["reservation_id"],
+                    additional_cu,
+                    now,
+                    total_if_unpinned=row["held_cu"],
+                )
             audit(
                 c,
                 "auth_reservation_changed",
@@ -621,7 +640,8 @@ class ReservationCoordinator:
                 auth_error(409, "reservation_conflict")
             if actual is not None and actual > row["held_cu"]:
                 auth_error(402, "cu_reserve_exceeded")
-            for b in self._allocations(c, row):
+            allocs = self._allocations(c, row)
+            for b in allocs:
                 if b["metric"] in ("cu", "concurrency"):
                     self._charge(
                         c,
@@ -632,6 +652,17 @@ class ReservationCoordinator:
                         spend=actual
                         if b["metric"] == "cu" and actual is not None
                         else 0,
+                    )
+            if any(b["metric"] == "cu" for b in allocs):
+                from .wallet import release_reservation, settle_reservation
+
+                if actual is None:
+                    release_reservation(
+                        c, row["account_id"], row["reservation_id"], now
+                    )
+                else:
+                    settle_reservation(
+                        c, row["account_id"], row["reservation_id"], actual, now
                     )
             row = c.execute(
                 "UPDATE auth_reservations SET state=%s,actual_cu=%s,result_ref=%s,version=version+1 WHERE reservation_id=%s RETURNING *",

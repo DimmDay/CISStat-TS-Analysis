@@ -563,6 +563,24 @@
         "T13",
         "T15"
       ]
+    },
+    "billing.wallet": {
+      "observed": "AUTH-21 source-aware wallet/credit lots: durable PostgreSQL authority with append-only balanced postings, FEFO spend, pinned reservation allocations, expiry sweep and wallet lock; trusted operator CLI only, no HTTP surface and no auto-credit. Reservation-level movements run inside the AUTH-12 coordinator transaction.",
+      "target": "Financial wallet operations fail closed: unique credit-per-basis guards, mandatory auth_wallet_changed audit in the issuing transaction, integer micro-CU only, no pricing/payments in this task (AUTH-22/23), wallet UI/DTO in AUTH-24.",
+      "follow_up": [
+        "AUTH-21",
+        "AUTH-22",
+        "AUTH-23",
+        "AUTH-24",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T11",
+        "T13",
+        "T15"
+      ]
     }
   },
   "entries": {
@@ -9023,6 +9041,7 @@
     "apps/api/migrations/0030_auth18_provider.sql",
     "apps/api/migrations/0031_auth19_email_oidc.sql",
     "apps/api/migrations/0032_auth20_audit_ops.sql",
+    "apps/api/migrations/0033_auth21_wallet.sql",
     "apps/api/model_execution.py",
     "apps/api/model_jobs.py",
     "apps/api/ownership.py",
@@ -9070,6 +9089,7 @@
     "docs/auth14/hotfix01.md",
     "docs/auth14/runbook.md",
     "docs/auth19/design.md",
+    "docs/auth21/design.md",
     "packages/ui/components/AccountScreen.tsx",
     "packages/ui/components/BillingPanel.tsx",
     "packages/ui/components/DatasetPassportPanel.tsx",
@@ -9179,6 +9199,8 @@
     "scripts/auth18/reconcile.py",
     "scripts/auth18/worker.py",
     "scripts/auth20/reconcile.py",
+    "scripts/auth21/manage_wallet.py",
+    "scripts/auth21/migrate.py",
     "scripts/local_gates.md",
     "scripts/local_gates.py",
     "spec_auth.md",
@@ -9190,6 +9212,7 @@
     "tests/integration/test_auth16_lifecycle.py",
     "tests/integration/test_auth17_team.py",
     "tests/integration/test_auth18_saga.py",
+    "tests/integration/test_auth21_wallet.py",
     "tests/unit/test_auth00_local_output.py",
     "tests/unit/test_auth00_precommit.py",
     "tests/unit/test_auth11_scientific.py",
@@ -9200,6 +9223,7 @@
     "tests/unit/test_auth18_provider.py",
     "tests/unit/test_auth19_challenges.py",
     "tests/unit/test_auth19_routes.py",
+    "tests/unit/test_auth21_wallet.py",
     "validation/engine.py"
   ]
 }

@@ -579,6 +579,24 @@
         "T13",
         "T15"
       ]
+    },
+    "billing.wallet": {
+      "observed": "AUTH-21 source-aware wallet/credit lots: durable PostgreSQL authority with append-only balanced postings, FEFO spend, pinned reservation allocations, expiry sweep and wallet lock; trusted operator CLI only, no HTTP surface and no auto-credit. Reservation-level movements run inside the AUTH-12 coordinator transaction.",
+      "target": "Financial wallet operations fail closed: unique credit-per-basis guards, mandatory auth_wallet_changed audit in the issuing transaction, integer micro-CU only, no pricing/payments in this task (AUTH-22/23), wallet UI/DTO in AUTH-24.",
+      "follow_up": [
+        "AUTH-21",
+        "AUTH-22",
+        "AUTH-23",
+        "AUTH-24",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T11",
+        "T13",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -595,7 +613,7 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "b04f59f628156bf1e29997cab9389b6242593af8edd03e1f44a06b7ca619eb2c",
+    "apps/api/Dockerfile": "6b289353ae1d1b570d722a2a2a5d2782246a8da6f02fcc424cc2a85c62fba495",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "d0c4ab33dc9a97118782f6177c2cb13e2061462a4de61a596b45d8b65ccd0d46",
@@ -620,7 +638,7 @@
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
     "apps/api/authentication/auth19_migrations.py": "f5b0e9298fe666651b6c7b5e9b4209d1c6b2798604c60b4efc85d559590aeda8",
     "apps/api/authentication/auth20_migrations.py": "dcec7c8f3777da792b7ccd5d75e83f3fe31a0e6bc064fa98068718d10fcc854b",
-    "apps/api/authentication/context.py": "0b9d33f8f056776fccac5d7981afea37158ec7a2eff7d7ce59c50981bef3c73e",
+    "apps/api/authentication/context.py": "99d13b969cfdd49855a5f3136ca49010bfce44eb0c86858bbad9fed7ffe9160a",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/demo.py": "73368ba0135d00e6c8e19b128c4d9378db2069963a1eb66a5f8df7059b4fd79a",
@@ -661,13 +679,15 @@
     "apps/api/billing/compute_runtime.py": "da5c48e9ab325c9f7772149c7a3d6cd3a45648b1fbc71c0d35a491f11cb021ce",
     "apps/api/billing/compute_units.py": "6a27a09984abca5009b78eaf036c25bc2c38b3701273ae9af2ee8207d73a8845",
     "apps/api/billing/contract.py": "d0eceaccb09f7e85e282e4e368a82f07d76a1d6b3ee86a632cfa98844db7af52",
-    "apps/api/billing/coordinator.py": "62423aff34707892d2712d92ece2be84682607e80e57af4ca4b0c582f084b115",
+    "apps/api/billing/coordinator.py": "00b03600adf0e4e09a33f451af1a5819f120782cfbf3cbbe1e518a387c1aba16",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
     "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
     "apps/api/billing/provider.py": "75d3366aa7c8569131c6b0c75566b862aba6c2ec2735faafc8b441734a71ae1c",
     "apps/api/billing/subscription_contract.py": "a6a2d2d5c736fddcbf8c8501f359e08d5aee923c526cfe3979d237fd0abb7b3b",
     "apps/api/billing/subscription_migrations.py": "4763181fdb578a12267ba3ad59617d04e671af55bf0adba205f7576f1c194307",
     "apps/api/billing/subscriptions.py": "fc3c626f46dc8061a3e2f084684307c4b4b6b6933386e6ec406a8d0cec5f1fe6",
+    "apps/api/billing/wallet.py": "da6936892fd2dd8c1911408d496550498cc005b4c72448043dfdaf8423dfb146",
+    "apps/api/billing/wallet_migrations.py": "e4f15d4d57f5b13cfd2079936e527e07edcdb9e2f324769cb82f867f4ec6d391",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
     "apps/api/consistency_correction.py": "84d931a97b0931fe28a0de936d1fd9b0da342a7873bbae7c163863126e281731",
@@ -716,6 +736,7 @@
     "apps/api/migrations/0030_auth18_provider.sql": "19afd3d6b213d7fdbc9b916d3171818fcdc72d1612d4aab676c9653c2a649121",
     "apps/api/migrations/0031_auth19_email_oidc.sql": "59fa6a900d7cd6edcc4d5249c16c27954699ec9d88fa99a2fb4d029cfa6622b3",
     "apps/api/migrations/0032_auth20_audit_ops.sql": "f61c7bb334915aca3bd96e670e86852923b2b86eb5422cd869dddf2776bb46ad",
+    "apps/api/migrations/0033_auth21_wallet.sql": "84c94b716b3a87c538b41dbc1898b9b8db0e06308ffbcc75474eb03c2cb63b12",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -802,7 +823,7 @@
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
     "apps/api/scientific.py": "0d9495f4c60e03e65bd7f0c69857317a69d2747522237e9d4a35bb09d2465c7b",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
-    "apps/api/security_audit.py": "456391da08a2314f092a1b22e907dcd8e49135334a5ba4e55f299aad6dcee341",
+    "apps/api/security_audit.py": "2a4abd6cad14a85599cbd6e101ee1901e344f732aec69b7f2fec1ed77039799e",
     "apps/api/session_store.py": "309148e5c2fa913fd6a5829d94bfe8a457e1d535b2f868cddd9fc9d7e865ca12",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "44b4348989c5c605f243772010969916e5893351abdd9859c8a8a20e4a0715ef",
@@ -906,6 +927,7 @@
     "docs/auth14/hotfix01.md": "b9d8d86de911222871bfab3525135daabaa76e4df6aa622fb6a6f4a256142534",
     "docs/auth14/runbook.md": "2137621383e776a15254886417bc5448e669089bfd12207fdd81e954f4c851a3",
     "docs/auth19/design.md": "0b1e9b72bb3d2fad46a956414d5dbe8d767b785811c21338b495e8538ae655df",
+    "docs/auth21/design.md": "6f49b38288883e15ff7551c85e568f0b2f51a14b28dd314a159df00f456d2405",
     "packages/ui/components/AccountScreen.tsx": "fbe178f47c77588ad6afcd5211e429e9c9fe76a6299fc347ff4070bbf6014f0b",
     "packages/ui/components/BillingPanel.tsx": "61c9539ea06f76d20ad0f324fb9bc280f7519b184cd2e12dbfa5f943ef246adc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
@@ -1016,8 +1038,10 @@
     "scripts/auth18/reconcile.py": "aafe0b010380696d5b9b37bc45ad7282f3bebc6aa8d122c28d41a10f4083c989",
     "scripts/auth18/worker.py": "54d5115948d2cfc2eb06c2246da1da28197393bdc22c29c5c27118700be4615e",
     "scripts/auth20/reconcile.py": "c9cb8e22486e4e3e4d6196317ef19163561d6e8d0eff25700e1625a5159c7a9e",
-    "scripts/local_gates.md": "3cd980bc32c7a20816fb726dac0007ae5299fd5c2b4fd85f3807e15041d5ce6a",
-    "scripts/local_gates.py": "cc20378bb547f4da4d3cf7ba492c2dac9d64f1e4b5a4d52cafea3b88376b8d0f",
+    "scripts/auth21/manage_wallet.py": "e27b6aded2db246040f4daaa4702c2fd780a3c90c032daccf9054477cf6b73a3",
+    "scripts/auth21/migrate.py": "44b3c34d993d7ba34c396a188c41e0afc55ec7e213d7e1f7f11d14515922228c",
+    "scripts/local_gates.md": "0fe5052c02fdc1586103f2eba6825b554049a88547763b06e3f3a52aed7b6d9b",
+    "scripts/local_gates.py": "7c28e861dabd3abf8e18f280f5a05c55ee4d3a8aabf09f36652890c087e5fba9",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1027,6 +1051,7 @@
     "tests/integration/test_auth16_lifecycle.py": "234973e338894a17b65f4695527ede73e64ff85b64b70c8e2a9c1384eafd9c55",
     "tests/integration/test_auth17_team.py": "e8bee1bdd93977e6ffe8d38e5a0232bf89fce64e3dbcf6f8def486c1f30d82fd",
     "tests/integration/test_auth18_saga.py": "2c1cd66fdd7d65d3ff5b714e8a8267396ab2b92a9ac9257a53cb2d2ae99b8c66",
+    "tests/integration/test_auth21_wallet.py": "fa6dba45a6671319b6bd6a5b2bb7a9eb32187e733e52abfc2f7b462fd241e34b",
     "tests/unit/test_auth00_local_output.py": "eea9a35533f1fe6a37306ff293fb7bc9247e5d7425b8da3f7ee4de9e70f9fc2a",
     "tests/unit/test_auth00_precommit.py": "75799d1035f3b67a4fa71d8a088ed891895f009b466862bc85887d31774b0513",
     "tests/unit/test_auth11_scientific.py": "0136d5c7d3c261ed6a410d0b0412a28c1f994978511079358fa9f02185749b84",
@@ -1037,6 +1062,7 @@
     "tests/unit/test_auth18_provider.py": "ce1a86c6bff4f9dbefcbc81413ebe65ce7422becd6f03fd1d04cccf70e19d02d",
     "tests/unit/test_auth19_challenges.py": "369d8354189c9ea67f69a97a0812996fd4af3534991b6956131e91a899987536",
     "tests/unit/test_auth19_routes.py": "eb18cb64553c8592ed099bee4354a9e6dfe38dc27b6de8007cb2fb88162a12e6",
+    "tests/unit/test_auth21_wallet.py": "eef0620ccd380956cb8da08a36ff12285b3e0a385a3c703d414c77f02e445788",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [

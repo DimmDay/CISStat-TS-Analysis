@@ -48,7 +48,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -76,6 +76,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth21", "auth21.yml contracts", "AUTH-21 wallet/credit-lot contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth21/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth21*.py", "-v"],
+    ]),
+    ("auth21-postgres", "auth21.yml postgres", "AUTH-21 native wallet FEFO/expiry/refund flows", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth21/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth21/verify_postgres.py"],
+    ]),
     ("auth20", "auth20.yml contracts", "AUTH-20 audit/ops: lockdown, marks, catalog contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth20/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth20*.py", "-v"],
@@ -381,7 +389,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Локальный прогон CI-гейтов перед пушем (паритет GitHub Actions)")
     parser.add_argument("--only", metavar="a,b,c",
-                        help="запустить только выбранные гейты (auth19,auth19-postgres,auth18,auth18-postgres,auth17,auth17-postgres,auth16,auth16-postgres,auth15,auth15-postgres,auth14,auth14-postgres,auth13,auth13-postgres,auth12,auth12-postgres,auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
+                        help="запустить только выбранные гейты (auth21,auth21-postgres,auth20,auth20-postgres,auth19,auth19-postgres,auth18,auth18-postgres,auth17,auth17-postgres,auth16,auth16-postgres,auth15,auth15-postgres,auth14,auth14-postgres,auth13,auth13-postgres,auth12,auth12-postgres,auth11,auth11-postgres,auth10,auth10-postgres,auth09,auth09-postgres,auth08,auth08-postgres,auth06,auth06-postgres,auth07,auth05,auth05-postgres,auth04,auth04-postgres,auth03,auth03-postgres,auth02,auth02-postgres,auth01,auth00,rules,session-postgres,pytest,jest)")
     parser.add_argument("--auth00-target", choices=("index", "head"), default="index",
                         help="AUTH-00: index после явного git add (default), head после commit перед push")
     parser.add_argument("--skip-install", action="store_true",
@@ -398,6 +406,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth21-postgres", action="store_true",
+                        help="добавить native PostgreSQL wallet/lot проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth20-postgres", action="store_true", help="AUTH-20 native reconcile/quarantine/lockdown/audit delivery")
     parser.add_argument("--with-auth19-postgres", action="store_true", help="AUTH-19 native external entry / selection / audit")
     parser.add_argument("--with-auth18-postgres", action="store_true", help="AUTH-18 native provider saga")
@@ -443,6 +453,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth21_postgres:
+        excluded.add("auth21-postgres")
     if not args.with_auth20_postgres:
         excluded.add("auth20-postgres")
     if not args.with_auth19_postgres:
