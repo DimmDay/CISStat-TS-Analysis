@@ -1,0 +1,37 @@
+# AUTH-23 — Refund/dispute/chargeback workflow (design)
+
+База: 004dba5 (AUTH-22 на VM). Норматив: spec_billing_accounts.md §13.2 (postings refund_pending/refunded), §13.5 (refund_pending исключён из FEFO), §13.7 (возврат/спор), §13.8 (API/данные), §13.10 E4/E6; spec_auth_architecture.md AUTH-23: «Spend/refund race безопасна; unknown result держит hold; spent chargeback не даёт отрицательный available». Зависимости: AUTH-21 (wallet/проводки), AUTH-22 (topup-заказ/сага/провайдер), AUTH-13 (fencing-паттерн воркера).
+
+## D1. Объём v1
+Self-service — только добровольный возврат **целого неиспользованного purchased-лота** оплаченного (credited) topup-заказа: OWNER, окно условий, отсутствие spent/reserved/refund. Частичные self-service возвраты, included/promotional и «обязательные/исключительные возвраты» — вне v1 (trusted-процедуры AUTH-21 adjust остаются единственным инструментом). Спор/chargeback — клиентского HTTP нет: инициируется банком/provider, поэтому это trusted CLI + записи; открытие спора в UI не предусмотрено нормативом.
+
+## D2. Схема 0035 — чисто аддитивная (0033/0034 байт-неизменны)
+`auth_refund_orders`: refund_id PK; order_id UNIQUE → один refund на заказ (возврат целого лота/полной суммы); lot_id/account_id/owner_id FK; units/amount_minor/currency/terms_version — копии из заказа/снимка (клиент не вводит суммы); window_days — копия политики на момент запроса; state `pending|refunded|failed|review_required`; provider_refund_id UNIQUE; lease/fence/attempts/next_attempt_at — паритет AUTH-22 саги; guard-триггер: DELETE запрещён, binding immutable, терминальные refunded/failed неизменяемы, review_required → pending только через trusted reconcile; индекс due по pending.
+`auth_disputes`: dispute_id PK; order_id UNIQUE → ровно один спор на заказ; payment_id/lot_id/spent_units/disputed_units/amount_minor/currency; state `open|lost|won` (open → lost|won, терминальные неизменяемы, DELETE запрещён); resolution_reason.
+
+## D3. Проводки кошелька без ALTER 0033
+CHECK 0033 уже описывает ровно нужные переходы бакетов, поэтому спор ведётся существующими событиями, контекст — в auth_disputes/аудите: dispute-hold = `refund_hold` (available → refund_pending), проигранный спор = `refund_confirmed` (refund_pending → refunded), выигранный = `refund_failed` (refund_pending → available). wallet_locked (спор открыт) уже блокирует reserve/extend/quote/confirm (403 wallet_locked в AUTH-21/22 хуках). Отрицательный available невозможен структурно: hold берёт только существующий available, projection-триггер и баланс-чек 0033 отклоняют иное.
+
+## D4. Возвратная сага (RefundService, apps/api/billing/refunds.py)
+request (OWNER): заказ `credited`, целевой лот = лот с origin_order=order_id; замок лота FOR UPDATE; eligibility = source=purchased, reserved=0, spent=0, refund_pending=0, refunded=0 (переиспользование WalletService.refund_hold — гонка spend/refund эксклюзивна по построению, E4); hold + INSERT refund-заказа + обязательный аудит одной транзакцией. Повторный POST с тем же order_id возвращает существующий refund (UNIQUE), паритет повторного клика AUTH-22. Окно: `now − credited_at ≤ window_days`, window_days = env `CISSTAT_TOPUP_REFUND_DAYS` (default 14, границы 0…90), фиксируется в записи навсегда. Замок лота ставится и при locked-кошельке (возврат денег — не выдача CU; проверка `_topup_account` сохраняется).
+step (worker, паритет AUTH-18/22): claim pending по lease 45 c / fence / attempts / backoff 15·2ⁿ ≤ 900 c; I/O вне SQL-транзакций: POST refunds (Idempotence-Key=refund_id) → нормализованный ответ → независимый GET-confirmed fetch → validate_refund (payment_id/amount/currency/статус); finish: succeeded → `refunded` + wallet refund_confirmed (погашение CU) одной транзакцией; canceled → `failed` + wallet refund_failed (разблокировка); pending → держать hold; ProviderUnavailable → retry с backoff, **hold никогда не снимается по неизвестному исходу** (§13.7.3); ProviderMismatch/ValueError → `review_required` (hold сохраняется до trusted reconcile с обязательным API-proof).
+
+## D5. Провайдер-адаптер (дополнение provider.py, bounded)
+`create_refund`: GET me (паритет create) → POST v3/refunds, Idempotence-Key=refund_id, payment_id + amount (полная сумма заказа, RUB). `fetch_refund`: GET v3/refunds/{id}. `validate_refund`: refund.id, payment_id == заказа, amount == сумма заказа, статус ∈ {pending, succeeded, canceled}; ни одно поле browser/webhook не является proof. Sandbox-привязка наследуется от заказа (заказ уже пинен на shop/snapshot при оплате).
+
+## D6. Спор (trusted CLI manage_refunds.py)
+dispute-open --order-id: заказ credited; wallet set_status locked (CAS, причина); dispute-hold доступного остатка лота (spent>0 допустимо — это и есть chargeback-сценарий); INSERT auth_disputes (spent_units = фактический exposure, disputed_units = заблокированный остаток). Повторный спор по тому же заказу отклонён (UNIQUE). Двойной спор/возврат одного лота несовместимы: refund_hold требует нулевых spent/refund_pending, dispute-hold требует нулевых refund_pending/refunded — после открытия спора self-service refund этого лота отклоняется.
+dispute-resolve --dispute-id --outcome: lost → проводка refund_pending→refunded; кошелёк остаётся locked (восстановление — явный manage_wallet unlock AUTH-21 с reason, §13.7.5); won → refund_pending→available и wallet unlock. Resolve ровно один раз (терминальный guard).
+«Running jobs останавливаются/fence согласно безопасной worker policy»: v1 — новые reserve/extend/confirm отклоняются wallet_locked; текущие running-резервации завершают текущий шаг (settle/release по pinned allocations) — обрыв посреди выполнения не безопасен и не требуется нормативом; политика зафиксирована здесь.
+
+## D7. API и роуты (затронуты)
++2 OWNER-маршрута: POST /v1/billing/{account_id}/topups/{order_id}/refunds, GET /v1/billing/{account_id}/refunds/{refund_id} (объект всегда проверяется по Account, §13.8). CSRF/Origin на POST, _fresh не требуется (не платёж), CAS expected_version на request. Registry: операция `billing.refund` (service/platform/external — паритет billing.topup) + 2 bindings (281→283, api 277→279). Webhook-маршрут прежний: refund-статус подтверждает только сага через GET (webhook refund-событий не добавлялся — inbox 0034 пинен на payment.*, а polling+reconcile покрывают задержки).
+
+## D8. Аудит
+Проводки кошелька — обязательный `auth_wallet_changed` (fail-closed, AUTH-21); команды саги/CLI/HTTP — `team.audit` (command billing-refund-*/billing-dispute-*) в той же транзакции, паритет AUTH-22. Новый каталожный элемент не вводится — финансовые мутации уже покрыты mandatory-действием.
+
+## D9. Границы честности
+Только тестовый магазин (sandbox=True в адаптере неизменен); реальная сеть не вызывается — MockTransport в гейтах; контур выключен по умолчанию: без credited-заказа refund невозможен, без провижининга каталога (AUTH-22) заказов нет. Debt/exposure хранится в auth_disputes (spent_units), не как отрицательный баланс; новые покупки долг не гасят (автопогашения нет). UI-панель возвратов — AUTH-24 (здесь только авто-генерируемые TS-контракты).
+
+## D10. Гейты
+`auth23` (unit, без БД) — state-машины, окно, валидация провайдера, DTO forbid, словарь кодов; `auth23-postgres` — native disposable PostgreSQL (apply/check/guards, happy path, spoof/timeout/canceled, race, dispute lost/won, double, audit rollback, окно, MEMBER/чужой аккаунт). Оба — паритет workflows auth23.yml (Ubuntu/Windows contracts, PG16/18 native). Opt-in в local_gates — с флагом `--with-auth23-postgres` и исключением по умолчанию (урок AUTH-22-HOTFIX-01).

@@ -142,6 +142,9 @@ RUN python -c "from apps.api.billing.wallet import WalletService; from apps.api.
 # AUTH-22: top-up checkout/credit migration + trusted operator CLI; catalog off by default.
 COPY scripts/auth22/migrate.py scripts/auth22/manage_topups.py ./scripts/auth22/
 RUN python -c "from apps.api.billing.topups import TopupService; from apps.api.billing.topup_migrations import check_schema; print('auth22 imports OK; topup off until catalog provisioned')"
+# AUTH-23: refund/dispute migration + trusted operator CLI; refunds off until credited orders exist.
+COPY scripts/auth23/migrate.py scripts/auth23/manage_refunds.py ./scripts/auth23/
+RUN python -c "from apps.api.billing.refunds import RefundService; from apps.api.billing.refund_migrations import check_schema; print('auth23 imports OK; refunds off until credited orders exist')"
 # AUTH-20: explicit migration + ops CLI; audit outbox sweeper in-process.
 COPY scripts/auth20/migrate.py scripts/auth20/reconcile.py ./scripts/auth20/
 RUN python -c "from apps.api.authentication.ops_service import AuthOpsService; from apps.api.authentication.ops_sweeper import interval_seconds; from apps.api.authentication.lockdown import engaged; from apps.api.authentication.auth20_migrations import check_schema; assert engaged() is False; print('auth20 imports OK; lockdown off by default')"

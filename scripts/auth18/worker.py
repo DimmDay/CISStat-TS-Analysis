@@ -29,11 +29,22 @@ def main():
         topups = TopupService()
     except Exception:  # noqa: BLE001 -- safe boundary; contour stays subscription-only
         topups = None
+    # AUTH-23: the refund saga rides the same loop; without 0035 its step
+    # reports no work honestly (to_regclass guard).
+    refunds = None
+    try:
+        from apps.api.billing.refunds import RefundService
+
+        refunds = RefundService()
+    except Exception:  # noqa: BLE001 -- safe boundary; refund stays off
+        refunds = None
     while not stop.is_set():
         try:
             worked = service.step()
             if topups is not None:
                 worked = topups.step() or worked
+            if refunds is not None:
+                worked = refunds.step() or worked
             if not args.loop:
                 print(json.dumps({"ok": True, "processed": worked}))
                 return 0

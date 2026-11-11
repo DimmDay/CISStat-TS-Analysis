@@ -1,0 +1,1 @@
+-r ../auth22/requirements.txt

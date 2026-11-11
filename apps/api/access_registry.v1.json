@@ -1868,6 +1868,12 @@
       "stage": "platform",
       "authority": "external"
     },
+    "billing.refund": {
+      "operation_id": "billing.refund",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "authority": "external"
+    },
     "auth.oidc.start": {
       "operation_id": "auth.oidc.start",
       "stage_namespace": "service",
@@ -2998,12 +3004,20 @@
       "operation_id": "billing.topup",
       "programmatic_api": false
     },
+    "api:GET:/v1/billing/{account_id}/refunds/{refund_id}": {
+      "operation_id": "billing.refund",
+      "programmatic_api": false
+    },
     "api:POST:/v1/billing/{account_id}/topup-quotes": {
       "operation_id": "billing.topup",
       "programmatic_api": false
     },
     "api:POST:/v1/billing/{account_id}/topups": {
       "operation_id": "billing.topup",
+      "programmatic_api": false
+    },
+    "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds": {
+      "operation_id": "billing.refund",
       "programmatic_api": false
     },
     "api:POST:/v1/billing/webhooks/yookassa": {

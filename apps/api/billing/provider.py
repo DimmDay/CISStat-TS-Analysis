@@ -65,6 +65,47 @@ class YooKassa:
     def fetch(self, payment_id):
         return self._request("GET", "payments/" + self._id(payment_id))
 
+    # ---------------------------------------------------------------- refunds
+    # AUTH-23: bounded refund surface. Only the test shop is constructible;
+    # every refund is created with the refund_id idempotence key and confirmed
+    # by an independent authenticated GET before any wallet movement.
+
+    def create_refund(self, job):
+        merchant = self._request("GET", "me")
+        if (
+            merchant.get("account_id") != self.shop_id
+            or merchant.get("test") is not True
+            or merchant.get("status") != "enabled"
+        ):
+            raise ProviderMismatch()
+        minor = job["amount_minor"]
+        return self._request(
+            "POST",
+            "refunds",
+            headers={"Idempotence-Key": str(job["refund_id"])},
+            json={
+                "payment_id": job["payment_id"],
+                "amount": {
+                    "value": f"{minor // 100}.{minor % 100:02d}",
+                    "currency": job["currency"],
+                },
+            },
+        )
+
+    def fetch_refund(self, refund_id):
+        return self._request("GET", "refunds/" + self._id(refund_id))
+
+    def validate_refund(self, r, job):
+        expected = f"{job['amount_minor'] // 100}.{job['amount_minor'] % 100:02d}"
+        if (
+            r.get("id") != job["refund_id"]
+            or r.get("payment_id") != job["payment_id"]
+            or r.get("amount") != {"value": expected, "currency": job["currency"]}
+            or r.get("status") not in ("pending", "succeeded", "canceled")
+        ):
+            raise ProviderMismatch()
+        return {"status": r["status"], "refund_id": r["id"]}
+
     def create(self, order):
         # Before ANY payment POST, verify merchant environment with authenticated /me.
         # A mode flag alone must not turn accidentally supplied live credentials into checkout.

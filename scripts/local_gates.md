@@ -186,3 +186,19 @@ python scripts/local_gates.py --with-auth22-postgres --skip-install
 ## AUTH-22 HOTFIX-01 — auth22-postgres выполнялся без флага (база 7d233ad)
 
 Дефект первой поставки AUTH-22: гейт `auth22-postgres` добавлен в `GATES`, но не в opt-in механику — отсутствовали `--with-auth22-postgres` и `excluded.add("auth22-postgres")`. Поэтому он один из всех native-гейтов запускался в default прогоне, без `CISSTAT_AUTH_TEST_DSN` честно возвращал 2 (`Set CISSTAT_AUTH_TEST_DSN... No tests ran`) и ронял прогон за <1 c. Заодно устранён дрейф того же класса от AUTH-20/21: `missing_live`-подсказка не называла auth21, footnote `--list` и строки `--only`/`parser.error` — флаги/имена auth20–22; эти строки теперь строятся из `GATES` программно. Поведенческие изменения только в выборе гейтов: default-прогон снова зелёный без DSN (native — по флагу), сам native-гейт и его CI не менялись. После распаковки hotfix: `git add --pathspec-from-file=scripts/auth22/files.txt`, затем `python scripts/local_gates.py --skip-install`; smoke: `python scripts/local_gates.py --list` (`auth22-postgres` без `*`) и `python scripts/local_gates.py --only auth22,auth22-postgres --skip-install` с DSN.
+
+## AUTH-23 — Refund/dispute/chargeback workflow (поверх 004dba5)
+
+`auth23` входит в default прогон первым и проверяет state-машины возврата/спора, окно, валидацию provider-refund, DTO и safe-коды без БД. `auth23-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн прежний:
+
+```bash
+git add --pathspec-from-file=scripts/auth23/files.txt
+python scripts/local_gates.py --skip-install
+python scripts/local_gates.py --only auth23,auth23-postgres --skip-install
+# либо native вместе с default:
+python scripts/local_gates.py --with-auth23-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth23.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты затронуты: +2 OWNER-маршрута** (`POST /v1/billing/{account_id}/topups/{order_id}/refunds`, `GET /v1/billing/{account_id}/refunds/{refund_id}`): actual 279 = inventory 279, bindings 283 (+2, операция `billing.refund`), added/missing=[]; научные пути не переименованы; webhook-маршрут прежний (refund-статус подтверждает только сага через GET). Inventory 654→656, OpenAPI/TS/proxy allowlist перегенерированы (порядок: производные → inventory); policy_review: политика `billing.refund` + 2 классификации + честное обновление target `billing.topup`.
+
+Миграция 0035 explicit: `scripts/auth23/migrate.py --apply/--check` (цепочка гарантирует 0019…0034). Контур выключен по умолчанию: без credited-заказа (AUTH-22) возврат невозможен; споры открываются только trusted CLI `scripts/auth23/manage_refunds.py` (dispute-open/dispute-resolve/refund-reconcile), клиентского HTTP-маршрута спора нет. Окно возврата — env `CISSTAT_TOPUP_REFUND_DAYS` (default 14, границы 0…90, фиксируется в записи). Инструкция VM — `docs/auth23/deploy.md` (пересборка api, миграция 0035; web не менялся — только авто-генерируемый TS-контракт). Refund-панель UI и wallet/ledger READ-эндпоинты — AUTH-24, payment reconciliation/launch runbook — AUTH-25.

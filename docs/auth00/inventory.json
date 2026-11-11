@@ -3,7 +3,7 @@
   "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 277,
+    "api": 279,
     "framework": 8,
     "internal_operation": 36,
     "legacy_authority": 1,
@@ -600,9 +600,26 @@
     },
     "billing.topup": {
       "observed": "AUTH-22 top-up checkout: operator-provisioned immutable package catalog, server-side quote snapshot (no client price/units), durable order saga with provider GET-confirmed proof, bounded untrusted inbox wake-up on the existing webhook, atomic order transition + purchased lot + mandatory audit in one transaction.",
-      "target": "Only a confirmed server payment credits CU: duplicate events, browser return, callback spoof, currency/amount tamper and out-of-order events cannot credit or uncredit a top-up; paid_review keeps captured money visible for the audited operator resolution until AUTH-23 refunds.",
+      "target": "Only a confirmed server payment credits CU: duplicate events, browser return, callback spoof, currency/amount tamper and out-of-order events cannot credit or uncredit a top-up; paid_review keeps captured money visible for the audited operator resolution; AUTH-23 refunds move held CU only after a provider-confirmed refund proof.",
       "follow_up": [
         "AUTH-22",
+        "AUTH-23",
+        "AUTH-24",
+        "AUTH-25",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T02",
+        "T05",
+        "T11",
+        "T13",
+        "T15"
+      ]
+    },
+    "billing.refund": {
+      "observed": "AUTH-23 refund/dispute workflow: OWNER full refund of a credited whole unused purchased lot (windowed, unique per order, saga with lease/fence/backoff and independent GET-confirmed proof); unknown provider outcomes keep the refund_pending hold; trusted dispute opening locks the wallet, holds the remaining available and records spent exposure in auth_disputes; resolution is single and audited (lost extinguishes held CU, won unlocks them back).",
+      "target": "Spend/refund race stays exclusive (reserved/spent/held lots cannot be refunded or disputed-hidden); an unknown result never unlocks the hold; a spent chargeback becomes recorded exposure, never a negative available balance; recovery after a lost dispute is an explicit audited wallet procedure (AUTH-24/25).",
+      "follow_up": [
         "AUTH-23",
         "AUTH-24",
         "AUTH-25",
@@ -631,10 +648,10 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "aff37b1d76277a4b762c5abfc99543311a5ee4c25eceaf6e589a8dd159a81e08",
+    "apps/api/Dockerfile": "70b4d8029626348be6f3918ee382ea3b13ceedc424c4d7772ee8f017002df6e5",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "74c36c96d7f1b428517f00e14ffe9fa0c07fae32e9eddbda8bcf1e8589f7079c",
+    "apps/api/access_registry.v1.json": "b6496d87669786f6ca4c31e592d98d65cc1ca7801ec974f8dee7bbc516406a03",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -656,7 +673,7 @@
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
     "apps/api/authentication/auth19_migrations.py": "f5b0e9298fe666651b6c7b5e9b4209d1c6b2798604c60b4efc85d559590aeda8",
     "apps/api/authentication/auth20_migrations.py": "dcec7c8f3777da792b7ccd5d75e83f3fe31a0e6bc064fa98068718d10fcc854b",
-    "apps/api/authentication/context.py": "32b8298d078b47a23670b90d23c4b6de87ae49c952945efc0208f474bd53af36",
+    "apps/api/authentication/context.py": "9d408d34ee1a58934bfa406d25c300e6e161e99f883523387ce9b78bbd5208f1",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/demo.py": "73368ba0135d00e6c8e19b128c4d9378db2069963a1eb66a5f8df7059b4fd79a",
@@ -700,14 +717,17 @@
     "apps/api/billing/coordinator.py": "00b03600adf0e4e09a33f451af1a5819f120782cfbf3cbbe1e518a387c1aba16",
     "apps/api/billing/migrations.py": "0c336c7beada72e3e4633226991e488ba89c648f26a73d502699b6b650b45f4b",
     "apps/api/billing/policy.py": "47d006136719aa64f01677607c9f03bcc40dab9c7f187dbf60abb759b2f83224",
-    "apps/api/billing/provider.py": "5e841de1dcb7c013e726c4c37e53c28592f5fd155254ece89979885296b8dd10",
+    "apps/api/billing/provider.py": "8cef270b61da99466b70ea666bc50cd8bd4b291f311bf792006b0abca0a831ad",
+    "apps/api/billing/refund_contract.py": "b07fc7436707d9fcc878bf3513517f173cd27c823cf872401716bc9f6e791f1c",
+    "apps/api/billing/refund_migrations.py": "c2257492a73e3916b4a16e0342ae0962c798438b0c8bea3174afa36b1f9a07fd",
+    "apps/api/billing/refunds.py": "c5cc0e2ce8ee0dd8dcbffaccaef75c92ff4af755a69f93d4bca2eadcc9d12b94",
     "apps/api/billing/subscription_contract.py": "a6a2d2d5c736fddcbf8c8501f359e08d5aee923c526cfe3979d237fd0abb7b3b",
     "apps/api/billing/subscription_migrations.py": "4763181fdb578a12267ba3ad59617d04e671af55bf0adba205f7576f1c194307",
     "apps/api/billing/subscriptions.py": "fc3c626f46dc8061a3e2f084684307c4b4b6b6933386e6ec406a8d0cec5f1fe6",
     "apps/api/billing/topup_contract.py": "678fb46593198e326d01088699b3d0b4e8933b24c35995fb2ef628368a5eece6",
     "apps/api/billing/topup_migrations.py": "092bd2319527e06bb2bea3f2f0045888aa9c15e0bff501abf29dea2ec1957060",
     "apps/api/billing/topups.py": "a027330539b79a83a4bcffa7861521be8e746a8e9144372bf47d9d62326ecc8f",
-    "apps/api/billing/wallet.py": "53888c7cf6e01154ca36f74048d55352bc6f20430176bba0808bfb2d0510cad2",
+    "apps/api/billing/wallet.py": "a380ba2ce9cfd80c1a5f159cc8b46092684105851aeb1cd6db562d48137340c2",
     "apps/api/billing/wallet_migrations.py": "e4f15d4d57f5b13cfd2079936e527e07edcdb9e2f324769cb82f867f4ec6d391",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
@@ -825,7 +845,7 @@
     "apps/api/routers/accounts.py": "11c85c988cb41c7e7037f840993fce05fbbfa20104b63701760c561f7365b348",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "f6e90cbb53c4cf39d9a0603b77983dc7fd4007da34def7db705cf045517583bf",
-    "apps/api/routers/billing.py": "2ad17ff484ffd888d56f937bc274fc2620c042148555d59f5972923f4dad44fd",
+    "apps/api/routers/billing.py": "34f4e976652ac921ea43ecdad55e7362eb7032f58d39b8e89f2007717c5697ba",
     "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
@@ -931,7 +951,7 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "1421e0cbb3b2541226c11f07374f6564fc9e80b50ae8882f633f75cec96f48d7",
+    "docs/auth01/openapi.json": "e71bbc9f7cbdb78d4fb26c960c748e6198e4ba51fa0a7d33be4cd2a2a31a6b25",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -1016,7 +1036,7 @@
     "packages/ui/context/AuthContext.tsx": "05583a03ac8a4c20d335cfc028b0dd9a6e7b91f0a0cd11338934d329327c9af6",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "e54635986dc1a8a627e2f317e7b9cb63a8dc01d993bb7936980b9f5b87874911",
+    "packages/ui/lib/access-contract.generated.ts": "91dd153aa27dcc18fd76b4ed463c86c8a737707bdc0c11a1fe50f9b6d5bd27ce",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
@@ -1035,7 +1055,7 @@
     "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
-    "packages/ui/server/proxy-routes.generated.json": "dfd6906be4d3ec7f7442bf3c85d4f19c4601575329a14c54208203a8c3e8bed6",
+    "packages/ui/server/proxy-routes.generated.json": "9f57a8ea840b57d0b182782510d494062a9ba85545262ffac8b669ef7c8108b8",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -1059,14 +1079,14 @@
     "scripts/auth18/migrate.py": "47d169ce92e8868f373c8ef23f76899a56672f68009a74ba203ab608e75701ab",
     "scripts/auth18/provision_cycle.py": "8974bef858ed9723a40d66a836eadfbd364ce2b9ad9346344f2572c0b9d3aa09",
     "scripts/auth18/reconcile.py": "aafe0b010380696d5b9b37bc45ad7282f3bebc6aa8d122c28d41a10f4083c989",
-    "scripts/auth18/worker.py": "52956c9a5943424e0ddee91ec23ff2097f947e04ad6d5ebbedd78b4d5e6e8cca",
+    "scripts/auth18/worker.py": "d23f5bef44d37a18e2a96601638cb9657e66c1e9664db4427f95722312ea523d",
     "scripts/auth20/reconcile.py": "c9cb8e22486e4e3e4d6196317ef19163561d6e8d0eff25700e1625a5159c7a9e",
     "scripts/auth21/manage_wallet.py": "e27b6aded2db246040f4daaa4702c2fd780a3c90c032daccf9054477cf6b73a3",
     "scripts/auth21/migrate.py": "44b3c34d993d7ba34c396a188c41e0afc55ec7e213d7e1f7f11d14515922228c",
     "scripts/auth22/manage_topups.py": "709c0dbcc1cc891af0a8ee72852299efedabb780e9b1cb9282009dfeb21c5eb8",
     "scripts/auth22/migrate.py": "b5f8077f34ef6a3c3c1944ffcae15c82a800a8e5910e38ef843b298ed8fe63e7",
-    "scripts/local_gates.md": "d9845a48d5811c5a4f2375c54ad633c781ca54a28a0fd45b262c9eacfa91b9cc",
-    "scripts/local_gates.py": "b4377eda0532c11844d8f1e5c1dd32e095e6a13c6fc89a23eba67cdff410acbb",
+    "scripts/local_gates.md": "e6579e816d38c715f741b24fc2f62bac8b6f4d968264b1a1c3de82c5d3c10983",
+    "scripts/local_gates.py": "c102ecfe75a6a8ad1ab558c9c20e78377104d6cde74f409025532e7d7f47c596",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1670,12 +1690,45 @@
     {
       "kind": "api",
       "method": "GET",
+      "path": "/v1/billing/{account_id}/refunds/{refund_id}",
+      "operation": "apps.api.routers.billing:refund_show",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 84,
+          "symbol": "refund_show"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 263,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/billing/{account_id}/refunds/{refund_id}",
+      "discovery": "automatic",
+      "policy": "billing.refund",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "refund order saga / trusted dispute records",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/billing/{account_id}/refunds/{refund_id}",
+      "admission": "AUTH-23 personal current OWNER of a paid MULTI account; the refund is the full amount of a credited order for its whole unused purchased lot inside the recorded window; cookie/Origin/CSRF on POST; provider proof is the authenticated GET refund only; disputes are trusted-operator records."
+    },
+    {
+      "kind": "api",
+      "method": "GET",
       "path": "/v1/billing/{account_id}/subscription",
       "operation": "apps.api.routers.billing:subscription",
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 31,
+          "line": 39,
           "symbol": "subscription"
         },
         {
@@ -1710,7 +1763,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 50,
+          "line": 58,
           "symbol": "topups"
         },
         {
@@ -7130,7 +7183,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 69,
+          "line": 91,
           "symbol": "webhook"
         },
         {
@@ -7165,7 +7218,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 36,
+          "line": 44,
           "symbol": "quote"
         },
         {
@@ -7200,7 +7253,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 43,
+          "line": 51,
           "symbol": "confirm"
         },
         {
@@ -7235,7 +7288,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 55,
+          "line": 63,
           "symbol": "topup_quote"
         },
         {
@@ -7270,7 +7323,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 62,
+          "line": 70,
           "symbol": "topup_order"
         },
         {
@@ -7296,6 +7349,41 @@
       ],
       "canonical_operation": "api:POST:/v1/billing/{account_id}/topups",
       "admission": "AUTH-22 personal current OWNER of a paid MULTI account with an active wallet; server-side package snapshot, cookie/Origin/CSRF, fresh login/MFA on confirm; browser return never credits."
+    },
+    {
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/billing/{account_id}/topups/{order_id}/refunds",
+      "operation": "apps.api.routers.billing:refund_request",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 77,
+          "symbol": "refund_request"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 263,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds",
+      "discovery": "automatic",
+      "policy": "billing.refund",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "refund order saga / trusted dispute records",
+      "effects": [
+        "write",
+        "money movement",
+        "mandatory audit"
+      ],
+      "canonical_operation": "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds",
+      "admission": "AUTH-23 personal current OWNER of a paid MULTI account; the refund is the full amount of a credited order for its whole unused purchased lot inside the recorded window; cookie/Origin/CSRF on POST; provider proof is the authenticated GET refund only; disputes are trusted-operator records."
     },
     {
       "kind": "api",

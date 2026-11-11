@@ -584,9 +584,26 @@
   },
   "billing.topup": {
    "observed": "AUTH-22 top-up checkout: operator-provisioned immutable package catalog, server-side quote snapshot (no client price/units), durable order saga with provider GET-confirmed proof, bounded untrusted inbox wake-up on the existing webhook, atomic order transition + purchased lot + mandatory audit in one transaction.",
-   "target": "Only a confirmed server payment credits CU: duplicate events, browser return, callback spoof, currency/amount tamper and out-of-order events cannot credit or uncredit a top-up; paid_review keeps captured money visible for the audited operator resolution until AUTH-23 refunds.",
+   "target": "Only a confirmed server payment credits CU: duplicate events, browser return, callback spoof, currency/amount tamper and out-of-order events cannot credit or uncredit a top-up; paid_review keeps captured money visible for the audited operator resolution; AUTH-23 refunds move held CU only after a provider-confirmed refund proof.",
    "follow_up": [
     "AUTH-22",
+    "AUTH-23",
+    "AUTH-24",
+    "AUTH-25",
+    "AUTH-CERT"
+   ],
+   "threats": [
+    "T02",
+    "T05",
+    "T11",
+    "T13",
+    "T15"
+   ]
+  },
+  "billing.refund": {
+   "observed": "AUTH-23 refund/dispute workflow: OWNER full refund of a credited whole unused purchased lot (windowed, unique per order, saga with lease/fence/backoff and independent GET-confirmed proof); unknown provider outcomes keep the refund_pending hold; trusted dispute opening locks the wallet, holds the remaining available and records spent exposure in auth_disputes; resolution is single and audited (lost extinguishes held CU, won unlocks them back).",
+   "target": "Spend/refund race stays exclusive (reserved/spent/held lots cannot be refunded or disputed-hidden); an unknown result never unlocks the hold; a spent chargeback becomes recorded exposure, never a negative available balance; recovery after a lost dispute is an explicit audited wallet procedure (AUTH-24/25).",
+   "follow_up": [
     "AUTH-23",
     "AUTH-24",
     "AUTH-25",
@@ -8001,6 +8018,17 @@
    "canonical_operation": "api:GET:/v1/billing/{account_id}/topups",
    "admission": "AUTH-22 personal current OWNER of a paid MULTI account with an active wallet; server-side package snapshot, cookie/Origin/CSRF, fresh login/MFA on confirm; browser return never credits."
   },
+  "api:GET:/v1/billing/{account_id}/refunds/{refund_id}": {
+   "policy": "billing.refund",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "refund order saga / trusted dispute records",
+   "effects": [
+    "read"
+   ],
+   "canonical_operation": "api:GET:/v1/billing/{account_id}/refunds/{refund_id}",
+   "admission": "AUTH-23 personal current OWNER of a paid MULTI account; the refund is the full amount of a credited order for its whole unused purchased lot inside the recorded window; cookie/Origin/CSRF on POST; provider proof is the authenticated GET refund only; disputes are trusted-operator records."
+  },
   "api:POST:/v1/billing/{account_id}/topup-quotes": {
    "policy": "billing.topup",
    "stage": "platform",
@@ -8026,6 +8054,19 @@
    ],
    "canonical_operation": "api:POST:/v1/billing/{account_id}/topups",
    "admission": "AUTH-22 personal current OWNER of a paid MULTI account with an active wallet; server-side package snapshot, cookie/Origin/CSRF, fresh login/MFA on confirm; browser return never credits."
+  },
+  "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds": {
+   "policy": "billing.refund",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "refund order saga / trusted dispute records",
+   "effects": [
+    "write",
+    "money movement",
+    "mandatory audit"
+   ],
+   "canonical_operation": "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds",
+   "admission": "AUTH-23 personal current OWNER of a paid MULTI account; the refund is the full amount of a credited order for its whole unused purchased lot inside the recorded window; cookie/Origin/CSRF on POST; provider proof is the authenticated GET refund only; disputes are trusted-operator records."
   },
   "api:POST:/v1/billing/webhooks/yookassa": {
    "policy": "billing.provider",

@@ -286,6 +286,121 @@ def credit_purchased_order(c, account_id, units, *, origin_order, reason):
     return {"lot_id": str(lot_id), "units": units}
 
 
+def dispute_hold_in_tx(c, row, *, reason):
+    """AUTH-23 composable chargeback hold on an already-locked lot row.
+
+    spent>0 is exactly the chargeback case; any prior hold/refund or a live
+    reservation refuses the hold (E4). Zero available is refused: exposure is
+    recorded as spent_units, never as a negative available (13.7.5).
+    """
+    if row["source"] != "purchased":
+        raise ValueError("dispute hold covers purchased lots only")
+    if (
+        int(row["reserved"]) > 0
+        or int(row["refund_pending"]) > 0
+        or int(row["refunded"]) > 0
+    ):
+        raise WalletError(409, "refund_not_eligible")
+    units = int(row["available"])
+    if units <= 0:
+        raise WalletError(409, "refund_not_eligible")
+    _posting(
+        c,
+        row["lot_id"],
+        "refund_hold",
+        available_delta=-units,
+        refund_pending_delta=units,
+    )
+    _wallet_audit(
+        c,
+        "dispute_hold",
+        row["wallet_id"],
+        reason,
+        lot_id=str(row["lot_id"]),
+        units=units,
+        spent=int(row["spent"]),
+    )
+    return {"lot_id": str(row["lot_id"]), "disputed": units, "spent": int(row["spent"])}
+
+
+def refund_hold_in_tx(c, row, *, reason, command="refund_hold"):
+    """AUTH-23 composable hold on an already FOR UPDATE-locked lot row.
+
+    Runs inside the caller's transaction so refund/dispute orders, the wallet
+    movement and the mandatory audit commit together (design D4). The
+    spend/refund race stays exclusive: any reserved/spent/held/refunded unit
+    refuses the whole-lot self-service hold.
+    """
+    if row["source"] != "purchased":
+        raise ValueError("self-service refund covers purchased lots only")
+    if (
+        int(row["reserved"]) > 0
+        or int(row["spent"]) > 0
+        or int(row["refund_pending"]) > 0
+        or int(row["refunded"]) > 0
+    ):
+        raise WalletError(409, "refund_not_eligible")
+    units = int(row["available"])
+    if units <= 0:
+        raise WalletError(409, "refund_not_eligible")
+    _posting(
+        c,
+        row["lot_id"],
+        "refund_hold",
+        available_delta=-units,
+        refund_pending_delta=units,
+    )
+    _wallet_audit(
+        c,
+        command,
+        row["wallet_id"],
+        reason,
+        lot_id=str(row["lot_id"]),
+        units=units,
+    )
+    return {"lot_id": str(row["lot_id"]), "refund_pending": units}
+
+
+def refund_release_in_tx(c, row, event, *, reason, command=None):
+    """AUTH-23 composable resolution of an existing hold (same transaction).
+
+    event='refund_confirmed' extinguishes the held CU (refund_pending ->
+    refunded); event='refund_failed' unlocks it back (refund_pending ->
+    available). Both reuse the 0033 bucket rules; the dispute context lives
+    in auth_disputes and the audit command.
+    """
+    if event not in ("refund_confirmed", "refund_failed"):
+        raise ValueError("known refund resolution event required")
+    if not row or int(row["refund_pending"]) <= 0:
+        raise ValueError("refund hold required")
+    units = int(row["refund_pending"])
+    if event == "refund_confirmed":
+        _posting(
+            c,
+            row["lot_id"],
+            "refund_confirmed",
+            refund_pending_delta=-units,
+            refunded_delta=units,
+        )
+    else:
+        _posting(
+            c,
+            row["lot_id"],
+            "refund_failed",
+            refund_pending_delta=-units,
+            available_delta=units,
+        )
+    _wallet_audit(
+        c,
+        command or event,
+        row["wallet_id"],
+        reason,
+        lot_id=str(row["lot_id"]),
+        units=units,
+    )
+    return {"lot_id": str(row["lot_id"]), "units": units}
+
+
 def _posting(c, lot_id, event, *, reservation_id=None, **deltas):
     if event not in POSTING_EVENTS:
         raise ValueError("known posting event required")
@@ -722,32 +837,7 @@ class WalletService:
             ).fetchone()
             if not row:
                 raise ValueError("known lot required")
-            if row["source"] != "purchased":
-                raise ValueError("self-service refund covers purchased lots only")
-            if (
-                int(row["reserved"]) > 0
-                or int(row["spent"]) > 0
-                or int(row["refund_pending"]) > 0
-                or int(row["refunded"]) > 0
-            ):
-                raise WalletError(409, "refund_not_eligible")
-            units = int(row["available"])
-            _posting(
-                c,
-                row["lot_id"],
-                "refund_hold",
-                available_delta=-units,
-                refund_pending_delta=units,
-            )
-            _wallet_audit(
-                c,
-                "refund_hold",
-                row["wallet_id"],
-                reason,
-                lot_id=str(row["lot_id"]),
-                units=units,
-            )
-            return {"lot_id": str(row["lot_id"]), "refund_pending": units}
+            return refund_hold_in_tx(c, row, reason=reason)
 
     def refund_confirmed(self, lot_id, *, reason):
         _validate_reason(reason)
@@ -765,34 +855,50 @@ class WalletService:
                 "SELECT * FROM auth_wallet_lots WHERE lot_id=%s FOR UPDATE",
                 (UUID(str(lot_id)),),
             ).fetchone()
-            if not row or int(row["refund_pending"]) <= 0:
-                raise ValueError("refund hold required")
-            units = int(row["refund_pending"])
-            if event == "refund_confirmed":
-                _posting(
-                    c,
-                    row["lot_id"],
-                    "refund_confirmed",
-                    refund_pending_delta=-units,
-                    refunded_delta=units,
-                )
-            else:
-                _posting(
-                    c,
-                    row["lot_id"],
-                    "refund_failed",
-                    refund_pending_delta=-units,
-                    available_delta=units,
-                )
-            _wallet_audit(
-                c,
-                event,
-                row["wallet_id"],
-                reason,
-                lot_id=str(row["lot_id"]),
-                units=units,
+            if not row:
+                raise ValueError("known lot required")
+            return refund_release_in_tx(c, row, event, reason=reason)
+
+    def dispute_hold(self, lot_id, *, reason):
+        """AUTH-23 chargeback hold: blocks the remaining available of a
+        partially spent purchased lot (spent>0 allowed, D6); zero available
+        and any prior hold/refund are refused. Spend/reserve race is
+        exclusive: a reserved lot cannot be disputed-hidden."""
+        _validate_reason(reason)
+        with self._tx() as tx:
+            c = tx.connection
+            check_schema(c)
+            row = c.execute(
+                "SELECT * FROM auth_wallet_lots WHERE lot_id=%s FOR UPDATE",
+                (UUID(str(lot_id)),),
+            ).fetchone()
+            if not row:
+                raise ValueError("known lot required")
+            return dispute_hold_in_tx(c, row, reason=reason)
+
+    def dispute_lost(self, lot_id, *, reason):
+        """AUTH-23 dispute lost: refund_pending -> refunded (CU extinguished)."""
+        _validate_reason(reason)
+        return self._dispute_finish(lot_id, "refund_confirmed", "dispute_lost", reason)
+
+    def dispute_won(self, lot_id, *, reason):
+        """AUTH-23 dispute won: refund_pending -> available, exactly once."""
+        _validate_reason(reason)
+        return self._dispute_finish(lot_id, "refund_failed", "dispute_won", reason)
+
+    def _dispute_finish(self, lot_id, event, command, reason):
+        with self._tx() as tx:
+            c = tx.connection
+            check_schema(c)
+            row = c.execute(
+                "SELECT * FROM auth_wallet_lots WHERE lot_id=%s FOR UPDATE",
+                (UUID(str(lot_id)),),
+            ).fetchone()
+            if not row:
+                raise ValueError("known lot required")
+            return refund_release_in_tx(
+                c, row, event, reason=reason, command=command
             )
-            return {"lot_id": str(row["lot_id"]), "units": units}
 
     def summary(self, account_id):
         """Projection per source; None without a wallet (D1/D11)."""

@@ -6,6 +6,8 @@ from fastapi import APIRouter, Request
 
 from apps.api.authentication.context import auth_error
 from apps.api.authentication.csrf import auth_cookie
+from apps.api.billing.refund_contract import RefundRequest
+from apps.api.billing.refunds import RefundService
 from apps.api.billing.subscription_contract import Confirm, Quote
 from apps.api.billing.subscriptions import SubscriptionService
 from apps.api.billing.topup_contract import TopupOrder, TopupQuote
@@ -24,6 +26,12 @@ def service(request):
 
 def topup_service(request):
     return getattr(request.app.state, "auth_topup_service", None) or TopupService(
+        getattr(request.app.state, "auth_access_store", None)
+    )
+
+
+def refund_service(request):
+    return getattr(request.app.state, "auth_refund_service", None) or RefundService(
         getattr(request.app.state, "auth_access_store", None)
     )
 
@@ -63,6 +71,20 @@ def topup_quote(request: Request, account_id: UUID, payload: TopupQuote):
 def topup_order(request: Request, account_id: UUID, payload: TopupOrder):
     return topup_service(request).confirm(
         auth_cookie(request), entry(request, True), account_id, payload
+    )
+
+
+@router.post("/{account_id}/topups/{order_id}/refunds")
+def refund_request(request: Request, account_id: UUID, order_id: UUID, payload: RefundRequest):
+    return refund_service(request).request(
+        auth_cookie(request), entry(request, True), account_id, order_id, payload
+    )
+
+
+@router.get("/{account_id}/refunds/{refund_id}")
+def refund_show(request: Request, account_id: UUID, refund_id: UUID):
+    return refund_service(request).refund_get(
+        auth_cookie(request), entry(request), account_id, refund_id
     )
 
 

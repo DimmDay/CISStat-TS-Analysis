@@ -49,6 +49,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/billing/{account_id}/refunds/{refund_id}"
+  },
+  {
+    "method": "GET",
     "path": "/v1/billing/{account_id}/subscription"
   },
   {
@@ -658,6 +662,10 @@
   {
     "method": "POST",
     "path": "/v1/billing/{account_id}/topups"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/{account_id}/topups/{order_id}/refunds"
   },
   {
     "method": "POST",
