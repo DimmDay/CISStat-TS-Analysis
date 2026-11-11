@@ -362,3 +362,23 @@ auth23 unit 17/17; auth23-postgres native 12/12 0 skips end-to-end через lo
 
 ### Поставка:
 download/cisstat-auth23-004dba5.zip — точное множество scripts/auth23/files.txt, CRC/каждый байт проверены упаковщиком, SHA256 рядом .sha256; рядом auth23-files.txt, auth23-manifest.json. VM: git pull --ff-only → docker compose build api (web НЕ пересобирать) → scripts/auth23/migrate.py --apply/--check → up -d --no-deps api → /health. Окно — CISSTAT_TOPUP_REFUND_DAYS (default 14); провижининга не требует (контур активен только при credited-заказах); trusted CLI manage_refunds.py (refund-reconcile/dispute-open/dispute-resolve/refunds/disputes). Откат — предыдущий образ api (0035 аддитивна; holds сохраняются и снимаются trusted-командами); DDL-откат и down -v запрещены (финансовая история retained). Границы: реальный магазин/сеть не вызывались (MockTransport; PG18/Windows — remote CI); refund-UI и wallet/ledger READ-эндпоинты — AUTH-24, payment reconciliation/launch runbook — AUTH-25, AUTH-CERT не объявляется; без DSN native runner возвращает 2 (не PASS). Урок AUTH-22-HOTFIX-01 применён: auth23-postgres добавлен в GATES вместе с --with-auth23-postgres и excluded.add в одном изменении; человекочитаемые списки имён гейтов строятся из GATES программно (кроме footnote --list — статичен, дополнен auth23; кандидат на программную генерацию в следующей задаче).
+
+---
+
+## Task ID: AUTH-23-DEPLOYFIX-01 (12.11.2026) — неверный verify-URL в docs/auth23/deploy.md: /health проверялся на апексе (404), а не на api.datasetup.ru
+
+Симптом (деплой AUTH-23 на VM по docs/auth23/deploy.md): 0035 --apply/--check прошли (schema_version 0035_auth23_refunds, повторный --check applied=false — идемпотентность подтверждена), `up -d --no-deps api` поднял контейнер, но контрольная команда из документа `curl -fsS https://datasetup.ru/health | head` вернула 404.
+
+Причина (авторская, моя, чисто документационная): в bash-блок «Порядок» deploy.md я вписал проверку живости на апексе. По топологии стека (docker-compose.yml комментарии; Caddyfile; deployment/cisstat-stack/README.md) апекс datasetup.ru ведёт на web:3000 — Next.js standalone shell, у которого маршрута /health нет, отсюда честный 404 от web. Api наружу отдаётся ТОЛЬКО через api.datasetup.ru -> api:8000 (Caddyfile), и именно `https://api.datasetup.ru/health` указан в deployment/cisstat-stack/README.md и в моём же docs/auth22/deploy.md — в auth23 при переписывании документа URL был скопирован неверно. Сервис, api-образ, миграция 0035, маршруты и роут-инвентарь НЕ затронуты.
+
+Исправление docs/auth23/deploy.md: verify-URL заменён на `curl -fsS https://api.datasetup.ru/health | head -c 400; echo` с комментарием о маршрутизации Caddy (почему апекс 404 — чтобы следующий оператор не считал это аварией стека); в «Порядок» добавлен недостающий по сравнению с auth22 шаг контроля готовности `docker compose exec -T api python scripts/auth23/migrate.py --check`. Родительская запись AUTH-23 не переписывается; код задачи, роуты, 0035, гейты, CI — без изменений.
+
+### Верификация:
+inventory.py --check — дрейфа нет (markdown-документы вне отпечатков); локальные гейты не перегонялись повторно — py/py-поверхности не менялись (родительский прогон 350/350 unit и native 12/12 остаётся в силе; честно: docfix не проверяет их заново). INDEX: изменение двух .md, staging не выполнялся в этой сессии (клон синхронизирован reset --hard на origin/main 6e05ef0 — пуш тимлида верифицирован как байт-эквивалент поставки по --ignore-cr-at-eol diff).
+
+### Поставка:
+download/cisstat-auth23-deployfix01-6e05ef0.zip — оверлей ровно из двух изменившихся файлов (docs/auth23/deploy.md, worklog/worklog12.md) + files.txt + manifest SHA256; полная re-поставка не нужна — всё прочее множество scripts/auth23/files.txt уже в origin/main 6e05ef0 без изменений. Порядок: распаковать поверх чекаута → git add docs/auth23/deploy.md worklog/worklog12.md → commit → push; VM: git pull --ff-only, пересборка образов НЕ нужна и VM-команды деплоя не требуются (правка только документов).
+
+Границы: на VM в этой сессии ничего не выполнялось (диагноз поставлен по выводу тимлида и коду стека; 404 воспроизводится маршрутизацией детерминированно); фактический ответ /health на api.datasetup.ru после инцидента подтверждается оператором одной командой из исправленного документа. Урок: verify-команды в deploy-документах копировать только из deployment/cisstat-stack/README.md (канонический источник маршрутизации), а не переформулировать по памяти; /health существует только на api-хосте — апекс для проверок живости не используется.
+
+---

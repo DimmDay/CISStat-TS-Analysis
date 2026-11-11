@@ -11,7 +11,13 @@ docker compose build api              # web НЕ пересобирать: UI н
 docker compose run --rm api python scripts/auth23/migrate.py --apply
 docker compose run --rm api python scripts/auth23/migrate.py --check
 docker compose up -d --no-deps api
-curl -fsS https://datasetup.ru/health | head
+
+# Контроль готовности (внутри контейнера: та же схема, что видит api):
+docker compose exec -T api python scripts/auth23/migrate.py --check
+# Живость: /health наружу отдаёт ТОЛЬКО api-хост (Caddyfile:
+# api.datasetup.ru -> api:8000). На апексе datasetup.ru тот же путь
+# отвечает 404 -- апекс ведёт на web:3000 (Next.js shell, без /health).
+curl -fsS https://api.datasetup.ru/health | head -c 400; echo
 ```
 
 Порядок шагов обязателен: сага refund-заявок читает таблицы 0035 через to_regclass-гвард — без применённой 0035 шаг честно «нет работы», но HTTP-маршруты уже отвечают 503/409, пока схема не готова (check_schema в каждом контуре). Образ billing-worker (scripts/auth18/worker.py) НЕ пересобирается отдельным образом: он получает шаг refund-саги из того же api-образа.
