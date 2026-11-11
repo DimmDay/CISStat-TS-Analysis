@@ -72,6 +72,9 @@ class OidcService(SessionService):
 
     @boundary
     def start(self, purpose, origin, peer, *, session_token=None):
+        from .lockdown import assert_open
+
+        assert_open()
         provider = self._provider()
         self._limit("oidc-peer:" + peer, 30)
         subject_id = None

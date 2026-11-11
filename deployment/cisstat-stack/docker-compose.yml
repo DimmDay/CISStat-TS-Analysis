@@ -87,8 +87,14 @@ services:
       # случай прямого захода до редиректа).
       CISSTAT_AUTH_ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
       ALLOWED_ORIGINS: ${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}
+      # AUTH-20: kill-switch safe rollback (пустое/0 = выключено), период
+      # доставки обязательного audit outbox и retention revocation ledger.
+      CISSTAT_AUTH_LOCKDOWN: ${CISSTAT_AUTH_LOCKDOWN:-}
+      CISSTAT_AUTH_AUDIT_OUTBOX_INTERVAL: ${CISSTAT_AUTH_AUDIT_OUTBOX_INTERVAL:-30}
+      CISSTAT_AUTH_OPS_LEDGER_RETENTION_DAYS: ${CISSTAT_AUTH_OPS_LEDGER_RETENTION_DAYS:-180}
     volumes:
       - science_data:/var/lib/cisstat-data
+      - ops_marks:/var/lib/cisstat-ops-marks
       - worker_proofs:/var/lib/cisstat-worker-proofs
       - cu_profiles:/var/lib/cisstat-cu-profiles
       - compute_cache:/var/lib/cisstat-compute-cache
@@ -169,6 +175,7 @@ services:
     # не сможет ни слушать, ни пройти HTTP-01 challenge.
 
 volumes:
+  ops_marks:
   science_data: {}
   worker_proofs: {}
   cu_profiles: {}

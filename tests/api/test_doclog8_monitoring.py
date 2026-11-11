@@ -1314,7 +1314,15 @@ class TestStaticCatalogs:
         # AUTH-08: two mandatory Account/membership lifecycle actions.
         # AUTH-19: one mandatory identity-binding action (trial identity,
         # verified email binding, OIDC link); 36 + 1 = 37.
-        assert len(security_audit.AUDIT_ACTIONS) == 37
+        # AUTH-20 (честная коррекция устаревшего пина): каталог к этому
+        # моменту уже содержал 41 действие (AUTH-13/15/16 добавили
+        # auth_worker_changed, auth_budget_changed,
+        # auth_reservation_changed и artifact_promotion_failed без
+        # обновления пина) и получает 42-е -- обязательное
+        # auth_ops_changed (quarantine/reconcile/marks-export intent в
+        # auth_audit_outbox, fail-closed).
+        assert len(security_audit.AUDIT_ACTIONS) == 42
+        assert security_audit.AUDIT_REQUIREMENTS["auth_ops_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_api_key_changed"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_ownership_migrated"] == "mandatory"
         assert security_audit.AUDIT_REQUIREMENTS["auth_identity_changed"] == "mandatory"

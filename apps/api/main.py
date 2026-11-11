@@ -163,9 +163,14 @@ async def _lifespan(app: FastAPI):
     document_render_worker.start_document_render_worker()
     from apps.api.authentication import demo_sweeper
     demo_sweeper.start()
+    # AUTH-20: bounded periodic delivery обязательного audit-outbox + prune
+    # revocation ledger (только required-режим; сбой -- warning + health).
+    from apps.api.authentication import ops_sweeper
+    ops_sweeper.start()
     try:
         yield
     finally:
+        ops_sweeper.stop()
         demo_sweeper.stop()
         document_render_worker.stop_document_render_worker()
         delivery_worker.stop_delivery_worker()
@@ -346,4 +351,17 @@ def health_ops():
         snapshot["render_dependencies"] = {
             "pdf_font": {"ok": False, "missing": ["<state unavailable>"]},
         }
+    # AUTH-20 (§18 дух, peek-семантика): facts-only состояние
+    # обязательного аудита/ops-контура (outbox, sweeper, lockdown,
+    # ledger, внешние входы, версия схемы). Секретов нет; диагностика
+    # не роняет health и не инициализирует фабрики.
+    try:
+        from apps.api.authentication import ops_sweeper
+        from apps.api.authentication.ops_health import build_auth_ops_health
+
+        snapshot["auth_ops"] = build_auth_ops_health(
+            audit_sweeper=ops_sweeper.status()
+        )
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["auth_ops"] = {"state": "<state unavailable>"}
     return JSONResponse(status_code=200, content=snapshot)

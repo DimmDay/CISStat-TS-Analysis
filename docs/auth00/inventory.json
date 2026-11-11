@@ -15,7 +15,7 @@
     "storage": 18,
     "task_alias": 4,
     "transport": 2,
-    "worker": 10
+    "worker": 11
   },
   "policies": {
     "public.metadata": {
@@ -564,6 +564,21 @@
         "T13",
         "T15"
       ]
+    },
+    "auth.ops": {
+      "observed": "AUTH-20: обязательный audit outbox получает периодическую bounded-доставку (ops sweeper, required-режим); terminal security transitions (revoked/consumed/settled/applied) capture'ятся в append-only auth_ops_ledger триггерами 0032; ops-CLI export/reconcile/quarantine/lockdown не добавляет HTTP-маршрутов.",
+      "target": "Mandatory fault не оставляет неучтённое изменение: intent в outbox в одной транзакции с мутацией, доставка идемпотентна (audit_id fence), refusal memory-sink 503. Restore из backup не воскрешает revoked credential/consumed admission/settled reservation: marks файл вне pgdata + reconcile re-apply (over-charge невозможен, under-charge в отчёте). Safe rollback -- env CISSTAT_AUTH_LOCKDOWN закрывает 4 входа (503 auth_lockdown), не трогая сессии/ключи/internal-guards; quarantine закрывает сессии и кампании до reconciliation. DDL-отката нет.",
+      "follow_up": [
+        "AUTH-20",
+        "AUTH-25",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T02",
+        "T06",
+        "T13",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -580,7 +595,7 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "2575f5a99b7672ff22eea26098e960391fb7e88ab5e914844da4a3a17ac59fb0",
+    "apps/api/Dockerfile": "b04f59f628156bf1e29997cab9389b6242593af8edd03e1f44a06b7ca619eb2c",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "d0c4ab33dc9a97118782f6177c2cb13e2061462a4de61a596b45d8b65ccd0d46",
@@ -604,33 +619,38 @@
     "apps/api/authentication/api_keys.py": "875ca5f7b5d2d5204b06fd4388c42a646e0916e3d27665668969c5b6cfcdda3e",
     "apps/api/authentication/audit_outbox.py": "c581d051f05104d8301333991c8fd84a5b8790f06cc0e5acb02c0a0d4179b8e0",
     "apps/api/authentication/auth19_migrations.py": "f5b0e9298fe666651b6c7b5e9b4209d1c6b2798604c60b4efc85d559590aeda8",
-    "apps/api/authentication/context.py": "cec3b8538080a49f3e7906a605300281363fa81f731a238c269e8f5a2bdbf284",
+    "apps/api/authentication/auth20_migrations.py": "dcec7c8f3777da792b7ccd5d75e83f3fe31a0e6bc064fa98068718d10fcc854b",
+    "apps/api/authentication/context.py": "0b9d33f8f056776fccac5d7981afea37158ec7a2eff7d7ce59c50981bef3c73e",
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
-    "apps/api/authentication/demo.py": "d9d102b96e1e59b7f38b0599a61d59bfa5bc233aa40cb1edf09cd16dd47c3867",
+    "apps/api/authentication/demo.py": "73368ba0135d00e6c8e19b128c4d9378db2069963a1eb66a5f8df7059b4fd79a",
     "apps/api/authentication/demo_cleanup.py": "7957c0eeaf48fc747439c05d484e3ea98ab256c8ab3f2baa4be5fd0718085a4c",
     "apps/api/authentication/demo_kernel.py": "c03376fe5d547a0946fddabb7ff58b34a5adf0150bec27908406dbdd4a664bd8",
     "apps/api/authentication/demo_lifecycle.py": "ada1b075937394d16971fe154624c122da85da192abd900cf03a118e5542b2ad",
     "apps/api/authentication/demo_lifecycle_migrations.py": "0b710d0cb3a667fb7275fbdb4825459ee13bfc24435bd07d99e40d7fd0e614f2",
     "apps/api/authentication/demo_migrations.py": "349d34ff2b7f1d0f233cab271ddf00b19607487eb76aee079b3d7ed52a9cbd04",
     "apps/api/authentication/demo_sweeper.py": "8c696bcccd3de7b749f7b692ae8b627a5bfb7908f768cf5d0c86265af0cba629",
-    "apps/api/authentication/email_challenges.py": "0110c236ccb89ae68b31e9391d538e0c4b2a7b21ccf2f0ac4ea3066fa4cdd185",
+    "apps/api/authentication/email_challenges.py": "ad7ac90a09e7881148c8d9f6c195defe054541484f1febbb166babf54a1a11dd",
     "apps/api/authentication/errors.py": "377b727a02fa464957f8c2d310908df6f5501eb78e11fd6ccd1b7163d6470037",
     "apps/api/authentication/http_contract.py": "462f27a1239b7b9f1f48b2ecf5de82dd766fc37e065c7723655355d41ef0bd17",
     "apps/api/authentication/legacy.py": "ee291cd22e698aad567278e6aff872885b66ba938b5dbc29076e5d629a0118d8",
+    "apps/api/authentication/lockdown.py": "0c53d2ca74e274d82a689d4c802dc88915cdd3f44a8a84f2dd055bd5e4547698",
     "apps/api/authentication/mfa.py": "adc638cbb055d4752f5a24e375bf69f3fb33c4213c441f45f7b77bf2c14e70f0",
     "apps/api/authentication/mfa_crypto.py": "00fd2fb8800fc137a474e3d47caa48c3ef8a2d8cd28d1a6194c73bf8d3c260ba",
     "apps/api/authentication/mfa_migrations.py": "a384543fe964e8fc7eb370b3b5174cbca4a35fba336d518cc1e3cec60f068497",
     "apps/api/authentication/migrations.py": "80886b95e42417e5a259ea9989d709cc66e9159010562af24d45385c5e5c86ae",
     "apps/api/authentication/models.py": "418c577bcc6a790b2c662453b64a656a5c9dd3a18f3af0e8adc87b3371f61b0f",
-    "apps/api/authentication/oidc.py": "6b7c1e84b6e3fdcb5a04b3af1f5ea38b31162a1d01bdaac2ea2411b031dc5aaa",
+    "apps/api/authentication/oidc.py": "ce37175487fe565b019e594c6161ecd473c840f8ae63455de98e97024039ac1e",
+    "apps/api/authentication/ops_health.py": "f23e1b2ad348a5f20cb8fd39c20d7d15eedb9bc152f1ad79797d4eb6d4b3ad75",
+    "apps/api/authentication/ops_service.py": "23f5d78cd352ccdf2775c1a8de6685668e1651e82f35c299403505900af9070b",
+    "apps/api/authentication/ops_sweeper.py": "ed54e50d95e31ab3ef9d3b594cc4944550700b4b0e7001f55c04b6967de47376",
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
     "apps/api/authentication/providers/__init__.py": "d7cda0b119c6c9e4a8b70901f37b6c1846ce24aec5faddc7b1ba87551e7f2715",
     "apps/api/authentication/providers/email_delivery.py": "5de9f2d591beb21774c466d65b33d9c729f44099fa76c08db29a0bd33315f1cd",
     "apps/api/authentication/providers/oidc.py": "07b5428dff37a48bacfa9b4d6a44697bc44276e88018d0ea9f002f5756b18019",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
-    "apps/api/authentication/sessions.py": "fc98147172787d0aaa1b51d63677fe6d3cfe81764acfc7afa80490b296647cf4",
+    "apps/api/authentication/sessions.py": "dd725837acb38308142757c2a17d99de1e1e181370df7eab6d4cb6bce2bef3ab",
     "apps/api/authentication/storage.py": "eab8c58d3de14f5ced71cd0f6bb9600d63c003e1e09335ee76cc1232f43787a3",
     "apps/api/backtesting.py": "68ba0434c09e8400389afe9c72db29d49d942565c3c5555932fb1bf5328b326e",
     "apps/api/billing/__init__.py": "a42825b06db3789c9d7e599fbb475994438ee4c543fc281fb7e704f469b137b0",
@@ -682,7 +702,7 @@
     "apps/api/knowledge/models.py": "cf1e5510e78e8a5934b8b73f633cf36f21d9932534787db7091d2c493ee552f5",
     "apps/api/knowledge/registry.py": "a2fba89892a7282e6a24809b5feba446f5ab173b53c74ece9bc91fca7002cd37",
     "apps/api/knowledge/router.py": "e6a9edffdc8afe0f87a829ff6113bf3e207eb58497e3d21b2dcf60c9af141df2",
-    "apps/api/main.py": "d3c65eea038f2cb5f561d16d17f86b270615789cc3fb747000224992acddd5dc",
+    "apps/api/main.py": "43b2dd2ea52a82042ac12f68eb6dcd74a9959d34668fbd543c4165585fde6cb7",
     "apps/api/migrations/0019_auth02_identity_accounts.sql": "d732cbdc0768a6b339b756e2b26f954d4c68debdc8f5e84fd707cb722e9d7dd9",
     "apps/api/migrations/0020_auth04_sessions.sql": "f77b81dd82be05c86ccd5775722bea52ff1f771218d867e0c305b9f9d3bc5ddf",
     "apps/api/migrations/0021_auth05_mfa.sql": "fba1bdc44b177d6a03114eaf9168d52ac53fe7f1e1e21b9558a72b1161b2cd6d",
@@ -695,6 +715,7 @@
     "apps/api/migrations/0029_auth17_team.sql": "0f2b2c4f347ca584f0d50848b90dfc008f749c7a05225f1a4d65619b3fd2a137",
     "apps/api/migrations/0030_auth18_provider.sql": "19afd3d6b213d7fdbc9b916d3171818fcdc72d1612d4aab676c9653c2a649121",
     "apps/api/migrations/0031_auth19_email_oidc.sql": "59fa6a900d7cd6edcc4d5249c16c27954699ec9d88fa99a2fb4d029cfa6622b3",
+    "apps/api/migrations/0032_auth20_audit_ops.sql": "f61c7bb334915aca3bd96e670e86852923b2b86eb5422cd869dddf2776bb46ad",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -781,7 +802,7 @@
     "apps/api/schemas.py": "324c460ef3bbfbcb1b42b6d740fdf35895a2c4849889a07e544c9fe206dde1ae",
     "apps/api/scientific.py": "0d9495f4c60e03e65bd7f0c69857317a69d2747522237e9d4a35bb09d2465c7b",
     "apps/api/scientific_workload.py": "2ed318efb029c0d67d0c64f2e738d55be4252e56136cf07c71d32a0a3c67d290",
-    "apps/api/security_audit.py": "3abc849959ba893fda07fa0d292a3302865ee0c132553d4fdb15fb5d626b8874",
+    "apps/api/security_audit.py": "456391da08a2314f092a1b22e907dcd8e49135334a5ba4e55f299aad6dcee341",
     "apps/api/session_store.py": "309148e5c2fa913fd6a5829d94bfe8a457e1d535b2f868cddd9fc9d7e865ca12",
     "apps/api/snapshot_builder.py": "8117db4da7e6b92706c3bef4819122f30c12cae1f349a21a413cfc97742e50ff",
     "apps/api/storage_diagnostics.py": "44b4348989c5c605f243772010969916e5893351abdd9859c8a8a20e4a0715ef",
@@ -861,8 +882,8 @@
     "apps/standalone/app/validation/page.tsx": "dbbff830acf0afa866c7dcff7c7136ddc1f3e676376c46bd806a6679d9b06970",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
-    "deployment/cisstat-stack/.env.example": "f8d7c8d4131dc16677add6fbbff6f9271da9f5bad53f686a910420aa7bcadd72",
-    "deployment/cisstat-stack/docker-compose.yml": "adf9c2ccdcedede36610a06e94833513fff1fb843b31f88fe3c604dc1750019f",
+    "deployment/cisstat-stack/.env.example": "6eee5140b7d2c47756e0c94cb0c62f74932b18f15805e472b93453c87ea555c9",
+    "deployment/cisstat-stack/docker-compose.yml": "6016f61c47c67a600a27b8e2bdcd6c7acc68043aed6e23e501732b7dcb66018f",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
@@ -994,8 +1015,9 @@
     "scripts/auth18/provision_cycle.py": "8974bef858ed9723a40d66a836eadfbd364ce2b9ad9346344f2572c0b9d3aa09",
     "scripts/auth18/reconcile.py": "aafe0b010380696d5b9b37bc45ad7282f3bebc6aa8d122c28d41a10f4083c989",
     "scripts/auth18/worker.py": "54d5115948d2cfc2eb06c2246da1da28197393bdc22c29c5c27118700be4615e",
-    "scripts/local_gates.md": "171727e102f8c2f9b1bf6fd96efbb2591c007c0204207064f69cbde18a8612a9",
-    "scripts/local_gates.py": "f032b714424b55c965b69d195885ec75013df752d368771af8eeccb259dc78c8",
+    "scripts/auth20/reconcile.py": "c9cb8e22486e4e3e4d6196317ef19163561d6e8d0eff25700e1625a5159c7a9e",
+    "scripts/local_gates.md": "3cd980bc32c7a20816fb726dac0007ae5299fd5c2b4fd85f3807e15041d5ce6a",
+    "scripts/local_gates.py": "cc20378bb547f4da4d3cf7ba492c2dac9d64f1e4b5a4d52cafea3b88376b8d0f",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1107,7 +1129,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: docs_url"
         }
       ],
@@ -1133,7 +1155,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: swagger_ui_oauth2_redirect_url"
         }
       ],
@@ -1156,7 +1178,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 279,
+          "line": 284,
           "symbol": "health"
         }
       ],
@@ -1182,12 +1204,13 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 284,
+          "line": 289,
           "symbol": "health_ops"
         }
       ],
       "dependencies": [],
       "direct_guard_mentions": [
+        "build_auth_ops_health",
         "peek_session_store"
       ],
       "id": "api:GET:/health/ops",
@@ -1213,7 +1236,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: openapi_url"
         }
       ],
@@ -1239,7 +1262,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: redoc_url"
         }
       ],
@@ -1267,7 +1290,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -1302,7 +1325,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -1337,7 +1360,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -1370,7 +1393,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -1403,7 +1426,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 261,
+          "line": 266,
           "symbol": "include_router"
         }
       ],
@@ -1434,7 +1457,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1465,7 +1488,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -1499,7 +1522,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -1533,7 +1556,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1568,7 +1591,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -1604,7 +1627,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 263,
           "symbol": "include_router"
         }
       ],
@@ -1639,7 +1662,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1672,7 +1695,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1705,7 +1728,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -1738,7 +1761,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1772,7 +1795,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -1805,7 +1828,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1838,7 +1861,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1871,7 +1894,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1904,7 +1927,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1938,7 +1961,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -1972,7 +1995,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2006,7 +2029,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2040,7 +2063,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2074,7 +2097,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -2108,7 +2131,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -2141,7 +2164,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -2179,7 +2202,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -2217,7 +2240,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 237,
+          "line": 242,
           "symbol": "include_router"
         }
       ],
@@ -2248,7 +2271,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 237,
+          "line": 242,
           "symbol": "include_router"
         }
       ],
@@ -2279,7 +2302,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -2314,7 +2337,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -2348,7 +2371,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -2382,7 +2405,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -2416,7 +2439,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -2450,7 +2473,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2484,7 +2507,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2518,7 +2541,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2553,7 +2576,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2588,7 +2611,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2623,7 +2646,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2659,7 +2682,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2695,7 +2718,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2740,7 +2763,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -2779,7 +2802,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -2818,7 +2841,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -2857,7 +2880,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -2895,7 +2918,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -2933,7 +2956,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -2972,7 +2995,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3010,7 +3033,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3048,7 +3071,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3086,7 +3109,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3124,7 +3147,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3162,7 +3185,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3200,7 +3223,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3238,7 +3261,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3276,7 +3299,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3314,7 +3337,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3352,7 +3375,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3390,7 +3413,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3428,7 +3451,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3466,7 +3489,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3505,7 +3528,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3544,7 +3567,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3582,7 +3605,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3620,7 +3643,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3658,7 +3681,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3696,7 +3719,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3735,7 +3758,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3773,7 +3796,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3812,7 +3835,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3850,7 +3873,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3888,7 +3911,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3926,7 +3949,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -3965,7 +3988,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4003,7 +4026,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4044,7 +4067,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4082,7 +4105,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4120,7 +4143,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4158,7 +4181,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4196,7 +4219,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4234,7 +4257,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4273,7 +4296,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4311,7 +4334,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4349,7 +4372,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4387,7 +4410,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4425,7 +4448,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4463,7 +4486,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4501,7 +4524,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4540,7 +4563,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4579,7 +4602,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4619,7 +4642,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4657,7 +4680,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4695,7 +4718,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4733,7 +4756,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4772,7 +4795,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4811,7 +4834,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4849,7 +4872,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4888,7 +4911,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4932,7 +4955,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -4970,7 +4993,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -5008,7 +5031,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -5046,7 +5069,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5083,7 +5106,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5121,7 +5144,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5158,7 +5181,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5194,7 +5217,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -5231,7 +5254,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -5268,7 +5291,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -5303,7 +5326,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -5338,7 +5361,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5376,7 +5399,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5412,7 +5435,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -5448,7 +5471,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -5486,7 +5509,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 229,
+          "line": 234,
           "symbol": "include_router"
         }
       ],
@@ -5520,7 +5543,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: docs_url"
         }
       ],
@@ -5546,7 +5569,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: swagger_ui_oauth2_redirect_url"
         }
       ],
@@ -5572,7 +5595,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: openapi_url"
         }
       ],
@@ -5598,7 +5621,7 @@
       "evidence": [
         {
           "source": "apps/api/main.py",
-          "line": 179,
+          "line": 184,
           "symbol": "FastAPI defaults: redoc_url"
         }
       ],
@@ -5626,7 +5649,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -5659,7 +5682,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -5697,7 +5720,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -5736,7 +5759,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5771,7 +5794,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5806,7 +5829,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5841,7 +5864,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5876,7 +5899,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5911,7 +5934,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5946,7 +5969,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -5981,7 +6004,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -6017,7 +6040,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 259,
+          "line": 264,
           "symbol": "include_router"
         }
       ],
@@ -6052,7 +6075,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6085,7 +6108,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6118,7 +6141,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6152,7 +6175,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6185,7 +6208,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6218,7 +6241,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6251,7 +6274,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6284,7 +6307,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 261,
+          "line": 266,
           "symbol": "include_router"
         }
       ],
@@ -6316,7 +6339,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 261,
+          "line": 266,
           "symbol": "include_router"
         }
       ],
@@ -6348,7 +6371,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 261,
+          "line": 266,
           "symbol": "include_router"
         }
       ],
@@ -6380,7 +6403,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6414,7 +6437,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6448,7 +6471,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6480,7 +6503,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 260,
+          "line": 265,
           "symbol": "include_router"
         }
       ],
@@ -6514,7 +6537,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6549,7 +6572,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6582,7 +6605,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6617,7 +6640,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6651,7 +6674,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6682,7 +6705,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6717,7 +6740,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6752,7 +6775,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6787,7 +6810,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6820,7 +6843,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6855,7 +6878,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6887,7 +6910,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6921,7 +6944,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6956,7 +6979,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -6990,7 +7013,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 255,
+          "line": 260,
           "symbol": "include_router"
         }
       ],
@@ -7024,7 +7047,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 263,
           "symbol": "include_router"
         }
       ],
@@ -7059,7 +7082,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 263,
           "symbol": "include_router"
         }
       ],
@@ -7094,7 +7117,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 258,
+          "line": 263,
           "symbol": "include_router"
         }
       ],
@@ -7129,7 +7152,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7163,7 +7186,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7197,7 +7220,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -7231,7 +7254,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -7265,7 +7288,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7299,7 +7322,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 253,
+          "line": 258,
           "symbol": "include_router"
         }
       ],
@@ -7334,7 +7357,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7368,7 +7391,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7402,7 +7425,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7436,7 +7459,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7470,7 +7493,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7504,7 +7527,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7538,7 +7561,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7573,7 +7596,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7608,7 +7631,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7643,7 +7666,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 249,
+          "line": 254,
           "symbol": "include_router"
         }
       ],
@@ -7678,7 +7701,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7712,7 +7735,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 246,
+          "line": 251,
           "symbol": "include_router"
         }
       ],
@@ -7746,7 +7769,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7784,7 +7807,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7818,7 +7841,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 219,
+          "line": 224,
           "symbol": "include_router"
         }
       ],
@@ -7856,7 +7879,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7890,7 +7913,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7924,7 +7947,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7962,7 +7985,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 216,
+          "line": 221,
           "symbol": "include_router"
         }
       ],
@@ -7996,7 +8019,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 242,
+          "line": 247,
           "symbol": "include_router"
         }
       ],
@@ -8031,7 +8054,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 242,
+          "line": 247,
           "symbol": "include_router"
         }
       ],
@@ -8065,7 +8088,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 238,
+          "line": 243,
           "symbol": "include_router"
         }
       ],
@@ -8097,7 +8120,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -8132,7 +8155,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -8167,7 +8190,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 254,
+          "line": 259,
           "symbol": "include_router"
         }
       ],
@@ -8202,7 +8225,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 217,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8238,7 +8261,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 217,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8274,7 +8297,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 218,
+          "line": 223,
           "symbol": "include_router"
         }
       ],
@@ -8310,7 +8333,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 217,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8346,7 +8369,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 217,
+          "line": 222,
           "symbol": "include_router"
         }
       ],
@@ -8382,7 +8405,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8416,7 +8439,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8450,7 +8473,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8484,7 +8507,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8524,7 +8547,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8560,7 +8583,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8605,7 +8628,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8641,7 +8664,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8675,7 +8698,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 232,
+          "line": 237,
           "symbol": "include_router"
         }
       ],
@@ -8709,7 +8732,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -8744,7 +8767,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -8779,7 +8802,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -8818,7 +8841,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 215,
+          "line": 220,
           "symbol": "include_router"
         }
       ],
@@ -8853,7 +8876,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 248,
           "symbol": "include_router"
         }
       ],
@@ -8889,7 +8912,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 243,
+          "line": 248,
           "symbol": "include_router"
         }
       ],
@@ -8924,7 +8947,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -8964,7 +8987,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9008,7 +9031,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9048,7 +9071,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9087,7 +9110,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9127,7 +9150,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9167,7 +9190,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9207,7 +9230,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9247,7 +9270,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9287,7 +9310,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9329,7 +9352,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9368,7 +9391,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9409,7 +9432,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9448,7 +9471,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9487,7 +9510,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9526,7 +9549,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9564,7 +9587,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9603,7 +9626,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9641,7 +9664,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9680,7 +9703,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9719,7 +9742,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9759,7 +9782,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9799,7 +9822,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9839,7 +9862,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9879,7 +9902,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9919,7 +9942,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9959,7 +9982,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -9997,7 +10020,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -10035,7 +10058,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10079,7 +10102,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10119,7 +10142,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10162,7 +10185,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10203,7 +10226,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10248,7 +10271,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10289,7 +10312,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10328,7 +10351,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10367,7 +10390,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -10405,7 +10428,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -10442,7 +10465,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -10482,7 +10505,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 226,
+          "line": 231,
           "symbol": "include_router"
         }
       ],
@@ -10516,7 +10539,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10556,7 +10579,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10595,7 +10618,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10637,7 +10660,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10676,7 +10699,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10715,7 +10738,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10755,7 +10778,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10797,7 +10820,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10835,7 +10858,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10874,7 +10897,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10917,7 +10940,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10956,7 +10979,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -10996,7 +11019,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -11039,7 +11062,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -11082,7 +11105,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11120,7 +11143,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11158,7 +11181,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11196,7 +11219,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11234,7 +11257,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11272,7 +11295,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 222,
+          "line": 227,
           "symbol": "include_router"
         }
       ],
@@ -11310,7 +11333,7 @@
         },
         {
           "source": "apps/api/main.py",
-          "line": 223,
+          "line": 228,
           "symbol": "include_router"
         }
       ],
@@ -20315,6 +20338,31 @@
       ],
       "canonical_operation": "demo.lifecycle.sweep",
       "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
+    },
+    {
+      "id": "worker:apps/api/authentication/ops_sweeper.py:103",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "run",
+      "operation": "apps/api/authentication/ops_sweeper.py:run",
+      "evidence": [
+        {
+          "source": "apps/api/authentication/ops_sweeper.py",
+          "line": 103,
+          "symbol": "run"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "ops.diagnostics",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "mandatory audit outbox delivery and revocation ledger retention",
+      "effects": [
+        "read",
+        "write"
+      ],
+      "canonical_operation": "auth.ops.sweep",
+      "admission": "in-process daemon thread, required storage mode only, bounded publish_pending/prune batches via existing PostgresAccessStore transactions; no new authority, no secrets, failures are warnings + health counters"
     },
     {
       "id": "worker:apps/api/delivery_worker.py:182",

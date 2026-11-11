@@ -48,7 +48,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -76,6 +76,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth20", "auth20.yml contracts", "AUTH-20 audit/ops: lockdown, marks, catalog contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth20/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth20*.py", "-v"],
+    ]),
+    ("auth20-postgres", "auth20.yml postgres", "AUTH-20 native ledger/reconcile/quarantine/lockdown flows", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth20/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth20/verify_postgres.py"],
+    ]),
     ("auth19", "auth19.yml contracts", "AUTH-19 OIDC / personal email entry contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth19/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth19*.py", "-v"],
@@ -390,6 +398,7 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth20-postgres", action="store_true", help="AUTH-20 native reconcile/quarantine/lockdown/audit delivery")
     parser.add_argument("--with-auth19-postgres", action="store_true", help="AUTH-19 native external entry / selection / audit")
     parser.add_argument("--with-auth18-postgres", action="store_true", help="AUTH-18 native provider saga")
     parser.add_argument("--with-auth17-postgres", action="store_true", help="AUTH-17 native team/capacity/OWNER races")
@@ -434,6 +443,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth20_postgres:
+        excluded.add("auth20-postgres")
     if not args.with_auth19_postgres:
         excluded.add("auth19-postgres")
     if not args.with_auth18_postgres:
@@ -521,7 +532,7 @@ def main() -> int:
             print("    python scripts/local_gates.py --only auth00 --skip-install")
     failed = any(not ok for _, ok, _ in results)
     names_run = {name for name, _, _ in results}
-    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10", "auth11", "auth12", "auth13", "auth14", "auth15", "auth16", "auth17", "auth18")
+    missing_live = [name for name in ("auth02", "auth03", "auth04", "auth05", "auth06", "auth08", "auth09", "auth10", "auth11", "auth12", "auth13", "auth14", "auth15", "auth16", "auth17", "auth18", "auth19", "auth20")
                     if name in names_run and name + "-postgres" not in names_run]
     if not failed and missing_live:
         print("\nИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: "

@@ -157,6 +157,9 @@ class EmailChallengeService(SessionService):
 
     @boundary
     def start(self, email, purpose, origin, peer, *, session_token=None):
+        from .lockdown import assert_open
+
+        assert_open()
         self._delivery()
         email = normalize_email(email)
         subject = None

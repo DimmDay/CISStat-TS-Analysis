@@ -8,7 +8,7 @@ AUTH-17 применяется поверх 201a3b1f12eac55525fb07301b5e37f8e962
 
 ```bash
 git status --short
-git add --pathspec-from-file=scripts/auth17/files.txt
+git add --pathspec-from-file=scripts/auth20/files.txt
 git diff --cached --stat
 python scripts/local_gates.py
 ```
@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -46,6 +46,21 @@ python scripts/local_gates.py --with-auth12-postgres --skip-install
 ```
 
 Без DSN/при skips native не PASS. `.github/workflows/auth12.yml`: Ubuntu/Windows unit; PostgreSQL16/18 native Ubuntu. Linux проверки не заменяют настоящий Windows CI. Все прежние PostgreSQL opt-in сохранены; auth07 также выполняет windows_parity.py с запретом Unix-only resource.
+
+## AUTH-20 — audit/operations и миграционный rollout (поверх c08ee9e)
+
+Default-гейт `auth20` (unit: lockdown fail-closed values, marks validation, каталог 42 с обязательным `auth_ops_changed`, bounds sweeper) и opt-in `auth20-postgres` (native: capture-триггеры 0032 на восьми таблицах, marks export, restore-эмуляция + reconcile/idempotency, tombstone grant, unrepairable consumed, quarantine, lockdown на 4 входах, идемпотентная delivery audit outbox, prune retention, health auth_ops). Native требует disposable PostgreSQL и полный API runtime:
+
+```bash
+python scripts/local_gates.py --only auth20 --skip-install
+python scripts/local_gates.py --only auth20,auth20-postgres --skip-install
+# либо вместе с default:
+python scripts/local_gates.py --with-auth20-postgres --skip-install
+```
+
+`.github/workflows/auth20.yml`: Ubuntu/Windows unit; PostgreSQL 16/18 native Ubuntu. Роуты НЕ затронуты: HTTP methods/paths, DTO/OpenAPI/TS/BFF bindings без изменений (274 API, 278 bindings; добавлен один non-HTTP surface — in-process sweeper-поток `worker:apps/api/authentication/ops_sweeper.py:103`, policy `ops.diagnostics`, inventory 650→651, worker 10→11). Проверка: `python scripts/auth06/check_routes.py`. Каталог audit честно скорректирован: пин DOCLOG-8 37 был устаревшим (фактически 41 после AUTH-13/15/16), AUTH-20 добавляет обязательное `auth_ops_changed` → 42; пин обновлён с объяснением.
+
+Новая explicit migration 0032 через `scripts/auth20/migrate.py --apply/--check` (цепочка гарантированно применяет 0029/0030 перед 0031/0032; request-time auto-DDL нет). VM требует пересборку api; web байты прежние. Отчёт об операциях: `scripts/auth20/reconcile.py --export|--reconcile|--quarantine|--drain-audit|--prune`. Kill-switch rollback — env `CISSTAT_AUTH_LOCKDOWN` (пустое/`0` = выключено). Порядок развёртывания, backup/export/restore, quarantine и откат — docs/auth20/runbook.md.
 
 ## Маршруты AUTH-12
 

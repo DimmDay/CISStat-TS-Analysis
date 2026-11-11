@@ -23,7 +23,7 @@
 | storage | 18 |
 | task_alias | 4 |
 | transport | 2 |
-| worker | 10 |
+| worker | 11 |
 
 ## Классификации
 
@@ -39,6 +39,7 @@
 | auth.external | Новые OIDC/email entry endpoints (AUTH-19): OIDC Code+PKCE+state+nonce с binding по issuer+subject; email challenge с keyed-токеном и POST-consume. Ответы uniform, конфигурация выключена по умолчанию, при отсутствии настройки 503. | Вход только через проверенную внешнюю identity: RS256 id_token/iss/aud/exp/nb/nonce, одноразовый state, mail scanner не consume (POST-only), email не auto-merge, trial создаёт личный MONO starter Account, ADMIN через OIDC требует локальный MFA-путь (403 mfa_required). Неизвестный binding -- отказ без регистрации. | AUTH-19, AUTH-20, AUTH-CERT |
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
+| auth.ops | AUTH-20: обязательный audit outbox получает периодическую bounded-доставку (ops sweeper, required-режим); terminal security transitions (revoked/consumed/settled/applied) capture'ятся в append-only auth_ops_ledger триггерами 0032; ops-CLI export/reconcile/quarantine/lockdown не добавляет HTTP-маршрутов. | Mandatory fault не оставляет неучтённое изменение: intent в outbox в одной транзакции с мутацией, доставка идемпотентна (audit_id fence), refusal memory-sink 503. Restore из backup не воскрешает revoked credential/consumed admission/settled reservation: marks файл вне pgdata + reconcile re-apply (over-charge невозможен, under-charge в отчёте). Safe rollback -- env CISSTAT_AUTH_LOCKDOWN закрывает 4 входа (503 auth_lockdown), не трогая сессии/ключи/internal-guards; quarantine закрывает сессии и кампании до reconciliation. DDL-отката нет. | AUTH-20, AUTH-25, AUTH-CERT |
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
 | auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | billing.authority | AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit. | Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21. | AUTH-13, AUTH-14, AUTH-20, AUTH-21 |
@@ -72,8 +73,8 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:279 |
-| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:284 |
+| api:GET:/health | apps.api.main:health / service:platform | public.metadata / request metadata | apps/api/main.py:284 |
+| api:GET:/health/ops | apps.api.main:health_ops / service:platform | ops.diagnostics / safe ops projection | apps/api/main.py:289 |
 | api:GET:/v1/accounts | apps.api.routers.accounts:list_accounts / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:41 |
 | api:GET:/v1/accounts/{account_id} | apps.api.routers.accounts:account / service:platform | account.team / current Account/membership/confirmed capacity | apps/api/routers/accounts.py:46 |
 | api:GET:/v1/admin/demo-campaigns | apps.api.routers.demo:campaigns / service:platform | demo.admin / campaign policy | apps/api/routers/demo.py:153 |
@@ -351,14 +352,14 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
-| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:179 |
+| api:GET:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:GET:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:GET:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:GET:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:HEAD:/docs | fastapi:docs_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:HEAD:/docs/oauth2-redirect | fastapi:swagger_ui_oauth2_redirect_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:HEAD:/openapi.json | fastapi:openapi_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
+| api:HEAD:/redoc | fastapi:redoc_url / service:platform | public.metadata / request metadata | apps/api/main.py:184 |
 
 ## internal_operation
 
@@ -775,6 +776,7 @@
 | compute.runtime | compute.runtime / service:platform | compute.calibrated / protected PELT/tuning isolated runtime | apps/api/billing/compute_runtime.py:183 |
 | execution:worker.subprocess | execution:worker.subprocess / service:platform | worker.authority / bounded pure child process; no database or service credential | apps/api/workers/process.py:123 |
 | worker:apps/api/authentication/demo_sweeper.py:47 | apps/api/authentication/demo_sweeper.py:run / service:platform | compute.calibrated / independent physical wall deadline and aggregate Linux process-group RSS | apps/api/authentication/demo_sweeper.py:47 |
+| worker:apps/api/authentication/ops_sweeper.py:103 | apps/api/authentication/ops_sweeper.py:run / service:platform | ops.diagnostics / mandatory audit outbox delivery and revocation ledger retention | apps/api/authentication/ops_sweeper.py:103 |
 | worker:apps/api/delivery_worker.py:182 | apps/api/delivery_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/delivery_worker.py:182 |
 | worker:apps/api/document_render_worker.py:715 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:715 |
 | worker:apps/api/document_render_worker.py:737 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:737 |

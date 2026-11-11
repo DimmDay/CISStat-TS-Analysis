@@ -491,6 +491,9 @@ class DemoService(SessionService):
         old_token=None,
         admission_code=None,
     ):
+        from .lockdown import assert_open
+
+        assert_open()
         alias = normalize_login(alias)
         digest = resume_digest(resume_token)
         self._entry_rate(peer)

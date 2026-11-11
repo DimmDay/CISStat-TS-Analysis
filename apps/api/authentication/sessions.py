@@ -308,7 +308,9 @@ class SessionService:
         peer="unknown",
     ):
         from .credentials import normalize_login
+        from .lockdown import assert_open
 
+        assert_open()
         login = normalize_login(login)
         self._rate(login, peer)
         with self._tx(readonly=True) as tx:
