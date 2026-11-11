@@ -90,7 +90,9 @@ class YooKassa:
                     "type": "redirect",
                     "return_url": "https://datasetup.ru/",
                 },
-                "description": "CISStat DataTime Lab seats",
+                # AUTH-22 top-ups carry their own bounded description; the
+                # subscription default is preserved byte-for-byte.
+                "description": order.get("description", "CISStat DataTime Lab seats"),
                 "metadata": {
                     "order_id": str(order["order_id"]),
                     "quote_digest": order["digest"],

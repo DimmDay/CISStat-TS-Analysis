@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { commandKey, teamRequest, TeamAccount } from "../lib/team";
 import { BillingPanel } from "./BillingPanel";
+import { TopupPanel } from "./TopupPanel";
 export function AccountScreen() {
   const auth = useAuth();
   const [account, setAccount] = useState<TeamAccount | null>(null),
@@ -316,6 +317,18 @@ export function AccountScreen() {
                       account={account}
                     />
                   )}
+                  {account.account_type === "multi" &&
+                    account.plan !== "internal" && (
+                      <TopupPanel
+                        key={
+                          "topup:" +
+                          account.account_id +
+                          ":" +
+                          account.entitlement_version
+                        }
+                        account={account}
+                      />
+                    )}
                   <ul>
                     {account.seat_requests.map((r) => (
                       <li key={r.request_id}>

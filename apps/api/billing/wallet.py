@@ -221,6 +221,71 @@ def _locked_lots(c, wallet_id, lot_ids=None):
     return c.execute(sql, args).fetchall()
 
 
+def _insert_lot(c, wallet, *, source, units, origin_order=None, origin_cycle=None, origin_ref=None, expires_at=None):
+    total = c.execute(
+        "SELECT count(*) AS n FROM auth_wallet_lots WHERE wallet_id=%s",
+        (wallet["wallet_id"],),
+    ).fetchone()["n"]
+    if total >= MAX_LOTS:
+        raise ValueError("lot budget exhausted")
+    lot_id = uuid4()
+    c.execute(
+        "INSERT INTO auth_wallet_lots(lot_id,wallet_id,account_id,source,issued,available,"
+        "expires_at,origin_cycle,origin_order,origin_ref,created_at) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (
+            lot_id,
+            wallet["wallet_id"],
+            wallet["account_id"],
+            source,
+            units,
+            units,
+            expires_at,
+            origin_cycle,
+            origin_order,
+            origin_ref,
+            _clock(c),
+        ),
+    )
+    return lot_id
+
+
+def credit_purchased_order(c, account_id, units, *, origin_order, reason):
+    """AUTH-22 saga credit hook: one whole purchased lot per confirmed order.
+
+    Runs inside the caller's transaction (order transition + credit + mandatory
+    audit commit together). Missing wallet -> WalletError(403 wallet_required);
+    locked wallet -> WalletError(403 wallet_locked) so the top-up saga can park
+    the order in paid_review instead of losing captured money (design D5).
+    A duplicate basis is impossible: the partial unique index
+    auth21_lot_order(account_id, origin_order) rejects a second lot.
+    """
+    _validate_reason(reason)
+    validate_issue("purchased", units, origin_order=origin_order)
+    aid = UUID(str(account_id))
+    if not _present(c):
+        raise WalletError(403, "wallet_required")
+    wallet = _wallet_row(c, aid)
+    if wallet is None:
+        raise WalletError(403, "wallet_required")
+    if wallet["status"] != "active":
+        raise WalletError(403, "wallet_locked")
+    lot_id = _insert_lot(
+        c, wallet, source="purchased", units=units, origin_order=origin_order.strip()
+    )
+    _wallet_audit(
+        c,
+        "lot_issued",
+        wallet["wallet_id"],
+        reason,
+        lot_id=str(lot_id),
+        source="purchased",
+        units=units,
+        origin_order=origin_order.strip(),
+    )
+    return {"lot_id": str(lot_id), "units": units}
+
+
 def _posting(c, lot_id, event, *, reservation_id=None, **deltas):
     if event not in POSTING_EVENTS:
         raise ValueError("known posting event required")
@@ -419,32 +484,16 @@ class WalletService:
         return row
 
     def _insert_lot(self, c, wallet, *, source, units, origin_order=None, origin_cycle=None, origin_ref=None, expires_at=None):
-        total = c.execute(
-            "SELECT count(*) AS n FROM auth_wallet_lots WHERE wallet_id=%s",
-            (wallet["wallet_id"],),
-        ).fetchone()["n"]
-        if total >= MAX_LOTS:
-            raise ValueError("lot budget exhausted")
-        lot_id = uuid4()
-        c.execute(
-            "INSERT INTO auth_wallet_lots(lot_id,wallet_id,account_id,source,issued,available,"
-            "expires_at,origin_cycle,origin_order,origin_ref,created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-            (
-                lot_id,
-                wallet["wallet_id"],
-                wallet["account_id"],
-                source,
-                units,
-                units,
-                expires_at,
-                origin_cycle,
-                origin_order,
-                origin_ref,
-                _clock(c),
-            ),
+        return _insert_lot(
+            c,
+            wallet,
+            source=source,
+            units=units,
+            origin_order=origin_order,
+            origin_cycle=origin_cycle,
+            origin_ref=origin_ref,
+            expires_at=expires_at,
         )
-        return lot_id
 
     def issue_included_for_cycle(self, account_id, cycle_id, *, ref, reason):
         """Base cycle issuance; amount is the cycle's own entitlement formula (D8)."""

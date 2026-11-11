@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -166,3 +166,23 @@ python scripts/local_gates.py --only auth21,auth21-postgres --skip-install
 ```
 
 Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth21.yml`: Ubuntu/Windows contracts + PG16/18 native. Роуты НЕ затронуты: ни одного нового/удалённого HTTP-маршрута (actual 274 = inventory 274, bindings 278, added/missing=[]); изменения исполнения — хуки кошелька внутри существующих AUTH-12 handlers (reserve/extend/settle/release), inventory 651, отпечатки 456→464. Каталог audit 42→43: новое обязательное `auth_wallet_changed` (пины test_auth20_ops/test_doclog8 обновлены с обоснованием). До операторского `create-wallet` поведение платформы идентично AUTH-20: строка кошелька — аддитивный выключатель; деньги/платежи — AUTH-22/23, UI — AUTH-24. Инструкция VM — `docs/auth21/deploy.md` (пересборка только api, миграция explicit 0033; web/compose/env не менялись).
+
+## AUTH-22 — Quote/top-up checkout и credit (поверх 7d233ad)
+
+`auth22` входит в default прогон первым и проверяет контракты каталога/снимка/state machine/DTO/webhook-словаря без БД. `auth22-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн прежний:
+
+```bash
+git add --pathspec-from-file=scripts/auth22/files.txt
+python scripts/local_gates.py --skip-install
+python scripts/local_gates.py --only auth22,auth22-postgres --skip-install
+# либо native вместе с default:
+python scripts/local_gates.py --with-auth22-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth22.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты затронуты: +3 OWNER-маршрута** (`GET /v1/billing/{account_id}/topups`, `POST /v1/billing/{account_id}/topup-quotes`, `POST /v1/billing/{account_id}/topups`): actual 277 = inventory 277, bindings 281 (+3, операция `billing.topup`), added/missing=[]; научные пути не переименованы. Inventory 651→654, OpenAPI/TS/proxy allowlist перегенерированы (порядок: производные → inventory). Webhook-маршрут не добавлялся — существующий wake-up расширен на topup-заказы (to_regclass-гвард до применения 0034).
+
+Миграция 0034 explicit: `scripts/auth22/migrate.py --apply/--check` (цепочка гарантирует 0019…0033). Контур выключен по умолчанию: без провижиненных пакетов (`manage_topups.py add-package`) и кошелька (AUTH-21 CLI) проверка честно отвечает `topup_not_configured`/`wallet_required`. UI-секция «Пополнение баланса CU» (TopupPanel) в обеих оболочках только для paid MULTI. Инструкция VM — `docs/auth22/deploy.md` (пересборка api И web, миграция 0034; compose/env не менялись — billing-worker прежний образ получает шаг topup-саги автоматически). Refund/dispute — AUTH-23, wallet/ledger READ-эндпоинты — AUTH-24.
+
+## AUTH-22 HOTFIX-01 — auth22-postgres выполнялся без флага (база 7d233ad)
+
+Дефект первой поставки AUTH-22: гейт `auth22-postgres` добавлен в `GATES`, но не в opt-in механику — отсутствовали `--with-auth22-postgres` и `excluded.add("auth22-postgres")`. Поэтому он один из всех native-гейтов запускался в default прогоне, без `CISSTAT_AUTH_TEST_DSN` честно возвращал 2 (`Set CISSTAT_AUTH_TEST_DSN... No tests ran`) и ронял прогон за <1 c. Заодно устранён дрейф того же класса от AUTH-20/21: `missing_live`-подсказка не называла auth21, footnote `--list` и строки `--only`/`parser.error` — флаги/имена auth20–22; эти строки теперь строятся из `GATES` программно. Поведенческие изменения только в выборе гейтов: default-прогон снова зелёный без DSN (native — по флагу), сам native-гейт и его CI не менялись. После распаковки hotfix: `git add --pathspec-from-file=scripts/auth22/files.txt`, затем `python scripts/local_gates.py --skip-install`; smoke: `python scripts/local_gates.py --list` (`auth22-postgres` без `*`) и `python scripts/local_gates.py --only auth22,auth22-postgres --skip-install` с DSN.

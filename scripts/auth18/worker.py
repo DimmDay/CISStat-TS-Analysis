@@ -20,9 +20,20 @@ def main():
     from apps.api.billing.subscriptions import SubscriptionService
 
     service = SubscriptionService()
+    # AUTH-22: the same durable loop also drives the top-up saga; when the
+    # top-up schema is not applied yet its step reports no work honestly.
+    topups = None
+    try:
+        from apps.api.billing.topups import TopupService
+
+        topups = TopupService()
+    except Exception:  # noqa: BLE001 -- safe boundary; contour stays subscription-only
+        topups = None
     while not stop.is_set():
         try:
             worked = service.step()
+            if topups is not None:
+                worked = topups.step() or worked
             if not args.loop:
                 print(json.dumps({"ok": True, "processed": worked}))
                 return 0

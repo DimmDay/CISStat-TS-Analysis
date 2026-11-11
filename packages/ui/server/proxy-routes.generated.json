@@ -53,6 +53,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/billing/{account_id}/topups"
+  },
+  {
+    "method": "GET",
     "path": "/v1/documentation/documents/{document_id}/revisions"
   },
   {
@@ -646,6 +650,14 @@
   {
     "method": "POST",
     "path": "/v1/billing/{account_id}/quotes/{quote_id}/confirm"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/{account_id}/topup-quotes"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/billing/{account_id}/topups"
   },
   {
     "method": "POST",

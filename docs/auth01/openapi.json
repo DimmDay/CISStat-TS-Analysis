@@ -2666,6 +2666,14 @@
         "selector": "none",
         "authority": "external"
       },
+      "billing.topup": {
+        "operation_id": "billing.topup",
+        "stage_namespace": "service",
+        "stage": "platform",
+        "capability": null,
+        "selector": "none",
+        "authority": "external"
+      },
       "auth.oidc.start": {
         "operation_id": "auth.oidc.start",
         "stage_namespace": "service",
@@ -3790,6 +3798,18 @@
       },
       "api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm": {
         "operation_id": "billing.owner",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/billing/{account_id}/topups": {
+        "operation_id": "billing.topup",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/billing/{account_id}/topup-quotes": {
+        "operation_id": "billing.topup",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/billing/{account_id}/topups": {
+        "operation_id": "billing.topup",
         "programmatic_api": false
       },
       "api:POST:/v1/billing/webhooks/yookassa": {

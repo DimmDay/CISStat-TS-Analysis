@@ -27,6 +27,20 @@ export async function billingRequest(path: string, body?: unknown) {
         "Войдите заново и подтвердите MFA, затем повторите действие.",
       billing_reduction_not_approved:
         "Условия уменьшения мест ещё не утверждены.",
+      // AUTH-22 top-up checkout refusals (safe codes only).
+      topup_not_configured: "Пополнение CU ещё не настроено.",
+      topup_package_not_found: "Пакет пополнения не найден; обновите список.",
+      topup_quote_not_found: "Предложение пополнения не найдено.",
+      topup_quote_changed: "Предложение изменилось; запросите новое.",
+      topup_quote_expired: "Предложение устарело; запросите новое.",
+      topup_quote_limit:
+        "Лимит предложений исчерпан; попробуйте позже.",
+      topup_order_not_found: "Заказ пополнения не найден.",
+      wallet_required:
+        "Кошелёк CU не провижинирован; обратитесь к оператору.",
+      wallet_locked:
+        "Баланс CU заблокирован; обратитесь к владельцу аккаунта.",
+      owner_required: "Действие доступно владельцу аккаунта.",
     };
     throw new Error(
       messages[code] ??
