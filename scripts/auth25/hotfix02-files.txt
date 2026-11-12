@@ -1,0 +1,5 @@
+scripts/auth25/patch_dockerfile.py
+scripts/auth25/hotfix02-files.txt
+docs/auth25/hotfix02.md
+docs/auth25/deploy.md
+worklog/worklog12.md

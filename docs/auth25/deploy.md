@@ -1,6 +1,6 @@
 # AUTH-25 — Инструкция деплоя на VM
 
-База: `main@f6dbec9` (AUTH-24) + **AUTH-25-HOTFIX-01**: без патча `apps/api/Dockerfile` (COPY `scripts/auth25`) CLI `reconcile.py` в образ api не попадает — см. `docs/auth25/hotfix01.md`. Миграций НЕТ: reconciliation живёт на схеме 0033/0034/0035, применённой AUTH-21/22/23. env-переменных НЕТ: `CISSTAT_TOPUP_REFUND_DAYS` уже действует с AUTH-23 (default 14), `CISSTAT_YOOKASSA_ENABLED` остаётся в текущем состоянии (sandbox/not_configured). Меняется только код api → **пересобрать только образ api; web не менялся**.
+База: `main@f6dbec9` (AUTH-24) + **AUTH-25-HOTFIX-01/02**: без патча `apps/api/Dockerfile` (COPY `scripts/auth25/reconcile.py`) CLI `reconcile.py` в образ api не попадает — см. `docs/auth25/hotfix01.md`, `docs/auth25/hotfix02.md`. Миграций НЕТ: reconciliation живёт на схеме 0033/0034/0035, применённой AUTH-21/22/23. env-переменных НЕТ: `CISSTAT_TOPUP_REFUND_DAYS` уже действует с AUTH-23 (default 14), `CISSTAT_YOOKASSA_ENABLED` остаётся в текущем состоянии (sandbox/not_configured). Меняется только код api → **пересобрать только образ api; web не менялся**.
 
 ## Шаги
 
@@ -8,9 +8,12 @@
 cd /opt/cisstat/CISStat-TS-Analysis
 git pull --ff-only
 
-# HOTFIX-01, однократно и идемпотентно: +1 строка COPY scripts/auth25 в apps/api/Dockerfile
+# HOTFIX-01/02, однократно и идемпотентно: +1 строка COPY scripts/auth25 в apps/api/Dockerfile
 python3 scripts/auth25/patch_dockerfile.py
-# повторный запуск ничего не меняет: "OK: scripts/auth25 is already copied"
+# итоговая строка в Dockerfile должна быть ровно:
+#   COPY scripts/auth25/reconcile.py ./scripts/auth25/
+# патчер v2 (HOTFIX-02) проверяет источники по build-context и чинит неверную строку;
+# повторный запуск при верной строке ничего не меняет: "OK: … valid"
 
 docker compose build api
 docker compose up -d --no-deps api
