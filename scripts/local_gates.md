@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -46,6 +46,19 @@ python scripts/local_gates.py --with-auth12-postgres --skip-install
 ```
 
 Без DSN/при skips native не PASS. `.github/workflows/auth12.yml`: Ubuntu/Windows unit; PostgreSQL16/18 native Ubuntu. Linux проверки не заменяют настоящий Windows CI. Все прежние PostgreSQL opt-in сохранены; auth07 также выполняет windows_parity.py с запретом Unix-only resource.
+
+## AUTH-CERT — сквозная приёмка сервиса (поверх 3c3e8b7)
+
+Default-гейт `authcert` (browser-слой: статические оракулы обеих оболочек — first-party cookies, отсутствие credentials в URL/browser storage, поверхности login/admin/demo/account/upload, транспорт LoginScreen; DSN не нужен) и opt-in `authcert-postgres` (native: полный apps.api.main на disposable PostgreSQL 0019→0035, required-режим, реальные HTTP-куки/CSRF/Origin — suite'ы api/demo/concurrency/failures/billing; без DSN runner возвращает 2, skips запрещены):
+
+```bash
+python scripts/local_gates.py --only authcert --skip-install
+python scripts/local_gates.py --only authcert,authcert-postgres --skip-install
+# либо вместе с default:
+python scripts/local_gates.py --with-authcert-postgres --skip-install
+```
+
+`.github/workflows/authcert.yml`: Ubuntu/Windows contracts + PostgreSQL16/18 native. Матрица AC01…30 → тесты/границы — docs/authcert/verification.md. Real browser E2E / IdP / SMTP / provider-магазин — честные границы акта, не заявляются.
 
 ## AUTH-20 — audit/operations и миграционный rollout (поверх c08ee9e)
 

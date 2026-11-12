@@ -1,0 +1,3 @@
+# AUTH-CERT native gate dependencies (verify_postgres.py)
+pgserver
+psycopg[binary]

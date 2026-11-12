@@ -82,6 +82,13 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("authcert", "authcert.yml contracts", "AUTH-CERT browser-layer/static oracles (no DSN)", [
+        [sys.executable, "scripts/authcert/verify_browser.py"],
+    ]),
+    ("authcert-postgres", "authcert.yml postgres", "AUTH-CERT native end-to-end acceptance on disposable PostgreSQL", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/authcert/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/authcert/verify_postgres.py"],
+    ]),
     ("auth25", "auth25.yml contracts", "AUTH-25 reconciliation/restore/launch contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth25/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth25*.py", "-v"],
@@ -447,6 +454,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-authcert-postgres", action="store_true",
+                        help="native AUTH-CERT end-to-end acceptance requires a disposable PostgreSQL DSN")
     parser.add_argument("--with-auth25-postgres", action="store_true",
                         help="добавить native PostgreSQL reconciliation/watermark/launch проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth24-postgres", action="store_true",
@@ -502,6 +511,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_authcert_postgres:
+        excluded.add("authcert-postgres")
     if not args.with_auth25_postgres:
         excluded.add("auth25-postgres")
     if not args.with_auth24_postgres:
@@ -564,7 +575,7 @@ def main() -> int:
               "--with-auth17-postgres/--with-auth18-postgres/--with-auth19-postgres/--with-auth20-postgres/"
               "--with-auth21-postgres/--with-auth22-postgres/--with-auth23-postgres/"
               "--with-auth24-postgres/--with-auth25-postgres/"
-              "--with-session-postgres")
+              "--with-authcert-postgres/--with-session-postgres")
         return 0
     if not selected:
         parser.error("ничего не выбрано; доступно: " + all_gate_names)
