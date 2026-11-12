@@ -30,6 +30,8 @@
                                      инцидента AUTH-07-HOTFIX2 «локально
                                      зелено, на windows-2025
                                      ModuleNotFoundError на collection»
+  auth24  (auth24.yml, push/PR)    Wallet READ/lifecycle contracts (AUTH-24)
+  auth24-postgres (auth24.yml)    native PG wallet read/privacy/lifecycle flows
   auth23  (auth23.yml, push/PR)    Refund/dispute/chargeback contracts
   auth23-postgres (auth23.yml)    native PG refund saga / exposure flows
   auth22  (auth22.yml, push/PR)    Top-up quote/checkout/credit contracts
@@ -52,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -80,6 +82,14 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("auth24", "auth24.yml contracts", "AUTH-24 wallet READ/lifecycle contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth24/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth24*.py", "-v"],
+    ]),
+    ("auth24-postgres", "auth24.yml postgres", "AUTH-24 native wallet read/privacy/lifecycle flows", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/auth24/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/auth24/verify_postgres.py"],
+    ]),
     ("auth23", "auth23.yml contracts", "AUTH-23 refund/dispute contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/auth23/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_auth23*.py", "-v"],
@@ -429,6 +439,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-auth24-postgres", action="store_true",
+                        help="добавить native PostgreSQL wallet read/privacy/lifecycle проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth23-postgres", action="store_true",
                         help="добавить native PostgreSQL refund/dispute проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth22-postgres", action="store_true",
@@ -480,6 +492,8 @@ def main() -> int:
         excluded.add("auth05-postgres")
     if not args.with_auth04_postgres:
         excluded.add("auth04-postgres")
+    if not args.with_auth24_postgres:
+        excluded.add("auth24-postgres")
     if not args.with_auth23_postgres:
         excluded.add("auth23-postgres")
     if not args.with_auth22_postgres:
@@ -537,6 +551,7 @@ def main() -> int:
               "--with-auth13-postgres/--with-auth14-postgres/--with-auth15-postgres/--with-auth16-postgres/"
               "--with-auth17-postgres/--with-auth18-postgres/--with-auth19-postgres/--with-auth20-postgres/"
               "--with-auth21-postgres/--with-auth22-postgres/--with-auth23-postgres/"
+              "--with-auth24-postgres/"
               "--with-session-postgres")
         return 0
     if not selected:

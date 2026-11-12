@@ -41,6 +41,11 @@ export async function billingRequest(path: string, body?: unknown) {
       wallet_locked:
         "Баланс CU заблокирован; обратитесь к владельцу аккаунта.",
       owner_required: "Действие доступно владельцу аккаунта.",
+      // AUTH-23 refund refusals (safe codes; AUTH-24 adds the refund UI).
+      refund_not_eligible:
+        "Заказ недоступен для возврата: возвращается только целый неиспользованный пакет.",
+      refund_window: "Срок возврата заказа истёк.",
+      refund_not_found: "Возврат не найден; обновите состояние заказа.",
     };
     throw new Error(
       messages[code] ??

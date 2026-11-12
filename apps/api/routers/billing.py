@@ -12,6 +12,7 @@ from apps.api.billing.subscription_contract import Confirm, Quote
 from apps.api.billing.subscriptions import SubscriptionService
 from apps.api.billing.topup_contract import TopupOrder, TopupQuote
 from apps.api.billing.topups import TopupService
+from apps.api.billing.wallet_views import WalletReadService
 from apps.api.routers.accounts import entry
 from apps.api.routers.authentication import SafeAuthRoute
 
@@ -32,6 +33,12 @@ def topup_service(request):
 
 def refund_service(request):
     return getattr(request.app.state, "auth_refund_service", None) or RefundService(
+        getattr(request.app.state, "auth_access_store", None)
+    )
+
+
+def wallet_service(request):
+    return getattr(request.app.state, "auth_wallet_read_service", None) or WalletReadService(
         getattr(request.app.state, "auth_access_store", None)
     )
 
@@ -85,6 +92,24 @@ def refund_request(request: Request, account_id: UUID, order_id: UUID, payload: 
 def refund_show(request: Request, account_id: UUID, refund_id: UUID):
     return refund_service(request).refund_get(
         auth_cookie(request), entry(request), account_id, refund_id
+    )
+
+
+@router.get("/{account_id}/wallet")
+def wallet_show(request: Request, account_id: UUID):
+    # AUTH-24: member usage projection; OWNER also receives the per-source
+    # breakdown. Financial privacy is the projection's contract (design D1).
+    return wallet_service(request).wallet(
+        auth_cookie(request), entry(request), account_id
+    )
+
+
+@router.get("/{account_id}/wallet/ledger")
+def wallet_ledger(request: Request, account_id: UUID):
+    # AUTH-24: OWNER-only full financial journal (§13.8); MEMBER gets 403
+    # owner_required and never sees money documents.
+    return wallet_service(request).ledger(
+        auth_cookie(request), entry(request), account_id
     )
 
 

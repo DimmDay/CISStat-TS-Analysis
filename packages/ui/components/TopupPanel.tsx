@@ -37,10 +37,17 @@ const STATES: Record<string, string> = {
   review_required: "Нужна сверка оператора; не оплачивайте повторно",
   paid_review: "Оплата получена; требуется проверка оператора",
 };
+const REFUND_STATES: Record<string, string> = {
+  pending: "Возврат создан; CU под удержанием до подтверждения провайдером",
+  refunded: "Возврат выполнен; CU погашены",
+  failed: "Возврат не выполнен; CU разблокированы",
+  review_required: "Нужна сверка оператора",
+};
 export function TopupPanel({ account }: { account: TeamAccount }) {
   const [packages, setPackages] = useState<Package[] | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [refunds, setRefunds] = useState<Record<string, { refund_id: string; state: string }>>({});
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const lock = useRef(false);
@@ -153,6 +160,41 @@ export function TopupPanel({ account }: { account: TeamAccount }) {
             >
               Открыть ЮKassa
             </a>
+          )}
+          {o.state === "credited" && (
+            <>
+              {" "}
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const refund = await billingRequest(
+                      `/${account.account_id}/topups/${o.order_id}/refunds`,
+                      {
+                        expected_version: account.entitlement_version,
+                        reason: "OWNER requested self-service refund of the unused purchased lot",
+                        idempotency_key: commandKey(),
+                      },
+                    );
+                    setRefunds((old) => ({
+                      ...old,
+                      [o.order_id]: {
+                        refund_id: refund.refund_id,
+                        state: refund.state,
+                      },
+                    }));
+                  })
+                }
+              >
+                Запросить возврат
+              </button>
+              {refunds[o.order_id] && (
+                <span>
+                  {" "}
+                  Возврат: {REFUND_STATES[refunds[o.order_id].state] ?? refunds[o.order_id].state}
+                </span>
+              )}
+            </>
           )}
         </p>
       ))}

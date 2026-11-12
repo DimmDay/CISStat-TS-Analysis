@@ -61,6 +61,14 @@
   },
   {
     "method": "GET",
+    "path": "/v1/billing/{account_id}/wallet"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/billing/{account_id}/wallet/ledger"
+  },
+  {
+    "method": "GET",
     "path": "/v1/documentation/documents/{document_id}/revisions"
   },
   {

@@ -1874,6 +1874,12 @@
       "stage": "platform",
       "authority": "external"
     },
+    "billing.wallet": {
+      "operation_id": "billing.wallet",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "authority": "external"
+    },
     "auth.oidc.start": {
       "operation_id": "auth.oidc.start",
       "stage_namespace": "service",
@@ -3018,6 +3024,14 @@
     },
     "api:POST:/v1/billing/{account_id}/topups/{order_id}/refunds": {
       "operation_id": "billing.refund",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/billing/{account_id}/wallet": {
+      "operation_id": "billing.wallet",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/billing/{account_id}/wallet/ledger": {
+      "operation_id": "billing.wallet",
       "programmatic_api": false
     },
     "api:POST:/v1/billing/webhooks/yookassa": {

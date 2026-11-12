@@ -3,7 +3,7 @@
   "baseline": "b9af29bf9e359403db16b280fe8c1ab402597e85",
   "scope": "Repository-declared API methods, FastAPI default metadata, Next pages/proxies, renderer HTTP, legacy widgets/authority, real thread launches plus explicitly reviewed execution/storage boundaries. Not a production exposure scan or runtime authorization policy.",
   "counts": {
-    "api": 279,
+    "api": 281,
     "framework": 8,
     "internal_operation": 36,
     "legacy_authority": 1,
@@ -581,21 +581,19 @@
       ]
     },
     "billing.wallet": {
-      "observed": "AUTH-21 source-aware wallet/credit lots: durable PostgreSQL authority with append-only balanced postings, FEFO spend, pinned reservation allocations, expiry sweep and wallet lock; trusted operator CLI only, no HTTP surface and no auto-credit. Reservation-level movements run inside the AUTH-12 coordinator transaction.",
-      "target": "Financial wallet operations fail closed: unique credit-per-basis guards, mandatory auth_wallet_changed audit in the issuing transaction, integer micro-CU only. AUTH-22 adds the confirmed-payment saga as the only automated issuer of whole purchased lots; refunds/disputes stay with AUTH-23, wallet UI/DTO with AUTH-24.",
+      "observed": "AUTH-24 wallet READ surface: an active member of the current personal identity reads a usage projection of the AUTH-21 wallet (totals, reserved, next expiry, server-computed can_purchase_cu/can_spend_cu and lifecycle reasons); the OWNER additionally receives the per-source breakdown and the locked_reason; the ledger endpoint is OWNER-only and carries the bounded financial journal with money documents.",
+      "target": "Financial privacy: money, per-source breakdown and history never reach MEMBER; the ledger never answers to non-owners; read over an expired subscription preserves the balance and reports spending_blocked_reason instead of pretending a spendable state; admission to spending stays with the AUTH-12 coordinator.",
       "follow_up": [
-        "AUTH-21",
-        "AUTH-22",
-        "AUTH-23",
         "AUTH-24",
+        "AUTH-25",
         "AUTH-CERT"
       ],
       "threats": [
         "T02",
-        "T06",
-        "T11",
+        "T09",
         "T13",
-        "T15"
+        "T15",
+        "T20"
       ]
     },
     "billing.topup": {
@@ -651,7 +649,7 @@
     "apps/api/Dockerfile": "70b4d8029626348be6f3918ee382ea3b13ceedc424c4d7772ee8f017002df6e5",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
-    "apps/api/access_registry.v1.json": "b6496d87669786f6ca4c31e592d98d65cc1ca7801ec974f8dee7bbc516406a03",
+    "apps/api/access_registry.v1.json": "febdf3970ffae947fc0957558dc7bb595f03050d3349e4fe55388f43adcf8660",
     "apps/api/accounts/__init__.py": "b6cc72f82bac28e1914da2bee8638ab4f78fb09d80122c5060e9e82c6a0bc5d0",
     "apps/api/accounts/entitlements.py": "1e6335a56ea4742e516947692b44bca338b0a908319520620bfd90d6221db3b7",
     "apps/api/accounts/lifecycle.py": "de35177c8624bf329e08ef4eb458554cb122f572e85bd51c4fc7a6c9fbea6a18",
@@ -729,6 +727,7 @@
     "apps/api/billing/topups.py": "a027330539b79a83a4bcffa7861521be8e746a8e9144372bf47d9d62326ecc8f",
     "apps/api/billing/wallet.py": "a380ba2ce9cfd80c1a5f159cc8b46092684105851aeb1cd6db562d48137340c2",
     "apps/api/billing/wallet_migrations.py": "e4f15d4d57f5b13cfd2079936e527e07edcdb9e2f324769cb82f867f4ec6d391",
+    "apps/api/billing/wallet_views.py": "2d67833f9d3a24ca56080a11fd3489f6c540e2735a3ef5b426a07af877484e40",
     "apps/api/chart_data.py": "71e49c5f4eda7cb75b9ffed7b1378205a5b3aaf78d3679e6926c436625f51728",
     "apps/api/column_origin.py": "acbbae22ab59b348959d658abbf479f28b7065390334a1d6286f9a5182b72051",
     "apps/api/consistency_correction.py": "84d931a97b0931fe28a0de936d1fd9b0da342a7873bbae7c163863126e281731",
@@ -845,7 +844,7 @@
     "apps/api/routers/accounts.py": "11c85c988cb41c7e7037f840993fce05fbbfa20104b63701760c561f7365b348",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
     "apps/api/routers/authentication.py": "f6e90cbb53c4cf39d9a0603b77983dc7fd4007da34def7db705cf045517583bf",
-    "apps/api/routers/billing.py": "34f4e976652ac921ea43ecdad55e7362eb7032f58d39b8e89f2007717c5697ba",
+    "apps/api/routers/billing.py": "6d6d8b15b7f8854b4b525fa20a6971ef9719d5d677f1459e27a535f6b33adf29",
     "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
@@ -951,7 +950,7 @@
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
     "docs/auth01/design.md": "809f3ad18292bccdf806b17251753c3dbed48c2a581a47dc38570d25c02346dc",
-    "docs/auth01/openapi.json": "e71bbc9f7cbdb78d4fb26c960c748e6198e4ba51fa0a7d33be4cd2a2a31a6b25",
+    "docs/auth01/openapi.json": "e90b6805fb6d48c66b5fdb7e44151841fa635bbe5f64d1be8d3ca09b5ff1a2d4",
     "docs/auth02/design.md": "c4f334b1460912cc9b451f9a373897f90ae01e49c9c5e17282203bd7da3a1f31",
     "docs/auth03/design.md": "7cc43cf4afaa222a9fc83af18e67f5df1b1172f02620b7012e991cecc4eb0b52",
     "docs/auth04/design.md": "1773a64e80b4c6e6c48bad443a7e83f78aca6723cfa3186229bed9b96740bf1d",
@@ -971,7 +970,7 @@
     "docs/auth19/design.md": "0b1e9b72bb3d2fad46a956414d5dbe8d767b785811c21338b495e8538ae655df",
     "docs/auth21/design.md": "6f49b38288883e15ff7551c85e568f0b2f51a14b28dd314a159df00f456d2405",
     "docs/auth22/design.md": "65350063d4ea2ad0eb83883d840b6df7a80abb5367ea712d4f3e5f2ef3b9c14b",
-    "packages/ui/components/AccountScreen.tsx": "4bc63ac5b84115e183631aceafd72a1d9ef9c43cdd0439f61212f24094b52c76",
+    "packages/ui/components/AccountScreen.tsx": "fb22d5d37f612fab3419c30775ea23a26003a1c5b842522b53a1861d45651144",
     "packages/ui/components/BillingPanel.tsx": "61c9539ea06f76d20ad0f324fb9bc280f7519b184cd2e12dbfa5f943ef246adc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
     "packages/ui/components/DatasetViewEditor.tsx": "3cc8d931cbbe98f773679db3c6af37eb3c141b2858fadfd44548259261ed52f1",
@@ -1036,12 +1035,12 @@
     "packages/ui/context/AuthContext.tsx": "05583a03ac8a4c20d335cfc028b0dd9a6e7b91f0a0cd11338934d329327c9af6",
     "packages/ui/hooks/useProgressMapDelivery.ts": "025ef4af18eb2b89e9373b24c6006f8147d7a2ac609bb51d1e2f906bc92d32e8",
     "packages/ui/hooks/useTargetColumn.ts": "3fb94ec36feb1cd649ff3f56528dcb2541c2bc4c821318d74297f1c624c79b66",
-    "packages/ui/lib/access-contract.generated.ts": "91dd153aa27dcc18fd76b4ed463c86c8a737707bdc0c11a1fe50f9b6d5bd27ce",
+    "packages/ui/lib/access-contract.generated.ts": "96acf84ac7f05eef6e24f79ed5cdc3c42d63511f1ff13058413172752fa828a5",
     "packages/ui/lib/admin.ts": "9c2e3421812ea6765eb3d82c8f139a8482a65ffd1a5b7a165d71d5651ba2ddd6",
     "packages/ui/lib/adminLogs.ts": "f3c0eec849064c87e4cb82d5813113de4e11d9abb69d9caf39fb57fb91c69c59",
     "packages/ui/lib/apiClient.ts": "66d5def66d841c17846486834ba7af032f42543300277e8dc78efbe097f605f2",
     "packages/ui/lib/authClient.ts": "903c2dcdaaf46dc66e3a74b23df4ccc9b139688df2929c85a4ecfa5d8f6a25f2",
-    "packages/ui/lib/billing.ts": "7f309b2c89a8dcbcc5c781c44381c696544c5f46c9d4571d1908ed7323fe4698",
+    "packages/ui/lib/billing.ts": "2073ca5312f31f76c6c7310a7fbaf6b4c85f53a0d7248facd901d3d4057cbde3",
     "packages/ui/lib/browserTransport.ts": "a94d267277e8af475ab27860f319adaf79f338ef2a39d81e71d777b5ca50c07e",
     "packages/ui/lib/demo.ts": "4a3d17e609499dfbb3ccb5b823b5783bf7b48d45ee772b3f445592f1fec1fbac",
     "packages/ui/lib/documentation.ts": "ece52621a6f132e7e075f6545c72f4bee0b5242ff7ec4ed189645067435f7c99",
@@ -1055,7 +1054,7 @@
     "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
-    "packages/ui/server/proxy-routes.generated.json": "9f57a8ea840b57d0b182782510d494062a9ba85545262ffac8b669ef7c8108b8",
+    "packages/ui/server/proxy-routes.generated.json": "666938cb18fca32a21dce462fb41175da241fec68be0b55e7b86c8776f30b668",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
     "scripts/auth01/generate.py": "c159ffa353979956457b255795f1f8264aaa078d94771f2d5614e22d3b2658f0",
     "scripts/auth02/migrate.py": "4fd277ace4a0cb41af6274527a01bc89e80b250baa383ee7612e66d0765d3631",
@@ -1085,8 +1084,8 @@
     "scripts/auth21/migrate.py": "44b3c34d993d7ba34c396a188c41e0afc55ec7e213d7e1f7f11d14515922228c",
     "scripts/auth22/manage_topups.py": "709c0dbcc1cc891af0a8ee72852299efedabb780e9b1cb9282009dfeb21c5eb8",
     "scripts/auth22/migrate.py": "b5f8077f34ef6a3c3c1944ffcae15c82a800a8e5910e38ef843b298ed8fe63e7",
-    "scripts/local_gates.md": "e6579e816d38c715f741b24fc2f62bac8b6f4d968264b1a1c3de82c5d3c10983",
-    "scripts/local_gates.py": "c102ecfe75a6a8ad1ab558c9c20e78377104d6cde74f409025532e7d7f47c596",
+    "scripts/local_gates.md": "4f4638f06092134314c61ab3cf86bdd49bddf111ccf10e1f63d0f9d6097569f0",
+    "scripts/local_gates.py": "0d701e7840f8a18281a89dd4c9f9828c8d26486ffb7f6bc5c07c53f57312b2ea",
     "spec_auth.md": "25e41715cbc6c326b7a14c9e5a7a57f4574411aaf5dfd72fa7533c30f58fa097",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1695,7 +1694,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 84,
+          "line": 91,
           "symbol": "refund_show"
         },
         {
@@ -1728,7 +1727,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 39,
+          "line": 46,
           "symbol": "subscription"
         },
         {
@@ -1763,7 +1762,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 58,
+          "line": 65,
           "symbol": "topups"
         },
         {
@@ -1789,6 +1788,72 @@
       ],
       "canonical_operation": "api:GET:/v1/billing/{account_id}/topups",
       "admission": "AUTH-22 personal current OWNER of a paid MULTI account with an active wallet; server-side package snapshot, cookie/Origin/CSRF, fresh login/MFA on confirm; browser return never credits."
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/billing/{account_id}/wallet",
+      "operation": "apps.api.routers.billing:wallet_show",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 98,
+          "symbol": "wallet_show"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 263,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/billing/{account_id}/wallet",
+      "discovery": "automatic",
+      "policy": "billing.wallet",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "wallet usage projection (member-safe)",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/billing/{account_id}/wallet",
+      "admission": "AUTH-24 active member of the current personal identity over a provisioned AUTH-21 wallet; no wallet row answers 403 wallet_required; demo grants and non-active accounts are refused; an expired plan still returns the preserved balance with the reason."
+    },
+    {
+      "kind": "api",
+      "method": "GET",
+      "path": "/v1/billing/{account_id}/wallet/ledger",
+      "operation": "apps.api.routers.billing:wallet_ledger",
+      "evidence": [
+        {
+          "source": "apps/api/routers/billing.py",
+          "line": 107,
+          "symbol": "wallet_ledger"
+        },
+        {
+          "source": "apps/api/main.py",
+          "line": 263,
+          "symbol": "include_router"
+        }
+      ],
+      "dependencies": [],
+      "direct_guard_mentions": [
+        "auth_cookie"
+      ],
+      "id": "api:GET:/v1/billing/{account_id}/wallet/ledger",
+      "discovery": "automatic",
+      "policy": "billing.wallet",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "OWNER financial journal (bounded ledger projection)",
+      "effects": [
+        "read"
+      ],
+      "canonical_operation": "api:GET:/v1/billing/{account_id}/wallet/ledger",
+      "admission": "AUTH-24 current OWNER only; MEMBER receives 403 owner_required; bounded projections reuse safe AUTH-22/23 views without lease/fence/owner identifiers."
     },
     {
       "kind": "api",
@@ -7183,7 +7248,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 91,
+          "line": 116,
           "symbol": "webhook"
         },
         {
@@ -7218,7 +7283,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 44,
+          "line": 51,
           "symbol": "quote"
         },
         {
@@ -7253,7 +7318,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 51,
+          "line": 58,
           "symbol": "confirm"
         },
         {
@@ -7288,7 +7353,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 63,
+          "line": 70,
           "symbol": "topup_quote"
         },
         {
@@ -7323,7 +7388,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 70,
+          "line": 77,
           "symbol": "topup_order"
         },
         {
@@ -7358,7 +7423,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/billing.py",
-          "line": 77,
+          "line": 84,
           "symbol": "refund_request"
         },
         {

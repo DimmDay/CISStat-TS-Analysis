@@ -616,6 +616,22 @@
     "T13",
     "T15"
    ]
+  },
+  "billing.wallet": {
+   "observed": "AUTH-24 wallet READ surface: an active member of the current personal identity reads a usage projection of the AUTH-21 wallet (totals, reserved, next expiry, server-computed can_purchase_cu/can_spend_cu and lifecycle reasons); the OWNER additionally receives the per-source breakdown and the locked_reason; the ledger endpoint is OWNER-only and carries the bounded financial journal with money documents.",
+   "target": "Financial privacy: money, per-source breakdown and history never reach MEMBER; the ledger never answers to non-owners; read over an expired subscription preserves the balance and reports spending_blocked_reason instead of pretending a spendable state; admission to spending stays with the AUTH-12 coordinator.",
+   "follow_up": [
+    "AUTH-24",
+    "AUTH-25",
+    "AUTH-CERT"
+   ],
+   "threats": [
+    "T02",
+    "T09",
+    "T13",
+    "T15",
+    "T20"
+   ]
   }
  },
  "entries": {
@@ -8028,6 +8044,28 @@
    ],
    "canonical_operation": "api:GET:/v1/billing/{account_id}/refunds/{refund_id}",
    "admission": "AUTH-23 personal current OWNER of a paid MULTI account; the refund is the full amount of a credited order for its whole unused purchased lot inside the recorded window; cookie/Origin/CSRF on POST; provider proof is the authenticated GET refund only; disputes are trusted-operator records."
+  },
+  "api:GET:/v1/billing/{account_id}/wallet": {
+   "policy": "billing.wallet",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "wallet usage projection (member-safe)",
+   "effects": [
+    "read"
+   ],
+   "canonical_operation": "api:GET:/v1/billing/{account_id}/wallet",
+   "admission": "AUTH-24 active member of the current personal identity over a provisioned AUTH-21 wallet; no wallet row answers 403 wallet_required; demo grants and non-active accounts are refused; an expired plan still returns the preserved balance with the reason."
+  },
+  "api:GET:/v1/billing/{account_id}/wallet/ledger": {
+   "policy": "billing.wallet",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "OWNER financial journal (bounded ledger projection)",
+   "effects": [
+    "read"
+   ],
+   "canonical_operation": "api:GET:/v1/billing/{account_id}/wallet/ledger",
+   "admission": "AUTH-24 current OWNER only; MEMBER receives 403 owner_required; bounded projections reuse safe AUTH-22/23 views without lease/fence/owner identifiers."
   },
   "api:POST:/v1/billing/{account_id}/topup-quotes": {
    "policy": "billing.topup",

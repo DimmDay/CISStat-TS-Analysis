@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -200,5 +200,20 @@ python scripts/local_gates.py --with-auth23-postgres --skip-install
 ```
 
 Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth23.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты затронуты: +2 OWNER-маршрута** (`POST /v1/billing/{account_id}/topups/{order_id}/refunds`, `GET /v1/billing/{account_id}/refunds/{refund_id}`): actual 279 = inventory 279, bindings 283 (+2, операция `billing.refund`), added/missing=[]; научные пути не переименованы; webhook-маршрут прежний (refund-статус подтверждает только сага через GET). Inventory 654→656, OpenAPI/TS/proxy allowlist перегенерированы (порядок: производные → inventory); policy_review: политика `billing.refund` + 2 классификации + честное обновление target `billing.topup`.
+
+## AUTH-24 — Wallet permissions/UI и lifecycle (поверх 32e0f50)
+
+`auth24` входит в default прогон первым (unit-контракты проекций: member-минимум против owner-полного набора, флаги `can_purchase_cu`/`can_spend_cu`, bounded ledger, отсутствие денег в wallet-проекции, safe-коды, регистрация маршрутов). `auth24-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн прежний:
+
+```bash
+git add --pathspec-from-file=scripts/auth24/files.txt
+python scripts/local_gates.py --only auth24,auth24-postgres --skip-install
+# либо вместе с default:
+python scripts/local_gates.py --with-auth24-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth24.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты затронуты: +2 READ-маршрута** (`GET /v1/billing/{account_id}/wallet`, `GET /v1/billing/{account_id}/wallet/ledger`): actual 281 = inventory 281, bindings 285 (+2, операция `billing.wallet`), added/missing=[]; научные пути не переименованы. Inventory 656→658, OpenAPI/TS/proxy allowlist перегенерированы (порядок: производные → inventory); policy_review: политика `billing.wallet` + 2 классификации. Урок AUTH-22-HOTFIX-01 соблюдён: гейт `auth24-postgres` добавлен вместе с `--with-auth24-postgres` и `excluded.add` в одном изменении.
+
+Новой миграции нет: READ-поверхность живёт на схеме 0033. UI обеих оболочек: WalletPanel («Аккаунт → Баланс CU», OWNER-разбивка + журнал, MEMBER — только usage-проекция и подсказка к владельцу), TopupPanel только при `can_manage` (§13.3) с self-service возвратом credited-заказов (AUTH-23). Инструкция VM — `docs/auth24/deploy.md` (пересборка api И web; миграции/env не менялись). Payment reconciliation/launch runbook — AUTH-25.
 
 Миграция 0035 explicit: `scripts/auth23/migrate.py --apply/--check` (цепочка гарантирует 0019…0034). Контур выключен по умолчанию: без credited-заказа (AUTH-22) возврат невозможен; споры открываются только trusted CLI `scripts/auth23/manage_refunds.py` (dispute-open/dispute-resolve/refund-reconcile), клиентского HTTP-маршрута спора нет. Окно возврата — env `CISSTAT_TOPUP_REFUND_DAYS` (default 14, границы 0…90, фиксируется в записи). Инструкция VM — `docs/auth23/deploy.md` (пересборка api, миграция 0035; web не менялся — только авто-генерируемый TS-контракт). Refund-панель UI и wallet/ledger READ-эндпоинты — AUTH-24, payment reconciliation/launch runbook — AUTH-25.

@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { commandKey, teamRequest, TeamAccount } from "../lib/team";
 import { BillingPanel } from "./BillingPanel";
 import { TopupPanel } from "./TopupPanel";
+import { WalletPanel } from "./WalletPanel";
 export function AccountScreen() {
   const auth = useAuth();
   const [account, setAccount] = useState<TeamAccount | null>(null),
@@ -310,14 +311,28 @@ export function AccountScreen() {
                     </p>
                   </div>
                   {account.plan !== "internal" && (
-                    <BillingPanel
-                      key={
-                        account.account_id + ":" + account.entitlement_version
-                      }
-                      account={account}
-                    />
+                    <>
+                      <BillingPanel
+                        key={
+                          account.account_id + ":" + account.entitlement_version
+                        }
+                        account={account}
+                      />
+                      {/* AUTH-24: balance CU for both mono and multi paid
+                          accounts; the panel hides itself without a wallet. */}
+                      <WalletPanel
+                        key={
+                          "wallet:" +
+                          account.account_id +
+                          ":" +
+                          account.entitlement_version
+                        }
+                        account={account}
+                      />
+                    </>
                   )}
-                  {account.account_type === "multi" &&
+                  {account.can_manage &&
+                    account.account_type === "multi" &&
                     account.plan !== "internal" && (
                       <TopupPanel
                         key={
