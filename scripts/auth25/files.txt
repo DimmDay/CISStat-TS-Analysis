@@ -1,0 +1,17 @@
+.github/workflows/auth25.yml
+apps/api/billing/reconciliation.py
+docs/auth00/inventory.json
+docs/auth25/deploy.md
+docs/auth25/design.md
+docs/auth25/runbook.md
+docs/auth25/verification.md
+scripts/auth25/files.txt
+scripts/auth25/package_delivery.py
+scripts/auth25/reconcile.py
+scripts/auth25/requirements.txt
+scripts/auth25/verify_postgres.py
+scripts/local_gates.md
+scripts/local_gates.py
+tests/integration/test_auth25_reconciliation.py
+tests/unit/test_auth25_reconciliation.py
+worklog/worklog12.md

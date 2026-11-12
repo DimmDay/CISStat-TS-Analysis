@@ -201,6 +201,19 @@ python scripts/local_gates.py --with-auth23-postgres --skip-install
 
 Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth23.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты затронуты: +2 OWNER-маршрута** (`POST /v1/billing/{account_id}/topups/{order_id}/refunds`, `GET /v1/billing/{account_id}/refunds/{refund_id}`): actual 279 = inventory 279, bindings 283 (+2, операция `billing.refund`), added/missing=[]; научные пути не переименованы; webhook-маршрут прежний (refund-статус подтверждает только сага через GET). Inventory 654→656, OpenAPI/TS/proxy allowlist перегенерированы (порядок: производные → inventory); policy_review: политика `billing.refund` + 2 классификации + честное обновление target `billing.topup`.
 
+## AUTH-25 — Payment reconciliation/restore и launch runbook (поверх f6dbec9)
+
+`auth25` входит в default прогон первым (unit-контракты: словарь находок и severity, bounding отчёта, валидация watermark-документа `cisstat-auth25-watermark/1`, режимы провайдера, парсинг окна возврата, подсказки trusted-команд, сборка вердикта launch-check). `auth25-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн прежний:
+
+```bash
+git add --pathspec-from-file=scripts/auth25/files.txt
+python scripts/local_gates.py --only auth25,auth25-postgres --skip-install
+# либо вместе с default:
+python scripts/local_gates.py --with-auth25-postgres --skip-install
+```
+
+Без `CISSTAT_AUTH_TEST_DSN` native runner возвращает 2; skip не PASS. CI `.github/workflows/auth25.yml`: Ubuntu/Windows contracts + PG16/18 native. **Роуты НЕ затронуты**: ops-CLI (`scripts/auth25/reconcile.py`: --report / --export-watermark / --reconcile-watermark / --lock-flagged / --launch-check) не добавляет HTTP-маршрутов — actual 281 = inventory 281, bindings 285, added/missing=[]; access_registry/OpenAPI/TS/proxy не менялись. Новых миграций нет: reconciliation живёт на схеме 0033/0034/0035. Модуль `apps/api/billing/reconciliation.py` — read-only детектирование (отчёт ≤500 находок), финансовый watermark вне pgdata (атомарная запись 0600, ≤100000 записей), сравнение после restore БЕЗ автоматического переналожения денег (только restore_regression + подсказки trusted-команд), карантин `lock_flagged` (finance hold кошельков аккаунтов с blocking-находками) и pre-launch gate `launch_check` (terms/catalog/provider/schema/report; ничего не включает — live-платежи остаются отдельной поставкой §13.9). Аудит мутаций — существующее ops-действие `auth_ops_changed` с kind/details (паттерн AUTH-20); словарь аудита не менялся.
+
 ## AUTH-24 — Wallet permissions/UI и lifecycle (поверх 32e0f50)
 
 `auth24` входит в default прогон первым (unit-контракты проекций: member-минимум против owner-полного набора, флаги `can_purchase_cu`/`can_spend_cu`, bounded ledger, отсутствие денег в wallet-проекции, safe-коды, регистрация маршрутов). `auth24-postgres` — обязательный отдельный native gate (disposable PostgreSQL 16/18), паттерн прежний:
