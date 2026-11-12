@@ -147,6 +147,7 @@ COPY scripts/auth23/migrate.py scripts/auth23/manage_refunds.py ./scripts/auth23
 RUN python -c "from apps.api.billing.refunds import RefundService; from apps.api.billing.refund_migrations import check_schema; print('auth23 imports OK; refunds off until credited orders exist')"
 # AUTH-20: explicit migration + ops CLI; audit outbox sweeper in-process.
 COPY scripts/auth20/migrate.py scripts/auth20/reconcile.py ./scripts/auth20/
+COPY scripts/auth25/reconcile.py ./scripts/auth25/
 RUN python -c "from apps.api.authentication.ops_service import AuthOpsService; from apps.api.authentication.ops_sweeper import interval_seconds; from apps.api.authentication.lockdown import engaged; from apps.api.authentication.auth20_migrations import check_schema; assert engaged() is False; print('auth20 imports OK; lockdown off by default')"
 COPY scripts/auth17/migrate.py scripts/auth17/manage_seats.py ./scripts/auth17/
 RUN python -c "from apps.api.accounts.team import TeamService; from apps.api.accounts.team_migrations import check_schema; print('auth17 imports OK')"
