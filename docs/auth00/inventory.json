@@ -646,7 +646,7 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "70b4d8029626348be6f3918ee382ea3b13ceedc424c4d7772ee8f017002df6e5",
+    "apps/api/Dockerfile": "70b5c900909845d1b6e38710ab288178f301a06de3d4269ccb90df960c80efdf",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "febdf3970ffae947fc0957558dc7bb595f03050d3349e4fe55388f43adcf8660",
