@@ -101,6 +101,8 @@ class CertDemoTests(unittest.TestCase):
         with self.dep.http() as two:
             Deployment.enter(two, alias, secret)
         with self.dep.http() as three:
+            # Entry contract: prepare first (resume cookie), then enter.
+            Deployment.post(three, "/v1/auth/demo/prepare")
             refused = Deployment.post(
                 three,
                 "/v1/auth/demo/enter",
@@ -110,9 +112,12 @@ class CertDemoTests(unittest.TestCase):
             self.assertEqual(
                 refused.json()["detail"]["code"], "campaign_capacity_exhausted"
             )
-        usage = admin_client.get(
-            f"/v1/admin/demo-campaigns/{cid}/usage", headers={"Origin": STANDALONE}
-        ).json()
+        with self.dep.http() as usage_client:
+            self.admin_login(usage_client)
+            usage = usage_client.get(
+                f"/v1/admin/demo-campaigns/{cid}/usage",
+                headers={"Origin": STANDALONE},
+            ).json()
         self.assertEqual(usage.get("issued_grants"), 2)
 
     # ------------------------------------------- AC12 admission single-use
@@ -130,6 +135,9 @@ class CertDemoTests(unittest.TestCase):
             alias, secret = campaign["alias"], campaign["secret"]
         with self.dep.http() as winner, self.dep.http() as loser, self.dep.http() as second:
             Deployment.enter(winner, alias, secret, code=codes[0])
+            # The loser arrives over the full entry contract (prepare
+            # first); the spent code is refused with admission_consumed.
+            Deployment.post(loser, "/v1/auth/demo/prepare")
             replay = Deployment.post(
                 loser,
                 "/v1/auth/demo/enter",
@@ -139,7 +147,10 @@ class CertDemoTests(unittest.TestCase):
                     "admission_code": codes[0],
                 },
             )
-            self.assertEqual(replay.status_code, 401, replay.text)
+            self.assertEqual(replay.status_code, 409, replay.text)
+            self.assertEqual(
+                replay.json()["detail"]["code"], "admission_consumed"
+            )
             # The spent code neither mints a grant nor issues cookies.
             self.assertIsNone(replay.headers.get("set-cookie"))
             # The loser has no resume of their own and cannot adopt the
@@ -255,18 +266,24 @@ class CertDemoTests(unittest.TestCase):
             compare = Deployment.post(
                 participant,
                 "/v1/session/modeling/compare",
-                json={"model_ids": ["naive", "seasonal_naive", "drift"]},
+                # The certified scope is server-enforced: an empty list
+                # compares the full included backtest scope, never less.
+                json={"model_ids": []},
             )
             self.assertEqual(compare.status_code == 200, True, compare.text)
+            scope_ids = compare.json().get("execution_scope", {}).get(
+                "included_backtest_model_ids"
+            )
+            self.assertTrue(scope_ids, compare.json())
             evaluate = Deployment.post(
-                participant, "/v1/session/modeling/selection/evaluate"
+                participant, "/v1/session/modeling/selection/evaluate", json={}
             )
             self.assertEqual(evaluate.status_code == 200, True, evaluate.text)
             analysis = evaluate.json()
             select = Deployment.post(
                 participant,
                 "/v1/session/modeling/select",
-                {
+                json={
                     "model_id": analysis["recommended_single"]["model_id"],
                     "selection_analysis_id": analysis["selection_analysis_id"],
                     "selection_signature": analysis["selection_signature"],
@@ -275,12 +292,14 @@ class CertDemoTests(unittest.TestCase):
                 },
             )
             self.assertEqual(select.status_code == 200, True, select.text)
-            card = Deployment.post(participant, "/v1/session/modeling/card")
+            card = Deployment.post(
+                participant, "/v1/session/modeling/card", json={}
+            )
             self.assertEqual(card.status_code == 200, True, card.text)
             forecast = Deployment.post(
                 participant,
                 "/v1/session/modeling/forecast",
-                {"model_card_id": card.json()["card_id"], "horizon": 4},
+                json={"model_card_id": card.json()["card_id"], "horizon": 4},
             )
             self.assertEqual(forecast.status_code == 200, True, forecast.text)
             export = participant.get(
@@ -291,11 +310,19 @@ class CertDemoTests(unittest.TestCase):
             )
             self.assertEqual(export.status_code == 200, True, export.text)
             self.assertGreater(len(export.content), 0)
-            # AC18: forbidden heavy/direct endpoints stay closed for demo.
+            # AC18: forbidden heavy/direct endpoints stay closed for demo —
+            # the demo tariff refuses them on capability grounds.
             tuning = Deployment.post(participant, "/v1/session/modeling/tuning/start")
-            self.assertIn(tuning.status_code, (403, 422), tuning.text)
-            skip = Deployment.post(participant, "/v1/session/modeling/tuning/skip")
-            self.assertIn(skip.status_code, (403, 422))
+            self.assertIn(tuning.status_code, (402, 403, 422), tuning.text)
+            self.assertEqual(
+                tuning.json()["detail"]["code"], "capability_not_included"
+            )
+            skip = Deployment.post(
+                participant, "/v1/session/modeling/tuning/skip", json={}
+            )
+            # Skip without a tuning context is refused as an invalid
+            # scientific request; the surface stays closed either way.
+            self.assertIn(skip.status_code, (402, 403, 422))
             admin_api = participant.get(
                 "/v1/admin/demo-campaigns", headers={"Origin": STANDALONE}
             )

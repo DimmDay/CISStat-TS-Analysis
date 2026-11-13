@@ -164,6 +164,7 @@ class CertFailureTests(unittest.TestCase):
         with self.dep.http() as winner:
             Deployment.enter(winner, alias, secret, code=code)
         with self.dep.http() as challenger:
+            Deployment.post(challenger, "/v1/auth/demo/prepare")
             replay = Deployment.post(
                 challenger,
                 "/v1/auth/demo/enter",
@@ -173,7 +174,10 @@ class CertFailureTests(unittest.TestCase):
                     "admission_code": code,
                 },
             )
-            self.assertEqual(replay.status_code, 401)
+            self.assertEqual(replay.status_code, 409, replay.text)
+            self.assertEqual(
+                replay.json()["detail"]["code"], "admission_consumed"
+            )
         redeemed = [
             r
             for r in self.dep.rows("auth_demo_admissions")

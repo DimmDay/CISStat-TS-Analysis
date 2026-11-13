@@ -52,7 +52,11 @@ class CertBillingTests(unittest.TestCase):
         from apps.api.authentication.sessions import SessionService
 
         owner_login = "cert-bill-owner-" + H.suffix()
-        owner_identity, account = self.dep.personal_user(owner_login)
+        # Team operations need a MULTI paid account (native AUTH-17
+        # provisioning order); the wallet needs a non-demo plan.
+        owner_identity, account = self.dep.multi_user(
+            owner_login, plan="professional", seats=2
+        )
         wallet, lot = self.dep.issue_purchased(account.account_id, 10_000_000)
         before = self.lots(account.account_id)
         guest_login = "cert-bill-guest-" + H.suffix()
@@ -65,7 +69,7 @@ class CertBillingTests(unittest.TestCase):
         team = TeamService(self.dep.store)
         with self.dep.store.transaction(readonly=True) as tx:
             version = tx.connection.execute(
-                "SELECT version FROM auth_accounts WHERE account_id=%s",
+                "SELECT entitlement_version AS version FROM auth_accounts WHERE account_id=%s",
                 (account.account_id,),
             ).fetchone()["version"]
         issued = team.invite(
@@ -94,7 +98,11 @@ class CertBillingTests(unittest.TestCase):
         # usage projection, never sources/ledger/money.
         with self.dep.http() as owner_client, self.dep.http() as guest_client:
             Deployment.login(owner_client, owner_login)
-            Deployment.login(guest_client, guest_login)
+            # The member now holds two accounts (own + the shared one);
+            # the first-party login selects the shared account explicitly.
+            Deployment.login(
+                guest_client, guest_login, account_id=str(account.account_id)
+            )
             path = f"/v1/billing/{account.account_id}/wallet"
             owner_view = owner_client.get(path, headers={"Origin": STANDALONE})
             self.assertEqual(owner_view.status_code, 200, owner_view.text)
@@ -127,6 +135,9 @@ class CertBillingTests(unittest.TestCase):
 
         account = self.dep.personal_user("cert-bill-refund-" + H.suffix(), plan="professional")[1]
         self.dep.issue_purchased(account.account_id, 500_000)
+        # Wallet postings reference the reservation (0025 FK): open the
+        # reservation fixture before wallet-primitive calls.
+        rid = self.dep.open_reservation(account.account_id, held_cu=500_000)
 
         def locked_row(conn):
             return conn.execute(
@@ -138,7 +149,6 @@ class CertBillingTests(unittest.TestCase):
         with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
             refund_hold_in_tx(conn, locked_row(conn), reason="cert hold")
             conn.commit()
-        rid = uuid4()
         with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
             with self.assertRaises(Exception) as refused:
                 allocate_for_reservation(
@@ -180,7 +190,7 @@ class CertBillingTests(unittest.TestCase):
         account = self.dep.personal_user("cert-bill-big-" + H.suffix(), plan="professional")[1]
         units = 10 ** 12  # catalog ceiling: 1e12 micro-CU
         self.dep.issue_purchased(account.account_id, units)
-        rid = uuid4()
+        rid = self.dep.open_reservation(account.account_id, held_cu=units)
         with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
             allocate_for_reservation(conn, account.account_id, rid, 999_999_999_999, self.dep.now)
             conn.commit()
@@ -190,7 +200,11 @@ class CertBillingTests(unittest.TestCase):
         row = self.lots(account.account_id)[0]
         self.assertEqual(row["issued"], units)
         self.assertEqual(row["spent"], 777_777_777_777)
-        self.assertEqual(row["available"], units - 777_777_777_777)
+        # Wallet semantics: allocate pins at reserve time (available drops
+        # to exactly 1 at the catalog ceiling), settle moves reserved to
+        # spent; the unpinned tail stays reserved until release.
+        self.assertEqual(row["available"], units - 999_999_999_999)
+        self.assertEqual(row["reserved"], 999_999_999_999 - 777_777_777_777)
 
     # ---------------------------------------- expired included never revives
 
@@ -232,12 +246,20 @@ class CertBillingTests(unittest.TestCase):
 
         insert_included(self.dep.now - timedelta(minutes=1), 250_000)
         wallet.sweep_expiry(reason="cert sweep", now=self.dep.now)
-        rows = {r["source"]: r for r in self.lots(account.account_id)}
-        self.assertEqual(rows["included"]["expired"], 250_000)
-        self.assertEqual(rows["included"]["available"], 0)
-        self.assertEqual(rows["purchased"]["available"], 100_000)
+        included = [
+            r for r in self.lots(account.account_id) if r["source"] == "included"
+        ]
+        self.assertEqual(sum(r["expired"] for r in included), 250_000)
+        self.assertEqual(sum(r["available"] for r in included), 0)
+        self.assertEqual(
+            next(r["available"] for r in self.lots(account.account_id)
+                 if r["source"] == "purchased"),
+            100_000,
+        )
         # A new cycle's included is fresh credit; the expired lot never revives.
         insert_included(self.dep.now + timedelta(hours=1), 300_000)
-        rows = {r["source"]: r for r in self.lots(account.account_id)}
-        self.assertEqual(rows["included"]["expired"], 250_000)
-        self.assertEqual(rows["included"]["available"], 300_000)
+        included = [
+            r for r in self.lots(account.account_id) if r["source"] == "included"
+        ]
+        self.assertEqual(sum(r["expired"] for r in included), 250_000)
+        self.assertEqual(sum(r["available"] for r in included), 300_000)

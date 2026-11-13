@@ -53,7 +53,9 @@ class CertBrowserTests(unittest.TestCase):
     def test_ac29_both_shells_expose_entry_surfaces(self):
         for shell in ("apps/standalone", "apps/embedded"):
             pages = ROOT.joinpath(shell, "app")
-            for surface in ("login", "admin", "demo", "account", "upload"):
+            # The shipped shell surfaces (upload lives inside the demo
+            # pipeline and account flows, not as a top-level route).
+            for surface in ("login", "admin", "demo", "account", "modeling"):
                 self.assertTrue(
                     (pages / surface).is_dir(),
                     f"{shell} lacks /{surface} surface",

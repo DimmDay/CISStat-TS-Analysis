@@ -86,6 +86,10 @@ class Deployment:
 
         self.store = PostgresAccessStore(self.dsn)
         self.tmp = tempfile.mkdtemp(prefix="authcert-data-")
+        # Native suites prime the durable singletons exactly once per
+        # deployment (see http()); parallel HTTP contexts must never race
+        # their ensure_schema DDL against each other.
+        self._primed = False
         from apps.api.workers.services import WorkerServices
 
         self.worker_key = WorkerServices(self.store).issue(
@@ -124,12 +128,156 @@ class Deployment:
         return identity, account
 
     def wallet(self, account_id):
-        """Trusted wallet provisioning (AUTH-21 operator path, no HTTP)."""
+        """Trusted wallet provisioning (AUTH-21 operator path, no HTTP).
+
+        Idempotent: the paid account provisions its wallet once; repeated
+        calls (issue_purchased after explicit provisioning) reuse it."""
         from apps.api.billing.wallet import WalletService
 
         wallet = WalletService(self.store)
-        wallet.create_wallet(account_id, reason="AUTH-CERT provisioning")
+        try:
+            wallet.create_wallet(account_id, reason="AUTH-CERT provisioning")
+        except ValueError as created:
+            if "wallet already exists" not in str(created):
+                raise
         return wallet
+
+    def multi_user(self, login, *, plan="starter", seats=2):
+        """Identity + password + MULTI account (native AUTH-17 order:
+        create, then convert through the trusted accounts.update)."""
+        identity, account = self.personal_user(login, plan=plan)
+        with self.store.transaction() as tx:
+            account = tx.accounts.update(
+                account.account_id,
+                expected_version=account.entitlement_version,
+                account_type="multi",
+                plan=plan,
+                seats=seats,
+            )
+        return identity, account
+
+    def open_reservation(self, account_id, *, held_cu, reservation_id=None):
+        """Fixture row in auth_reservations mirroring the coordinator
+        contract (0025): wallet postings carry an FK to the reservation,
+        so wallet-primitive oracles (hold/exactness/races) open the
+        reservation first — the same restore-artifact fixture shape the
+        native suites use for out-of-band durable rows. Returns the
+        reservation id to pass to the wallet hooks."""
+        import hashlib
+
+        rid = reservation_id or uuid.uuid4()
+        with self.store.transaction(readonly=True) as tx:
+            account = tx.connection.execute(
+                "SELECT tenant_id FROM auth_accounts WHERE account_id=%s",
+                (account_id,),
+            ).fetchone()
+            subject = tx.connection.execute(
+                "SELECT subject_id FROM auth_memberships WHERE account_id=%s"
+                " AND status='active' LIMIT 1",
+                (account_id,),
+            ).fetchone()
+        with psycopg.connect(self.dsn, autocommit=True) as conn:
+            conn.execute(
+                "INSERT INTO auth_reservations(reservation_id,account_id,"
+                "subject_id,tenant_id,canonical_operation,key_digest,"
+                "payload_digest,admission,quote_version,held_cu,state,"
+                "created_at,deadline) VALUES (%s,%s,%s,%s,"
+                "'cert.wallet_fixture',%s,%s,'{}','cert-fixture',%s,"
+                "'pending',%s,%s)",
+                (
+                    rid,
+                    account_id,
+                    subject["subject_id"],
+                    account["tenant_id"],
+                    hashlib.sha256(uuid.uuid4().bytes).hexdigest(),
+                    hashlib.sha256(uuid.uuid4().bytes).hexdigest(),
+                    held_cu,
+                    self.now,
+                    self.now + timedelta(days=1),
+                ),
+            )
+        return rid
+
+    def api_reservation_ctx(self, login, account, *, origin=STANDALONE):
+        """Trusted coordinator context (native AUTH-21 order: session ->
+        API key -> verify -> RequestContext) plus the account budgets the
+        admission policy evaluates."""
+        from apps.api.authentication.api_key_contract import IssueKeyBody
+        from apps.api.authentication.api_keys import APIKeyService
+        from apps.api.authentication.context import RequestContext
+        from apps.api.authentication.sessions import SessionService
+        from apps.api.billing.policy import BudgetPolicy
+
+        session = SessionService(self.store).login(
+            login, PASS, account.account_id, origin=origin
+        )
+        keys = APIKeyService(self.store)
+        issued = keys.issue(
+            session.token,
+            IssueKeyBody(
+                label="AUTH-CERT coordinator",
+                scopes=["api.read", "api.compute", "api.write", "api.database"],
+                expires_in_days=1,
+            ),
+            origin=origin,
+        )
+        event = keys.verify(issued.secret)
+        with self.store.transaction(readonly=True) as tx:
+            a = tx.accounts.get(event.account_id)
+            u = tx.identities.get(event.subject_id)
+        policy = BudgetPolicy(self.store)
+        policy.create_scope(
+            "account", account_id=account.account_id, reason="AUTH-CERT budgets"
+        )
+        policy.set_budget(
+            account.account_id, "cu", limit_units=2**40, reason="AUTH-CERT budgets"
+        )
+        policy.set_budget(
+            account.account_id,
+            "concurrency",
+            limit_units=4,
+            reason="AUTH-CERT budgets",
+        )
+        return RequestContext(
+            subject_id=event.subject_id,
+            account_id=event.account_id,
+            tenant_id=str(a.tenant_id),
+            auth_method=event.auth_method,
+            credential_id=event.credential_id,
+            auth_session_id=event.auth_session_id,
+            subject_version=u.subject_version,
+            entitlement_version=a.entitlement_version,
+            scopes=event.scopes,
+            request_id="cert-coordinator",
+        )
+
+    def admission(self, *, cu, key=None):
+        """Coordinator admission for the stateless rules entry (native
+        AUTH-21 shape; cu work requires the concurrency slot)."""
+        from apps.api.billing.contract import Admission, Cost
+
+        return Admission(
+            entry_id="api:GET:/v1/public/rules/templates",
+            idempotency_key=key or ("cert-" + uuid.uuid4().hex[:12]),
+            resource_kind="stateless",
+            resource_id="cert-wallet-input",
+            payload={"n": 80},
+            cost=Cost(micro_cu=cu, version="test-only/1"),
+            deadline=datetime.now(timezone.utc) + timedelta(minutes=10),
+            slots=1 if cu else 0,
+        )
+
+    def reserve_start(self, ctx, *, cu, key=None):
+        """Trusted reserve→start through the real coordinator (the reserve
+        itself pins the wallet — the native AUTH-12/21 race surface)."""
+        from apps.api.billing.coordinator import ReservationCoordinator
+
+        coordinator = ReservationCoordinator(self.store)
+        receipt = coordinator.reserve(ctx, self.admission(cu=cu, key=key))
+        coordinator.start(
+            ctx, receipt.reservation_id, expected_version=receipt.version
+        )
+        return receipt
 
     def issue_purchased(self, account_id, units):
         wallet = self.wallet(account_id)
@@ -175,37 +323,39 @@ class Deployment:
             research_runs.reset_research_run_store_for_testing,
             research_runs.reset_dataset_file_store_for_testing,
         )
-        for reset in resets:
-            reset()
         with mock.patch.dict(os.environ, env):
-            # Prime the audit sink BEFORE serving: its first connect re-runs
-            # the durable DDL, and doing that lazily INSIDE the first upload
-            # deadlocks against the same request's own trace_events
-            # transaction (two-connection self-deadlock). Production orders
-            # migration before the api container starts; the harness
-            # replays exactly that order.
-            from apps.api.security_audit import (
-                get_audit_sink,
-                set_audit_sink_for_testing,
-            )
+            if not self._primed:
+                # Prime the audit sink BEFORE serving: its first connect
+                # re-runs the durable DDL, and doing that lazily INSIDE the
+                # first upload deadlocks against the same request's own
+                # trace_events transaction (two-connection self-deadlock).
+                # Production orders migration before the api container
+                # starts; the harness replays exactly that order.
+                from apps.api.security_audit import (
+                    get_audit_sink,
+                    set_audit_sink_for_testing,
+                )
 
-            set_audit_sink_for_testing(None)
-            get_audit_sink()._connect().close()
-            # Same order contract for the session/runs singletons: their
-            # ensure_schema/ready probes run DDL, which must never race an
-            # in-flight request transaction.
-            session_store.reset_session_store_for_testing()
-            research_runs.reset_research_run_store_for_testing()
-            session_store.get_session_store().readiness_probe()
-            research_runs.get_research_run_store().readiness_probe()
+                set_audit_sink_for_testing(None)
+                get_audit_sink()._connect().close()
+                # Same order contract for the session/runs singletons: their
+                # ensure_schema/ready probes run DDL, which must never race
+                # an in-flight request transaction. The prime runs exactly
+                # once per deployment: parallel HTTP contexts (AC12 race)
+                # reuse the ready singleton instead of racing ensure_schema
+                # DDL against each other (AccessExclusive/ShareLock
+                # deadlock was reproduced on the CI native job).
+                for reset in resets:
+                    reset()
+                session_store.get_session_store().readiness_probe()
+                research_runs.get_research_run_store().readiness_probe()
+                self._primed = True
             main_module.app.state.auth_access_store = self.store
             try:
                 with TestClient(main_module.app, base_url=STANDALONE) as client:
                     yield client
             finally:
                 main_module.app.state.auth_access_store = previous_state
-                for reset in resets:
-                    reset()
 
     # ------------------------------------------------- HTTP step helpers
 
@@ -392,13 +542,17 @@ class Deployment:
 
     @staticmethod
     def upload(client, rows=120, *, origin=STANDALONE, name="cert-monthly.csv"):
-        """Bounded monthly CSV upload for the §10 pipeline oracle."""
+        """Bounded CSV upload for the §10 pipeline oracle. The certified
+        fixture shape (native AUTH-16 pipeline): one row per date with an
+        explicit 12-month seasonality — the shape the bounded modeling
+        stage is certified on (the passport refuses duplicate dates)."""
         import io
 
         buffer = io.BytesIO()
         buffer.write(b"date,value\n")
         for i in range(rows):
-            buffer.write(f"2020-{(i % 12) + 1:02d}-15,{100 + i}\n".encode())
+            day = f"{2020 + i // 12}-{(i % 12) + 1:02d}-15"
+            buffer.write(f"{day},{100 + i + ((i % 12) - 6) * 2}\n".encode())
         response = client.post(
             "/v1/internal/upload",
             files={"file": (name, buffer.getvalue(), "text/csv")},

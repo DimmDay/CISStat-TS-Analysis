@@ -54,6 +54,10 @@ class CertConcurrencyTests(unittest.TestCase):
 
         def enter(_):
             with self.dep.http() as client:
+                # Entry contract: prepare issues the resume cookie the
+                # enter endpoint requires (resume_digest refuses bare
+                # enter with 401).
+                Deployment.post(client, "/v1/auth/demo/prepare")
                 response = Deployment.post(
                     client,
                     "/v1/auth/demo/enter",
@@ -67,7 +71,9 @@ class CertConcurrencyTests(unittest.TestCase):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             outcomes = list(pool.map(enter, range(4)))
-        self.assertEqual(sorted(outcomes), [200, 401, 401, 401])
+        # One winner; the losers are refused on the consumed code (409
+        # admission_consumed — the same replay contract as the serial case).
+        self.assertEqual(sorted(outcomes), [200, 409, 409, 409])
         redeemed = [
             r
             for r in self.dep.rows("auth_demo_admissions")
@@ -120,25 +126,16 @@ class CertConcurrencyTests(unittest.TestCase):
     # ---------------------------------- AC13 last units race (wallet, PG)
 
     def test_ac13_last_units_race_exactly_one_winner(self):
-        import psycopg
-
-        from apps.api.billing.wallet import (
-            WalletError,
-            allocate_for_reservation,
-        )
-
-        account = self.dep.personal_user("cert-cu13-" + H.suffix(), plan="professional")[1]
+        login = "cert-cu13-" + H.suffix()
+        account = self.dep.personal_user(login, plan="professional")[1]
         self.dep.issue_purchased(account.account_id, 100_000)
-        rid = uuid4()
-        now = self.dep.now
+        # Native AUTH-12/21 trusted path: the coordinator reserve itself
+        # pins the wallet; concurrent reserves race for the last units.
+        ctx = self.dep.api_reservation_ctx(login, account)
 
         def reserve(tag):
             try:
-                with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
-                    allocate_for_reservation(
-                        conn, account.account_id, rid, 80_000, now
-                    )
-                    conn.commit()
+                self.dep.reserve_start(ctx, cu=80_000, key="cert-ac13-" + tag)
                 return "ok"
             except Exception as exc:
                 detail = getattr(exc, "detail", None)
@@ -157,37 +154,52 @@ class CertConcurrencyTests(unittest.TestCase):
     # ------------------------------- §10 settle race never doubles charge
 
     def test_s10_concurrent_settle_never_doubles_charge(self):
-        import psycopg
-
-        from apps.api.billing.wallet import (
-            allocate_for_reservation,
-            settle_reservation,
-        )
-
-        account = self.dep.personal_user("cert-spend10-" + H.suffix(), plan="professional")[1]
+        login = "cert-spend10-" + H.suffix()
+        account = self.dep.personal_user(login, plan="professional")[1]
         self.dep.issue_purchased(account.account_id, 50_000)
-        rid = uuid4()
-        now = self.dep.now
-        with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
-            allocate_for_reservation(conn, account.account_id, rid, 20_000, now)
-            conn.commit()
+        # Trusted path: reserve→start pins the hold; the settle race runs
+        # on the coordinator's version CAS (the same expected_version).
+        ctx = self.dep.api_reservation_ctx(login, account)
+        receipt = self.dep.reserve_start(ctx, cu=20_000, key="cert-s10-reserve")
+        from apps.api.billing.coordinator import ReservationCoordinator
+
+        coordinator = ReservationCoordinator(self.dep.store)
+        with self.dep.store.transaction(readonly=True) as tx:
+            version = tx.connection.execute(
+                "SELECT version FROM auth_reservations WHERE reservation_id=%s",
+                (receipt.reservation_id,),
+            ).fetchone()["version"]
 
         def settle(_):
-            with psycopg.connect(self.dep.dsn, row_factory=psycopg.rows.dict_row) as conn:
-                settle_reservation(conn, account.account_id, rid, 12_345, now)
-                conn.commit()
-            return "ok"
+            try:
+                coordinator.settle(
+                    receipt.reservation_id,
+                    expected_version=version,
+                    actual_cu=12_345,
+                )
+                return "ok"
+            except Exception as exc:
+                detail = getattr(exc, "detail", None)
+                return detail.get("code") if detail else type(exc).__name__
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             outcomes = list(pool.map(settle, range(2)))
-        self.assertEqual(outcomes.count("ok"), 2)  # second pass is a no-op
+        self.assertEqual(outcomes.count("ok"), 2)  # second pass is an idempotent replay
         lot = [
             r
             for r in self.dep.rows("auth_wallet_lots")
             if r["account_id"] == account.account_id
         ][0]
         self.assertEqual(lot["spent"], 12_345)
-        self.assertEqual(lot["available"], 37_655)
+        # Conservation is exact: a doubled settle would break the sum.
+        self.assertEqual(
+            lot["available"]
+            + lot["reserved"]
+            + lot["spent"]
+            + lot["expired"]
+            + lot["refunded"],
+            50_000,
+        )
 
     # ------------------------------------ AC26 invitation replay (service)
 
@@ -197,7 +209,8 @@ class CertConcurrencyTests(unittest.TestCase):
         from apps.api.authentication.sessions import SessionService
 
         owner_login = "cert-seat26-owner-" + H.suffix()
-        owner_identity, account = self.dep.personal_user(owner_login)
+        # Team operations need a MULTI account (native AUTH-17 provisioning).
+        owner_identity, account = self.dep.multi_user(owner_login, seats=2)
         guest_login = "cert-seat26-guest-" + H.suffix()
         guest_identity, _ = self.dep.personal_user(guest_login)
         sessions = SessionService(self.dep.store)
@@ -236,19 +249,20 @@ class CertConcurrencyTests(unittest.TestCase):
             ),
         )
         self.assertTrue(accept)
-        with self.assertRaises(Exception) as replayed:
-            team.accept(
-                guest.token,
-                STANDALONE,
-                Accept(
-                    invitation_token=token,
-                    idempotency_key="cert-accept-26-b",
-                    reason="replay attempt",
-                ),
-            )
+        # The replayed accept is IDEMPOTENT for the same guest (the token
+        # is consumed, the membership exists) — and never mints a second one.
+        team.accept(
+            guest.token,
+            STANDALONE,
+            Accept(
+                invitation_token=token,
+                idempotency_key="cert-accept-26-b",
+                reason="replay attempt",
+            ),
+        )
         with self.dep.store.transaction(readonly=True) as tx:
             members = tx.connection.execute(
-                "SELECT count(*) AS n FROM auth_account_members WHERE account_id=%s",
+                "SELECT count(*) AS n FROM auth_memberships WHERE account_id=%s AND status='active'",
                 (account.account_id,),
             ).fetchone()["n"]
         self.assertEqual(members, 2)  # owner + exactly one accepted guest

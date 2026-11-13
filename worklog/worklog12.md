@@ -466,3 +466,60 @@ RED-1 протокол выполнен. GREEN: suite api 10/10 OK (~300 c, disp
 
 ### Поставка:
 download/cisstat-authcert-3c3e8b7.zip — точное множество scripts/authcert/files.txt + SHA256 рядом; VM-операции НЕ требуются (поставка без продового кода: git pull --ff-only после локального push тимлида; образы/миграции/env не меняются). Границы: реальный браузер/IdP/SMTP/магазин не вызывались; Redis в auth-контуре отсутствует (N/A); AC30 — эксплуатационная приёмка на VM (AUTH-14 measured reference); «production certified» не заявляется; PG18/Windows — remote CI.
+
+### AUTH-CERT CI-hotfix (13.11.2026, по итогам первого CI-прогона поставки):
+Workflow authcert.yml на GitHub Actions: native-postgres(16) — СБОЙ (сбоев=3, ошибок=7). Лог джоба
+(admin-only) забран через публичные API-аннотации; полный трейсбеки воспроизведены локально той же
+командой verify_postgres.py: FAILED (failures=4, errors=7) — расхождение 1 failure — тайминговое (AC13),
+7 errors совпали точно. Все 11 дефектов — в ТЕСТОВОМ КОДЕ поставки (продовый код/роуты не затронуты):
+(1) harness.issue_purchased звал create_wallet безусловно -> «wallet already exists»/«personal paid
+account required» — wallet() теперь идемпотентен (пути AUTH-21), mono-отказ сохранён;
+(2) вызовы allocate_for_reservation/settle_reservation с голым rid били FK auth_wallet_postings →
+auth_reservations — harness.open_reservation() открывает строку-фикстуру по контракту 0025
+(возвращает rid, digests sha256, state pending, deadline>created_at);
+(3) team-оракулы на mono-аккаунте: _owner требует план≠demo и invite требует account_type=multi —
+multi_user() воспроизводит доверенный порядок AUTH-17 (accounts.update multi/seats);
+(4) SELECT version -> entitlement_version (реальная колонка 0019);
+(5) подсчёт членов — по auth_memberships (auth_account_members не существует);
+(6) ac12: параллельные http()-контексты гоняли ensure_schema DDL (AccessExclusive/ShareLock deadlock,
+тот же класс, что F-CERT-H1) — prime синглтонов перенесён в ОДИН прогрев на Deployment (prime-once),
+параллельные контексты переиспользуют готовые синглтоны; в потоки добавлен prepare (контракт входа);
+(7) ac11/ac27: enter/resume без prepare даёт 401 invalid_credential от resume_digest — добавлен prepare,
+401 теперь честный (потраченный код/revoked);
+(8) upload() давал дубликаты дат (10 циклов × 12 месяцев) — паспорт отказывает «один ряд на дату» —
+фикстура переведена на уникальный дневной ряд;
+(9) ac29 оракул требовал несуществующий surface /upload — заменён на фактические поверхности
+(login/admin/demo/account/modeling обеих оболочек);
+(10) integer-оракул ждал available после settle, а wallet закрепляет available на allocate —
+приведён к фактической семантике (available=1, reserved=хвост, spent=777_777_777_777);
+(11) expiry-оракул схлопывал два included-лота по source в dict — переход на суммы по source.
+Плюс: член-гость теперь входит на общий аккаунт через LoginBody.account_id (честный first-party flow).
+
+### CI-hotfix, второй слой (дефекты, маскировавшиеся первыми):
+(12) harness: цикл reset синглтонов оставался ВНЕ primed-блока — каждый http() сбрасывал store и
+параллельные контексты ac12 заново гоняли ensure_schema (дедлок воспроизводился). reset перенесён
+внутрь одноразового prime; instrumentation (trace get_session_store/reset/auth_error) доказала путь.
+(13) ac12: проигравшие в гонке кода получают 409 admission_consumed (реальный контракт demo_lifecycle:
+redeemed_at/redeemed_grant_id → 409), а не 401; ожидание приведено к контракту, redemption==1 сохранён.
+(14) ac26: повторный accept того же гостя по потреблённому токену ИДЕМПОТЕНТЕН (native team.accept:
+consumed_by==actor и membership существует → prior) — assertRaises заменён на идемпотентный успех,
+инвариант members==2 сохранён.
+(15) ac11: usage-чтение было в ЗАКРЫТОМ admin-контексте (401) — перелогин в свежем контексте.
+(16) s10 demo: compare жёстко задавал model_ids — контракт требует ПОЛНЫЙ execution scope; оракул
+шлёт model_ids=[] и сверяет included_backtest_model_ids из ответа (серверная отсечка сохранена).
+(17) s10 demo: evaluate/select/card/forecast требуют JSON-тело ({}) — ScientificRoute.guard
+мапит RequestValidationError в invalid_scientific_request; добавлены явные тела.
+(18) s10 demo: tuning/skip у demo-тарифа даёт 402 capability_not_included (не 403/422) — оракул
+принимает фактическую capability-отсечку и сверяет код.
+(19) upload(): фикстура возвращена к СЕРТИФИЦИРОВАННОЙ форме native AUTH-16 — 120 месячных рядов
+с явной 12-месячной сезонностью (дневной ряд ломал evaluate-ворклоад бэктестов).
+(20) tuning/skip без контекста тюнинга отказывает 422 invalid_scientific_request
+(схема требует поля) — пин кода для skip снят, поверхность остаётся закрытой
+(402/403/422); tuning/start сохраняет пин 402 capability_not_included.
+
+### CI-hotfix, финальный контрольный прогон (13.11.2026):
+python scripts/authcert/verify_postgres.py (disposable pgserver, DSN обязателен):
+Ran 34 tests in 699.954s — OK (34/34, 0 failures, 0 errors, 0 skips, exit 0).
+Единственный тест, не вошедший в предыдущий полный прогон (s10 demo после снятия пина
+skip), в этом прогоне пройден в составе suite. Поставка v3 готова к push; CI authcert.yml
+(contracts ubuntu/windows + native PG16/18) — контрольная точка.
