@@ -142,6 +142,22 @@ async def _lifespan(app: FastAPI):
         # ПОЛНЫЙ durable-контур (runs/session/artifacts/snapshots/documents).
         verify_required_storage_backends()
         logger.info("Startup: required-режим хранения -- фабрики проверены")
+    # F-CERT-H1 (AUTH-CERT): прогрев durable-слоёв ДО начала
+    # обслуживания -- ops-каталог (ALTER ... ACCESS EXCLUSIVE даже как
+    # no-op) обязан быть готов до первого запроса, иначе lazy-DDL второго
+    # слоя внутри запроса самодедлочится против незакрытой транзакции
+    # первого (conn A/conn B). Отказ обязательного слоя -- fail-closed
+    # RuntimeError; telemetry -- AC11 (не роняет старт). Порядок
+    # «миграция до старта api» -- паритет продового деплоя и harness
+    # AUTH-CERT. Провижининг: /health/ops storage_warmup. Вызов
+    # безусловный: модуль сам гардит по режиму хранения (required --
+    # полный прогрев реестра; advisory/auto -- честный no-op со статусом
+    # skipped, ленивый контракт dev/тестов сохранён).
+    from apps.api.storage_warmup import warmup_durable_layers
+
+    warmup_durable_layers()
+    if get_storage_mode() == "required":
+        logger.info("Startup: durable-слои прогреты (F-CERT-H1)")
     # OPS-DIAG-1 (AUTH-13): идемпотентная регистрация process-wide
     # worker-credential (CISSTAT_WORKER_KEY) в auth_worker_services ДО
     # старта воркеров. Старт api от этого НЕ зависит (сбой -- warning
@@ -364,4 +380,15 @@ def health_ops():
         )
     except Exception:  # pragma: no cover - диагностика не роняет health
         snapshot["auth_ops"] = {"state": "<state unavailable>"}
+    # F-CERT-H1: статус прогрева durable-слоёв (peek-семантика;
+    # диагностика не роняет health, не инициализирует фабрики и не
+    # выполняет прогрев фактом запроса; DSN/секретов нет).
+    try:
+        from apps.api.storage_warmup import last_warmup_status
+
+        snapshot["storage_warmup"] = last_warmup_status() or {
+            "state": "not_run"
+        }
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["storage_warmup"] = {"state": "<state unavailable>"}
     return JSONResponse(status_code=200, content=snapshot)

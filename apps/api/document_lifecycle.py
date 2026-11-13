@@ -468,12 +468,39 @@ class PostgresDocumentLifecycleRegistry(DocumentLifecycleRegistry):
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
         self._migrated = False
+        # F-CERT-H1: лок прогрева (паритет _lock durable-контуров;
+        # прежний ленивый путь _connect не менялся).
+        self._schema_lock = threading.Lock()
 
     @classmethod
     def from_env(cls) -> "PostgresDocumentLifecycleRegistry":
         from apps.api.research_runs import database_dsn
 
         return cls(database_dsn())
+
+    def ensure_schema(self, conn: Any = None) -> None:
+        """Идемпотентный прогон ops-каталога (паритет
+        PostgresSessionStore.ensure_schema; F-CERT-H1): публичная точка
+        прогрева -- каталог обязан быть готов ДО первого запроса.
+        Собственное соединение при conn=None, отказ НЕ кэшируется."""
+        if self._migrated:
+            return
+        with self._schema_lock:
+            if self._migrated:
+                return
+            from apps.api.research_runs import run_migrations
+
+            own_conn = conn is None
+            if own_conn:
+                import psycopg
+
+                conn = psycopg.connect(self._dsn, autocommit=False)
+            try:
+                run_migrations(conn)
+                self._migrated = True
+            finally:
+                if own_conn:
+                    conn.close()
 
     def _connect(self):
         import psycopg

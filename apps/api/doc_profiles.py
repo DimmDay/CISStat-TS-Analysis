@@ -592,6 +592,30 @@ class PostgresOrgProfileRegistry(OrgProfileRegistry):
             )
         return PostgresOrgProfileRegistry(dsn=dsn)
 
+    def ensure_schema(self, conn: Any = None) -> None:
+        """Идемпотентный прогон ops-каталога (паритет
+        PostgresSessionStore.ensure_schema; F-CERT-H1): публичная точка
+        прогрева -- каталог обязан быть готов ДО первого запроса.
+        Собственное соединение при conn=None, отказ НЕ кэшируется."""
+        if self._schema_ready:
+            return
+        with self._lock:
+            if self._schema_ready:
+                return
+            from apps.api.research_runs import run_migrations
+
+            own_conn = conn is None
+            if own_conn:
+                import psycopg
+
+                conn = psycopg.connect(self._dsn, autocommit=False)
+            try:
+                run_migrations(conn)
+                self._schema_ready = True
+            finally:
+                if own_conn:
+                    conn.close()
+
     def _connect(self):
         from apps.api.workers.connection import projection_connection
         shared = projection_connection(self._dsn)

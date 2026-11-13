@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: warmup, authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -46,6 +46,19 @@ python scripts/local_gates.py --with-auth12-postgres --skip-install
 ```
 
 Без DSN/при skips native не PASS. `.github/workflows/auth12.yml`: Ubuntu/Windows unit; PostgreSQL16/18 native Ubuntu. Linux проверки не заменяют настоящий Windows CI. Все прежние PostgreSQL opt-in сохранены; auth07 также выполняет windows_parity.py с запретом Unix-only resource.
+
+## F-CERT-H1 — прогрев durable-слоёв до обслуживания (поверх a38c4a4)
+
+Закрытие находки приёмки AUTH-CERT: lazy-миграция durable-слоёв (ops-каталог с `ALTER ... ACCESS EXCLUSIVE` даже как no-op) внутри первого запроса самодедлочится против незакрытой транзакции того же запроса (conn A/conn B). Default-гейт `warmup` (unit-контракты: реестр 12 слоёв, fail-closed обязательных слоёв, AC11-исключение телеметрии, идемпотентность ensure_schema, порядок `_lifespan` «фабрики → прогрев → worker bootstrap → телеметрия → воркеры», отсутствие секретов в статусе) и opt-in `warmup-postgres` (native: воспроизведение класса дедлока на сыром lazy-пути — lock_timeout → 55P03, сквозной прогрев через настоящий lifespan с /health/ops `storage_warmup.state=primed`, coexistence-оракул audit-append под незакрытой транзакцией conn A, advisory no-op; без DSN runner возвращает 2, skips запрещены):
+
+```bash
+python scripts/local_gates.py --only warmup --skip-install
+python scripts/local_gates.py --only warmup,warmup-postgres --skip-install
+# либо вместе с default:
+python scripts/local_gates.py --with-warmup-postgres --skip-install
+```
+
+`.github/workflows/warmup.yml`: Ubuntu/Windows contracts + PostgreSQL16/18 native. Роуты не затронуты; /health/ops получил аддитивный facts-only ключ `storage_warmup`. Дизайн/границы — docs/authcert/h1fix.md. Новый durable-слой с lazy-DDL присоединяется к реестру `apps/api/storage_warmup.py` одной строкой + пин `EXPECTED_LAYERS` в unit-тесте.
 
 ## AUTH-CERT — сквозная приёмка сервиса (поверх 3c3e8b7)
 

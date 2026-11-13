@@ -82,6 +82,13 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("warmup", "warmup.yml contracts", "F-CERT-H1 storage-warmup contracts (registry/fail-closed/lifespan ordering)", [
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_warmup*.py", "-v"],
+    ]),
+    ("warmup-postgres", "warmup.yml postgres", "F-CERT-H1 native: deadlock-class repro + lifespan coexistence on disposable PostgreSQL", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/warmup/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/warmup/verify_postgres.py"],
+    ]),
     ("authcert", "authcert.yml contracts", "AUTH-CERT browser-layer/static oracles (no DSN)", [
         [sys.executable, "scripts/authcert/verify_browser.py"],
     ]),
@@ -456,6 +463,8 @@ def main() -> int:
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-authcert-postgres", action="store_true",
                         help="native AUTH-CERT end-to-end acceptance requires a disposable PostgreSQL DSN")
+    parser.add_argument("--with-warmup-postgres", action="store_true",
+                        help="F-CERT-H1 native warmup oracles (deadlock-class repro + lifespan coexistence); нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth25-postgres", action="store_true",
                         help="добавить native PostgreSQL reconciliation/watermark/launch проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-auth24-postgres", action="store_true",
@@ -521,6 +530,8 @@ def main() -> int:
         excluded.add("auth23-postgres")
     if not args.with_auth22_postgres:
         excluded.add("auth22-postgres")
+    if not args.with_warmup_postgres:
+        excluded.add("warmup-postgres")
     if not args.with_auth21_postgres:
         excluded.add("auth21-postgres")
     if not args.with_auth20_postgres:
@@ -575,7 +586,7 @@ def main() -> int:
               "--with-auth17-postgres/--with-auth18-postgres/--with-auth19-postgres/--with-auth20-postgres/"
               "--with-auth21-postgres/--with-auth22-postgres/--with-auth23-postgres/"
               "--with-auth24-postgres/--with-auth25-postgres/"
-              "--with-authcert-postgres/--with-session-postgres")
+              "--with-authcert-postgres/--with-warmup-postgres/--with-session-postgres")
         return 0
     if not selected:
         parser.error("ничего не выбрано; доступно: " + all_gate_names)

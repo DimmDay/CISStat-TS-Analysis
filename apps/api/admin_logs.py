@@ -300,6 +300,30 @@ class PostgresSupportGrantRegistry(SupportGrantRegistry):
             )
         return PostgresSupportGrantRegistry(dsn=dsn)
 
+    def ensure_schema(self, conn: Any = None) -> None:
+        """Идемпотентный прогон ops-каталога (паритет
+        PostgresSessionStore.ensure_schema; F-CERT-H1): публичная точка
+        прогрева -- каталог обязан быть готов ДО первого запроса.
+        Собственное соединение при conn=None, отказ НЕ кэшируется."""
+        if self._schema_ready:
+            return
+        with self._lock:
+            if self._schema_ready:
+                return
+            from apps.api.research_runs import run_migrations
+
+            own_conn = conn is None
+            if own_conn:
+                import psycopg
+
+                conn = psycopg.connect(self._dsn, autocommit=False)
+            try:
+                run_migrations(conn)
+                self._schema_ready = True
+            finally:
+                if own_conn:
+                    conn.close()
+
     def _connect(self):
         import psycopg  # late import -- паритет durable-контуров
 
@@ -1129,6 +1153,31 @@ def _pg_connect():
                 run_migrations(conn)
                 _pg_schema_ready = True
     return conn
+
+
+def ensure_logs_schema() -> None:
+    """F-CERT-H1: публичный прогон module-global lazy-DDL слоя журналов
+    (паритет ensure_schema durable-классов): каталог обязан быть готов
+    ДО первого запроса. Собственное соединение, отказ НЕ кэшируется."""
+    global _pg_schema_ready
+    if _pg_schema_ready:
+        return
+    with _pg_schema_lock:
+        if _pg_schema_ready:
+            return
+        import psycopg
+
+        from apps.api.research_runs import run_migrations
+
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            raise LogsBackendError("DATABASE_URL не настроен (postgres backend)")
+        conn = psycopg.connect(dsn, autocommit=False)
+        try:
+            run_migrations(conn)
+            _pg_schema_ready = True
+        finally:
+            conn.close()
 
 
 def _pg_fetch_all(sql: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:

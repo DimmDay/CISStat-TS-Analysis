@@ -1,0 +1,4 @@
+# F-CERT-H1 native gate (warmup-postgres): disposable PostgreSQL runner.
+# Паритет scripts/auth25/requirements.txt: драйвер + сервер для pgserver.
+psycopg>=3.1
+pgserver>=0.6
