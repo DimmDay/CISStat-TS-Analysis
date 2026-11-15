@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DemoEntry } from "./DemoEntry";
 import { DemoCampaignAdmin } from "./DemoCampaignAdmin";
 import { demoRequest } from "../lib/demo";
-jest.mock("../lib/demo", () => ({ demoRequest: jest.fn() }));
+jest.mock("../lib/demo", () => ({
+  demoRequest: jest.fn(),
+  publicDemoCredentials: jest.fn(() => null),
+}));
 const request = demoRequest as jest.Mock;
 beforeEach(() => request.mockReset());
 test("entry never reports success on unavailable service and clears busy state", async () => {
@@ -12,15 +15,15 @@ test("entry never reports success on unavailable service and clears busy state",
   fireEvent.change(screen.getByLabelText("Логин кампании"), {
     target: { value: "forum" },
   });
-  fireEvent.change(screen.getByLabelText("Пароль с флаера"), {
+  fireEvent.change(screen.getByLabelText("Пароль кампании"), {
     target: { value: "secret" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Войти в демо" }));
+  fireEvent.click(screen.getByRole("button", { name: "Войти в кампанию" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Сервис временно недоступен.",
   );
   expect(
-    screen.getByRole("button", { name: "Войти в демо" }),
+    screen.getByRole("button", { name: "Войти в кампанию" }),
   ).not.toBeDisabled();
   expect(request).toHaveBeenCalledWith("auth/demo/prepare", "POST");
   expect(request).not.toHaveBeenCalledWith(
@@ -29,7 +32,7 @@ test("entry never reports success on unavailable service and clears busy state",
     expect.anything(),
   );
 });
-test("resume uses its own credential endpoint without sending the flyer password", async () => {
+test("resume uses its own credential endpoint without sending the campaign password", async () => {
   request.mockRejectedValue(new Error("Демо-доступ завершён."));
   render(<DemoEntry />);
   fireEvent.click(

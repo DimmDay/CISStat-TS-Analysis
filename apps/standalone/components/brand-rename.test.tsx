@@ -83,7 +83,7 @@ describe("UI-HOME-BRAND-1: переименование бренда в ProductH
     expect(brand).not.toHaveClass("font-semibold");
   });
 
-  it("остальные элементы шапки не затронуты: слоган, меню, РУС / ENG, кабинет", () => {
+  it("остальные элементы шапки не затронуты: слоган, меню, РУС / ENG, вход", () => {
     renderHeader();
 
     // Слоган с прежним точным текстом (UI-HOME-HEADER-1).
@@ -91,11 +91,12 @@ describe("UI-HOME-BRAND-1: переименование бренда в ProductH
       screen.getByText("Цифровая научно-исследовательская лаборатория анализа данных")
     ).toBeInTheDocument();
 
-    // Пункты меню и «РУС / ENG» — без изменений.
+    // Пункты меню и «РУС / ENG» — без изменений (AUTH-KABINET-DEMO:
+    // «Личный кабинет» → «Демо», см. product-header-nav-slogan.test.tsx).
     expect(screen.getByRole("link", { name: "Обучение" })).toHaveAttribute("href", "/education");
     expect(screen.getByRole("link", { name: "Документация API" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "Тарифы" })).toHaveAttribute("href", "/pricing");
-    expect(screen.getByRole("link", { name: "Личный кабинет" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: "Демо" })).toHaveAttribute("href", "/demo");
     expect(screen.getByText("РУС / ENG")).toBeInTheDocument();
   });
 });

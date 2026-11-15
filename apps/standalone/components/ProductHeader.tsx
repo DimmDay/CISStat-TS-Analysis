@@ -97,10 +97,18 @@
 // НЕ тронут. Пины — brand-rename.test.tsx; легаси-пины
 // ProductHeader.test.tsx / product-header-nav-slogan.test.tsx /
 // layout.test.tsx переписаны на новый контракт синхронно.
+//
+// AUTH-KABINET-DEMO (2026-11-15): (1) пункт «Личный кабинет» (href
+// /dashboard — маршрута не существовало, 404) заменён вкладкой «Демо» →
+// /demo — лендинг самообслуживаемого демо-режима (DemoLanding). (2) Иконка
+// User → надпись «Вход» → /dashboard: пивот-страница (DashboardPivot)
+// переводит авторизованного в /account, неавторизованного — в
+// /login?return_to=/account (safeReturnTo уже содержит /account). Доступ
+// к кабинету «Аккаунт и команда» теперь есть из шапки для authed.
 
 import Link from "next/link";
 import Image from "next/image";
-import { Moon, Sun, User } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@cisstat/ui";
 
 const NAV_ITEMS = [
@@ -110,7 +118,11 @@ const NAV_ITEMS = [
   { label: "Обучение", href: "/education" },
   { label: "Документация API", href: "/docs" },
   { label: "Тарифы", href: "/pricing" },
-  { label: "Личный кабинет", href: "/dashboard" },
+  // AUTH-KABINET-DEMO: «Личный кабинет» (маршрута /dashboard не было — 404)
+  // заменён вкладкой «Демо» → /demo (лендинг DemoLanding). Кабинет
+  // доступен через «Вход» (/dashboard-пивот: authed → /account,
+  // нет → /login?return_to=/account).
+  { label: "Демо", href: "/demo" },
 ];
 
 function ThemeToggle() {
@@ -193,10 +205,16 @@ export function ProductHeader() {
           </nav>
           <button type="button" className="relative top-[2.4px] text-neutral-500 hover:text-neutral-900">РУС / ENG</button>
           <ThemeToggle />
-          <a href="/login" target="_top" aria-label="Вход в личный аккаунт"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 hover:bg-neutral-300"
+          {/* AUTH-KABINET-DEMO: иконка User → надпись «Вход» → /dashboard
+              (пивот: авторизован → /account, нет → /login?return_to=/account).
+              target="_top" сохранён — согласован с CSP frame-ancestors
+              'self' на /login и прежним поведением иконки. Стиль пункта
+              меню (relative top-[2.4px], 13.5px) — базовая линия совпадает
+              с меню (см. UI-HOME-HEADER-1 п.3). */}
+          <a href="/dashboard" target="_top" aria-label="Вход в личный аккаунт"
+            className="relative top-[2.4px] text-[13.5px] text-neutral-600 hover:text-neutral-900"
           >
-            <User size={14} aria-hidden="true" />
+            Вход
           </a>
         </div>
       </div>

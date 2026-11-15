@@ -1,6 +1,21 @@
 "use client";
 import { useState } from "react";
-import { demoRequest } from "../lib/demo";
+import { demoRequest, publicDemoCredentials } from "../lib/demo";
+
+// packages/ui/components/DemoEntry.tsx
+//
+// Виджет входа в демо-режим (AUTH-KABINET-DEMO). Три сценария на тех же
+// endpoints, что и раньше (контракт AUTH-16 не менялся):
+//   1. Самообслуживание — кнопка «Запустить демо-режим»: prepare + enter
+//      с публичной парой из env (см. publicDemoCredentials). Пар форма не
+//      требует: пара ходит только в теле POST (AC22), в URL не появляется.
+//   2. Кампании организатора — форма «Вход в кампанию»: логин/пароль и
+//      (при выдаче) одноразовый код участника; усиленный режим AUTH-16.
+//   3. Продолжение — «Продолжить свой демо-доступ»: resume по device-куке,
+//      без пары (POST /v1/auth/demo/resume).
+// h1 страницы живёт в DemoLanding — здесь один виджет входа на страницу.
+// Успех любого сценария → /upload (как раньше). leave — завершение демо
+// на устройстве.
 
 export function DemoEntry() {
   const [login, setLogin] = useState(""),
@@ -8,17 +23,24 @@ export function DemoEntry() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  async function enter(resume = false) {
+  const publicPair = publicDemoCredentials();
+  async function enter(source: "public" | "form" | "resume") {
     setBusy(true);
     setError("");
     try {
-      if (resume) await demoRequest("auth/demo/resume", "POST");
-      else {
+      if (source === "resume") {
+        await demoRequest("auth/demo/resume", "POST");
+      } else {
+        const creds =
+          source === "public"
+            ? publicDemoCredentials()
+            : { login, password };
+        if (!creds) throw new Error("Публичный демо-доступ временно недоступен.");
         await demoRequest("auth/demo/prepare", "POST");
         await demoRequest("auth/demo/enter", "POST", {
-          login,
-          password,
-          ...(code ? { admission_code: code } : {}),
+          login: creds.login,
+          password: creds.password,
+          ...(source === "form" && code ? { admission_code: code } : {}),
         });
       }
       setPassword("");
@@ -50,20 +72,39 @@ export function DemoEntry() {
     }
   }
   return (
-    <section className="mx-auto max-w-lg space-y-4 rounded-xl border border-neutral-200 bg-white p-6 text-neutral-900">
-      <h1 className="text-xl font-semibold">Демо-доступ с флаера</h1>
+    <section
+      aria-label="Вход в демо-режим"
+      className="mx-auto max-w-lg space-y-4 rounded-xl border border-neutral-200 bg-white p-6 text-neutral-900"
+    >
       <p className="text-sm text-neutral-600">
         Каждый участник работает в отдельном временном пространстве. Время и
         лимиты задаёт кампания. Повторный вход сохраняет прежний срок и расход.
         Постоянная история не включена.
       </p>
+      <button
+        className="w-full rounded bg-brand px-4 py-2 text-white disabled:opacity-50"
+        disabled={busy || !publicPair}
+        onClick={() => void enter("public")}
+      >
+        {busy ? "Проверяем доступ…" : "Запустить демо-режим"}
+      </button>
+      {!publicPair && (
+        <p className="text-xs text-neutral-500">
+          Публичный демо-доступ временно недоступен. Можно войти в кампанию
+          организатора ниже.
+        </p>
+      )}
       <form
-        className="space-y-3"
+        aria-label="Вход в кампанию организатора"
+        className="space-y-3 border-t border-neutral-200 pt-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void enter();
+          void enter("form");
         }}
       >
+        <p className="text-sm font-medium text-neutral-700">
+          Вход в кампанию организатора
+        </p>
         <label className="block">
           Логин кампании
           <input
@@ -76,7 +117,7 @@ export function DemoEntry() {
           />
         </label>
         <label className="block">
-          Пароль с флаера
+          Пароль кампании
           <input
             className="block w-full rounded border p-2"
             type="password"
@@ -101,13 +142,13 @@ export function DemoEntry() {
           className="rounded bg-brand px-4 py-2 text-white"
           disabled={busy}
         >
-          {busy ? "Проверяем доступ…" : "Войти в демо"}
+          {busy ? "Проверяем доступ…" : "Войти в кампанию"}
         </button>
       </form>
       <button
         className="underline"
         disabled={busy}
-        onClick={() => void enter(true)}
+        onClick={() => void enter("resume")}
       >
         Продолжить свой демо-доступ
       </button>

@@ -69,7 +69,11 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
     // Остальные пункты не тронуты.
     expect(screen.getByRole("link", { name: "Документация API" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "Тарифы" })).toHaveAttribute("href", "/pricing");
-    expect(screen.getByRole("link", { name: "Личный кабинет" })).toHaveAttribute("href", "/dashboard");
+    // AUTH-KABINET-DEMO: «Личный кабинет» (маршрута /dashboard не было —
+    // 404) заменён вкладкой «Демо» → /demo (лендинг DemoLanding); кабинет
+    // доступен через «Вход» → /dashboard-пивот.
+    expect(screen.getByRole("link", { name: "Демо" })).toHaveAttribute("href", "/demo");
+    expect(screen.queryByRole("link", { name: "Личный кабинет" })).toBeNull();
   });
 
   it("меню перемещено вправо: nav в правом контейнере, перед «РУС / ENG», вне левой группы бренда", () => {
@@ -176,18 +180,24 @@ describe("UI-HOME-HEADER-1: меню вправо, слоган, нижнее в
     expect(slogan.className).not.toMatch(/top-\[/);
   });
 
-  it("логотип, бренд и иконки не затронуты выравниванием (нет self-*/pt-сдвигов)", () => {
+  it("логотип, бренд, пункты меню и иконки не затронуты выравниванием (нет self-*/pt-сдвигов)", () => {
     renderHeader();
 
     const logo = screen.getByAltText("CISStat DataTime Lab");
     const brand = screen.getByText("CISStat DataTime Lab", { selector: "strong" });
     const toggle = screen.getByRole("button", { name: "Включить тёмную тему" });
-    const cabinet = screen.getByLabelText("Вход в личный аккаунт");
+    const demoLink = screen.getByRole("link", { name: "Демо" });
     const logoBox = logo.closest("div.relative")!;
 
     expect(logoBox.className).not.toMatch(/self-/);
     expect(brand.className).not.toMatch(/\bpt-|\bself-|\btop-\[/);
     expect(toggle.className).not.toMatch(/self-|top-\[/);
-    expect(cabinet.className).not.toMatch(/self-|top-\[/);
+    // AUTH-KABINET-DEMO: «Демо» — обычный пункт меню (метрический сдвиг
+    // несёт контейнер nav), «Вход» — текстовая ссылка в стиле пункта
+    // меню: собственный сдвиг top-[2.4px] и href /dashboard (пивот).
+    expect(demoLink.className).not.toMatch(/self-|top-\[/);
+    const entry = screen.getByLabelText("Вход в личный аккаунт");
+    expect(entry).toHaveAttribute("href", "/dashboard");
+    expect(entry).toHaveClass("top-[2.4px]");
   });
 });

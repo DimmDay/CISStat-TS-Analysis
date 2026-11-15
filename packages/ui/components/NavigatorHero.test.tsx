@@ -66,13 +66,13 @@ describe("NavigatorHero", () => {
     expect(h1.className).toContain("text-center");
   });
 
-  it("renders three route badges with stable anchor links", () => {
+  it("renders four route badges with stable links (three anchors + demo page, AUTH-KABINET-DEMO)", () => {
     render(<NavigatorHero />);
 
     expect(
       screen.getByRole("navigation", { name: "Разделы знакомства с платформой" }),
     ).toBeInTheDocument();
-    expect(NAVIGATOR_SECTION_ROUTES).toHaveLength(3);
+    expect(NAVIGATOR_SECTION_ROUTES).toHaveLength(4);
     NAVIGATOR_SECTION_ROUTES.forEach((route) => {
       const link = screen.getByRole("link", { name: new RegExp(route.title, "i") });
       expect(link).toHaveAttribute("href", route.href);
@@ -82,7 +82,7 @@ describe("NavigatorHero", () => {
   it("reuses the visual states of route cards from the home page", () => {
     const { container } = render(<NavigatorHero />);
     const links = container.querySelectorAll('nav[aria-label="Разделы знакомства с платформой"] > a');
-    expect(links).toHaveLength(3);
+    expect(links).toHaveLength(4);
     links.forEach((link) => {
       expect(link.className).toContain("border-brand/60");
       expect(link.className).toContain("bg-brand-light/60");
@@ -170,18 +170,20 @@ describe("NavigatorHero", () => {
     expect(grid.className).toContain("px-6");
   });
 
-  it("keeps exactly three direct card children in one responsive grid (equal width and height by grid mechanics)", () => {
+  it("keeps exactly four direct card children in one responsive grid (equal width and height by grid mechanics)", () => {
     const { container } = render(<NavigatorHero />);
     const grid = container.querySelector(
       'nav[aria-label="Разделы знакомства с платформой"]',
     )!;
     expect(grid).not.toBeNull();
-    // Ровно три карточки — прямые дети сетки (одна строка на md+).
-    expect(grid.querySelectorAll(":scope > a")).toHaveLength(3);
-    // fr-колонки (md:grid-cols-3) => равная ширина; дефолтный stretch
-    // строки => равная высота; gap-5 не меняется — сжатие соразмерное.
+    // Ровно четыре карточки — прямые дети сетки (AUTH-KABINET-DEMO:
+    // 3 якоря + страница демо; одна строка на lg+, 2×2 на md).
+    expect(grid.querySelectorAll(":scope > a")).toHaveLength(4);
+    // fr-колонки (md:grid-cols-2, lg:grid-cols-4) => равная ширина;
+    // дефолтный stretch строки => равная высота; gap-5 не меняется.
     expect(grid.className).toContain("grid-cols-1");
-    expect(grid.className).toContain("md:grid-cols-3");
+    expect(grid.className).toContain("md:grid-cols-2");
+    expect(grid.className).toContain("lg:grid-cols-4");
     expect(grid.className).toContain("gap-5");
   });
 

@@ -22,18 +22,22 @@
 // нужно для превью на Навигаторе, без дублирования контракта статусов.
 
 import type { LucideIcon } from "lucide-react";
-import { BriefcaseBusiness, Map, Route } from "lucide-react";
+import { BriefcaseBusiness, FlaskConical, Map, Route } from "lucide-react";
 
 // ── Типы ──────────────────────────────────────────────────────
 
+// AUTH-KABINET-DEMO: href — якорь этой же страницы ИЛИ first-party
+// страница (4-й бейдж «Попробовать в демо-режиме» ведёт на вкладку
+// «Демо» /demo; RouteCard рендерит через next/link, страница-маршрут
+// работает как якорь). Credentials в href не передаются (AC22).
 export interface NavigatorSectionRoute {
   title: string;
   description: string;
   icon: LucideIcon;
-  href: `#${string}`;
+  href: `#${string}` | `/${string}`;
 }
 
-/** Три верхнеуровневых маршрута страницы «Знакомство с платформой». */
+/** Четыре верхнеуровневых маршрута страницы «Знакомство с платформой». */
 export const NAVIGATOR_SECTION_ROUTES: NavigatorSectionRoute[] = [
   {
     title: "Задачи, решаемые совместно с платформой",
@@ -52,6 +56,12 @@ export const NAVIGATOR_SECTION_ROUTES: NavigatorSectionRoute[] = [
     description: "изучить модули, остановки и доступные действия",
     icon: Map,
     href: "#platform-navigation",
+  },
+  {
+    title: "Попробовать в демо-режиме",
+    description: "запустить демо без регистрации и увидеть платформу в работе",
+    icon: FlaskConical,
+    href: "/demo",
   },
 ];
 

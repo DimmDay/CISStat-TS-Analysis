@@ -25,7 +25,7 @@ const labels: Record<string, string> = {
   campaign_requests: "Научных запросов кампании",
   max_upload_bytes: "Размер файла, байт (до 4194304)",
   retention_hours: "Хранение после окончания, часов (1–720)",
-  alias: "Логин с флаера",
+  alias: "Логин кампании",
   starts_at: "Начало (UTC)",
   ends_at: "Окончание (UTC)",
   grant_minutes: "Доступ участника, минут",
@@ -227,7 +227,8 @@ export function DemoCampaignAdmin() {
       {secret && (
         <div role="status" className="rounded border p-3">
           <p>
-            Пароль показан один раз. Сохраните его для флаера:{" "}
+            Пароль показан один раз. Сохраните его для публикации (страница
+            «Демо») или выдачи участникам:{" "}
             <code>{secret}</code>
           </p>
           <button onClick={() => setSecret("")}>Скрыть пароль</button>

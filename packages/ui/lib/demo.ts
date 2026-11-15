@@ -34,19 +34,39 @@ const messages: Record<string, string> = {
     "Код уже использован. Продолжите свой доступ в прежнем браузере.",
   demo_request_limit: "Лимит запросов демо исчерпан.",
   demo_upload_limit: "Файл превышает предел демо-доступа.",
+  // AUTH-KABINET-DEMO: лексика самообслуживаемого демо — запуск и
+  // перезапуск со страницы «Демо» или личный вход; без бумажной
+  // дистрибуции.
   demo_expired:
-    "Демо-доступ завершён. Войдите в личный аккаунт или обратитесь на стенд.",
+    "Демо-доступ завершён. Запустите демо заново на странице «Демо» или войдите в личный аккаунт.",
   campaign_inactive:
     "Кампания ещё не началась, приостановлена или недоступна в этой оболочке.",
   campaign_policy_conflict:
     "Кампания изменилась. Обновите список перед повтором.",
-  campaign_capacity_exhausted: "Лимит кампании исчерпан. Обратитесь на стенд.",
+  campaign_capacity_exhausted:
+    "Лимит кампании исчерпан. Попробуйте позже или войдите в личный аккаунт.",
   mfa_required: "Подтвердите MFA заново: повторите личный вход администратора.",
-  invalid_credential: "Вход не подтверждён. Проверьте данные с флаера.",
+  invalid_credential: "Вход не подтверждён. Проверьте логин и пароль кампании.",
   invalid_campaign_policy:
     "Проверьте конечные лимиты и временное окно кампании.",
   too_many_attempts: "Слишком много попыток. Повторите позже.",
 };
+
+// AUTH-KABINET-DEMO: пара самообслуживаемого демо задаётся окружением
+// сборки (NEXT_PUBLIC_* Next.js инлайнит при сборке). Пара намеренно НЕ
+// хранится в коде репозитория: rotation = rotate-credential в админ-панели
+// + обновление env + редеплой; при отсутствии env кнопка «Запустить
+// демо-режим» честно отключена (никаких молчаливых fallback-пар).
+// Пара передаётся только в теле POST /v1/auth/demo/enter — в URL и
+// ссылках credentials не появляются (AC22).
+export function publicDemoCredentials(): {
+  login: string;
+  password: string;
+} | null {
+  const login = process.env.NEXT_PUBLIC_DEMO_LOGIN;
+  const password = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+  return login && password ? { login, password } : null;
+}
 export async function demoRequest(
   path: string,
   method = "GET",

@@ -7109,6 +7109,17 @@
    "admission": "UI does not replace backend enforcement",
    "stage_namespace": "service"
   },
+  "page:standalone:/dashboard": {
+   "policy": "ui.page",
+   "stage": "dashboard",
+   "resource": "UI navigation only",
+   "effects": [
+    "navigation"
+   ],
+   "canonical_operation": "ui:standalone:/dashboard",
+   "admission": "UI does not replace backend enforcement; AUTH-KABINET-DEMO pivot: authenticated client-side redirect to /account, anonymous to /login?return_to=/account; authoritative checks stay server-side on the targets",
+   "stage_namespace": "service"
+  },
   "page:standalone:/demo": {
    "policy": "demo.entry",
    "stage": "platform",

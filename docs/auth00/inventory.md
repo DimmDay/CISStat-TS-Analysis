@@ -16,7 +16,7 @@
 | internal_operation | 36 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
-| page | 40 |
+| page | 41 |
 | proxy | 2 |
 | renderer | 4 |
 | static_asset | 1 |
@@ -700,6 +700,7 @@
 | page:standalone:/admin/demo-campaigns | ui:standalone:/admin/demo-campaigns / service:platform | demo.admin / campaign policy | apps/standalone/app/admin/demo-campaigns/page.tsx:1 |
 | page:standalone:/admin/logs | ui:standalone:/admin/logs / service:admin/logs | ui.admin / UI navigation only | apps/standalone/app/admin/logs/page.tsx:1 |
 | page:standalone:/admin/progress | ui:standalone:/admin/progress / service:admin/progress | ui.admin / UI navigation only | apps/standalone/app/admin/progress/page.tsx:1 |
+| page:standalone:/dashboard | ui:standalone:/dashboard / service:dashboard | ui.page / UI navigation only | apps/standalone/app/dashboard/page.tsx:1 |
 | page:standalone:/dashboard/ts-analysis | ui:standalone:/dashboard/ts-analysis / service:dashboard/ts-analysis | ui.page / UI navigation only | apps/standalone/app/dashboard/ts-analysis/page.tsx:1 |
 | page:standalone:/demo | ui:standalone:/demo / service:platform | demo.entry / private demo grant | apps/standalone/app/demo/page.tsx:1 |
 | page:standalone:/documentation | ui:standalone:/documentation / service:documentation | ui.page / UI navigation only | apps/standalone/app/documentation/page.tsx:1 |
