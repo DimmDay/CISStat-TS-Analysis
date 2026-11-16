@@ -11,9 +11,9 @@
 
 | Вид | Число |
 |---|---:|
-| api | 281 |
+| api | 282 |
 | framework | 8 |
-| internal_operation | 36 |
+| internal_operation | 37 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 41 |
@@ -40,6 +40,7 @@
 | auth.mfa.entry | AUTH-05 CSRF+exact Origin; opaque purpose-bound PostgreSQL single-use challenge, 5m expiry, 5 attempts plus subject-wide limiter; current identity/credential/epoch/account membership checked; TOTP replay fence, recovery revokes all sessions; mandatory audit intent atomic. Challenge never authorizes protected API. Pending recovery login remains a recovery-only challenge; another unused code can resume a lost response; password alone cannot restart enrollment. | First-party proxy/login UX and named browser admin route rollout in AUTH-06/07; WebAuthn UV preferred future adapter; current local fallback TOTP. | AUTH-06, AUTH-07 |
 | auth.mfa.session | AUTH-05 online AuthSession+CSRF+Origin; password+TOTP step-up proof scoped to exact session/action, single-use and 5m; replacement/recovery rotation consume proof atomically with mandatory audit. MFA-session password change also requires password.change proof. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Extend action catalogue only alongside guarded sensitive admin APIs in AUTH-07; no client MFA assertions. | AUTH-07 |
 | auth.ops | AUTH-20: обязательный audit outbox получает периодическую bounded-доставку (ops sweeper, required-режим); terminal security transitions (revoked/consumed/settled/applied) capture'ятся в append-only auth_ops_ledger триггерами 0032; ops-CLI export/reconcile/quarantine/lockdown не добавляет HTTP-маршрутов. | Mandatory fault не оставляет неучтённое изменение: intent в outbox в одной транзакции с мутацией, доставка идемпотентна (audit_id fence), refusal memory-sink 503. Restore из backup не воскрешает revoked credential/consumed admission/settled reservation: marks файл вне pgdata + reconcile re-apply (over-charge невозможен, under-charge в отчёте). Safe rollback -- env CISSTAT_AUTH_LOCKDOWN закрывает 4 входа (503 auth_lockdown), не трогая сессии/ключи/internal-guards; quarantine закрывает сессии и кампании до reconciliation. DDL-отката нет. | AUTH-20, AUTH-25, AUTH-CERT |
+| auth.personal_trial | Verified-email consume atomically provisions finite MONO starter trial, immutable one-time receipt and audited AUTH12/21 wallet/scopes. Dataset publication claims an analysis in the same durable transaction. | Mailbox proof only; no browser amount/actor claims; bounded locked sponsor pool, no refills or expiry extension; current membership, caps, source-aware wallet and aggregate budgets win. | AUTH-19, AUTH-12, AUTH-21 |
 | auth.session | AUTH-04 opaque PostgreSQL session, online expiry/credential/subject/epoch/membership checks; self-only session/password commands; CSRF on mutation; audit intent atomic with state. AUTH-05 sessions require current MFA factor for ADMIN; MFA evidence only from confirmed local TOTP. AUTH-06 safe generated me DTO; optional account selection after password proof, no session for account choices. AUTH-08 enforces Account expiry and current entitlements; me exposes effective capabilities without role-derived upgrade. | Effective Account entitlements/ownership, common proxy and named admin rollout remain AUTH-06/07/08/09/11/20. | AUTH-04, AUTH-05, AUTH-06, AUTH-08, AUTH-09, AUTH-20 |
 | auth.storage | AUTH-02/04/05 PostgreSQL authority and audit outbox. AUTH-08 operator-only Account/membership lifecycle serializes Account CAS, scoped terminal session/challenge invalidation and mandatory audit intent; no new schema or public seat/plan assignment. No memory auth fallback. AUTH-09 trusted single-run migration locks Account→run→session, requires expected source/version/evidence and common PostgreSQL relations; immutable receipt and existing audit outbox commit together. | Only trusted coordinator may call; verify role/MFA/membership/account and transactional audit before mutations. No public tenant/plan assignment or memory fallback. | AUTH-03, AUTH-08, AUTH-10, AUTH-20 |
 | billing.authority | AUTH-12 trusted PostgreSQL coordinator: current Identity/Account/caps, hierarchical budget locks, idempotency, balanced append-only postings and atomic job/audit outbox. No public financial writer, HTTP metering/queue worker adapters or commercial CU launch claimed. Explicit0025; no automatic paid credit. | Authoritative atomic resource admission and terminal ledger transitions; integrate current object gate and real execution through AUTH-13, calibrated CU AUTH-14, source-aware wallet AUTH-21. | AUTH-13, AUTH-14, AUTH-20, AUTH-21 |
@@ -86,8 +87,9 @@
 | api:GET:/v1/auth/csrf | apps.api.routers.authentication:csrf / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:136 |
 | api:GET:/v1/auth/demo/limits | apps.api.routers.demo:limits / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:269 |
 | api:GET:/v1/auth/demo/me | apps.api.routers.demo:demo_me / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:137 |
-| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:199 |
-| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:228 |
+| api:GET:/v1/auth/me | apps.api.routers.authentication:me / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:206 |
+| api:GET:/v1/auth/personal-demo | apps.api.routers.authentication:personal_demo_info / service:platform | public.metadata / finite personal trial availability | apps/api/routers/authentication.py:158 |
+| api:GET:/v1/auth/sessions | apps.api.routers.authentication:sessions / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:235 |
 | api:GET:/v1/billing/{account_id}/refunds/{refund_id} | apps.api.routers.billing:refund_show / service:platform | billing.refund / refund order saga / trusted dispute records | apps/api/routers/billing.py:91 |
 | api:GET:/v1/billing/{account_id}/subscription | apps.api.routers.billing:subscription / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:46 |
 | api:GET:/v1/billing/{account_id}/topups | apps.api.routers.billing:topups / service:platform | billing.topup / top-up package catalog / immutable quote / durable order saga | apps/api/routers/billing.py:65 |
@@ -224,21 +226,21 @@
 | api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:124 |
 | api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:73 |
 | api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:110 |
-| api:POST:/v1/auth/email/consume | apps.api.routers.authentication:email_consume / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:483 |
-| api:POST:/v1/auth/email/start | apps.api.routers.authentication:email_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:471 |
-| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:158 |
-| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:236 |
-| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:294 |
-| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:339 |
-| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:307 |
-| api:POST:/v1/auth/oidc/callback | apps.api.routers.authentication:oidc_callback / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:439 |
-| api:POST:/v1/auth/oidc/start | apps.api.routers.authentication:oidc_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:428 |
-| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:262 |
-| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:352 |
-| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:364 |
-| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:243 |
-| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:252 |
-| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:325 |
+| api:POST:/v1/auth/email/consume | apps.api.routers.authentication:email_consume / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:490 |
+| api:POST:/v1/auth/email/start | apps.api.routers.authentication:email_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:478 |
+| api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:165 |
+| api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:243 |
+| api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:301 |
+| api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:346 |
+| api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:314 |
+| api:POST:/v1/auth/oidc/callback | apps.api.routers.authentication:oidc_callback / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:446 |
+| api:POST:/v1/auth/oidc/start | apps.api.routers.authentication:oidc_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:435 |
+| api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:269 |
+| api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:359 |
+| api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:371 |
+| api:POST:/v1/auth/sessions/revoke-all | apps.api.routers.authentication:revoke_all / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:250 |
+| api:POST:/v1/auth/sessions/{session_id}/revoke | apps.api.routers.authentication:revoke / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:259 |
+| api:POST:/v1/auth/step-up | apps.api.routers.authentication:step_up / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:332 |
 | api:POST:/v1/billing/webhooks/yookassa | apps.api.routers.billing:webhook / service:platform | billing.provider / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:116 |
 | api:POST:/v1/billing/{account_id}/quotes | apps.api.routers.billing:quote / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:51 |
 | api:POST:/v1/billing/{account_id}/quotes/{quote_id}/confirm | apps.api.routers.billing:confirm / service:platform | billing.owner / subscription seat quote/order/provider inbox | apps/api/routers/billing.py:58 |
@@ -409,6 +411,7 @@
 | execution:worker.publication | execution:worker.publication / service:platform | worker.authority / atomic current-access result projection, settlement and audit | apps/api/workers/authority.py:585 |
 | execution:worker.reconciliation | execution:worker.reconciliation / service:platform | worker.authority / unknown worker outcomes and retained reservation holds | apps/api/workers/authority.py:744 |
 | execution:worker.service | execution:worker.service / service:platform | worker.authority / opaque worker service credential and allowed worker kind | apps/api/workers/services.py:23 |
+| personal_demo.enroll | personal_demo.enroll / service:platform | auth.personal_trial / verified identity own MONO starter account | apps/api/authentication/personal_demo.py:77 |
 | scientific.admission | scientific.admission / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:186 |
 | scientific.execution | scientific.execution / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:379 |
 

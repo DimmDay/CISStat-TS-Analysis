@@ -82,7 +82,14 @@ def generate_token():
 
 
 def email_configured():
-    return email_key_configured() and bool(os.environ.get("CISSTAT_AUTH_SMTP_HOST"))
+    from .providers.email_delivery import SmtpEmailDelivery
+
+    if not email_key_configured():
+        return False
+    try:
+        return SmtpEmailDelivery.from_env() is not None
+    except (ValueError, TypeError):
+        return False
 
 
 def trial_plan_expiry(now):
@@ -124,6 +131,9 @@ class EmailChallengeService(SessionService):
 
     def _letter(self, purpose, origin, code, token):
         link = origin + "/login?email_challenge=" + token
+        from .personal_demo import enabled
+        if purpose == "trial_login" and enabled():
+            link += "&return_to=/upload"
         if purpose == "trial_login":
             return (
                 "Код подтверждения входа: " + code + "\n\n"
@@ -338,6 +348,8 @@ class EmailChallengeService(SessionService):
             return self._trial(c, tx, row, origin, now, old_token)
 
     def _trial(self, c, tx, row, origin, now, old_token):
+        from .personal_demo import enabled, enroll
+
         u = tx.identities.by_external(EMAIL_ISSUER, row["email"])
         created = False
         if not u:
@@ -348,10 +360,14 @@ class EmailChallengeService(SessionService):
             tx.accounts.create(
                 u.subject_id,
                 plan="starter",
-                plan_expires_at=trial_plan_expiry(now),
+                plan_expires_at=None if enabled() else trial_plan_expiry(now),
             )
             created = True
         subject_id = u.subject_id
+        if enabled():
+            accounts = tx.accounts.for_subject(subject_id)
+            if len(accounts) == 1:
+                enroll(c, self.store, subject_id, accounts[0].account_id, row["email"], now)
         identity = self._identity(c, subject_id)
         if not identity or identity["status"] != "active" or identity["kind"] != "person":
             auth_error(401, "invalid_credential")

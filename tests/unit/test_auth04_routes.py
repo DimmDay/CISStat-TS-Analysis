@@ -15,6 +15,8 @@ from apps.api.routers.authentication import router
 
 EXPECTED = {
     "GET:/v1/auth/csrf",
+    # PERSONAL-DEMO public safe availability (external policy, no capability entry).
+    "GET:/v1/auth/personal-demo",
     "POST:/v1/auth/login",
     "GET:/v1/auth/me",
     "GET:/v1/auth/sessions",

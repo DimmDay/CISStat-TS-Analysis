@@ -1911,6 +1911,14 @@
       "capability": null,
       "selector": "none",
       "authority": "external"
+    },
+    "auth.personal_demo.info": {
+      "operation_id": "auth.personal_demo.info",
+      "stage_namespace": "service",
+      "stage": "platform",
+      "capability": null,
+      "selector": "none",
+      "authority": "external"
     }
   },
   "bindings": {
@@ -3052,6 +3060,10 @@
     },
     "api:POST:/v1/auth/email/consume": {
       "operation_id": "auth.email.consume",
+      "programmatic_api": false
+    },
+    "api:GET:/v1/auth/personal-demo": {
+      "operation_id": "auth.personal_demo.info",
       "programmatic_api": false
     }
   }

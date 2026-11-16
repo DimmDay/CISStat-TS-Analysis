@@ -42,7 +42,7 @@ class KabinetDemoCertification(unittest.TestCase):
         text = (ROOT / "packages/ui/components/DemoLanding.tsx").read_text(
             encoding="utf-8-sig"
         )
-        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"\s+", " ", text).casefold()
         self.assertNotRegex(text, r"после окончания демо результаты\s+доступны")
         self.assertIn("после окончания демо доступ закрывается", text)
 

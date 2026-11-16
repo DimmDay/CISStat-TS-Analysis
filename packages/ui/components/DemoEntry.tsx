@@ -17,7 +17,7 @@ import { demoRequest, publicDemoCredentials } from "../lib/demo";
 // Успех любого сценария → /upload (как раньше). leave — завершение демо
 // на устройстве.
 
-export function DemoEntry() {
+export function DemoEntry({ campaignOnly = false }: { campaignOnly?: boolean }) {
   const [login, setLogin] = useState(""),
     [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -81,14 +81,16 @@ export function DemoEntry() {
         лимиты задаёт кампания. Повторный вход сохраняет прежний срок и расход.
         Постоянная история не включена.
       </p>
+      {(!campaignOnly || publicPair) && (
       <button
         className="w-full rounded bg-brand px-4 py-2 text-white disabled:opacity-50"
         disabled={busy || !publicPair}
         onClick={() => void enter("public")}
       >
-        {busy ? "Проверяем доступ…" : "Запустить демо-режим"}
+        {busy ? "Проверяем доступ…" : campaignOnly ? "Запустить публичную кампанию" : "Запустить демо-режим"}
       </button>
-      {!publicPair && (
+      )}
+      {!publicPair && !campaignOnly && (
         <p className="text-xs text-neutral-500">
           Публичный демо-доступ временно недоступен. Можно войти в кампанию
           организатора ниже.

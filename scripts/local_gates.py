@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,15 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("personal-demo", "personal_demo.yml contracts", "Personal MONO trial, SMTP and two-column entry contracts", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/personal_demo/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_personal_demo*.py", "-v"],
+        ["node", "node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "packages/ui/components/personal-demo.test.tsx", "packages/ui/components/auth-kabinet-demo.test.tsx"],
+    ]),
+    ("personal-demo-postgres", "personal_demo.yml postgres", "Verified email to research on disposable PostgreSQL", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/personal_demo/requirements.txt", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "scripts/personal_demo/verify_postgres.py"],
+    ]),
     ("kabinet-demo-cert", "kabinet_demo_cert.yml contracts", "AUTH-KABINET-DEMO Task1-7 certification oracles", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/kabinet_demo_cert/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_kabinet_demo_cert.py", "-v"],
@@ -484,6 +493,7 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-personal-demo-postgres", action="store_true", help="personal trial native HTTP/SQL tests; disposable PostgreSQL DSN required")
     parser.add_argument("--with-authcert-postgres", action="store_true",
                         help="native AUTH-CERT end-to-end acceptance requires a disposable PostgreSQL DSN")
     parser.add_argument("--with-warmup-postgres", action="store_true",
@@ -531,6 +541,8 @@ def main() -> int:
     args = parser.parse_args()
 
     excluded = set()
+    if not args.with_personal_demo_postgres:
+        excluded.add("personal-demo-postgres")
     if not args.with_pytest:
         excluded.add("pytest")
     if not args.with_auth02_postgres:

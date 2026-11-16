@@ -565,21 +565,19 @@
    ]
   },
   "billing.wallet": {
-   "observed": "AUTH-21 source-aware wallet/credit lots: durable PostgreSQL authority with append-only balanced postings, FEFO spend, pinned reservation allocations, expiry sweep and wallet lock; trusted operator CLI only, no HTTP surface and no auto-credit. Reservation-level movements run inside the AUTH-12 coordinator transaction.",
-   "target": "Financial wallet operations fail closed: unique credit-per-basis guards, mandatory auth_wallet_changed audit in the issuing transaction, integer micro-CU only. AUTH-22 adds the confirmed-payment saga as the only automated issuer of whole purchased lots; refunds/disputes stay with AUTH-23, wallet UI/DTO with AUTH-24.",
+   "observed": "AUTH-24 wallet READ surface: an active member of the current personal identity reads a usage projection of the AUTH-21 wallet (totals, reserved, next expiry, server-computed can_purchase_cu/can_spend_cu and lifecycle reasons); the OWNER additionally receives the per-source breakdown and the locked_reason; the ledger endpoint is OWNER-only and carries the bounded financial journal with money documents.",
+   "target": "Financial privacy: money, per-source breakdown and history never reach MEMBER; the ledger never answers to non-owners; read over an expired subscription preserves the balance and reports spending_blocked_reason instead of pretending a spendable state; admission to spending stays with the AUTH-12 coordinator.",
    "follow_up": [
-    "AUTH-21",
-    "AUTH-22",
-    "AUTH-23",
     "AUTH-24",
+    "AUTH-25",
     "AUTH-CERT"
    ],
    "threats": [
     "T02",
-    "T06",
-    "T11",
+    "T09",
     "T13",
-    "T15"
+    "T15",
+    "T20"
    ]
   },
   "billing.topup": {
@@ -617,20 +615,20 @@
     "T15"
    ]
   },
-  "billing.wallet": {
-   "observed": "AUTH-24 wallet READ surface: an active member of the current personal identity reads a usage projection of the AUTH-21 wallet (totals, reserved, next expiry, server-computed can_purchase_cu/can_spend_cu and lifecycle reasons); the OWNER additionally receives the per-source breakdown and the locked_reason; the ledger endpoint is OWNER-only and carries the bounded financial journal with money documents.",
-   "target": "Financial privacy: money, per-source breakdown and history never reach MEMBER; the ledger never answers to non-owners; read over an expired subscription preserves the balance and reports spending_blocked_reason instead of pretending a spendable state; admission to spending stays with the AUTH-12 coordinator.",
+  "auth.personal_trial": {
+   "observed": "Verified-email consume atomically provisions finite MONO starter trial, immutable one-time receipt and audited AUTH12/21 wallet/scopes. Dataset publication claims an analysis in the same durable transaction.",
+   "target": "Mailbox proof only; no browser amount/actor claims; bounded locked sponsor pool, no refills or expiry extension; current membership, caps, source-aware wallet and aggregate budgets win.",
    "follow_up": [
-    "AUTH-24",
-    "AUTH-25",
-    "AUTH-CERT"
+    "AUTH-19",
+    "AUTH-12",
+    "AUTH-21"
    ],
    "threats": [
     "T02",
-    "T09",
+    "T06",
+    "T11",
     "T13",
-    "T15",
-    "T20"
+    "T15"
    ]
   }
  },
@@ -8239,6 +8237,28 @@
    ],
    "canonical_operation": "auth.ops.sweep",
    "admission": "in-process daemon thread, required storage mode only, bounded publish_pending/prune batches via existing PostgresAccessStore transactions; no new authority, no secrets, failures are warnings + health counters"
+  },
+  "api:GET:/v1/auth/personal-demo": {
+   "policy": "public.metadata",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "finite personal trial availability",
+   "effects": [
+    "read"
+   ],
+   "canonical_operation": "auth.personal_demo.info",
+   "admission": "safe limits/status only; no identity, SMTP configuration or grant; no mutation"
+  },
+  "personal_demo.enroll": {
+   "policy": "auth.personal_trial",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "verified identity own MONO starter account",
+   "effects": [
+    "write"
+   ],
+   "canonical_operation": "personal_demo.enroll",
+   "admission": "verified email consume transaction; single-owner empty account; locked finite pool; immutable one-time receipt; mandatory audit"
   }
  },
  "extra_surfaces": [
@@ -9124,6 +9144,20 @@
      "symbol": "reconcile"
     }
    ]
+  },
+  {
+   "id": "personal_demo.enroll",
+   "kind": "internal_operation",
+   "method": "INTERNAL",
+   "path": "personal_demo.enroll",
+   "operation": "personal_demo.enroll",
+   "evidence": [
+    {
+     "source": "apps/api/authentication/personal_demo.py",
+     "line": 77,
+     "symbol": "enroll"
+    }
+   ]
   }
  ],
  "reviewed_sources": [
@@ -9383,6 +9417,21 @@
   "apps/standalone/components/dashboard-pivot.test.tsx",
   "packages/ui/components/DemoLanding.tsx",
   "apps/standalone/Dockerfile",
-  ".github/workflows/kabinet_demo_cert.yml"
+  ".github/workflows/kabinet_demo_cert.yml",
+  "apps/api/authentication/personal_demo.py",
+  "apps/api/authentication/personal_demo_migrations.py",
+  "apps/api/migrations/0036_personal_demo.sql",
+  "packages/ui/components/PersonalDemoEntry.tsx",
+  "packages/ui/components/personal-demo.test.tsx",
+  "packages/ui/components/auth-kabinet-demo.test.tsx",
+  "scripts/personal_demo/migrate.py",
+  "scripts/personal_demo/manage.py",
+  "scripts/personal_demo/verify_postgres.py",
+  "scripts/personal_demo/requirements.txt",
+  "tests/unit/test_personal_demo.py",
+  "tests/integration/test_personal_demo.py",
+  "tests/integration/test_personal_demo_http.py",
+  ".github/workflows/personal_demo.yml",
+  "tests/unit/test_auth04_routes.py"
  ]
 }

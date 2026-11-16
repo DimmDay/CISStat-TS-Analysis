@@ -155,6 +155,13 @@ def csrf(request: Request, response: Response):
     }
 
 
+@router.get("/personal-demo")
+def personal_demo_info(request: Request):
+    _entry(request)
+    from apps.api.authentication.personal_demo import metadata
+    return metadata(getattr(request.app.state,"auth_access_store",None))
+
+
 @router.post("/login")
 def login(request: Request, response: Response, payload: LoginBody):
     _entry(request, True)

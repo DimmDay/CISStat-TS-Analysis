@@ -276,3 +276,20 @@ python scripts/kabinet_demo_cert/verify_postgres.py
 обычная production сборка задаётся оператором. Smoke использует настоящий first-party proxy/HTTPS, но controlled authority stub;
 PostgreSQL authority подтверждается отдельным native gate, smoke не выдаётся за production AUTH-CERT.
 Акт/границы: docs/kabinet_demo_cert/report.md. Пара для VM — build args из .env, одной смены runtime env недостаточно.
+
+## Личный MONO trial и SMTP (база da6cd8c)
+
+В default-набор добавлен `personal-demo`: Python contracts SMTP/config/profile и Jest двух колонок `/demo`.
+`python scripts/local_gates.py --only personal-demo,kabinet-demo-cert --skip-install` — быстрый повтор.
+Нативный `--with-personal-demo-postgres` (либо `--only personal-demo-postgres --with-personal-demo-postgres`)
+требует **disposable** `CISSTAT_AUTH_TEST_DSN`, права CREATE DATABASE и API requirements.
+Он проверяет email proof → finite wallet → HTTP upload/validation/EDA/baselines/forecast/export,
+повторный вход, expiry, mandatory-audit rollback и race последнего места; отсутствие DSN/skips — FAIL.
+SMTP заменён контролируемым transport: реальная отправка на VM отдельно через `scripts/personal_demo/manage.py smtp-test --to ...`.
+CI `.github/workflows/personal_demo.yml`: contracts Linux/Windows; native PostgreSQL 16/18.
+
+Роуты затронуты: добавлен GET `/v1/auth/personal-demo` (публичная безопасная проекция availability/limits).
+POST email/start/consume сохраняют пути; consume теперь атомарно выдаёт личный trial, письмо возвращает на `/upload`.
+Обновлены registry, AUTH00 inventory/review, generated contract/OpenAPI/map и Next proxy allowlist.
+До commit явно подготовить INDEX: `git add --pathspec-from-file=scripts/personal_demo/files.txt`.
+AUTH00 `--target index` до commit, `--target head` после commit; автоматического staging нет.

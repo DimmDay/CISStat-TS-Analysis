@@ -215,8 +215,12 @@ def prepare_analysis():
     if request is None:
         return None
     admission = request.state._auth11_admission
-    if admission is None or not admission.context.demo_grant_id:
+    if admission is None:
         return None
+    if not admission.context.demo_grant_id:
+        from .personal_demo import prepare_analysis as personal_analysis
+
+        return personal_analysis(request)
     if getattr(request.state, "_auth16_run_id", None):
         return request.state._auth16_run_id
     from apps.api.billing.contract import Admission, Cost
@@ -292,7 +296,9 @@ def stage_upload_cleanup(contents):
 async def govern(request, admission, handler):
     """All scientific aliases share the same admission, including direct API."""
     if admission is None or not admission.context.demo_grant_id:
-        return await handler(request)
+        from .personal_demo import govern_upload
+
+        return await govern_upload(request, admission, handler)
     from starlette.responses import Response
 
     from .demo import CampaignPolicy

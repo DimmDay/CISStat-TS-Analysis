@@ -1,0 +1,12 @@
+test_both_shells_metadata_and_pivot_surface (test_kabinet_demo_cert.KabinetDemoCertification.test_both_shells_metadata_and_pivot_surface) ... ok
+test_compose_forwards_public_pair_at_build_time (test_kabinet_demo_cert.KabinetDemoCertification.test_compose_forwards_public_pair_at_build_time) ... ok
+test_original_manifest_complete_and_safe (test_kabinet_demo_cert.KabinetDemoCertification.test_original_manifest_complete_and_safe) ... ok
+test_public_env_example_defaults_blank (test_kabinet_demo_cert.KabinetDemoCertification.test_public_env_example_defaults_blank) ... ok
+test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension) ... ok
+test_oracles_use_utf8_even_when_windows_default_is_cp1251 (test_kabinet_demo_cert.SourceEncodingTests.test_oracles_use_utf8_even_when_windows_default_is_cp1251) ... ok
+test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change (test_kabinet_demo_cert.SourceEncodingTests.test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.162s
+
+OK

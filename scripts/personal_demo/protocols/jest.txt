@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        7.969 s
+Ran all test suites within paths "packages/ui/components/personal-demo.test.tsx", "packages/ui/components/auth-kabinet-demo.test.tsx".

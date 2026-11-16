@@ -1,0 +1,2 @@
+-r ../auth19/requirements.txt
+PyYAML>=6,<7

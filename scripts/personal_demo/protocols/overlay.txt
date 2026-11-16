@@ -1,0 +1,6 @@
+auth00 INDEX-parity: ok (598 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 282, "inventory_api": 282, "registry_bindings": 286, "inventory_entries": 661, "added": [], "missing": []}
+auth00 INDEX-parity: ok (598 discovery surfaces; full reviewed inventory/source parity)
+{"overlay": "base + actual ZIP", "crc": "ok", "strict_index": "PASS", "CRLF_index_LF_worktree": "PASS", "actual_routes": "PASS"}

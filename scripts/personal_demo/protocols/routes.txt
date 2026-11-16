@@ -1,0 +1,3 @@
+{"status": "ok", "counts": {"api": 282, "framework": 8, "internal_operation": 37, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 2, "worker": 11}, "entries": 661}
+{"status": "ok", "actual_api": 282, "inventory_api": 282, "registry_bindings": 286, "inventory_entries": 661, "added": [], "missing": []}
+AUTH-00 ROUTE CHECK: PASS -- новых маршрутов нет (21 api-маршрутов документации идентичны карте 5e0920e); 17 view PGV-11 идут через 2 классифицированных маршрута PGV-10; объединённый скоуп 55

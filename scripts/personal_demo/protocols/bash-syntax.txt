@@ -1,0 +1,1 @@
+VM deploy commands: bash -n PASS; execution on VM not performed.

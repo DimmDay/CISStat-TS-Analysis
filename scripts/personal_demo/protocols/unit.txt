@@ -1,0 +1,10 @@
+test_disabled_metadata_honest_without_store (test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.091s
+
+OK

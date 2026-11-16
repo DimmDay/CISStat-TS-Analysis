@@ -1,0 +1,1066 @@
+Локальные гейты (база da6cd8c, AUTH-00 target=INDEX): personal-demo, kabinet-demo-cert, warmup, authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest
+
+=== ГЕЙТ personal-demo (personal_demo.yml contracts) — Personal MONO trial, SMTP and two-column entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_personal_demo*.py -v
+test_disabled_metadata_honest_without_store (test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.122s
+
+OK
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/personal-demo.test.tsx packages/ui/components/auth-kabinet-demo.test.tsx
+
+Test Suites: 2 passed, 2 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        6.791 s
+Ran all test suites within paths "packages/ui/components/personal-demo.test.tsx", "packages/ui/components/auth-kabinet-demo.test.tsx".
+--- personal-demo: PASS (9.5 c)
+
+=== ГЕЙТ kabinet-demo-cert (kabinet_demo_cert.yml contracts) — AUTH-KABINET-DEMO Task1-7 certification oracles
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_kabinet_demo_cert.py -v
+test_both_shells_metadata_and_pivot_surface (test_kabinet_demo_cert.KabinetDemoCertification.test_both_shells_metadata_and_pivot_surface) ... ok
+test_compose_forwards_public_pair_at_build_time (test_kabinet_demo_cert.KabinetDemoCertification.test_compose_forwards_public_pair_at_build_time) ... ok
+test_original_manifest_complete_and_safe (test_kabinet_demo_cert.KabinetDemoCertification.test_original_manifest_complete_and_safe) ... ok
+test_public_env_example_defaults_blank (test_kabinet_demo_cert.KabinetDemoCertification.test_public_env_example_defaults_blank) ... ok
+test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension) ... FAIL
+test_oracles_use_utf8_even_when_windows_default_is_cp1251 (test_kabinet_demo_cert.SourceEncodingTests.test_oracles_use_utf8_even_when_windows_default_is_cp1251) ... FAIL
+test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change (test_kabinet_demo_cert.SourceEncodingTests.test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change) ... FAIL
+
+======================================================================
+FAIL: test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_kabinet_demo_cert.py", line 47, in test_retention_is_not_an_access_extension
+    self.assertIn("после окончания демо доступ закрывается", text)
+AssertionError: 'после окончания демо доступ закрывается' not found in 'import { DemoEntry } from "./DemoEntry"; import { PersonalDemoEntry } from "./PersonalDemoEntry"; export function DemoLanding() { return ( <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 text-neutral-900"> <header className="space-y-3"> <h1 className="text-2xl font-semibold">Демо-режим платформы</h1> <p> Выберите доступ через организатора или самостоятельный личный вход. В обоих случаях данные и вычисления ограничены условиями выбранного режима. </p> </header> <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"> <section aria-labelledby="campaign-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="campaign-demo-title" className="text-xl font-semibold"> Мульти-доступ через кампанию организатора </h2> <p>Для участников мероприятия или программы организатора. Введите выданные логин, пароль кампании и код участника, если он требуется.</p> <ul className="list-disc space-y-2 pl-5"> <li>Каждому участнику выдаётся отдельное временное пространство; исследования других участников недоступны.</li> <li>Время, вычислительный бюджет, число исследований, размер загрузки и срок хранения задаёт организатор.</li> <li>Продолжение на том же устройстве сохраняет прежний срок и расход. Постоянная история не включена.</li> <li>После окончания демо доступ закрывается; результаты удаляются по сроку хранения кампании.</li> </ul> <DemoEntry campaignOnly /> </section> <section aria-labelledby="personal-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="personal-demo-title" className="text-xl font-semibold"> Самостоятельный MONO-доступ </h2> <PersonalDemoEntry /> </section> </div> </div> ); } '
+
+======================================================================
+FAIL: test_oracles_use_utf8_even_when_windows_default_is_cp1251 (test_kabinet_demo_cert.SourceEncodingTests.test_oracles_use_utf8_even_when_windows_default_is_cp1251)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_kabinet_demo_cert.py", line 103, in test_oracles_use_utf8_even_when_windows_default_is_cp1251
+    self.assertTrue(result.wasSuccessful(), str(result.errors + result.failures))
+AssertionError: False is not true : [(<test_kabinet_demo_cert.KabinetDemoCertification testMethod=test_retention_is_not_an_access_extension>, 'Traceback (most recent call last):\n  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_kabinet_demo_cert.py", line 47, in test_retention_is_not_an_access_extension\n    self.assertIn("после окончания демо доступ закрывается", text)\nAssertionError: \'после окончания демо доступ закрывается\' not found in \'import { DemoEntry } from "./DemoEntry"; import { PersonalDemoEntry } from "./PersonalDemoEntry"; export function DemoLanding() { return ( <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 text-neutral-900"> <header className="space-y-3"> <h1 className="text-2xl font-semibold">Демо-режим платформы</h1> <p> Выберите доступ через организатора или самостоятельный личный вход. В обоих случаях данные и вычисления ограничены условиями выбранного режима. </p> </header> <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"> <section aria-labelledby="campaign-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="campaign-demo-title" className="text-xl font-semibold"> Мульти-доступ через кампанию организатора </h2> <p>Для участников мероприятия или программы организатора. Введите выданные логин, пароль кампании и код участника, если он требуется.</p> <ul className="list-disc space-y-2 pl-5"> <li>Каждому участнику выдаётся отдельное временное пространство; исследования других участников недоступны.</li> <li>Время, вычислительный бюджет, число исследований, размер загрузки и срок хранения задаёт организатор.</li> <li>Продолжение на том же устройстве сохраняет прежний срок и расход. Постоянная история не включена.</li> <li>После окончания демо доступ закрывается; результаты удаляются по сроку хранения кампании.</li> </ul> <DemoEntry campaignOnly /> </section> <section aria-labelledby="personal-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="personal-demo-title" className="text-xl font-semibold"> Самостоятельный MONO-доступ </h2> <PersonalDemoEntry /> </section> </div> </div> ); } \'\n')]
+
+======================================================================
+FAIL: test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change (test_kabinet_demo_cert.SourceEncodingTests.test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_kabinet_demo_cert.py", line 146, in test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change
+    self.assertTrue(
+AssertionError: False is not true : [(<test_kabinet_demo_cert.KabinetDemoCertification testMethod=test_retention_is_not_an_access_extension>, 'Traceback (most recent call last):\n  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_kabinet_demo_cert.py", line 47, in test_retention_is_not_an_access_extension\n    self.assertIn("после окончания демо доступ закрывается", text)\nAssertionError: \'после окончания демо доступ закрывается\' not found in \'import { DemoEntry } from "./DemoEntry"; import { PersonalDemoEntry } from "./PersonalDemoEntry"; export function DemoLanding() { return ( <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 text-neutral-900"> <header className="space-y-3"> <h1 className="text-2xl font-semibold">Демо-режим платформы</h1> <p> Выберите доступ через организатора или самостоятельный личный вход. В обоих случаях данные и вычисления ограничены условиями выбранного режима. </p> </header> <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"> <section aria-labelledby="campaign-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="campaign-demo-title" className="text-xl font-semibold"> Мульти-доступ через кампанию организатора </h2> <p>Для участников мероприятия или программы организатора. Введите выданные логин, пароль кампании и код участника, если он требуется.</p> <ul className="list-disc space-y-2 pl-5"> <li>Каждому участнику выдаётся отдельное временное пространство; исследования других участников недоступны.</li> <li>Время, вычислительный бюджет, число исследований, размер загрузки и срок хранения задаёт организатор.</li> <li>Продолжение на том же устройстве сохраняет прежний срок и расход. Постоянная история не включена.</li> <li>После окончания демо доступ закрывается; результаты удаляются по сроку хранения кампании.</li> </ul> <DemoEntry campaignOnly /> </section> <section aria-labelledby="personal-demo-title" className="min-w-0 space-y-4 rounded-xl border border-neutral-200 bg-white p-5"> <h2 id="personal-demo-title" className="text-xl font-semibold"> Самостоятельный MONO-доступ </h2> <PersonalDemoEntry /> </section> </div> </div> ); } \'\n')]
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.153s
+
+FAILED (failures=3)
+    FAILED STEP (exit 1): /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_kabinet_demo_cert.py -v
+--- kabinet-demo-cert: FAIL (0.3 c)
+
+=== ГЕЙТ warmup (warmup.yml contracts) — F-CERT-H1 storage-warmup contracts (registry/fail-closed/lifespan ordering)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_warmup*.py -v
+test_10_all_postgres_layers_have_ensure_schema (test_warmup_fcert_h1.EnsureSchemaContract.test_10_all_postgres_layers_have_ensure_schema) ... ok
+test_11_ensure_schema_second_call_skips_ddl (test_warmup_fcert_h1.EnsureSchemaContract.test_11_ensure_schema_second_call_skips_ddl)
+Эталонная семантика сессии: double-checked флаг -- повторный ... ok
+test_12_ensure_schema_failure_is_not_cached (test_warmup_fcert_h1.EnsureSchemaContract.test_12_ensure_schema_failure_is_not_cached)
+Отказ миграции НЕ кэшируется (паритет сессии): следующий ... ok
+test_14_peek_before_run_is_none (test_warmup_fcert_h1.HealthPeekContract.test_14_peek_before_run_is_none) ... ok
+test_15_health_payload_has_no_secrets (test_warmup_fcert_h1.HealthPeekContract.test_15_health_payload_has_no_secrets) ... Storage warmup: layer audit failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: telemetry layer failed (некритично): dsn <redacted-url> unreachable
+Storage warmup: layer session failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer runs failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer artifacts failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer snapshots failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer documents failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer lifecycle failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer support_grants failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer admin_logs failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer monitoring failed (fail-closed): dsn <redacted-url> unreachable
+Storage warmup: layer org_profiles failed (fail-closed): dsn <redacted-url> unreachable
+ok
+test_13_lifespan_warms_before_telemetry_and_workers (test_warmup_fcert_h1.LifespanOrderingContract.test_13_lifespan_warms_before_telemetry_and_workers) ... DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+ok
+test_01_entrypoints_exist (test_warmup_fcert_h1.WarmupModuleContract.test_01_entrypoints_exist) ... ok
+test_02_registry_is_complete (test_warmup_fcert_h1.WarmupModuleContract.test_02_registry_is_complete) ... ok
+test_03_advisory_mode_is_honest_noop (test_warmup_fcert_h1.WarmupModuleContract.test_03_advisory_mode_is_honest_noop)
+advisory/auto: ленивый контракт dev/тестов -- фабрики не ... INFO:uvicorn.error:Storage warmup: skipped (mode=advisory, advisory-lazy)
+ok
+test_04_memory_env_without_dsn_is_noop (test_warmup_fcert_h1.WarmupModuleContract.test_04_memory_env_without_dsn_is_noop)
+Без DATABASE_URL (чистый dev) прогрев -- no-op без исключений. ... INFO:uvicorn.error:Storage warmup: skipped (mode=advisory, advisory-lazy)
+ok
+test_05_required_primes_all_layers (test_warmup_fcert_h1.WarmupRequiredModeContract.test_05_required_primes_all_layers)
+Каждый слой реестра получает ensure_schema; статус -- primed. ... INFO:uvicorn.error:Storage warmup: primed (mode=required)
+ok
+test_06_memory_backend_layer_is_honest_skip (test_warmup_fcert_h1.WarmupRequiredModeContract.test_06_memory_backend_layer_is_honest_skip)
+Слой с backend без ensure_schema (Memory/Redis) -- честный ... INFO:uvicorn.error:Storage warmup: primed (mode=required)
+ok
+test_07_critical_layer_failure_fails_closed (test_warmup_fcert_h1.WarmupRequiredModeContract.test_07_critical_layer_failure_fails_closed)
+Отказ обязательного слоя в required -> RuntimeError (доктрина ... ERROR:uvicorn.error:Storage warmup: layer audit failed (fail-closed): 'audit'
+ok
+test_08_telemetry_failure_is_swallowed_ac11 (test_warmup_fcert_h1.WarmupRequiredModeContract.test_08_telemetry_failure_is_swallowed_ac11)
+Контракт AC11: телеметрия никогда не роняет старт; отказ ... WARNING:uvicorn.error:Storage warmup: telemetry layer failed (некритично): 'telemetry'
+INFO:uvicorn.error:Storage warmup: degraded (mode=required)
+ok
+test_09_idempotent_rerun_is_primed (test_warmup_fcert_h1.WarmupRequiredModeContract.test_09_idempotent_rerun_is_primed)
+Повторный прогрев (рестарт lifespan/тест) -- идемпотентен: ... INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 4.450s
+
+OK
+--- warmup: PASS (5.4 c)
+
+=== ГЕЙТ authcert (authcert.yml contracts) — AUTH-CERT browser-layer/static oracles (no DSN)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/authcert/verify_browser.py
+test_ac22_first_party_cookies_and_no_token_storage (test_authcert_browser.CertBrowserTests.test_ac22_first_party_cookies_and_no_token_storage) ... ok
+test_ac22_no_credentials_in_urls (test_authcert_browser.CertBrowserTests.test_ac22_no_credentials_in_urls) ... ok
+test_ac29_both_shells_expose_entry_surfaces (test_authcert_browser.CertBrowserTests.test_ac29_both_shells_expose_entry_surfaces) ... ok
+test_ac29_no_false_login_on_unavailable_authority (test_authcert_browser.CertBrowserTests.test_ac29_no_false_login_on_unavailable_authority) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+OK
+--- authcert: PASS (0.1 c)
+
+=== ГЕЙТ auth25 (auth25.yml contracts) — AUTH-25 reconciliation/restore/launch contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth25*.py -v
+test_blocking_codes_are_classified (test_auth25_reconciliation.FindingContracts.test_blocking_codes_are_classified) ... ok
+test_detail_is_bounded_json (test_auth25_reconciliation.FindingContracts.test_detail_is_bounded_json) ... ok
+test_finding_shape_is_stable (test_auth25_reconciliation.FindingContracts.test_finding_shape_is_stable) ... ok
+test_info_codes_are_classified (test_auth25_reconciliation.FindingContracts.test_info_codes_are_classified) ... ok
+test_subject_required (test_auth25_reconciliation.FindingContracts.test_subject_required) ... ok
+test_unknown_code_rejected (test_auth25_reconciliation.FindingContracts.test_unknown_code_rejected) ... ok
+test_all_ok (test_auth25_reconciliation.LaunchVerdict.test_all_ok) ... ok
+test_blocked_check_blocks_verdict (test_auth25_reconciliation.LaunchVerdict.test_blocked_check_blocks_verdict) ... ok
+test_check_status_vocabulary (test_auth25_reconciliation.LaunchVerdict.test_check_status_vocabulary) ... ok
+test_empty_catalog_blocks_without_explicit_allow (test_auth25_reconciliation.LaunchVerdict.test_empty_catalog_blocks_without_explicit_allow) ... ok
+test_empty_catalog_warns_with_explicit_allow (test_auth25_reconciliation.LaunchVerdict.test_empty_catalog_warns_with_explicit_allow) ... ok
+test_lock_reason_prefix_carries_task_marker (test_auth25_reconciliation.LaunchVerdict.test_lock_reason_prefix_carries_task_marker) ... ok
+test_unknown_check_name_rejected (test_auth25_reconciliation.LaunchVerdict.test_unknown_check_name_rejected) ... ok
+test_warn_alone_keeps_ok (test_auth25_reconciliation.LaunchVerdict.test_warn_alone_keeps_ok) ... ok
+test_any_other_value_is_blocked (test_auth25_reconciliation.ProviderMode.test_any_other_value_is_blocked) ... ok
+test_missing_env_is_not_configured_and_ok (test_auth25_reconciliation.ProviderMode.test_missing_env_is_not_configured_and_ok) ... ok
+test_sandbox_is_the_only_ok_explicit_mode (test_auth25_reconciliation.ProviderMode.test_sandbox_is_the_only_ok_explicit_mode) ... ok
+test_bounds_accept_0_and_90 (test_auth25_reconciliation.RefundWindow.test_bounds_accept_0_and_90) ... ok
+test_default_when_absent (test_auth25_reconciliation.RefundWindow.test_default_when_absent) ... ok
+test_invalid_values_rejected (test_auth25_reconciliation.RefundWindow.test_invalid_values_rejected) ... ok
+test_matches_refunds_window_days_semantics (test_auth25_reconciliation.RefundWindow.test_matches_refunds_window_days_semantics) ... ok
+test_max_findings_constant (test_auth25_reconciliation.ReportBounding.test_max_findings_constant) ... ok
+test_dispute_regression_suggests_dispute_path (test_auth25_reconciliation.RestoreSuggestions.test_dispute_regression_suggests_dispute_path) ... ok
+test_order_regression_suggests_topup_commands (test_auth25_reconciliation.RestoreSuggestions.test_order_regression_suggests_topup_commands) ... ok
+test_refund_regression_suggests_refund_reconcile (test_auth25_reconciliation.RestoreSuggestions.test_refund_regression_suggests_refund_reconcile) ... ok
+test_unknown_kind_gives_no_suggestions (test_auth25_reconciliation.RestoreSuggestions.test_unknown_kind_gives_no_suggestions) ... ok
+test_entries_bounded (test_auth25_reconciliation.WatermarkDocument.test_entries_bounded) ... ok
+test_entry_kind_and_fields_validated (test_auth25_reconciliation.WatermarkDocument.test_entry_kind_and_fields_validated) ... ok
+test_envelope_shape_rejected (test_auth25_reconciliation.WatermarkDocument.test_envelope_shape_rejected) ... ok
+test_ids_must_be_strings (test_auth25_reconciliation.WatermarkDocument.test_ids_must_be_strings) ... ok
+test_valid_document_passes (test_auth25_reconciliation.WatermarkDocument.test_valid_document_passes) ... ok
+test_wrong_format_rejected (test_auth25_reconciliation.WatermarkDocument.test_wrong_format_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 0.132s
+
+OK
+--- auth25: PASS (0.9 c)
+
+=== ГЕЙТ auth24 (auth24.yml contracts) — AUTH-24 wallet READ/lifecycle contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth24*.py -v
+test_lot_projection_has_no_secret_columns (test_auth24_wallet_views.LedgerViewTests.test_lot_projection_has_no_secret_columns) ... ok
+test_owner_ledger_carries_money_and_safe_projections (test_auth24_wallet_views.LedgerViewTests.test_owner_ledger_carries_money_and_safe_projections) ... ok
+test_posting_projection_is_integral_deltas_only (test_auth24_wallet_views.LedgerViewTests.test_posting_projection_is_integral_deltas_only) ... ok
+test_demo_and_internal_accounts_cannot_purchase (test_auth24_wallet_views.LifecycleFlagTests.test_demo_and_internal_accounts_cannot_purchase) ... ok
+test_expired_subscription_preserves_balance_and_reports_reason (test_auth24_wallet_views.LifecycleFlagTests.test_expired_subscription_preserves_balance_and_reports_reason) ... ok
+test_locked_wallet_blocks_spend_with_reason (test_auth24_wallet_views.LifecycleFlagTests.test_locked_wallet_blocks_spend_with_reason) ... ok
+test_member_cannot_purchase_even_on_paid_multi (test_auth24_wallet_views.LifecycleFlagTests.test_member_cannot_purchase_even_on_paid_multi) ... ok
+test_mono_owner_reads_wallet_but_cannot_purchase (test_auth24_wallet_views.LifecycleFlagTests.test_mono_owner_reads_wallet_but_cannot_purchase) ... ok
+test_member_and_owner_agree_on_usage_totals (test_auth24_wallet_views.MemberPrivacyTests.test_member_and_owner_agree_on_usage_totals) ... ok
+test_member_projection_is_usage_only (test_auth24_wallet_views.MemberPrivacyTests.test_member_projection_is_usage_only) ... ok
+test_owner_projection_has_breakdown_and_flags (test_auth24_wallet_views.MemberPrivacyTests.test_owner_projection_has_breakdown_and_flags) ... ok
+test_owner_sees_refund_pending_in_projection (test_auth24_wallet_views.MemberPrivacyTests.test_owner_sees_refund_pending_in_projection) ... ok
+test_member_message_leads_to_owner (test_auth24_wallet_views.WalletSurfaceTests.test_member_message_leads_to_owner) ... ok
+test_router_registers_two_read_routes (test_auth24_wallet_views.WalletSurfaceTests.test_router_registers_two_read_routes) ... ok
+test_safe_codes_are_member_safe_and_translated (test_auth24_wallet_views.WalletSurfaceTests.test_safe_codes_are_member_safe_and_translated) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.299s
+
+OK
+--- auth24: PASS (1.0 c)
+
+=== ГЕЙТ auth23 (auth23.yml contracts) — AUTH-23 refund/dispute contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth23*.py -v
+test_confirmed_refund_matches_full_amount (test_auth23_refunds.ProviderRefundTests.test_confirmed_refund_matches_full_amount) ... ok
+test_pending_refund_keeps_hold (test_auth23_refunds.ProviderRefundTests.test_pending_refund_keeps_hold) ... ok
+test_refund_id_shape_required (test_auth23_refunds.ProviderRefundTests.test_refund_id_shape_required) ... ok
+test_spoofed_payment_or_amount_rejected (test_auth23_refunds.ProviderRefundTests.test_spoofed_payment_or_amount_rejected) ... ok
+test_unknown_status_rejected (test_auth23_refunds.ProviderRefundTests.test_unknown_status_rejected) ... ok
+test_request_forbids_extra_and_client_amounts (test_auth23_refunds.RefundDtoTests.test_request_forbids_extra_and_client_amounts) ... ok
+test_dispute_resolution_is_single_and_terminal (test_auth23_refunds.RefundStateMachineTests.test_dispute_resolution_is_single_and_terminal) ... ok
+test_pending_admits_any_non_terminal_transition (test_auth23_refunds.RefundStateMachineTests.test_pending_admits_any_non_terminal_transition) ... ok
+test_review_required_returns_to_pending_only (test_auth23_refunds.RefundStateMachineTests.test_review_required_returns_to_pending_only) ... ok
+test_terminal_states_never_change (test_auth23_refunds.RefundStateMachineTests.test_terminal_states_never_change) ... ok
+test_unknown_or_equal_states_rejected (test_auth23_refunds.RefundStateMachineTests.test_unknown_or_equal_states_rejected) ... ok
+test_backoff_is_bounded_and_exponential (test_auth23_refunds.RefundSurfaceTests.test_backoff_is_bounded_and_exponential) ... ok
+test_safe_codes_are_translated (test_auth23_refunds.RefundSurfaceTests.test_safe_codes_are_translated) ... ok
+test_view_never_leaks_provider_secrets (test_auth23_refunds.RefundSurfaceTests.test_view_never_leaks_provider_secrets) ... ok
+test_default_window_is_14_days (test_auth23_refunds.RefundWindowTests.test_default_window_is_14_days) ... ok
+test_expired_window_rejects_request (test_auth23_refunds.RefundWindowTests.test_expired_window_rejects_request) ... ok
+test_window_from_env_is_bounded (test_auth23_refunds.RefundWindowTests.test_window_from_env_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.033s
+
+OK
+--- auth23: PASS (0.7 c)
+
+=== ГЕЙТ auth22 (auth22.yml contracts) — AUTH-22 top-up quote/checkout/credit contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth22*.py -v
+test_order_command_digest_pattern (test_auth22_topups.ContractDTO.test_order_command_digest_pattern) ... ok
+test_quote_command_fields_and_forbid (test_auth22_topups.ContractDTO.test_quote_command_fields_and_forbid) ... ok
+test_currency_rub_only_v1_and_text_bounds (test_auth22_topups.PackageValidation.test_currency_rub_only_v1_and_text_bounds) ... ok
+test_integer_units_and_price_bounds (test_auth22_topups.PackageValidation.test_integer_units_and_price_bounds) ... ok
+test_valid_package_passes (test_auth22_topups.PackageValidation.test_valid_package_passes) ... ok
+test_no_secrets_in_messages (test_auth22_topups.SafeCodes.test_no_secrets_in_messages) ... ok
+test_topup_codes_registered (test_auth22_topups.SafeCodes.test_topup_codes_registered) ... ok
+test_digest_is_canonical_sha256_hex (test_auth22_topups.Snapshot.test_digest_is_canonical_sha256_hex) ... ok
+test_snapshot_pins_package_fields_only (test_auth22_topups.Snapshot.test_snapshot_pins_package_fields_only) ... ok
+test_state_vocabulary_and_terminals (test_auth22_topups.TopupState.test_state_vocabulary_and_terminals) ... ok
+test_transitions (test_auth22_topups.TopupState.test_transitions) ... ok
+test_event_allowlist_matches_auth18 (test_auth22_topups.WebhookParity.test_event_allowlist_matches_auth18) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.070s
+
+OK
+--- auth22: PASS (0.8 c)
+
+=== ГЕЙТ auth21 (auth21.yml contracts) — AUTH-21 wallet/credit-lot contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth21*.py -v
+test_exact_sum_without_loss (test_auth21_wallet.AllocateSplit.test_exact_sum_without_loss) ... ok
+test_insufficient_raises_domain_error (test_auth21_wallet.AllocateSplit.test_insufficient_raises_domain_error) ... ok
+test_last_lot_carries_full_remainder (test_auth21_wallet.AllocateSplit.test_last_lot_carries_full_remainder) ... ok
+test_zero_units_is_rejected (test_auth21_wallet.AllocateSplit.test_zero_units_is_rejected) ... ok
+test_equal_expiry_source_rank_then_lot_id (test_auth21_wallet.FefoOrdering.test_equal_expiry_source_rank_then_lot_id) ... ok
+test_expired_lot_is_not_spendable (test_auth21_wallet.FefoOrdering.test_expired_lot_is_not_spendable) ... ok
+test_nearest_expiry_first (test_auth21_wallet.FefoOrdering.test_nearest_expiry_first) ... ok
+test_no_expiry_is_last (test_auth21_wallet.FefoOrdering.test_no_expiry_is_last) ... ok
+test_included_requires_future_expiry_and_ref (test_auth21_wallet.IssueValidation.test_included_requires_future_expiry_and_ref) ... ok
+test_promotional_requires_origin_ref (test_auth21_wallet.IssueValidation.test_promotional_requires_origin_ref) ... ok
+test_purchased_has_no_expiry_in_v1 (test_auth21_wallet.IssueValidation.test_purchased_has_no_expiry_in_v1) ... ok
+test_purchased_requires_origin_order (test_auth21_wallet.IssueValidation.test_purchased_requires_origin_order) ... ok
+test_units_must_be_finite_positive_integers (test_auth21_wallet.IssueValidation.test_units_must_be_finite_positive_integers) ... ok
+test_actual_never_exceeds_pinned (test_auth21_wallet.SettleDistribution.test_actual_never_exceeds_pinned) ... ok
+test_fefo_consumption_and_tail (test_auth21_wallet.SettleDistribution.test_fefo_consumption_and_tail) ... ok
+test_tail_after_expiry_classified_expired (test_auth21_wallet.SettleDistribution.test_tail_after_expiry_classified_expired) ... ok
+test_tail_before_expiry_stays_available (test_auth21_wallet.SettleDistribution.test_tail_before_expiry_stays_available) ... ok
+test_sources_and_rank_match_spec_13_2 (test_auth21_wallet.SourceTaxonomy.test_sources_and_rank_match_spec_13_2) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.003s
+
+OK
+--- auth21: PASS (0.6 c)
+
+=== ГЕЙТ auth20 (auth20.yml contracts) — AUTH-20 audit/ops: lockdown, marks, catalog contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth20*.py -v
+test_auth_ops_changed_is_mandatory (test_auth20_ops.AuditCatalogTests.test_auth_ops_changed_is_mandatory) ... ok
+test_catalog_size_43 (test_auth20_ops.AuditCatalogTests.test_catalog_size_43) ... ok
+test_assert_open_passes_when_off (test_auth20_ops.LockdownSwitchTests.test_assert_open_passes_when_off) ... ok
+test_assert_open_raises_safe_code (test_auth20_ops.LockdownSwitchTests.test_assert_open_raises_safe_code) ... ok
+test_env_reading (test_auth20_ops.LockdownSwitchTests.test_env_reading) ... ok
+test_off_values (test_auth20_ops.LockdownSwitchTests.test_off_values) ... ok
+test_unknown_value_fails_closed (test_auth20_ops.LockdownSwitchTests.test_unknown_value_fails_closed) ... ok
+test_bad_timestamp_rejected (test_auth20_ops.MarksValidationTests.test_bad_timestamp_rejected) ... ok
+test_bad_uuid_rejected (test_auth20_ops.MarksValidationTests.test_bad_uuid_rejected) ... ok
+test_missing_row_image_rejected (test_auth20_ops.MarksValidationTests.test_missing_row_image_rejected) ... ok
+test_non_terminal_event_rejected (test_auth20_ops.MarksValidationTests.test_non_terminal_event_rejected) ... ok
+test_oversize_rejected (test_auth20_ops.MarksValidationTests.test_oversize_rejected) ... ok
+test_unknown_format_rejected (test_auth20_ops.MarksValidationTests.test_unknown_format_rejected) ... ok
+test_unreconcilable_pair_rejected (test_auth20_ops.MarksValidationTests.test_unreconcilable_pair_rejected) ... ok
+test_valid_document_passes (test_auth20_ops.MarksValidationTests.test_valid_document_passes) ... ok
+test_retention_defaults_and_minimum (test_auth20_ops.RetentionAndSweeperBoundsTests.test_retention_defaults_and_minimum) ... ok
+test_sweeper_interval_bounds (test_auth20_ops.RetentionAndSweeperBoundsTests.test_sweeper_interval_bounds) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.008s
+
+OK
+--- auth20: PASS (0.6 c)
+
+=== ГЕЙТ auth19 (auth19.yml contracts) — AUTH-19 OIDC / personal email entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth19*.py -v
+test_disabled_without_env (test_auth19_challenges.ConfigTests.test_disabled_without_env) ... ok
+test_enabled_and_https_only (test_auth19_challenges.ConfigTests.test_enabled_and_https_only) ... ok
+test_disabled_without_host (test_auth19_challenges.DeliveryConfigTests.test_disabled_without_host) ... ok
+test_env_config (test_auth19_challenges.DeliveryConfigTests.test_env_config) ... ok
+test_send_failure_is_safe (test_auth19_challenges.DeliveryConfigTests.test_send_failure_is_safe) ... ok
+test_email_issuer_is_not_an_idp (test_auth19_challenges.EmailSecretTests.test_email_issuer_is_not_an_idp) ... ok
+test_keyed_digests_domain_separated (test_auth19_challenges.EmailSecretTests.test_keyed_digests_domain_separated) ... ok
+test_normalize_email (test_auth19_challenges.EmailSecretTests.test_normalize_email) ... ok
+test_otp_code_shape (test_auth19_challenges.EmailSecretTests.test_otp_code_shape) ... ok
+test_token_format_gate (test_auth19_challenges.EmailSecretTests.test_token_format_gate) ... ok
+test_pair_shape_and_s256_challenge (test_auth19_challenges.PkceTests.test_pair_shape_and_s256_challenge) ... ok
+test_authorization_url_exact_params (test_auth19_challenges.ProviderTests.test_authorization_url_exact_params) ... ok
+test_discovery_issuer_mismatch_and_https (test_auth19_challenges.ProviderTests.test_discovery_issuer_mismatch_and_https) ... ok
+test_exchange_bounded_and_basic_auth (test_auth19_challenges.ProviderTests.test_exchange_bounded_and_basic_auth) ... ok
+test_id_token_happy_path_and_nonce (test_auth19_challenges.ProviderTests.test_id_token_happy_path_and_nonce) ... ok
+test_id_token_rejects_forgery_and_contract_drift (test_auth19_challenges.ProviderTests.test_id_token_rejects_forgery_and_contract_drift) ... ok
+test_no_secret_in_repr (test_auth19_challenges.ProviderTests.test_no_secret_in_repr) ... ok
+test_csrf_flags_declared (test_auth19_routes.RouteTests.test_csrf_flags_declared) ... ok
+test_new_routes_present_and_post_only (test_auth19_routes.RouteTests.test_new_routes_present_and_post_only) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.255s
+
+OK
+--- auth19: PASS (1.2 c)
+
+=== ГЕЙТ auth18 (auth18.yml contracts) — AUTH-18 provider / quote / proration contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth18*.py -v
+test_cumulative_rounding_preserves_signed_debt (test_auth18_provider.MalformedProviderTests.test_cumulative_rounding_preserves_signed_debt) ... ok
+test_oversized_and_unavailable_responses (test_auth18_provider.MalformedProviderTests.test_oversized_and_unavailable_responses) ... ok
+test_outage_and_no_live (test_auth18_provider.ProviderTests.test_outage_and_no_live) ... ok
+test_proration_integer_and_churn (test_auth18_provider.ProviderTests.test_proration_integer_and_churn) ... ok
+test_yookassa_fixed_origin_and_proof (test_auth18_provider.ProviderTests.test_yookassa_fixed_origin_and_proof) ... ok
+test_live_shop_never_receives_create_payment (test_auth18_provider.ShopPreflightTests.test_live_shop_never_receives_create_payment) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.003s
+
+OK
+--- auth18: PASS (0.6 c)
+
+=== ГЕЙТ auth17 (auth17.yml contracts) — AUTH-17 invitations / seats / OWNER transfer contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth17*.py -v
+test_finite_versions_seats_and_nonempty_reason (test_auth17_team.TeamContracts.test_finite_versions_seats_and_nonempty_reason) ... ok
+test_invitation_domain_hash_and_no_secret_repr (test_auth17_team.TeamContracts.test_invitation_domain_hash_and_no_secret_repr) ... ok
+test_invitation_is_redacted_and_secret_body_repr_is_safe (test_auth17_team.TeamContracts.test_invitation_is_redacted_and_secret_body_repr_is_safe) ... ok
+test_invite_requires_exactly_one_target_and_bounded_expiry (test_auth17_team.TeamContracts.test_invite_requires_exactly_one_target_and_bounded_expiry) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.006s
+
+OK
+--- auth17: PASS (0.5 c)
+
+=== ГЕЙТ auth16 (auth16.yml contracts) — AUTH-16 admission / expiry / quotas / cleanup contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth16*.py -v
+test_code_format_and_domain_hash (test_auth16_lifecycle.LifecycleContracts.test_code_format_and_domain_hash) ... ok
+test_finite_limits (test_auth16_lifecycle.LifecycleContracts.test_finite_limits) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+--- auth16: PASS (0.8 c)
+
+=== ГЕЙТ auth15 (auth15.yml contracts) — AUTH-15 finite campaigns / isolated entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth15*.py -v
+test_half_open_and_pause (test_auth15_demo.DemoContracts.test_half_open_and_pause) ... ok
+test_no_infinite_or_inverted_time (test_auth15_demo.DemoContracts.test_no_infinite_or_inverted_time) ... ok
+test_own_upload_default_off (test_auth15_demo.DemoContracts.test_own_upload_default_off) ... ok
+test_required_finite_policy (test_auth15_demo.DemoContracts.test_required_finite_policy) ... ok
+test_resume_secret_redacted (test_auth15_demo.DemoContracts.test_resume_secret_redacted) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
+--- auth15: PASS (0.5 c)
+
+=== ГЕЙТ auth14 (auth14.yml contracts) — AUTH-14 fixed-point CU / benchmark / process bounds
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth14*.py -v
+test_leaked_seed_and_missing_measurement_reject_profile (test_auth14_compute.CalibrationTests.test_leaked_seed_and_missing_measurement_reject_profile) ... ok
+test_training_envelope_covers_independent_holdout (test_auth14_compute.CalibrationTests.test_training_envelope_covers_independent_holdout) ... ok
+test_underestimated_holdout_is_rejected_without_refitting (test_auth14_compute.CalibrationTests.test_underestimated_holdout_is_rejected_without_refitting) ... ok
+test_authority_io_cannot_extend_physical_runtime (test_auth14_compute.DeadlineTests.test_authority_io_cannot_extend_physical_runtime) ... ok
+test_coefficient_rejects_nonfinite_and_overflow (test_auth14_compute.PricingTests.test_coefficient_rejects_nonfinite_and_overflow) ... ok
+test_dimensions_cannot_extrapolate (test_auth14_compute.PricingTests.test_dimensions_cannot_extrapolate) ... ok
+test_extra_work_cannot_exceed_quote (test_auth14_compute.PricingTests.test_extra_work_cannot_exceed_quote) ... ok
+test_foreign_kernel_cannot_consume_a_different_quote (test_auth14_compute.PricingTests.test_foreign_kernel_cannot_consume_a_different_quote) ... ok
+test_integer_dimensions_reject_bool_float_negative (test_auth14_compute.PricingTests.test_integer_dimensions_reject_bool_float_negative) ... ok
+test_meter_denies_before_extra_work (test_auth14_compute.PricingTests.test_meter_denies_before_extra_work) ... ok
+test_rounding_once_per_billable_unit_is_integer (test_auth14_compute.PricingTests.test_rounding_once_per_billable_unit_is_integer) ... ok
+test_actual_killed_work_retains_attempt_count (test_auth14_compute.ProcessMeterTests.test_actual_killed_work_retains_attempt_count) ... ok
+test_missing_profile_is_distinct_from_bad_configured_profile (test_auth14_compute.ProcessMeterTests.test_missing_profile_is_distinct_from_bad_configured_profile) ... ok
+test_joined_parent_does_not_leave_native_descendant_running (test_auth14_compute.ProcessTreeTests.test_joined_parent_does_not_leave_native_descendant_running) ... ok
+test_generated_features_are_part_of_actual_work_volume (test_auth14_compute.WorkloadBoundaryTests.test_generated_features_are_part_of_actual_work_volume) ... ok
+test_inline_reserves_all_trials_while_async_phase_meters_one (test_auth14_compute.WorkloadBoundaryTests.test_inline_reserves_all_trials_while_async_phase_meters_one) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 5.283s
+
+OK
+--- auth14: PASS (5.9 c)
+
+=== ГЕЙТ auth13 (auth13.yml contracts) — AUTH-13 bounded process / stop proof / worker contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth13*.py -v
+test_disabled_when_auth13_context_off_and_store_not_given (test_auth13_worker_bootstrap.EnsureShortCircuitTests.test_disabled_when_auth13_context_off_and_store_not_given) ... ok
+test_invalid_when_key_format_wrong (test_auth13_worker_bootstrap.EnsureShortCircuitTests.test_invalid_when_key_format_wrong) ... ok
+test_missing_when_env_key_empty (test_auth13_worker_bootstrap.EnsureShortCircuitTests.test_missing_when_env_key_empty) ... ok
+test_absent_row (test_auth13_worker_bootstrap.EvaluateTests.test_absent_row) ... ok
+test_expired_including_boundary (test_auth13_worker_bootstrap.EvaluateTests.test_expired_including_boundary) ... ok
+test_present (test_auth13_worker_bootstrap.EvaluateTests.test_present) ... ok
+test_revoked_wins_over_expiry (test_auth13_worker_bootstrap.EvaluateTests.test_revoked_wins_over_expiry) ... ok
+test_generated_key_matches_services_format (test_auth13_worker_bootstrap.GenerateKeyTests.test_generated_key_matches_services_format) ... ok
+test_generated_keys_are_unique (test_auth13_worker_bootstrap.GenerateKeyTests.test_generated_keys_are_unique) ... ok
+test_outcome_never_contains_secret_or_digest (test_auth13_worker_bootstrap.OutcomeLeakTests.test_outcome_never_contains_secret_or_digest) ... ok
+test_empty_env_resolves_to_empty (test_auth13_worker_bootstrap.ResolveKeyTests.test_empty_env_resolves_to_empty) ... ok
+test_env_value_is_stripped (test_auth13_worker_bootstrap.ResolveKeyTests.test_env_value_is_stripped) ... ok
+test_explicit_key_wins_over_env (test_auth13_worker_bootstrap.ResolveKeyTests.test_explicit_key_wins_over_env) ... ok
+test_never_raises_and_records_safe_error (test_auth13_worker_bootstrap.StartupCheckTests.test_never_raises_and_records_safe_error) ... Worker credential bootstrap: error -- рендер документов/AUTH-13 workers будут отвечать 503 worker_service_unavailable; ремедиация: проверить доступность БД и применённость миграции 0026_auth13_workers
+ok
+test_peek_before_lifespan_is_not_checked (test_auth13_worker_bootstrap.StartupCheckTests.test_peek_before_lifespan_is_not_checked) ... ok
+test_records_outcome_for_health_ops (test_auth13_worker_bootstrap.StartupCheckTests.test_records_outcome_for_health_ops) ... ok
+test_reset_for_testing_clears_cache (test_auth13_worker_bootstrap.StartupCheckTests.test_reset_for_testing_clears_cache) ... ok
+test_error_code_extracted_and_log_deduplicated (test_auth13_worker_bootstrap.WorkerErrorLegibilityTests.test_error_code_extracted_and_log_deduplicated) ... ok
+test_new_reason_logs_immediately_and_updates_code (test_auth13_worker_bootstrap.WorkerErrorLegibilityTests.test_new_reason_logs_immediately_and_updates_code) ... ok
+test_non_http_exception_has_no_code (test_auth13_worker_bootstrap.WorkerErrorLegibilityTests.test_non_http_exception_has_no_code) ... ok
+test_singleton_off_status_includes_last_error_code (test_auth13_worker_bootstrap.WorkerErrorLegibilityTests.test_singleton_off_status_includes_last_error_code) ... ok
+test_success_resets_counters_and_dedup (test_auth13_worker_bootstrap.WorkerErrorLegibilityTests.test_success_resets_counters_and_dedup) ... ok
+test_authority_revoke_stops_work_within_bound (test_auth13_workers.WorkerUnitTests.test_authority_revoke_stops_work_within_bound) ... ok
+test_child_never_inherits_authority_secrets (test_auth13_workers.WorkerUnitTests.test_child_never_inherits_authority_secrets) ... ok
+test_crash_has_positive_exit_evidence (test_auth13_workers.WorkerUnitTests.test_crash_has_positive_exit_evidence) ... ok
+test_joined_domain_failure_is_not_unknown_execution (test_auth13_workers.WorkerUnitTests.test_joined_domain_failure_is_not_unknown_execution) ... ok
+test_pure_result_is_returned_only_after_join (test_auth13_workers.WorkerUnitTests.test_pure_result_is_returned_only_after_join) ... ok
+test_timeout_stops_process_before_return (test_auth13_workers.WorkerUnitTests.test_timeout_stops_process_before_return) ... ok
+test_unknown_stop_does_not_reuse_not_started_proof (test_auth13_workers.WorkerUnitTests.test_unknown_stop_does_not_reuse_not_started_proof) ... Worker execution stopped: worker_stop_unknown
+ok
+test_worker_service_key_is_redacted_in_operational_errors (test_auth13_workers.WorkerUnitTests.test_worker_service_key_is_redacted_in_operational_errors) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 1.981s
+
+OK
+--- auth13: PASS (2.6 c)
+
+=== ГЕЙТ auth12 (auth12.yml contracts) — AUTH-12 atomic ledger/reservation contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth12*.py -v
+test_admission_cannot_supply_budget_chain_or_price_float (test_auth12_ledger.LedgerContracts.test_admission_cannot_supply_budget_chain_or_price_float) ... ok
+test_cu_cannot_skip_concurrency (test_auth12_ledger.LedgerContracts.test_cu_cannot_skip_concurrency) ... ok
+test_digest_is_canonical_and_finite (test_auth12_ledger.LedgerContracts.test_digest_is_canonical_and_finite) ... ok
+test_money_is_bounded_integer_never_float_or_bool (test_auth12_ledger.LedgerContracts.test_money_is_bounded_integer_never_float_or_bool) ... ok
+test_month_is_explicit_utc_not_browser_clock (test_auth12_ledger.LedgerContracts.test_month_is_explicit_utc_not_browser_clock) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+--- auth12: PASS (0.3 c)
+
+=== ГЕЙТ auth11 (auth11.yml contracts) — AUTH-11 scientific admission / workload / execution fence
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth11*.py -v
+test_actual_engine_values_override_ingress_claims (test_auth11_scientific.ScientificUnitTests.test_actual_engine_values_override_ingress_claims) ... ok
+test_actual_period_inside_parameters_cannot_hide_behind_scalar (test_auth11_scientific.ScientificUnitTests.test_actual_period_inside_parameters_cannot_hide_behind_scalar) ... ok
+test_all_declared_scientific_routes_have_common_dependency (test_auth11_scientific.ScientificUnitTests.test_all_declared_scientific_routes_have_common_dependency) ... ok
+test_backtest_uses_saved_validation_and_actual_rows (test_auth11_scientific.ScientificUnitTests.test_backtest_uses_saved_validation_and_actual_rows) ... ok
+test_defaults_bounded_but_explicit_saved_validation_preserved (test_auth11_scientific.ScientificUnitTests.test_defaults_bounded_but_explicit_saved_validation_preserved) ... ok
+test_local_staging_hint_selects_current_auth_manifest (test_auth11_scientific.ScientificUnitTests.test_local_staging_hint_selects_current_auth_manifest) ... ok
+test_production_cannot_disable_guard (test_auth11_scientific.ScientificUnitTests.test_production_cannot_disable_guard) ... ok
+test_saved_forecast_does_not_trust_browser_model_id (test_auth11_scientific.ScientificUnitTests.test_saved_forecast_does_not_trust_browser_model_id) ... ok
+test_unknown_route_denied_before_invalid_json (test_auth11_scientific.ScientificUnitTests.test_unknown_route_denied_before_invalid_json) ... /workspace/scratch/e28f7bf5e3d0/venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+  _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 4.346s
+
+OK
+--- auth11: PASS (5.1 c)
+
+=== ГЕЙТ auth10 (auth10.yml contracts) — AUTH-10 durable API keys / scope / operator contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth10*.py -v
+test_cli_and_native_runner_require_authority (test_auth10_api_keys.APIKeyUnitTests.test_cli_and_native_runner_require_authority) ... ok
+test_malformed_token_denied (test_auth10_api_keys.APIKeyUnitTests.test_malformed_token_denied) ... ok
+test_no_admin_internal_or_global_rules_delegation (test_auth10_api_keys.APIKeyUnitTests.test_no_admin_internal_or_global_rules_delegation) ... ok
+test_protected_malformed_key_rejected_before_store_creation (test_auth10_api_keys.APIKeyUnitTests.test_protected_malformed_key_rejected_before_store_creation) ... ok
+test_public_scope_gate (test_auth10_api_keys.APIKeyUnitTests.test_public_scope_gate) ... ok
+test_random_hash_only_repr (test_auth10_api_keys.APIKeyUnitTests.test_random_hash_only_repr) ... ok
+test_required_mode_cannot_enable_env (test_auth10_api_keys.APIKeyUnitTests.test_required_mode_cannot_enable_env) ... ok
+test_rotate_version_strict (test_auth10_api_keys.APIKeyUnitTests.test_rotate_version_strict) ... ok
+test_scope_enum_matches_api_contract (test_auth10_api_keys.APIKeyUnitTests.test_scope_enum_matches_api_contract) ... ok
+test_secret_redaction (test_auth10_api_keys.APIKeyUnitTests.test_secret_redaction) ... ok
+test_strict_issue_body_scope_ceiling (test_auth10_api_keys.APIKeyUnitTests.test_strict_issue_body_scope_ceiling) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.233s
+
+OK
+--- auth10: PASS (1.1 c)
+
+=== ГЕЙТ auth09 (auth09.yml contracts) — AUTH-09 Object ownership / operator / legacy migration
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth09*.py -v
+test_admin_dev_cannot_bypass (test_auth09_ownership.AccountObjectTests.test_admin_dev_cannot_bypass) ... Run access: DENY run=RUN-A0900001 action=read subject=693de612-d973-4aca-ae28-d257ab55ead3 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=693de612-d973-4aca-ae28-d257ab55ead3 via=auth_session reason=account_boundary
+ok
+test_foreign_tenant_legacy_admin_deny (test_auth09_ownership.AccountObjectTests.test_foreign_tenant_legacy_admin_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=86a03edc-9723-4cec-89ac-f1c969d665f7 via=auth_session reason=foreign_tenant
+ok
+test_legacy_json_and_malformed_binding (test_auth09_ownership.AccountObjectTests.test_legacy_json_and_malformed_binding) ... Run access: DENY run=RUN-A0900001 action=read subject=eaadc425-9453-474f-956d-43289580be41 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=eaadc425-9453-474f-956d-43289580be41 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=read subject=eaadc425-9453-474f-956d-43289580be41 via=auth_session reason=account_boundary
+ok
+test_member_not_author (test_auth09_ownership.AccountObjectTests.test_member_not_author) ... ok
+test_memory_immutable (test_auth09_ownership.AccountObjectTests.test_memory_immutable) ... ok
+test_memory_no_claim (test_auth09_ownership.AccountObjectTests.test_memory_no_claim) ... ok
+test_migration_parity_no_mass_backfill (test_auth09_ownership.AccountObjectTests.test_migration_parity_no_mass_backfill) ... ok
+test_operator_and_native_runner_fail_closed (test_auth09_ownership.AccountObjectTests.test_operator_and_native_runner_fail_closed) ... ok
+test_private_legacy_named_read_only (test_auth09_ownership.AccountObjectTests.test_private_legacy_named_read_only) ... Run access: DENY run=RUN-A0900001 action=read subject=687b9b62-5dde-4d95-a343-d75c8ebdb729 via=auth_session reason=legacy_migration_required
+Run access: DENY run=RUN-A0900001 action=write subject=5c574b09-5a0e-4f2f-943b-4ea2205b5175 via=auth_session reason=legacy_migration_required
+ok
+test_roundtrip (test_auth09_ownership.AccountObjectTests.test_roundtrip) ... ok
+test_same_person_other_account_cannot_use_creator_cookie (test_auth09_ownership.AccountObjectTests.test_same_person_other_account_cannot_use_creator_cookie) ... Run access: DENY run=RUN-A0900001 action=read subject=626d883b-2f9c-431c-8641-6d41051e89b4 via=auth_session reason=account_boundary
+ok
+test_surrogate_unknown_action_and_unauthenticated_deny (test_auth09_ownership.AccountObjectTests.test_surrogate_unknown_action_and_unauthenticated_deny) ... Run access: DENY run=RUN-A0900001 action=read subject=subj-10f1729a23421fc5 via=session_surrogate reason=account_boundary
+Run access: DENY run=RUN-A0900001 action=other subject=ba9eb097-b3b4-4ae9-8198-84c9df4a8dfa via=auth_session reason=unknown_action
+Run access: DENY run=RUN-A0900001 action=read subject=ba9eb097-b3b4-4ae9-8198-84c9df4a8dfa via=auth_session reason=account_boundary
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.169s
+
+OK
+--- auth09: PASS (1.4 c)
+
+=== ГЕЙТ auth08 (auth08.yml contracts) — AUTH-08 Account-effective capabilities / lifecycle / me
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth08*.py -v
+test_admin_and_staff_do_not_upgrade_account_plan (test_auth08_entitlements.AccountEntitlementTests.test_admin_and_staff_do_not_upgrade_account_plan) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_auth08_entitlements.py:32: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_bound_principal_without_effective_projection_never_role_falls_back (test_auth08_entitlements.AccountEntitlementTests.test_bound_principal_without_effective_projection_never_role_falls_back) ... ok
+test_downgrade_next_resolution_and_no_shared_mutable_caps (test_auth08_entitlements.AccountEntitlementTests.test_downgrade_next_resolution_and_no_shared_mutable_caps) ... ok
+test_exact_expiry_and_unknown_plan_fail_closed (test_auth08_entitlements.AccountEntitlementTests.test_exact_expiry_and_unknown_plan_fail_closed) ... ok
+test_internal_is_account_entitlement_not_admin_permission (test_auth08_entitlements.AccountEntitlementTests.test_internal_is_account_entitlement_not_admin_permission) ... ok
+test_legacy_adapter_is_explicitly_preserved (test_auth08_entitlements.AccountEntitlementTests.test_legacy_adapter_is_explicitly_preserved) ... ok
+test_lifecycle_actions_are_mandatory_and_operator_cli_in_image (test_auth08_entitlements.AccountEntitlementTests.test_lifecycle_actions_are_mandatory_and_operator_cli_in_image) ... ok
+test_no_dsn_runner_and_noninteractive_writer_fail (test_auth08_entitlements.AccountEntitlementTests.test_no_dsn_runner_and_noninteractive_writer_fail) ... ok
+test_patch_input_is_strict_and_cannot_edit_seats_or_owner (test_auth08_entitlements.AccountEntitlementTests.test_patch_input_is_strict_and_cannot_edit_seats_or_owner) ... ok
+test_real_me_returns_account_effective_dto_without_secrets (test_auth08_entitlements.AccountEntitlementTests.test_real_me_returns_account_effective_dto_without_secrets) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.282s
+
+OK
+--- auth08: PASS (1.1 c)
+
+=== ГЕЙТ auth06 (auth06.yml contracts) — AUTH-06 proxy / CSRF / login UI
+    (установка зависимостей пропущена: --skip-install)
+    (установка зависимостей пропущена: --skip-install)
+    $ node node_modules/jest/bin/jest.js --ci --runInBand packages/ui/server/firstPartyProxy.test.ts packages/ui/lib/browserTransport.test.ts packages/ui/lib/authClient.test.ts packages/ui/lib/auth06SourceBoundary.test.ts packages/ui/components/LoginScreen.test.tsx packages/ui/context/AuthContext.test.tsx
+
+Test Suites: 6 passed, 6 total
+Tests:       29 passed, 29 total
+Snapshots:   0 total
+Time:        8.95 s
+Ran all test suites matching packages/ui/server/firstPartyProxy.test.ts|packages/ui/lib/browserTransport.test.ts|packages/ui/lib/authClient.test.ts|packages/ui/lib/auth06SourceBoundary.test.ts|packages/ui/components/LoginScreen.test.tsx|packages/ui/context/AuthContext.test.tsx.
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth06*.py -v
+test_cors_exact_allowlist (test_auth06_csrf.Auth06Contracts.test_cors_exact_allowlist) ... ok
+test_csrf_reuse_is_bound_to_sid (test_auth06_csrf.Auth06Contracts.test_csrf_reuse_is_bound_to_sid) ... ok
+test_me_contract_is_generated (test_auth06_csrf.Auth06Contracts.test_me_contract_is_generated) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.027s
+
+OK
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/auth06/generate_proxy_routes.py --check
+{"status": "ok", "api_routes": 282}
+--- auth06: PASS (17.7 c)
+
+=== ГЕЙТ auth07 (auth07.yml contracts) — AUTH-07 admin named-session / MFA / logs + windows-паритет
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m pytest tests/api/test_auth07_admin_sessions.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/e28f7bf5e3d0/venv-cert/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.9, anyio-4.16.0, platformdirs-4.14.5
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45
+  /workspace/scratch/e28f7bf5e3d0/venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 5.66s =========================
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/windows_parity.py tests/api/test_auth07_admin_sessions.py -v
+windows-parity: заблокированы модули (resource) -- import поднимает ImportError, как на windows-2025
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/e28f7bf5e3d0/venv-cert/bin/python
+cachedir: .pytest_cache
+Fugue tests will be initialized with options:
+rootdir: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c
+configfile: pytest.ini
+plugins: typeguard-4.6.0, fugue-0.9.9, anyio-4.16.0, platformdirs-4.14.5
+collecting ... collected 11 items
+
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_with_mfa_reads_progress_admin PASSED [  9%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_case_bank PASSED [ 18%]
+tests/api/test_auth07_admin_sessions.py::test_named_admin_session_reads_logs_access_and_telemetry PASSED [ 27%]
+tests/api/test_auth07_admin_sessions.py::test_admin_session_without_mfa_is_403_mfa_required PASSED [ 36%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_403_on_progress_admin PASSED [ 45%]
+tests/api/test_auth07_admin_sessions.py::test_named_analyst_session_is_denied_on_log_streams PASSED [ 54%]
+tests/api/test_auth07_admin_sessions.py::test_account_owner_without_admin_role_is_403 PASSED [ 63%]
+tests/api/test_auth07_admin_sessions.py::test_research_cookie_surrogate_is_401_on_admin PASSED [ 72%]
+tests/api/test_auth07_admin_sessions.py::test_anonymous_admin_route_is_401 PASSED [ 81%]
+tests/api/test_auth07_admin_sessions.py::test_admin_api_key_path_unchanged PASSED [ 90%]
+tests/api/test_auth07_admin_sessions.py::test_ambiguous_key_plus_foreign_session_rejected PASSED [100%]
+
+=============================== warnings summary ===============================
+../venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45
+  /workspace/scratch/e28f7bf5e3d0/venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 11 passed, 1 warning in 5.80s =========================
+--- auth07: PASS (18.3 c)
+
+=== ГЕЙТ auth05 (auth05.yml contracts) — AUTH-05 MFA / bootstrap / recovery contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth05*.py -v
+test_cli_requires_operator_terminal_and_dsn_gate_never_skips (test_auth05_mfa.MfaPrimitiveTests.test_cli_requires_operator_terminal_and_dsn_gate_never_skips) ... ok
+test_encryption_authenticates_identity_factor_and_key (test_auth05_mfa.MfaPrimitiveTests.test_encryption_authenticates_identity_factor_and_key) ... ok
+test_opaque_types_are_disjoint (test_auth05_mfa.MfaPrimitiveTests.test_opaque_types_are_disjoint) ... ok
+test_rfc6238_sha1_vectors_and_replay (test_auth05_mfa.MfaPrimitiveTests.test_rfc6238_sha1_vectors_and_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.652s
+
+OK
+--- auth05: PASS (1.4 c)
+
+=== ГЕЙТ auth04 (auth04.yml contracts) — AUTH-04 password / CSRF / route contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth04*.py -v
+test_argon2id_random_salt_and_verify (test_auth04_password_transport.PasswordTests.test_argon2id_random_salt_and_verify) ... ok
+test_invalid_unicode_is_policy_denial_not_server_error (test_auth04_password_transport.PasswordTests.test_invalid_unicode_is_policy_denial_not_server_error) ... ok
+test_long_password_not_truncated_or_stripped (test_auth04_password_transport.PasswordTests.test_long_password_not_truncated_or_stripped) ... ok
+test_malformed_hash_never_authenticates (test_auth04_password_transport.PasswordTests.test_malformed_hash_never_authenticates) ... ok
+test_no_dummy_password_is_a_real_account (test_auth04_password_transport.PasswordTests.test_no_dummy_password_is_a_real_account) ... ok
+test_policy_length_and_blocklist (test_auth04_password_transport.PasswordTests.test_policy_length_and_blocklist) ... ok
+test_duplicate_auth_cookie_is_invalid (test_auth04_password_transport.TransportTests.test_duplicate_auth_cookie_is_invalid) ... ok
+test_expired_csrf_and_future_issue_are_denied (test_auth04_password_transport.TransportTests.test_expired_csrf_and_future_issue_are_denied) ... ok
+test_invalid_opaque_tokens_rejected_before_db (test_auth04_password_transport.TransportTests.test_invalid_opaque_tokens_rejected_before_db) ... ok
+test_missing_cross_origin_and_cross_site_fail (test_auth04_password_transport.TransportTests.test_missing_cross_origin_and_cross_site_fail) ... ok
+test_no_default_key_or_wildcard_origin (test_auth04_password_transport.TransportTests.test_no_default_key_or_wildcard_origin) ... ok
+test_signature_cookie_header_and_session_binding (test_auth04_password_transport.TransportTests.test_signature_cookie_header_and_session_binding) ... ok
+test_valid_csrf_both_exact_origins (test_auth04_password_transport.TransportTests.test_valid_csrf_both_exact_origins) ... ok
+test_verifier_domain_separated_and_deterministic (test_auth04_password_transport.TransportTests.test_verifier_domain_separated_and_deterministic) ... ok
+test_actual_openapi_routes_equal_reviewed_inventory (test_auth04_routes.RouteTests.test_actual_openapi_routes_equal_reviewed_inventory) ... FAIL
+test_capabilities_cannot_authorize_any_auth_operation (test_auth04_routes.RouteTests.test_capabilities_cannot_authorize_any_auth_operation) ... ok
+test_no_header_identity_or_key_is_a_personal_session (test_auth04_routes.RouteTests.test_no_header_identity_or_key_is_a_personal_session) ... ok
+test_password_schema_is_write_only_and_has_no_default_secret (test_auth04_routes.RouteTests.test_password_schema_is_write_only_and_has_no_default_secret) ... ok
+test_safe_validation_and_origin_errors_on_actual_asgi (test_auth04_routes.RouteTests.test_safe_validation_and_origin_errors_on_actual_asgi) ... ok
+test_same_origin_browser_csrf_bootstrap_without_origin (test_auth04_routes.RouteTests.test_same_origin_browser_csrf_bootstrap_without_origin) ... ok
+
+======================================================================
+FAIL: test_actual_openapi_routes_equal_reviewed_inventory (test_auth04_routes.RouteTests.test_actual_openapi_routes_equal_reviewed_inventory)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_auth04_routes.py", line 54, in test_actual_openapi_routes_equal_reviewed_inventory
+    self.assertEqual(actual, EXPECTED)
+AssertionError: Items in the first set but not the second:
+'GET:/v1/auth/personal-demo'
+
+----------------------------------------------------------------------
+Ran 20 tests in 3.979s
+
+FAILED (failures=1)
+    FAILED STEP (exit 1): /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth04*.py -v
+--- auth04: FAIL (4.9 c)
+
+=== ГЕЙТ auth03 (auth03.yml contracts) — AUTH-03 unified context / ASGI adapters (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth03*.py -v
+test_client_identity_account_role_mfa_headers_ignored (test_auth03_context.ContextTests.test_client_identity_account_role_mfa_headers_ignored) ... ok
+test_context_is_immutable (test_auth03_context.ContextTests.test_context_is_immutable) ... ok
+test_cookie_and_key_conflicting_server_owner_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_server_owner_rejected) ... ok
+test_cookie_and_key_conflicting_tenant_rejected (test_auth03_context.ContextTests.test_cookie_and_key_conflicting_tenant_rejected) ... ok
+test_duplicate_key_headers_rejected (test_auth03_context.ContextTests.test_duplicate_key_headers_rejected) ... ok
+test_empty_present_key_is_not_absent (test_auth03_context.ContextTests.test_empty_present_key_is_not_absent) ... ok
+test_explicit_subject_rotation_is_stable (test_auth03_context.ContextTests.test_explicit_subject_rotation_is_stable) ... ok
+test_invalid_key_never_falls_back_to_owned_cookie (test_auth03_context.ContextTests.test_invalid_key_never_falls_back_to_owned_cookie) ... ok
+test_invalid_registry_subject_tenant_and_scopes_fail_closed (test_auth03_context.ContextTests.test_invalid_registry_subject_tenant_and_scopes_fail_closed) ... ok
+test_key_principal_and_subject_are_same_safe_projection (test_auth03_context.ContextTests.test_key_principal_and_subject_are_same_safe_projection) ... ok
+test_matching_research_pointer_cannot_add_scopes_or_role (test_auth03_context.ContextTests.test_matching_research_pointer_cannot_add_scopes_or_role) ... ok
+test_missing_key_is_401_on_actual_dependency (test_auth03_context.ContextTests.test_missing_key_is_401_on_actual_dependency) ... ok
+test_real_subject_projection_keeps_uniform_object_denial (test_auth03_context.ContextTests.test_real_subject_projection_keeps_uniform_object_denial) ... Run access: DENY run=RUN-AUTH0300 action=read subject=subj-1029384756abcdef via=api_key reason=foreign_session
+ok
+test_require_api_key_returns_safe_string_and_revocation_rechecked (test_auth03_context.ContextTests.test_require_api_key_returns_safe_string_and_revocation_rechecked) ... ok
+test_restored_cookie_continuity_without_role (test_auth03_context.ContextTests.test_restored_cookie_continuity_without_role) ... ok
+test_scope_and_request_cache_do_not_cross_requests (test_auth03_context.ContextTests.test_scope_and_request_cache_do_not_cross_requests) ... ok
+test_scoped_mode_never_uses_research_surrogate (test_auth03_context.ContextTests.test_scoped_mode_never_uses_research_surrogate) ... ok
+test_surrogate_is_not_key_protected_principal (test_auth03_context.ContextTests.test_surrogate_is_not_key_protected_principal) ... ok
+test_unconfigured_registry_is_503_without_config_disclosure (test_auth03_context.ContextTests.test_unconfigured_registry_is_503_without_config_disclosure) ... ok
+test_unknown_auth_cookie_does_not_fall_back_to_research (test_auth03_context.ContextTests.test_unknown_auth_cookie_does_not_fall_back_to_research) ... ok
+test_unknown_pointer_does_not_replace_verified_key (test_auth03_context.ContextTests.test_unknown_pointer_does_not_replace_verified_key) ... ok
+test_authority_data_is_current_and_owner_not_admin (test_auth03_context.DurableContextTests.test_authority_data_is_current_and_owner_not_admin) ... ok
+test_db_and_schema_outages_have_safe_503 (test_auth03_context.DurableContextTests.test_db_and_schema_outages_have_safe_503) ... ok
+test_dev_uuid_env_binding_reads_db_role_tenant_not_env (test_auth03_context.DurableContextTests.test_dev_uuid_env_binding_reads_db_role_tenant_not_env) ... ok
+test_falsey_server_verifier_never_falls_back_to_env (test_auth03_context.DurableContextTests.test_falsey_server_verifier_never_falls_back_to_env) ... ok
+test_matching_credentials_keep_key_scopes_ceiling (test_auth03_context.DurableContextTests.test_matching_credentials_keep_key_scopes_ceiling) ... ok
+test_missing_binding_never_auto_selects_account (test_auth03_context.DurableContextTests.test_missing_binding_never_auto_selects_account) ... ok
+test_missing_suspended_closed_account_denied (test_auth03_context.DurableContextTests.test_missing_suspended_closed_account_denied) ... ok
+test_revoked_missing_membership_denied (test_auth03_context.DurableContextTests.test_revoked_missing_membership_denied) ... ok
+test_suspended_missing_identity_denied (test_auth03_context.DurableContextTests.test_suspended_missing_identity_denied) ... ok
+test_untrusted_verifier_failure_is_503_without_secret (test_auth03_context.DurableContextTests.test_untrusted_verifier_failure_is_503_without_secret) ... ok
+test_verified_browser_and_key_must_match_subject_and_account (test_auth03_context.DurableContextTests.test_verified_browser_and_key_must_match_subject_and_account) ... ok
+test_verifier_http_error_cannot_disclose_secrets (test_auth03_context.DurableContextTests.test_verifier_http_error_cannot_disclose_secrets) ... ok
+test_actual_logs_manual_adapter_uses_request_context (test_auth03_http.HTTPTests.test_actual_logs_manual_adapter_uses_request_context) ... ok
+test_both_adapters_see_same_safe_identity_in_asgi (test_auth03_http.HTTPTests.test_both_adapters_see_same_safe_identity_in_asgi) ... ok
+test_duplicate_key_detected_by_real_header_stack (test_auth03_http.HTTPTests.test_duplicate_key_detected_by_real_header_stack) ... ok
+test_error_request_id_matches_telemetry_response_header (test_auth03_http.HTTPTests.test_error_request_id_matches_telemetry_response_header) ... ok
+test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie (test_auth03_http.HTTPTests.test_invalid_empty_key_and_unsupported_bearer_rejected_even_with_cookie) ... ok
+test_legacy_cookie_surrogate_stays_stable_when_unbound (test_auth03_http.HTTPTests.test_legacy_cookie_surrogate_stays_stable_when_unbound) ... ok
+test_model_train_response_secret_contract_from_actual_source (test_auth03_http.HTTPTests.test_model_train_response_secret_contract_from_actual_source) ... ok
+test_research_cookie_legacy_continuity_and_lookup_outage (test_auth03_http.HTTPTests.test_research_cookie_legacy_continuity_and_lookup_outage) ... ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 1.075s
+
+OK
+--- auth03: PASS (2.1 c)
+
+=== ГЕЙТ auth02 (auth02.yml contracts) — AUTH-02 storage unit contracts (no DB)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth02_storage.py -v
+test_factory_without_dsn_fails_closed (test_auth02_storage.StorageUnitTests.test_factory_without_dsn_fails_closed) ... ok
+test_malformed_config_is_a_safe_domain_error (test_auth02_storage.StorageUnitTests.test_malformed_config_is_a_safe_domain_error) ... ok
+test_no_dsn_in_repr_or_connection_errors (test_auth02_storage.StorageUnitTests.test_no_dsn_in_repr_or_connection_errors) ... ok
+test_schema_identifier_and_empty_dsn_rejected (test_auth02_storage.StorageUnitTests.test_schema_identifier_and_empty_dsn_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.117s
+
+OK
+--- auth02: PASS (0.3 c)
+
+=== ГЕЙТ auth01 (auth01.yml) — AUTH-01 registry / OpenAPI / generated TS parity
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth01_registry.py -v
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+  self.assertFalse(caps.can_train_models)
+ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... /workspace/scratch/e28f7bf5e3d0/venv-cert/lib/python3.12/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+  _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 1.029s
+
+OK
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/auth01/windows_locale_check.py
+AUTH-01 Path.read_text default encoding=cp1251
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.959s
+
+OK
+AUTH-01 Path.read_text default encoding=cp1252
+test_aliases_share_canonical_decision (test_auth01_registry.RegistryTests.test_aliases_share_canonical_decision) ... ok
+test_all_six_scientific_stages_accessible_for_demo (test_auth01_registry.RegistryTests.test_all_six_scientific_stages_accessible_for_demo) ... ok
+test_analytical_caps_never_authorize_admin_or_scoped_service (test_auth01_registry.RegistryTests.test_analytical_caps_never_authorize_admin_or_scoped_service) ... ok
+test_application_aliases_and_monitoring_namespaces (test_auth01_registry.RegistryTests.test_application_aliases_and_monitoring_namespaces) ... ok
+test_baseline_model_allowlist_exact_and_case_sensitive (test_auth01_registry.RegistryTests.test_baseline_model_allowlist_exact_and_case_sensitive) ... ok
+test_bindings_cover_all_api_and_task_aliases_of_auth00 (test_auth01_registry.RegistryTests.test_bindings_cover_all_api_and_task_aliases_of_auth00) ... ok
+test_demo_starter_split_without_reinterpreting_legacy_flag (test_auth01_registry.RegistryTests.test_demo_starter_split_without_reinterpreting_legacy_flag) ... ok
+test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling (test_auth01_registry.RegistryTests.test_effective_dataset_ceiling_is_intersected_with_baseline_ceiling) ... ok
+test_finite_baseline_bounds_exact_boundary (test_auth01_registry.RegistryTests.test_finite_baseline_bounds_exact_boundary) ... ok
+test_generated_contract_drift_gate (test_auth01_registry.RegistryTests.test_generated_contract_drift_gate) ... ok
+test_generated_file_tampering_fails_read_only_check (test_auth01_registry.RegistryTests.test_generated_file_tampering_fails_read_only_check) ... ok
+test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass (test_auth01_registry.RegistryTests.test_generic_jobs_are_tuning_and_legacy_aliases_cannot_bypass) ... ok
+test_inventory_gate_rejects_new_or_removed_entry (test_auth01_registry.RegistryTests.test_inventory_gate_rejects_new_or_removed_entry) ... ok
+test_legacy_constructed_caps_fail_closed_for_new_flags (test_auth01_registry.RegistryTests.test_legacy_constructed_caps_fail_closed_for_new_flags) ... ok
+test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo (test_auth01_registry.RegistryTests.test_model_selector_is_mandatory_and_rejects_mixed_advanced_for_demo) ... ok
+test_openapi_install_has_dtos_versions_and_route_binding_without_new_route (test_auth01_registry.RegistryTests.test_openapi_install_has_dtos_versions_and_route_binding_without_new_route) ... ok
+test_principal_capabilities_are_copies_and_staff_compatibility_explicit (test_auth01_registry.RegistryTests.test_principal_capabilities_are_copies_and_staff_compatibility_explicit) ... ok
+test_raw_json_duplicate_keys_are_rejected (test_auth01_registry.RegistryTests.test_raw_json_duplicate_keys_are_rejected) ... ok
+test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities (test_auth01_registry.RegistryTests.test_registry_rejects_invalid_references_duplicates_and_unknown_capabilities) ... ok
+test_saved_model_outputs_and_selection_need_same_fit_context (test_auth01_registry.RegistryTests.test_saved_model_outputs_and_selection_need_same_fit_context) ... ok
+test_serialized_restrictions_have_stable_order (test_auth01_registry.RegistryTests.test_serialized_restrictions_have_stable_order) ... ok
+test_stage_selector_cannot_introduce_unknown_or_application_stage (test_auth01_registry.RegistryTests.test_stage_selector_cannot_introduce_unknown_or_application_stage) ... ok
+test_tuning_custom_and_placeholder_do_not_use_baseline_flag (test_auth01_registry.RegistryTests.test_tuning_custom_and_placeholder_do_not_use_baseline_flag) ... ok
+test_unknown_operation_and_version_are_denied_for_every_plan (test_auth01_registry.RegistryTests.test_unknown_operation_and_version_are_denied_for_every_plan) ... ok
+test_unknown_stage_or_namespace_denied_even_with_empty_restrictions (test_auth01_registry.RegistryTests.test_unknown_stage_or_namespace_denied_even_with_empty_restrictions) ... ok
+test_untrusted_workload_types_and_empty_model_sets_rejected (test_auth01_registry.RegistryTests.test_untrusted_workload_types_and_empty_model_sets_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.707s
+
+OK
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/auth01/generate.py --check
+AUTH-01 generated OpenAPI/TS parity OK
+--- auth01: PASS (4.2 c)
+
+=== ГЕЙТ auth00 (auth00.yml) — AUTH-00 inventory + Git snapshot parity (default INDEX)
+    AUTH-00 full log: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/logs/local_gates/auth00.log
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (598 discovery surfaces; full reviewed inventory/source parity)
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+test_auth06_migration_manifest_contains_only_application_sources (test_auth00_inventory.InventoryTests.test_auth06_migration_manifest_contains_only_application_sources) ... ok
+test_binary_fingerprint_does_not_normalize_crlf (test_auth00_inventory.InventoryTests.test_binary_fingerprint_does_not_normalize_crlf) ... ok
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... ok
+test_changed_next_proxy_requires_review (test_auth00_inventory.InventoryTests.test_changed_next_proxy_requires_review) ... ok
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_foreign_asgi_root_requires_review (test_auth00_inventory.InventoryTests.test_foreign_asgi_root_requires_review) ... ok
+test_foreign_http_server_requires_review (test_auth00_inventory.InventoryTests.test_foreign_http_server_requires_review) ... ok
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... ok
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_installed_typescript_does_not_change_repository_inventory (test_auth00_inventory.InventoryTests.test_installed_typescript_does_not_change_repository_inventory) ... ok
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... ok
+test_manual_extra_cannot_invent_an_http_route (test_auth00_inventory.InventoryTests.test_manual_extra_cannot_invent_an_http_route) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_policy_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_policy_threat_reference_must_exist) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ERROR
+test_review_cannot_overwrite_a_discovered_path (test_auth00_inventory.InventoryTests.test_review_cannot_overwrite_a_discovered_path) ... ok
+test_reviewed_application_source_change_still_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_reviewed_application_source_change_still_invalidates_snapshot) ... ok
+test_reviewed_dependency_sources_require_catalogue_correction (test_auth00_inventory.InventoryTests.test_reviewed_dependency_sources_require_catalogue_correction) ... ok
+test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails (test_auth00_inventory.InventoryTests.test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails) ... ok
+test_reviewed_env_example_crlf_portable_content_change_fails (test_auth00_inventory.InventoryTests.test_reviewed_env_example_crlf_portable_content_change_fails) ... ok
+test_reviewed_password_blocklist_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_password_blocklist_fingerprint_is_checkout_portable) ... ok
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+test_shared_next_proxy_discovery (test_auth00_inventory.InventoryTests.test_shared_next_proxy_discovery) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... ok
+test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ok
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ok
+test_real_cp1252_console_supports_heading_child_output_and_failure_summary (test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) ... ok
+test_summary_does_not_prescribe_staging_for_worktree_drift (test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift) ... ok
+test_summary_repeats_snapshot_failure_and_manual_staging_hint (test_auth00_local_output.LocalOutputTests.test_summary_repeats_snapshot_failure_and_manual_staging_hint) ... ok
+test_crlf_index_dockerfile_matches_lf_worktree (test_auth00_precommit.PrecommitTests.test_crlf_index_dockerfile_matches_lf_worktree) ... ok
+test_crlf_index_env_example_matches_lf_worktree_without_staging (test_auth00_precommit.PrecommitTests.test_crlf_index_env_example_matches_lf_worktree_without_staging) ... ok
+test_crlf_worktree_matches_lf_index (test_auth00_precommit.PrecommitTests.test_crlf_worktree_matches_lf_index) ... ok
+test_empty_index_is_not_pass (test_auth00_precommit.PrecommitTests.test_empty_index_is_not_pass) ... ok
+test_format_only_drift_is_explicit_and_still_fails (test_auth00_precommit.PrecommitTests.test_format_only_drift_is_explicit_and_still_fails) ... ok
+test_head_does_not_silently_fall_back_to_index (test_auth00_precommit.PrecommitTests.test_head_does_not_silently_fall_back_to_index) ... ok
+test_ignored_page_still_blocks_pass (test_auth00_precommit.PrecommitTests.test_ignored_page_still_blocks_pass) ... ok
+test_index_drift_names_partial_staging_and_source (test_auth00_precommit.PrecommitTests.test_index_drift_names_partial_staging_and_source) ... ok
+test_invalid_inventory_drift_has_context_without_traceback (test_auth00_precommit.PrecommitTests.test_invalid_inventory_drift_has_context_without_traceback) ... ok
+test_local_gate_target_is_explicit_and_does_not_mutate_commands (test_auth00_precommit.PrecommitTests.test_local_gate_target_is_explicit_and_does_not_mutate_commands) ... ok
+test_partially_staged_source_with_old_inventory_fails (test_auth00_precommit.PrecommitTests.test_partially_staged_source_with_old_inventory_fails) ... ok
+test_staged_before_first_commit_passes_without_changing_index (test_auth00_precommit.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... ok
+test_unstaged_guard_change_with_same_routes_fails (test_auth00_precommit.PrecommitTests.test_unstaged_guard_change_with_same_routes_fails) ... ok
+test_untracked_reviewed_helper_cannot_be_left_out (test_auth00_precommit.PrecommitTests.test_untracked_reviewed_helper_cannot_be_left_out) ... ok
+test_worktree_drift_names_source_before_index_is_checked (test_auth00_precommit.PrecommitTests.test_worktree_drift_names_source_before_index_is_checked) ... ok
+
+======================================================================
+ERROR: test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_auth00_inventory.py", line 121, in test_repository_snapshot_and_all_entries_classified
+    self.mod.check(ROOT, report)
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/scripts/auth00/inventory.py", line 420, in check
+    raise ValueError('Inventory drift: ' + str(DEST / name))
+ValueError: Inventory drift: docs/auth00/inventory.json
+
+----------------------------------------------------------------------
+Ran 60 tests in 63.492s
+
+FAILED (errors=1)
+    FAILED STEP (exit 1): /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+    Полный вывод: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/logs/local_gates/auth00.log
+--- auth00: FAIL (84.6 c)
+
+=== ГЕЙТ rules (test_rules.yml) — Validation rules sanity check
+    $ /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -c from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']
+is_valid = False
+--- rules: PASS (1.1 c)
+
+=== ГЕЙТ jest (jest.yml) — All Jest tests + renderer build + typecheck:all
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run test:ci -- --maxWorkers=1
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:ci
+> jest --ci --maxWorkers=2 --json --outputFile=jest-results.json --maxWorkers=1
+
+
+Test Suites: 1 skipped, 268 passed, 268 of 269 total
+Tests:       2 skipped, 2905 passed, 2907 total
+Snapshots:   0 total
+Time:        215.708 s
+Ran all test suites.
+Test results written to: jest-results.json
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run build --workspace=@cisstat/print-renderer
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run typecheck:all
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:all
+> npm run typecheck:clean && npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck:clean
+> node -e "const f=require('fs');['apps/embedded/.next','apps/standalone/.next'].forEach(p=>f.rmSync(p,{recursive:true,force:true}))"
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-embedded@0.1.0 typecheck
+> tsc --noEmit
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/ts-analysis-standalone@0.1.0 typecheck
+> tsc --noEmit
+
+--- jest: PASS (271.2 c)
+
+=== СВОДКА ===
+  PASS  personal-demo     9.5 c
+  FAIL  kabinet-demo-cert     0.3 c
+  PASS  warmup      5.4 c
+  PASS  authcert     0.1 c
+  PASS  auth25      0.9 c
+  PASS  auth24      1.0 c
+  PASS  auth23      0.7 c
+  PASS  auth22      0.8 c
+  PASS  auth21      0.6 c
+  PASS  auth20      0.6 c
+  PASS  auth19      1.2 c
+  PASS  auth18      0.6 c
+  PASS  auth17      0.5 c
+  PASS  auth16      0.8 c
+  PASS  auth15      0.5 c
+  PASS  auth14      5.9 c
+  PASS  auth13      2.6 c
+  PASS  auth12      0.3 c
+  PASS  auth11      5.1 c
+  PASS  auth10      1.1 c
+  PASS  auth09      1.4 c
+  PASS  auth08      1.1 c
+  PASS  auth06     17.7 c
+  PASS  auth07     18.3 c
+  PASS  auth05      1.4 c
+  FAIL  auth04      4.9 c
+  PASS  auth03      2.1 c
+  PASS  auth02      0.3 c
+  PASS  auth01      4.2 c
+  FAIL  auth00     84.6 c
+  PASS  rules       1.1 c
+  PASS  jest      271.2 c
+  FAILED STEP kabinet-demo-cert: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_kabinet_demo_cert.py -v
+  FAILED STEP auth04: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth04*.py -v
+  FAILED STEP auth00: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+  Полный лог: /workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/logs/local_gates/auth00.log
+
+ИТОГ: НЕ ПУШТЕ — есть красные гейты

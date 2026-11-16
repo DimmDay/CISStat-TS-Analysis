@@ -7,6 +7,7 @@ that could open access without mailbox proof.
 
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
 
 TLS_MODES = ("starttls", "ssl", "none")
@@ -26,6 +27,8 @@ class SmtpEmailDelivery:
             raise ValueError("smtp sender required")
         self.host = host.strip()
         self.port = int(port)
+        if not 1 <= self.port <= 65535:
+            raise ValueError("invalid smtp port")
         self.user = user or None
         self.password = password or None
         self.sender = sender.strip()
@@ -57,12 +60,12 @@ class SmtpEmailDelivery:
         message.set_content(body)
         try:
             if self.mode == "ssl":
-                client = smtplib.SMTP_SSL(self.host, self.port, timeout=self.timeout)
+                client = smtplib.SMTP_SSL(self.host, self.port, timeout=self.timeout, context=ssl.create_default_context())
             else:
                 client = smtplib.SMTP(self.host, self.port, timeout=self.timeout)
             with client:
                 if self.mode == "starttls":
-                    client.starttls()
+                    client.starttls(context=ssl.create_default_context())
                 if self.user:
                     client.login(self.user, self.password or "")
                 client.send_message(message)

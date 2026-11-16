@@ -45,6 +45,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/auth/personal-demo"
+  },
+  {
+    "method": "GET",
     "path": "/v1/auth/sessions"
   },
   {

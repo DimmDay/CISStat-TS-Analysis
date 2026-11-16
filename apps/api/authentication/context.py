@@ -112,6 +112,7 @@ class RequestContext:
 
 
 _MESSAGES = {
+    "personal_demo_unavailable": "Личный демо-доступ сейчас недоступен. Попробуйте позже или войдите в существующий аккаунт.",
     "billing_not_configured": "Оплата ещё не настроена",
     "billing_unavailable": "Оплата недоступна для этого аккаунта",
     "billing_cycle_unavailable": "Платёжный цикл недоступен; обратитесь к оператору",

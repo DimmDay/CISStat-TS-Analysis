@@ -72,11 +72,13 @@ test("resume remains credential-free", async () => {
   expect(request).not.toHaveBeenCalledWith("auth/demo/enter", "POST", expect.anything());
 });
 
-test("landing describes conditions without flyer wording and mounts the entry", () => {
+test("landing separates private campaign entry and personal signup", async () => {
   render(<DemoLanding />);
   expect(screen.getByRole("heading", { name: "Демо-режим платформы", level: 1 })).toBeInTheDocument();
-  expect(screen.getByText("Условия демо-режима")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Запустить демо-режим" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Мульти-доступ через кампанию организатора" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Самостоятельный MONO-доступ" })).toBeInTheDocument();
+  expect(screen.queryByText(/Публичный демо-доступ временно недоступен/)).toBeNull();
+  await screen.findByText(/Личная регистрация сейчас недоступна/);
   expect(screen.getByRole("button", { name: "Войти в кампанию" })).toBeInTheDocument();
   expect(screen.queryByText(/флаер/i)).toBeNull();
 });

@@ -1,0 +1,19 @@
+test_personal_demo (unittest.loader._FailedTest.test_personal_demo) ... ERROR
+
+======================================================================
+ERROR: test_personal_demo (unittest.loader._FailedTest.test_personal_demo)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_personal_demo
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-da6cd8c/tests/unit/test_personal_demo.py", line 2, in <module>
+    from apps.api.authentication.personal_demo import PROFILE, metadata
+ModuleNotFoundError: No module named 'apps.api.authentication.personal_demo'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
