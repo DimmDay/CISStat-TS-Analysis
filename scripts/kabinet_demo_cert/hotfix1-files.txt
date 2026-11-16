@@ -1,0 +1,12 @@
+docs/auth00/inventory.json
+docs/kabinet_demo_cert/hotfix1.md
+docs/kabinet_demo_cert/report.md
+scripts/kabinet_demo_cert/hotfix1-files.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/build-all.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/gates.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/overlay.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/red.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/routes.txt
+scripts/kabinet_demo_cert/protocols/hotfix1/unit.txt
+tests/unit/test_kabinet_demo_cert.py
+worklog/worklog12.md

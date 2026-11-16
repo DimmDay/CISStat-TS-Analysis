@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,15 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("kabinet-demo-cert", "kabinet_demo_cert.yml contracts", "AUTH-KABINET-DEMO Task1-7 certification oracles", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/kabinet_demo_cert/requirements.txt"],
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_kabinet_demo_cert.py", "-v"],
+        ["node", "node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath",
+         "packages/ui/components/auth-kabinet-demo.test.tsx", "apps/standalone/components/dashboard-pivot.test.tsx",
+         "packages/ui/components/auth15-demo.test.tsx", "packages/ui/components/auth16-demo.test.tsx",
+         "packages/ui/components/NavigatorHero.test.tsx", "apps/standalone/components/product-header-nav-slogan.test.tsx",
+         "apps/standalone/components/brand-rename.test.tsx", "packages/ui/lib/demo-cert.test.ts"],
+    ]),
     ("warmup", "warmup.yml contracts", "F-CERT-H1 storage-warmup contracts (registry/fail-closed/lifespan ordering)", [
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_warmup*.py", "-v"],
     ]),

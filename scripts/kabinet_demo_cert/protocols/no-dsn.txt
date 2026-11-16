@@ -1,0 +1,1 @@
+Disposable CISSTAT_AUTH_TEST_DSN required; no tests ran.

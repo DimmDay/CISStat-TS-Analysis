@@ -34,7 +34,7 @@ python scripts/local_gates.py --auth00-target head --skip-install
 
 ## Состав проверок
 
-Default: warmup, authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
+Default: kabinet-demo-cert, warmup, authcert, auth25, auth24, auth23, auth22, auth21, auth20, auth19, auth18, auth17, auth16, auth15, auth14, auth13, auth12, auth11, auth10, auth09, auth08, auth06, auth07, auth05, auth04, auth03, auth02, auth01, auth00, rules, jest. Все `*-postgres` гейты — opt-in: без соответствующего `--with-authXX-postgres` они не входят в прогон (в сводке после зелёного прогона честно печатается, какой live PostgreSQL остался непроверен). Jest включает renderer build и typecheck обеих оболочек. Production builds: `npm run build:all`. Scientific pytest — `--with-pytest`; средовые сбои сравниваются с чистой базой.
 
 AUTH-12 unit использует scripts/auth12/requirements.txt без полного scientific runtime. Native gate требует полный API runtime и настоящий disposable PostgreSQL, никогда production БД:
 
@@ -256,3 +256,23 @@ python scripts/local_gates.py --with-auth24-postgres --skip-install
 Новой миграции нет: READ-поверхность живёт на схеме 0033. UI обеих оболочек: WalletPanel («Аккаунт → Баланс CU», OWNER-разбивка + журнал, MEMBER — только usage-проекция и подсказка к владельцу), TopupPanel только при `can_manage` (§13.3) с self-service возвратом credited-заказов (AUTH-23). Инструкция VM — `docs/auth24/deploy.md` (пересборка api И web; миграции/env не менялись). Payment reconciliation/launch runbook — AUTH-25.
 
 Миграция 0035 explicit: `scripts/auth23/migrate.py --apply/--check` (цепочка гарантирует 0019…0034). Контур выключен по умолчанию: без credited-заказа (AUTH-22) возврат невозможен; споры открываются только trusted CLI `scripts/auth23/manage_refunds.py` (dispute-open/dispute-resolve/refund-reconcile), клиентского HTTP-маршрута спора нет. Окно возврата — env `CISSTAT_TOPUP_REFUND_DAYS` (default 14, границы 0…90, фиксируется в записи). Инструкция VM — `docs/auth23/deploy.md` (пересборка api, миграция 0035; web не менялся — только авто-генерируемый TS-контракт). Refund-панель UI и wallet/ledger READ-эндпоинты — AUTH-24, payment reconciliation/launch runbook — AUTH-25.
+
+## AUTH-KABINET-DEMO — сертификация TASK-1…TASK-7
+
+Default дополнен `kabinet-demo-cert`, CI `.github/workflows/kabinet_demo_cert.yml` (Linux/Windows).
+Он проверяет Compose→Docker build args, disabled default, отсутствие ложного обещания доступа после expiry,
+metadata/полноту предыдущего manifest и8 адресных Jest suites (включая real env helper и loading пивота).
+
+```powershell
+git add --pathspec-from-file=scripts/kabinet_demo_cert/files.txt
+python scripts/local_gates.py --skip-install
+# Отдельно, только с disposable CISSTAT_AUTH_TEST_DSN:
+python scripts/kabinet_demo_cert/verify_postgres.py
+```
+
+Без DSN native runner возвращает2, skips не PASS. Production browser smoke требует готовые .next и Chromium:
+`node scripts/kabinet_demo_cert/browser_smoke.cjs standalone enabled` (или embedded; disabled для сборки без пары).
+Только синтетические build-time fixtures `cert-public-demo`/`cert-public-pair-not-personal` — не настоящие credentials;
+обычная production сборка задаётся оператором. Smoke использует настоящий first-party proxy/HTTPS, но controlled authority stub;
+PostgreSQL authority подтверждается отдельным native gate, smoke не выдаётся за production AUTH-CERT.
+Акт/границы: docs/kabinet_demo_cert/report.md. Пара для VM — build args из .env, одной смены runtime env недостаточно.

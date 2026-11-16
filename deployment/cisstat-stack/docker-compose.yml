@@ -133,6 +133,9 @@ services:
     build:
       context: ../..
       dockerfile: apps/standalone/Dockerfile
+      args:
+        NEXT_PUBLIC_DEMO_LOGIN: ${NEXT_PUBLIC_DEMO_LOGIN:-}
+        NEXT_PUBLIC_DEMO_PASSWORD: ${NEXT_PUBLIC_DEMO_PASSWORD:-}
     restart: unless-stopped
     environment:
       PORT: "3000"

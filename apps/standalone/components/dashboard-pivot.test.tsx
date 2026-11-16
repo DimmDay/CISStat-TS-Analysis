@@ -68,3 +68,19 @@ test("unavailable service fails closed without automatic redirects", async () =>
   );
   expect(mockReplace).not.toHaveBeenCalled();
 });
+
+test("loading waits for authority without speculative redirect", async () => {
+  let resolve!: (value: null) => void;
+  me.mockReturnValue(
+    new Promise<null>((done) => {
+      resolve = done;
+    }),
+  );
+  renderPivot();
+  expect(screen.getByRole("status")).toHaveTextContent("Проверяем вход");
+  expect(mockReplace).not.toHaveBeenCalled();
+  resolve(null);
+  await waitFor(() =>
+    expect(mockReplace).toHaveBeenCalledWith("/login?return_to=/account"),
+  );
+});

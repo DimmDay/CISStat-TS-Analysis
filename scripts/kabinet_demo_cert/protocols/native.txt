@@ -1,0 +1,95 @@
+test_closed_account_not_selected (tests.integration.test_auth06_transport.AccountSelectionTests.test_closed_account_not_selected) ... ok
+test_only_own_accounts_offered_without_session (tests.integration.test_auth06_transport.AccountSelectionTests.test_only_own_accounts_offered_without_session) ... ok
+test_single_account_auto_selected (tests.integration.test_auth06_transport.AccountSelectionTests.test_single_account_auto_selected) ... ok
+test_audit_fault_rolls_back_grant_and_account_and_counter (tests.integration.test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_grant_and_account_and_counter) ... ok
+test_audit_fault_rolls_back_pause_and_budgets (tests.integration.test_auth15_demo.CampaignSQLTests.test_audit_fault_rolls_back_pause_and_budgets) ... ok
+test_cas_and_stale_mfa (tests.integration.test_auth15_demo.CampaignSQLTests.test_cas_and_stale_mfa) ... ok
+test_common_ledger_uses_single_sponsor_and_participant_limits (tests.integration.test_auth15_demo.CampaignSQLTests.test_common_ledger_uses_single_sponsor_and_participant_limits) ... ok
+test_concurrent_last_grant_and_same_marker (tests.integration.test_auth15_demo.CampaignSQLTests.test_concurrent_last_grant_and_same_marker) ... ok
+test_concurrent_same_marker_has_one_grant_and_one_active_session (tests.integration.test_auth15_demo.CampaignSQLTests.test_concurrent_same_marker_has_one_grant_and_one_active_session) ... ok
+test_expiry_cannot_issue_new_grant_for_known_marker (tests.integration.test_auth15_demo.CampaignSQLTests.test_expiry_cannot_issue_new_grant_for_known_marker) ... ok
+test_explicit_device_leave_revokes_only_own_grant_without_refund (tests.integration.test_auth15_demo.CampaignSQLTests.test_explicit_device_leave_revokes_only_own_grant_without_refund) ... ok
+test_http_cookie_csrf_and_no_input_echo (tests.integration.test_auth15_demo.CampaignSQLTests.test_http_cookie_csrf_and_no_input_echo) ... ok
+test_last_grant_bounded_and_retry_does_not_increment (tests.integration.test_auth15_demo.CampaignSQLTests.test_last_grant_bounded_and_retry_does_not_increment) ... ok
+test_migration_retry_and_guards (tests.integration.test_auth15_demo.CampaignSQLTests.test_migration_retry_and_guards) ... ok
+test_pause_resume_and_revoke_close_context_and_ledger_authority (tests.integration.test_auth15_demo.CampaignSQLTests.test_pause_resume_and_revoke_close_context_and_ledger_authority) ... ok
+test_policy_clamps_demo_caps_and_own_upload (tests.integration.test_auth15_demo.CampaignSQLTests.test_policy_clamps_demo_caps_and_own_upload) ... ok
+test_real_demo_upload_foreign_run_document_and_pointer_are_denied (tests.integration.test_auth15_demo.CampaignSQLTests.test_real_demo_upload_foreign_run_document_and_pointer_are_denied) ... DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth15_68c5e98ead1849b881a4d1c4b740c7e2:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Run access: DENY run=RUN-C1A6374983DC4350820DB64C30BC9C6F action=read subject=1a01ea00-2b15-4153-8525-6336c2eedc4f via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C1A6374983DC4350820DB64C30BC9C6F action=read subject=1a01ea00-2b15-4153-8525-6336c2eedc4f via=auth_session reason=account_boundary
+Run access: DENY run=RUN-C1A6374983DC4350820DB64C30BC9C6F action=read subject=1a01ea00-2b15-4153-8525-6336c2eedc4f via=auth_session reason=account_boundary
+ok
+test_resume_keeps_expiry_usage_and_revokes_previous_session (tests.integration.test_auth15_demo.CampaignSQLTests.test_resume_keeps_expiry_usage_and_revokes_previous_session) ... ok
+test_rotation_secret_once_old_password_denied_existing_grant_retained (tests.integration.test_auth15_demo.CampaignSQLTests.test_rotation_secret_once_old_password_denied_existing_grant_retained) ... ok
+test_service_db_failure_is_safe_503 (tests.integration.test_auth15_demo.CampaignSQLTests.test_service_db_failure_is_safe_503) ... ok
+test_shared_pair_has_distinct_subject_account_tenant_grant (tests.integration.test_auth15_demo.CampaignSQLTests.test_shared_pair_has_distinct_subject_account_tenant_grant) ... ok
+test_wrong_origin_and_secret_and_invalid_resume_do_not_create (tests.integration.test_auth15_demo.CampaignSQLTests.test_wrong_origin_and_secret_and_invalid_resume_do_not_create) ... ok
+test_atomic_code_race_and_private_resume (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_atomic_code_race_and_private_resume) ... ok
+test_audit_fault_rolls_back_code_and_grant (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_audit_fault_rolls_back_code_and_grant) ... ok
+test_cleanup_audit_failure_rolls_back (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_audit_failure_rolls_back) ... ok
+test_cleanup_hold_and_uncertain_keep_data (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_hold_and_uncertain_keep_data) ... ok
+test_cleanup_retains_minimal_audit_and_ledger (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_retains_minimal_audit_and_ledger) ... ok
+test_cleanup_running_call_requires_quiesced_recovery (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_cleanup_running_call_requires_quiesced_recovery) ... ok
+test_code_required_expired_and_foreign_fail (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_code_required_expired_and_foreign_fail) ... ok
+test_expiry_fences_late_publication_and_uncertain_holds_slot (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_expiry_fences_late_publication_and_uncertain_holds_slot) ... ok
+test_http_real_upload_replay_limits_and_expiry (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_http_real_upload_replay_limits_and_expiry) ... AUTH16 HTTP /v1/auth/demo/prepare
+AUTH16 HTTP /v1/auth/demo/enter
+AUTH16 HTTP /v1/session/demo
+DATABASE_URL scheme 'user=postgres dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth15_e0d20c3143104e4b850e46586b5c852b:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+AUTH16 HTTP /v1/session/demo
+AUTH16 HTTP /v1/internal/models/backtest
+AUTH16 HTTP /v1/session/date-column
+AUTH16 HTTP /v1/session/dataset/passport/start
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+AUTH16 HTTP /v1/session/dataset/passport/modeling_entry
+AUTH16 HTTP /v1/session/modeling/candidates
+/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+AUTH16 HTTP /v1/session/modeling/baselines
+AUTH16 HTTP /v1/session/modeling/compare
+/workspace/scratch/e28f7bf5e3d0/venv-cert/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  return acorr_lm(
+AUTH16 HTTP /v1/session/modeling/selection/evaluate
+AUTH16 HTTP /v1/session/modeling/select
+AUTH16 HTTP /v1/session/modeling/card
+Artifact promotion failed (durable receipt recorded): run=RUN-32216A200A3D4630B8E0338DE5D88145 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+Artifact promotion failed (durable receipt recorded): run=RUN-32216A200A3D4630B8E0338DE5D88145 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+AUTH16 HTTP /v1/session/modeling/forecast
+Artifact promotion failed (durable receipt recorded): run=RUN-32216A200A3D4630B8E0338DE5D88145 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+Artifact promotion failed (durable receipt recorded): run=RUN-32216A200A3D4630B8E0338DE5D88145 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+AUTH16 HTTP /v1/session/demo
+ok
+test_migration_repeat_and_admission_hash_only (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_migration_repeat_and_admission_hash_only) ... ok
+test_quiesced_file_gc_keeps_shared_bytes_and_commits_audit_first (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_quiesced_file_gc_keeps_shared_bytes_and_commits_audit_first) ... ok
+test_quota_race_and_idempotency_payload_conflict (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_quota_race_and_idempotency_payload_conflict) ... ok
+test_resume_does_not_extend_expiry_or_bypass_expiration (tests.integration.test_auth16_lifecycle.LifecycleSQLTests.test_resume_does_not_extend_expiry_or_bypass_expiration) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 84.592s
+
+OK

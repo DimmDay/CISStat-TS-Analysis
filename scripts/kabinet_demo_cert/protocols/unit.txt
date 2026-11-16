@@ -1,0 +1,10 @@
+test_both_shells_metadata_and_pivot_surface (test_kabinet_demo_cert.KabinetDemoCertification.test_both_shells_metadata_and_pivot_surface) ... ok
+test_compose_forwards_public_pair_at_build_time (test_kabinet_demo_cert.KabinetDemoCertification.test_compose_forwards_public_pair_at_build_time) ... ok
+test_original_manifest_complete_and_safe (test_kabinet_demo_cert.KabinetDemoCertification.test_original_manifest_complete_and_safe) ... ok
+test_public_env_example_defaults_blank (test_kabinet_demo_cert.KabinetDemoCertification.test_public_env_example_defaults_blank) ... ok
+test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.017s
+
+OK

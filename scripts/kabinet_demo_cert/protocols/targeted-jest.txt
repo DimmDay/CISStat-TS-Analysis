@@ -1,0 +1,6 @@
+
+Test Suites: 8 passed, 8 total
+Tests:       70 passed, 70 total
+Snapshots:   0 total
+Time:        28.954 s
+Ran all test suites within paths "packages/ui/components/auth-kabinet-demo.test.tsx", "apps/standalone/components/dashboard-pivot.test.tsx", "packages/ui/components/auth15-demo.test.tsx", "packages/ui/components/auth16-demo.test.tsx", "packages/ui/components/NavigatorHero.test.tsx", "apps/standalone/components/product-header-nav-slogan.test.tsx", "apps/standalone/components/brand-rename.test.tsx", "packages/ui/lib/demo-cert.test.ts".

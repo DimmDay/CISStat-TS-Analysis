@@ -9377,6 +9377,12 @@
   "tests/unit/test_auth19_routes.py",
   "tests/unit/test_auth21_wallet.py",
   "tests/unit/test_auth22_topups.py",
-  "validation/engine.py"
+  "validation/engine.py",
+  "tests/unit/test_kabinet_demo_cert.py",
+  "packages/ui/lib/demo-cert.test.ts",
+  "apps/standalone/components/dashboard-pivot.test.tsx",
+  "packages/ui/components/DemoLanding.tsx",
+  "apps/standalone/Dockerfile",
+  ".github/workflows/kabinet_demo_cert.yml"
  ]
 }

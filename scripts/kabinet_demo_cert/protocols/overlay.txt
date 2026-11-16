@@ -1,0 +1,6 @@
+Clean base 53ebba5 + ZIP: manifest/CRC/every payload byte PASS. INDEX Dockerfile/.env.example CRLF; WORKTREE LF.
+auth00 INDEX-parity: ok (597 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 281, "inventory_api": 281, "registry_bindings": 285, "inventory_entries": 659, "added": [], "missing": []}
+PASS; no source INDEX changes, commits/push/VM changes.

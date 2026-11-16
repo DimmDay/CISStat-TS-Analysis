@@ -139,7 +139,7 @@ prepare`, `/enter`, `/resume`, `/leave` уже public + lockdown-guarded.
 
 | Риск | Мера |
 |---|---|
-| Исчерпание бюджета публичной кампании кем угодно → демо недоступно всем | Конечный budget/max_grants policy; rate-limit (`too_many_attempts`) сохранён; stop/pause/rotate админом; ops-политика: скользящее окно + периодический reset + мониторинг панели `/admin/demo-campaigns` (issued/active grants, расход, доля отказов) |
+| Исчерпание бюджета публичной кампании кем угодно → демо недоступно всем | Конечный budget/max_grants policy; rate-limit (`too_many_attempts`) сохранён; stop/pause/rotate админом; ops-политика: новая конечная кампания без сброса прежнего usage/ledger + мониторинг панели `/admin/demo-campaigns` (issued/active grants, расход, доля отказов) |
 | Rotation пары | Пара только в env (не в коде): rotate в админ-панели + обновление env + редеплой; `credential_version` поддерживает rotate; старая пара перестаёт входить сразу |
 | Утечка credentials | AC22: ни одна ссылка не несёт пару в URL; пара ходит только в теле POST (как и сегодня); формы `autocomplete` сохранены |
 | Абьюз самозапуска (много устройств) | Существующие границы: max_grants, campaign budget, `participant_max_sessions`, cleanup/leave, конечность кампании; уникальность человека НЕ декларируется (BOUNDARY-01 сохранён в спеке) |
@@ -156,8 +156,12 @@ prepare`, `/enter`, `/resume`, `/leave` уже public + lockdown-guarded.
 1. Создать публичную кампанию существующей админ-процедурой
    (`/admin/demo-campaigns`/CLI): конечное окно, budget/max_grants под
    подтверждённую мощность, `allow_upload`/retention по политике.
-2. Задать `NEXT_PUBLIC_DEMO_LOGIN`/`NEXT_PUBLIC_DEMO_PASSWORD` в окружении
-   Vercel (обе оболочки), деплой.
+2. Для VM задать публичную campaign-пару `NEXT_PUBLIC_DEMO_LOGIN`/`NEXT_PUBLIC_DEMO_PASSWORD`
+   в `deployment/cisstat-stack/.env`; Compose передаёт её как build args web-образа.
+   Выполнить `docker compose build web` и `docker compose up -d --no-deps web`.
+   Runtime env без пересборки не обновляет browser bundle. Для отдельно размещённой
+   embedded-оболочки задать те же переменные при её Next build. Личные/admin/API secrets запрещены.
+   Оставленные пустыми значения честно отключают публичную кнопку.
 3. Проверить путь: `/demo` → «Запустить демо-режим» → `/upload` (полоса
    DemoLimits) → resume после перезагрузки → leave.
 4. Rotation-процедура: rotate в панели → обновить env → редеплой.
@@ -172,3 +176,10 @@ prepare`, `/enter`, `/resume`, `/leave` уже public + lockdown-guarded.
 - [ ] robots `/demo` = index, noindex /account//login//dashboard не тронуты;
 - [ ] API-роуты/registry/check_routes без изменений; затронутые jest-сьюты зелёные; typecheck зелёный;
 - [ ] credentials нигде не в URL; публичной пары нет в коде репозитория.
+
+## 7. Сертификация на 53ebba5
+
+Акт, точные доказательства и ограничения: `docs/kabinet_demo_cert/report.md`.
+Retention — срок удаления результатов; по окончании демо доступ к ним закрыт AUTH-16.
+AC22 допускает только утверждённую публичную campaign-пару в browser bundle; это не personal credential.
+Для Task7 архив обязан включать page/dashboard и свой manifest, иначе поставка неполна независимо от tests в исходном checkout.

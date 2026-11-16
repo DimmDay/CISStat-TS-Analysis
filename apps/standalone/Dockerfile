@@ -47,6 +47,11 @@ COPY shared ./shared
 
 COPY apps/standalone ./apps/standalone
 
+# Public campaign entry only: compiled into browser JS, never personal/admin secrets.
+ARG NEXT_PUBLIC_DEMO_LOGIN
+ARG NEXT_PUBLIC_DEMO_PASSWORD
+ENV NEXT_PUBLIC_DEMO_LOGIN=${NEXT_PUBLIC_DEMO_LOGIN}
+ENV NEXT_PUBLIC_DEMO_PASSWORD=${NEXT_PUBLIC_DEMO_PASSWORD}
 RUN npm run build --workspace=@cisstat/ts-analysis-standalone
 
 # --------------------------------------------------------------- runtime ---
