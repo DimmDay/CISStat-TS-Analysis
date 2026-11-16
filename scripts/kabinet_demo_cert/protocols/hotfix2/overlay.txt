@@ -1,0 +1,82 @@
+Original cert + HOTFIX1 + actual HOTFIX2 ZIP: CRC/manifest/bytes PASS. Disposable INDEX CLI/workflow CRLF, WORKTREE LF.
+Локальные гейты (база 53ebba5, AUTH-00 target=INDEX): kabinet-demo-cert
+
+=== ГЕЙТ kabinet-demo-cert (kabinet_demo_cert.yml contracts) — AUTH-KABINET-DEMO Task1-7 certification oracles
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/kabinet-cert-overlay/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_kabinet_demo_cert.py -v
+test_both_shells_metadata_and_pivot_surface (test_kabinet_demo_cert.KabinetDemoCertification.test_both_shells_metadata_and_pivot_surface) ... ok
+test_compose_forwards_public_pair_at_build_time (test_kabinet_demo_cert.KabinetDemoCertification.test_compose_forwards_public_pair_at_build_time) ... ok
+test_original_manifest_complete_and_safe (test_kabinet_demo_cert.KabinetDemoCertification.test_original_manifest_complete_and_safe) ... ok
+test_public_env_example_defaults_blank (test_kabinet_demo_cert.KabinetDemoCertification.test_public_env_example_defaults_blank) ... ok
+test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension) ... ok
+test_oracles_use_utf8_even_when_windows_default_is_cp1251 (test_kabinet_demo_cert.SourceEncodingTests.test_oracles_use_utf8_even_when_windows_default_is_cp1251) ... ok
+test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change (test_kabinet_demo_cert.SourceEncodingTests.test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.221s
+
+OK
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/auth-kabinet-demo.test.tsx apps/standalone/components/dashboard-pivot.test.tsx packages/ui/components/auth15-demo.test.tsx packages/ui/components/auth16-demo.test.tsx packages/ui/components/NavigatorHero.test.tsx apps/standalone/components/product-header-nav-slogan.test.tsx apps/standalone/components/brand-rename.test.tsx packages/ui/lib/demo-cert.test.ts
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+
+Error: Cannot find module '/workspace/scratch/e28f7bf5e3d0/kabinet-cert-overlay/node_modules/jest/bin/jest.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.22.1
+    FAILED STEP (exit 1): node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/auth-kabinet-demo.test.tsx apps/standalone/components/dashboard-pivot.test.tsx packages/ui/components/auth15-demo.test.tsx packages/ui/components/auth16-demo.test.tsx packages/ui/components/NavigatorHero.test.tsx apps/standalone/components/product-header-nav-slogan.test.tsx apps/standalone/components/brand-rename.test.tsx packages/ui/lib/demo-cert.test.ts
+--- kabinet-demo-cert: FAIL (0.6 c)
+
+=== СВОДКА ===
+  FAIL  kabinet-demo-cert     0.6 c
+  FAILED STEP kabinet-demo-cert: node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/auth-kabinet-demo.test.tsx apps/standalone/components/dashboard-pivot.test.tsx packages/ui/components/auth15-demo.test.tsx packages/ui/components/auth16-demo.test.tsx packages/ui/components/NavigatorHero.test.tsx apps/standalone/components/product-header-nav-slogan.test.tsx apps/standalone/components/brand-rename.test.tsx packages/ui/lib/demo-cert.test.ts
+
+ИТОГ: НЕ ПУШТЕ — есть красные гейты
+
+Setup note: initial disposable clone had no node_modules; runner correctly refused it. Installed locked dependencies with npm ci --ignore-scripts --no-audit --no-fund, then reran the same ZIP sources.
+Локальные гейты (база 53ebba5, AUTH-00 target=INDEX): kabinet-demo-cert
+
+=== ГЕЙТ kabinet-demo-cert (kabinet_demo_cert.yml contracts) — AUTH-KABINET-DEMO Task1-7 certification oracles
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/kabinet-cert-overlay/../venv-cert/bin/python -m unittest discover -s tests/unit -p test_kabinet_demo_cert.py -v
+test_both_shells_metadata_and_pivot_surface (test_kabinet_demo_cert.KabinetDemoCertification.test_both_shells_metadata_and_pivot_surface) ... ok
+test_compose_forwards_public_pair_at_build_time (test_kabinet_demo_cert.KabinetDemoCertification.test_compose_forwards_public_pair_at_build_time) ... ok
+test_original_manifest_complete_and_safe (test_kabinet_demo_cert.KabinetDemoCertification.test_original_manifest_complete_and_safe) ... ok
+test_public_env_example_defaults_blank (test_kabinet_demo_cert.KabinetDemoCertification.test_public_env_example_defaults_blank) ... ok
+test_retention_is_not_an_access_extension (test_kabinet_demo_cert.KabinetDemoCertification.test_retention_is_not_an_access_extension) ... ok
+test_oracles_use_utf8_even_when_windows_default_is_cp1251 (test_kabinet_demo_cert.SourceEncodingTests.test_oracles_use_utf8_even_when_windows_default_is_cp1251) ... ok
+test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change (test_kabinet_demo_cert.SourceEncodingTests.test_utf8_bom_crlf_checkout_preserves_checks_and_detects_content_change) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.178s
+
+OK
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/auth-kabinet-demo.test.tsx apps/standalone/components/dashboard-pivot.test.tsx packages/ui/components/auth15-demo.test.tsx packages/ui/components/auth16-demo.test.tsx packages/ui/components/NavigatorHero.test.tsx apps/standalone/components/product-header-nav-slogan.test.tsx apps/standalone/components/brand-rename.test.tsx packages/ui/lib/demo-cert.test.ts
+
+Test Suites: 8 passed, 8 total
+Tests:       70 passed, 70 total
+Snapshots:   0 total
+Time:        36.424 s
+Ran all test suites within paths "packages/ui/components/auth-kabinet-demo.test.tsx", "apps/standalone/components/dashboard-pivot.test.tsx", "packages/ui/components/auth15-demo.test.tsx", "packages/ui/components/auth16-demo.test.tsx", "packages/ui/components/NavigatorHero.test.tsx", "apps/standalone/components/product-header-nav-slogan.test.tsx", "apps/standalone/components/brand-rename.test.tsx", "packages/ui/lib/demo-cert.test.ts".
+--- kabinet-demo-cert: PASS (38.2 c)
+
+=== СВОДКА ===
+  PASS  kabinet-demo-cert    38.2 c
+
+ИТОГ: выбранные гейты зелёные
+auth00 INDEX-parity: ok (597 discovery surfaces; full reviewed inventory/source parity)
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 281, "inventory_api": 281, "registry_bindings": 285, "inventory_entries": 659, "added": [], "missing": []}
+Final overlay PASS; no source INDEX changes, commits/push/VM changes.

@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,43 @@ def runner():
 
 
 class LocalOutputTests(unittest.TestCase):
+    def test_real_cp1252_console_supports_heading_child_output_and_failure_summary(self):
+        # A real subprocess is needed: StringIO cannot reproduce Windows encoder failure.
+        for expected in (0, 7):
+            with self.subTest(child_exit=expected), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                index = root / ".git/index"
+                index.parent.mkdir()
+                index.write_bytes(b"source index sentinel")
+                child = "import sys; print('Дочерний stdout'); print('Дочерний stderr', file=sys.stderr); sys.exit(" + str(expected) + ")"
+                code = (
+                    "import importlib.util,sys; from pathlib import Path; "
+                    "spec=importlib.util.spec_from_file_location('fixture'," + repr(str(ROOT / "scripts/local_gates.py")) + "); "
+                    "m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m); "
+                    "m.ROOT=Path(" + repr(tmp) + "); "
+                    "m.GATES=[('fixture','ci','Русское описание',[[sys.executable,'-c'," + repr(child) + "]])]; "
+                    "sys.argv=['local_gates.py','--only','fixture','--skip-install'];sys.exit(m.main())"
+                )
+                result = subprocess.run(
+                    [sys.executable, "-c", code], cwd=ROOT, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    env={**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"},
+                    timeout=30, check=False,
+                )
+                text = result.stdout.decode("utf-8")
+                self.assertEqual(result.returncode, 0 if expected == 0 else 1, text)
+                self.assertIn("Локальные гейты", text)
+                self.assertIn("Русское описание", text)
+                self.assertIn("Дочерний stdout", text)
+                self.assertIn("Дочерний stderr", text)
+                self.assertNotIn("UnicodeEncodeError", text)
+                if expected:
+                    self.assertIn("FAILED STEP (exit 7)", text)
+                    self.assertIn("НЕ ПУШТЕ", text)
+                else:
+                    self.assertIn("выбранные гейты зелёные", text)
+                self.assertEqual(index.read_bytes(), b"source index sentinel")
+
     def test_auth00_checks_prepared_snapshot_before_slow_unit_suite(self):
         mod = runner()
         commands = next(g[3] for g in mod.GATES if g[0] == "auth00")

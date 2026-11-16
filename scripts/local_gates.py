@@ -361,6 +361,19 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
 ]
 
 
+def _configure_console() -> None:
+    """Configure both CLI streams before argparse/headings (Windows redirected CP1252)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+def _utf8_environment() -> dict[str, str]:
+    """Child processes must not inherit a legacy console codec from the parent."""
+    return {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+
+
 def _npm() -> str:
     found = shutil.which("npm")
     if not found:
@@ -377,7 +390,7 @@ def prepare_commands(commands: list[list[str]], target: str) -> list[list[str]]:
 
 def _logged_command(command: list[str], log) -> int:
     """Keep the original exit code; console and UTF-8 file receive one stream."""
-    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    env = _utf8_environment()
     with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                           errors="replace", env=env) as process:
@@ -420,7 +433,7 @@ def run_gate(name: str, commands: list[list[str]], skip_install: bool,
                 log.flush()
                 code = _logged_command(command, log)
             else:
-                code = subprocess.run(command, cwd=ROOT, check=False).returncode
+                code = subprocess.run(command, cwd=ROOT, check=False, env=_utf8_environment()).returncode
             if code:
                 detail = "    FAILED STEP (exit " + str(code) + "): " + " ".join(command)
                 print(detail, flush=True)
@@ -447,6 +460,7 @@ def staging_manifests() -> list[str]:
 
 
 def main() -> int:
+    _configure_console()
     # Список имён строится из GATES: статические строки в трёх местах
     # расходились с фактом (AUTH-20/21 добавили гейты, но не строки подсказок).
     all_gate_names = ", ".join(g[0] for g in GATES)

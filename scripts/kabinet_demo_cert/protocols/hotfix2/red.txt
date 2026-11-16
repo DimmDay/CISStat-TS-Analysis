@@ -1,0 +1,32 @@
+test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) ... 
+  test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) (child_exit=0) ... FAIL
+  test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) (child_exit=7) ... FAIL
+
+======================================================================
+FAIL: test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) (child_exit=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/tests/unit/test_auth00_local_output.py", line 51, in test_real_cp1252_console_supports_heading_child_output_and_failure_summary
+    self.assertEqual(result.returncode, 0 if expected == 0 else 1, text)
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/scripts/local_gates.py", line 608, in main
+    print(f"\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u0433\u0435\u0439\u0442\u044b (\u0431\u0430\u0437\u0430 {rev}, AUTH-00 target={args.auth00_target.upper()}): {names}", flush=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-8: character maps to <undefined>
+
+
+======================================================================
+FAIL: test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) (child_exit=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/tests/unit/test_auth00_local_output.py", line 52, in test_real_cp1252_console_supports_heading_child_output_and_failure_summary
+    self.assertIn("Локальные гейты", text)
+AssertionError: 'Локальные гейты' not found in 'Traceback (most recent call last):\n  File "<string>", line 1, in <module>\n  File "/workspace/scratch/e28f7bf5e3d0/CISStat-TS-Analysis-cert-task1-7/scripts/local_gates.py", line 608, in main\n    print(f"\\u041b\\u043e\\u043a\\u0430\\u043b\\u044c\\u043d\\u044b\\u0435 \\u0433\\u0435\\u0439\\u0442\\u044b (\\u0431\\u0430\\u0437\\u0430 {rev}, AUTH-00 target={args.auth00_target.upper()}): {names}", flush=True)\n  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1252.py", line 19, in encode\n    return codecs.charmap_encode(input,self.errors,encoding_table)[0]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeEncodeError: \'charmap\' codec can\'t encode characters in position 0-8: character maps to <undefined>\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.130s
+
+FAILED (failures=2)

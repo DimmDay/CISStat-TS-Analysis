@@ -1,0 +1,12 @@
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (tests.unit.test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... ok
+test_failed_step_and_unicode_output_saved_without_losing_exit (tests.unit.test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ok
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (tests.unit.test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (tests.unit.test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ok
+test_real_cp1252_console_supports_heading_child_output_and_failure_summary (tests.unit.test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) ... ok
+test_summary_does_not_prescribe_staging_for_worktree_drift (tests.unit.test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift) ... ok
+test_summary_repeats_snapshot_failure_and_manual_staging_hint (tests.unit.test_auth00_local_output.LocalOutputTests.test_summary_repeats_snapshot_failure_and_manual_staging_hint) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.370s
+
+OK
