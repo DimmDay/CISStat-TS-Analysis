@@ -176,3 +176,34 @@ function renderFormWithLink() {
   );
   return renderForm();
 }
+
+test("expired email link explains how to request a new letter", async () => {
+  window.history.replaceState(null, "", "/login?email_challenge=e1_" + "D".repeat(43));
+  command.mockRejectedValueOnce(new AuthFailure(401, "invalid_credential"));
+  renderForm("/upload");
+  fireEvent.click(await screen.findByRole("button", { name: "Подтвердить вход" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Ссылка недействительна, уже использована или срок её действия истёк");
+  fireEvent.click(screen.getByRole("button", { name: "Запросить новое письмо" }));
+  await screen.findByRole("button", { name: "Войти" });
+  expect(command).toHaveBeenCalledTimes(1);
+});
+
+test("closed personal demo is explained without calling it a service outage", async () => {
+  window.history.replaceState(null, "", "/login?email_challenge=e1_" + "E".repeat(43));
+  command.mockRejectedValueOnce(new AuthFailure(403, "personal_demo_unavailable"));
+  renderForm();
+  fireEvent.click(await screen.findByRole("button", { name: "Подтвердить вход" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Регистрация личного демо временно закрыта");
+});
+
+test("authority outage keeps the email link for retry without exposing server details", async () => {
+  window.history.replaceState(null, "", "/login?email_challenge=e1_" + "F".repeat(43));
+  command.mockRejectedValueOnce(new AuthFailure(503, "auth_authority_unavailable"));
+  renderForm();
+  const confirm = await screen.findByRole("button", { name: "Подтвердить вход" });
+  expect(command).not.toHaveBeenCalled();
+  fireEvent.click(confirm);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Сервис входа временно недоступен");
+  expect(confirm).toBeInTheDocument();
+  expect(window.location.search).not.toContain("email_challenge");
+});

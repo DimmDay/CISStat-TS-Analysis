@@ -226,10 +226,23 @@ export function LoginScreen({
     event.preventDefault();
     if (!linkToken) return;
     void action(async () => {
-      await handleExternal(
-        await authCommand("email/consume", { token: linkToken }),
-        "email",
-      );
+      try {
+        await handleExternal(
+          await authCommand("email/consume", { token: linkToken }),
+          "email",
+        );
+      } catch (caught) {
+        if (
+          caught instanceof AuthFailure &&
+          caught.code === "invalid_credential" &&
+          caught.status === 401
+        ) {
+          if (mounted.current)
+            setError("Ссылка недействительна, уже использована или срок её действия истёк. Запросите новое письмо для входа.");
+          return;
+        }
+        throw caught;
+      }
       if (mounted.current) setLinkToken(null);
     });
   }
@@ -508,6 +521,9 @@ export function LoginScreen({
           </p>
           <button className={button} disabled={busy}>
             Подтвердить вход
+          </button>
+          <button type="button" className="block text-sm text-neutral-600 underline" disabled={busy} onClick={reset}>
+            Запросить новое письмо
           </button>
         </form>
       ) : emailSent ? (

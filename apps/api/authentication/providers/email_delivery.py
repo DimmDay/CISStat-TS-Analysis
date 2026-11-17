@@ -9,6 +9,7 @@ import os
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 TLS_MODES = ("starttls", "ssl", "none")
 
@@ -57,6 +58,10 @@ class SmtpEmailDelivery:
         message["From"] = self.sender
         message["To"] = to_email
         message["Subject"] = subject
+        # Do not rely on a relay to add RFC 5322 headers. Use the sender
+        # domain instead of disclosing the container hostname in Message-ID.
+        message["Date"] = formatdate(localtime=False, usegmt=True)
+        message["Message-ID"] = make_msgid(domain=message["From"].addresses[0].domain)
         message.set_content(body)
         try:
             if self.mode == "ssl":

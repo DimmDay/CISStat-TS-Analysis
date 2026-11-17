@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 import hashlib
 import json
+import logging
 import re
 import secrets
 from uuid import UUID, uuid4
@@ -39,7 +40,13 @@ def boundary(fn):
             return fn(*args, **kwargs)
         except AuthHTTPException:
             raise
-        except Exception:
+        except Exception as exc:
+            # Never log exception text/args/traceback: they can contain SQL
+            # parameters, email proof, DSNs or provider credentials.
+            logging.getLogger(__name__).warning(
+                "Auth operation failed operation=%s category=%s",
+                fn.__name__, type(exc).__name__,
+            )
             auth_error(503, "auth_authority_unavailable")
 
     return call

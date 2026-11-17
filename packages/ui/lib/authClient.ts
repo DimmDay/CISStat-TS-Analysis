@@ -59,6 +59,7 @@ const messages: Record<string, string> = {
   account_access_denied: "Доступ к аккаунту запрещён. Обратитесь к владельцу или администратору.",
   oidc_unavailable: "Корпоративный вход не настроен.",
   oidc_already_linked: "Этот корпоративный вход уже привязан к другой учётной записи.",
+  personal_demo_unavailable: "Регистрация личного демо временно закрыта. Попробуйте позже или обратитесь к администратору.",
   email_unavailable: "Вход по email не настроен.",
   email_delivery_unavailable: "Отправка письма недоступна; попробуйте позже.",
   email_already_bound: "Этот адрес уже привязан к другой учётной записи.",

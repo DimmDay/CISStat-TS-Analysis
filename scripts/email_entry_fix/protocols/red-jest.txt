@@ -1,0 +1,44 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/auth19-login.test.tsx
+  ● expired email link explains how to request a new letter
+
+    expect(element).toHaveTextContent()
+
+    Expected element to have text content:
+      Ссылка недействительна, уже использована или срок её действия истёк
+    Received:
+      Вход не подтверждён. Проверьте данные и повторите попытку.
+
+      183 |   renderForm("/upload");
+      184 |   fireEvent.click(await screen.findByRole("button", { name: "Подтвердить вход" }));
+    > 185 |   expect(await screen.findByRole("alert")).toHaveTextContent("Ссылка недействительна, уже использована или срок её действия истёк");
+          |                                            ^
+      186 |   fireEvent.click(screen.getByRole("button", { name: "Запросить новое письмо" }));
+      187 |   await screen.findByRole("button", { name: "Войти" });
+      188 |   expect(command).toHaveBeenCalledTimes(1);
+
+      at Object.<anonymous> (packages/ui/components/auth19-login.test.tsx:185:44)
+
+  ● closed personal demo is explained without calling it a service outage
+
+    expect(element).toHaveTextContent()
+
+    Expected element to have text content:
+      Регистрация личного демо временно закрыта
+    Received:
+      Сервис входа временно недоступен. Повторите попытку.
+
+      194 |   renderForm();
+      195 |   fireEvent.click(await screen.findByRole("button", { name: "Подтвердить вход" }));
+    > 196 |   expect(await screen.findByRole("alert")).toHaveTextContent("Регистрация личного демо временно закрыта");
+          |                                            ^
+      197 | });
+      198 |
+
+      at Object.<anonymous> (packages/ui/components/auth19-login.test.tsx:196:44)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 6 passed, 8 total
+Snapshots:   0 total
+Time:        3.732 s
+Ran all test suites matching packages/ui/components/auth19-login.test.tsx.

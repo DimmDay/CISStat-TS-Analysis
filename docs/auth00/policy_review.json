@@ -9432,6 +9432,8 @@
   "tests/integration/test_personal_demo.py",
   "tests/integration/test_personal_demo_http.py",
   ".github/workflows/personal_demo.yml",
-  "tests/unit/test_auth04_routes.py"
+  "tests/unit/test_auth04_routes.py",
+  "tests/unit/test_email_entry_fix.py",
+  "packages/ui/components/auth19-login.test.tsx"
  ]
 }
