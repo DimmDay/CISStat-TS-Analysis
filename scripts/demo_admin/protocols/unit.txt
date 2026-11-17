@@ -1,0 +1,36 @@
+test_compose_enables_admin_delivery_only_in_api (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api) ... ok
+test_disabled_publisher_does_not_touch_authority_or_smtp (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp) ... ok
+test_invalid_recipient_is_rejected_without_header_injection (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection) ... ok
+test_notice_contains_actual_limits_and_moscow_time_without_login_proof (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof) ... ok
+test_notification_failure_does_not_block_audit_or_log_private_error (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_notification_failure_does_not_block_audit_or_log_private_error) ... ok
+test_smtp_preserves_stable_notification_message_id (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id) ... ok
+test_disabled_metadata_honest_without_store (tests.unit.test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (tests.unit.test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (tests.unit.test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (tests.unit.test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (tests.unit.test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+test_authority_failure_logs_category_without_exception_or_credentials (tests.unit.test_email_entry_fix.EmailEntryFixTests.test_authority_failure_logs_category_without_exception_or_credentials) ... ok
+test_complete_unique_headers_on_both_tls_transports (tests.unit.test_email_entry_fix.EmailEntryFixTests.test_complete_unique_headers_on_both_tls_transports) ... ok
+test_expected_denial_is_not_reclassified_or_logged_as_outage (tests.unit.test_email_entry_fix.EmailEntryFixTests.test_expected_denial_is_not_reclassified_or_logged_as_outage) ... ok
+test_auth_ops_changed_is_mandatory (tests.unit.test_auth20_ops.AuditCatalogTests.test_auth_ops_changed_is_mandatory) ... ok
+test_catalog_size_43 (tests.unit.test_auth20_ops.AuditCatalogTests.test_catalog_size_43) ... ok
+test_assert_open_passes_when_off (tests.unit.test_auth20_ops.LockdownSwitchTests.test_assert_open_passes_when_off) ... ok
+test_assert_open_raises_safe_code (tests.unit.test_auth20_ops.LockdownSwitchTests.test_assert_open_raises_safe_code) ... ok
+test_env_reading (tests.unit.test_auth20_ops.LockdownSwitchTests.test_env_reading) ... ok
+test_off_values (tests.unit.test_auth20_ops.LockdownSwitchTests.test_off_values) ... ok
+test_unknown_value_fails_closed (tests.unit.test_auth20_ops.LockdownSwitchTests.test_unknown_value_fails_closed) ... ok
+test_bad_timestamp_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_bad_timestamp_rejected) ... ok
+test_bad_uuid_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_bad_uuid_rejected) ... ok
+test_missing_row_image_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_missing_row_image_rejected) ... ok
+test_non_terminal_event_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_non_terminal_event_rejected) ... ok
+test_oversize_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_oversize_rejected) ... ok
+test_unknown_format_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_unknown_format_rejected) ... ok
+test_unreconcilable_pair_rejected (tests.unit.test_auth20_ops.MarksValidationTests.test_unreconcilable_pair_rejected) ... ok
+test_valid_document_passes (tests.unit.test_auth20_ops.MarksValidationTests.test_valid_document_passes) ... ok
+test_retention_defaults_and_minimum (tests.unit.test_auth20_ops.RetentionAndSweeperBoundsTests.test_retention_defaults_and_minimum) ... ok
+test_sweeper_interval_bounds (tests.unit.test_auth20_ops.RetentionAndSweeperBoundsTests.test_sweeper_interval_bounds) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.108s
+
+OK

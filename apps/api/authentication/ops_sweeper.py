@@ -53,6 +53,7 @@ def cycle():
     from .lockdown import LOCKDOWN_ENV
     from .ops_service import AuthOpsService, parse_retention_days
 
+    notification = _publish_demo_admin()
     service = AuthOpsService()
     delivered = service.drain_audit(limit=100)
     pruned = 0
@@ -61,7 +62,7 @@ def cycle():
         pruned = service.prune_ledger(
             retention_days=parse_retention_days(raw), batch=1000
         )["pruned"]
-    return {"delivered": delivered, "pruned": pruned, "lockdown_env": bool(os.environ.get(LOCKDOWN_ENV))}
+    return {"delivered": delivered, "pruned": pruned, "lockdown_env": bool(os.environ.get(LOCKDOWN_ENV)), "demo_admin": notification}
 
 
 def _record(result, failure=False):
@@ -125,3 +126,12 @@ def reset_for_testing():
     for key in ("last_cycle",):
         _status[key] = None
     _status.update({"enabled": False, "running": False, "cycles": 0, "failures": 0, "pruned_total": 0})
+
+
+def _publish_demo_admin():
+    from .demo_admin_notifications import publish_pending
+    try:
+        return publish_pending()
+    except Exception:  # Independent notification delivery must not stop audit publication.
+        logging.getLogger(__name__).warning("Demo admin notification unavailable; durable queue retained")
+        return {"error": "notification_unavailable"}

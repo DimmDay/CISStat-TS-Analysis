@@ -188,6 +188,8 @@ def enroll(c, store, subject, account, email, now):
             expires,
         ),
     )
+    from .demo_admin_notifications import enqueue
+    enqueue(c, subject, email, now, expires, profile(pool))
     audit(
         c,
         "auth_budget_changed",

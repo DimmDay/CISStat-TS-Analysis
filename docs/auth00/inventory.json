@@ -646,6 +646,17 @@
         "T13",
         "T15"
       ]
+    },
+    "auth.ops_delivery": {
+      "observed": "Trusted required-mode internal ops worker: mandatory audit publication/retention and optional first-trial admin SMTP notice from committed queue snapshots. No public invocation or login proof in notification.",
+      "target": "Bounded SQL claims, lease/fenced acknowledgement and retry; configured single admin recipient; SMTP outside enrollment and claim transactions, no secret/error-text logging; failures preserve committed user access and audit processing.",
+      "follow_up": [
+        "AUTH-20"
+      ],
+      "threats": [
+        "T12",
+        "T14"
+      ]
     }
   },
   "source_fingerprints": {
@@ -664,7 +675,7 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "fd7e4a09135ab6a64f6336e8e3bebe969d21a27a3564a9856635aa6cdfd09215",
+    "apps/api/Dockerfile": "eb5e15481b174e296bfc0513d9b72de1feeb7eac83d5e302064f73a34f7a4429",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "6937c4887efa659d60cbcf585cda2a452b78e2c16ad746bbb1e1d919e8e736e1",
@@ -693,6 +704,8 @@
     "apps/api/authentication/credentials.py": "775bf44bffe8e94a26a334d091387da318b67cf5b6366863420b6fc9e3a0ef03",
     "apps/api/authentication/csrf.py": "e8ccaceea75398b6ae9a36f485b8b4bcb2fe19fe0dbbac46caa4a3c011c47796",
     "apps/api/authentication/demo.py": "73368ba0135d00e6c8e19b128c4d9378db2069963a1eb66a5f8df7059b4fd79a",
+    "apps/api/authentication/demo_admin_migrations.py": "1ef33b139126c6b21463ef3fe47aa7863ca57d88069b67fa85ec699ab2606b08",
+    "apps/api/authentication/demo_admin_notifications.py": "1f3864193c93faca09f8b03cf6d12a37a785cd32fa32c635ec533c5aa7e74db3",
     "apps/api/authentication/demo_cleanup.py": "7957c0eeaf48fc747439c05d484e3ea98ab256c8ab3f2baa4be5fd0718085a4c",
     "apps/api/authentication/demo_kernel.py": "c03376fe5d547a0946fddabb7ff58b34a5adf0150bec27908406dbdd4a664bd8",
     "apps/api/authentication/demo_lifecycle.py": "630c4a2f67ae086b9fb9490941a8da52f2b289cd0635d20751d87834c9977bba",
@@ -712,12 +725,12 @@
     "apps/api/authentication/oidc.py": "ce37175487fe565b019e594c6161ecd473c840f8ae63455de98e97024039ac1e",
     "apps/api/authentication/ops_health.py": "f23e1b2ad348a5f20cb8fd39c20d7d15eedb9bc152f1ad79797d4eb6d4b3ad75",
     "apps/api/authentication/ops_service.py": "23f5d78cd352ccdf2775c1a8de6685668e1651e82f35c299403505900af9070b",
-    "apps/api/authentication/ops_sweeper.py": "ed54e50d95e31ab3ef9d3b594cc4944550700b4b0e7001f55c04b6967de47376",
+    "apps/api/authentication/ops_sweeper.py": "79176e91ba4c31bbad3574d2f762c2ab0ad75b7cf87ed2510ad7048192bccb49",
     "apps/api/authentication/password_blocklist.txt": "f0903d0ee97d023b8c7ad68a1e16cbb5a5ddebb5cc539604cafc2ed0ef1303c0",
-    "apps/api/authentication/personal_demo.py": "c218ebba7df9c3c63069cf699ac2b7ee843cc8b47215c298510bfc50f2f1b660",
+    "apps/api/authentication/personal_demo.py": "e5fae75775a4eba97ae7ef719c4ce8ca9c16f0eaadeb6164a40a96e55bdb99e8",
     "apps/api/authentication/personal_demo_migrations.py": "9db0f11c618cf8c4ce546fdda2aee1a4e02711c2c61da234c4950c9d41690693",
     "apps/api/authentication/providers/__init__.py": "d7cda0b119c6c9e4a8b70901f37b6c1846ce24aec5faddc7b1ba87551e7f2715",
-    "apps/api/authentication/providers/email_delivery.py": "9d78791cb2a22a79a5ab3594d840ee263a4fdad9dc856f7a2ee6ac252415e840",
+    "apps/api/authentication/providers/email_delivery.py": "45c3b3bbbff215be8bc1634cd9261cdb0128c11f34c0a860736ac3893565f8be",
     "apps/api/authentication/providers/oidc.py": "07b5428dff37a48bacfa9b4d6a44697bc44276e88018d0ea9f002f5756b18019",
     "apps/api/authentication/repository.py": "e886c2bc82c085d11473480bafcdcab0398493b972e99eb3ba2fc7517094fd0f",
     "apps/api/authentication/session_migrations.py": "dd0bcc74d5d0aa4a57f27a8b3426466549af31ffef79c87b20c72289d0c63735",
@@ -800,6 +813,7 @@
     "apps/api/migrations/0033_auth21_wallet.sql": "84c94b716b3a87c538b41dbc1898b9b8db0e06308ffbcc75474eb03c2cb63b12",
     "apps/api/migrations/0034_auth22_topups.sql": "21745278fc16fcffa399bb19f2796f23acff4f74e687df505d20cb0a3779bd05",
     "apps/api/migrations/0036_personal_demo.sql": "f7fb1d99dd59b67e617a6e3e08300bae5d99e6a5ee11f550984c99c0d9df6a7f",
+    "apps/api/migrations/0037_demo_admin_notifications.sql": "b02d3f7132b7eff687d2f4536f4c087db725c2bb55a0be44113f0aca164d07ee",
     "apps/api/missing_correction.py": "1bb0037b37d88a475f596d299b99ee8d056ae29f26aef8ee068e8b252a26d04e",
     "apps/api/model_execution.py": "aead3daf512fa90227bbc385a52e785614fa0e2b58faabcac97edc363f84aa45",
     "apps/api/model_impls/__init__.py": "eb7ad3a5bdad4a122ce7f26cdeaddbd27c444023613be51686c699ea169f5adc",
@@ -970,8 +984,8 @@
     "apps/standalone/components/dashboard-pivot.test.tsx": "589814ceacf41ac96966d1c099c4f7d500bfe38842cd93624cc156ae06cd87c4",
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
-    "deployment/cisstat-stack/.env.example": "e14d759b8b04e0a54e3168b031987b8c3468a0fd92b247927d694bcc4808fee8",
-    "deployment/cisstat-stack/docker-compose.yml": "094e060aabe0941fe4baac71706959ee9234fb181e45d3ae6c4a48f185cf7280",
+    "deployment/cisstat-stack/.env.example": "2531c0eac8e827b1ff2ab45a0a3df5ded20b96a008ec7ff2488c9968b4fb3aea",
+    "deployment/cisstat-stack/docker-compose.yml": "6649c20ab87f7214c10b46cbf8edb5a7d7c2c5a1cf41f6e69384ca208f43da98",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
     "docs/auth00/threat_model.md": "e0a6c25975ee152e270d91263139cff0e5042495c24a120c251762e6c22bca13",
@@ -1116,7 +1130,9 @@
     "scripts/auth21/migrate.py": "44b3c34d993d7ba34c396a188c41e0afc55ec7e213d7e1f7f11d14515922228c",
     "scripts/auth22/manage_topups.py": "709c0dbcc1cc891af0a8ee72852299efedabb780e9b1cb9282009dfeb21c5eb8",
     "scripts/auth22/migrate.py": "b5f8077f34ef6a3c3c1944ffcae15c82a800a8e5910e38ef843b298ed8fe63e7",
-    "scripts/local_gates.md": "35360e87d30dff80073e0ed408fd8d2154fb1a7e142e765e72a78bfb0275050c",
+    "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
+    "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
+    "scripts/local_gates.md": "bd1f39d297d6de55b537c0ee885655047fb2077e66fc29ffa482bde57872afc8",
     "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
@@ -1134,6 +1150,7 @@
     "tests/integration/test_auth21_wallet.py": "fa6dba45a6671319b6bd6a5b2bb7a9eb32187e733e52abfc2f7b462fd241e34b",
     "tests/integration/test_auth22_topups.py": "6eb0d942c92ca7e2292fce6e1061fe8bccad425ce0004a0dd5be257bef241146",
     "tests/integration/test_personal_demo.py": "b9167c11614badbb7e1fbcb1eff4cf4d13729e3c6d8ec3fe5b16e4bd3880e50a",
+    "tests/integration/test_personal_demo_admin.py": "e1993b3f63bff88d592dc1b2b043cb50d539e3eaddfc252880042101e1c4fd64",
     "tests/integration/test_personal_demo_http.py": "0c72de66aab295778588c1e5f417bd02b616ee6fc3750a517c7226ceae8167f2",
     "tests/unit/test_auth00_local_output.py": "d1126bdb8c0f089f9b91b6e404209a5191b9586e8c8d4c37a44c31640a49d9cf",
     "tests/unit/test_auth00_precommit.py": "75799d1035f3b67a4fa71d8a088ed891895f009b466862bc85887d31774b0513",
@@ -1151,6 +1168,7 @@
     "tests/unit/test_email_entry_fix.py": "312e3a665d5cc90c94756b38d74a85f818773383e75e5d67af9eb8ee9f95a32b",
     "tests/unit/test_kabinet_demo_cert.py": "67dbf92df7eaed1cf66fbb2deb01b4187fa90d45ed7974465be79b26d2cc94c9",
     "tests/unit/test_personal_demo.py": "87b3639df4b8fe516404223f1625b1f4b4051e4e3571f68912fb75094cb334ec",
+    "tests/unit/test_personal_demo_admin.py": "26db032d88c09cf264043cc7b2f4f7b74d315a4c30b1ad72696d2d0910b03de9",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -6836,7 +6854,7 @@
         "set_cookie"
       ],
       "canonical_operation": "auth.email.consume",
-      "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge"
+      "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit"
     },
     {
       "kind": "api",
@@ -20035,7 +20053,7 @@
         "write"
       ],
       "canonical_operation": "personal_demo.enroll",
-      "admission": "verified email consume transaction; single-owner empty account; locked finite pool; immutable one-time receipt; mandatory audit"
+      "admission": "verified email consume transaction; single-owner empty account; locked finite pool; immutable one-time receipt; mandatory audit; optional0037 admin snapshot enqueue in the same commit, no SMTP in request"
     },
     {
       "id": "proxy:embedded:/api/v1/:path*",
@@ -20773,7 +20791,7 @@
       "admission": "trusted parent-only thread independent of authority I/O; positive group-stop proof; no credentials in child"
     },
     {
-      "id": "worker:apps/api/authentication/ops_sweeper.py:103",
+      "id": "worker:apps/api/authentication/ops_sweeper.py:104",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "run",
@@ -20781,21 +20799,22 @@
       "evidence": [
         {
           "source": "apps/api/authentication/ops_sweeper.py",
-          "line": 103,
+          "line": 104,
           "symbol": "run"
         }
       ],
       "discovery": "automatic",
-      "policy": "ops.diagnostics",
+      "policy": "auth.ops_delivery",
       "stage": "platform",
       "stage_namespace": "service",
-      "resource": "mandatory audit outbox delivery and revocation ledger retention",
+      "resource": "mandatory audit outbox, revocation ledger retention, and first-trial admin email delivery",
       "effects": [
         "read",
-        "write"
+        "write",
+        "send_email"
       ],
       "canonical_operation": "auth.ops.sweep",
-      "admission": "in-process daemon thread, required storage mode only, bounded publish_pending/prune batches via existing PostgresAccessStore transactions; no new authority, no secrets, failures are warnings + health counters"
+      "admission": "existing required-mode in-process worker; one leased admin-notice claim per cycle, SMTP outside login/claim transactions, fenced ack/retry and configured single administrator recipient; no login proofs in notice; audit/retention independent of SMTP failure"
     },
     {
       "id": "worker:apps/api/delivery_worker.py:182",

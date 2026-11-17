@@ -1,0 +1,6 @@
+test_operator_status_contains_counts_without_user_or_proof (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_operator_status_contains_counts_without_user_or_proof) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.589s
+
+OK

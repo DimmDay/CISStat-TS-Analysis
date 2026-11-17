@@ -1,0 +1,62 @@
+Локальные гейты (база 709c520, AUTH-00 target=INDEX): personal-demo, auth20
+
+=== ГЕЙТ personal-demo (personal_demo.yml contracts) — Personal MONO trial, SMTP and two-column entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/repo-709c520/../repo/.venv/bin/python -m unittest discover -s tests/unit -p test_personal_demo*.py -v
+test_disabled_metadata_honest_without_store (test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+test_compose_enables_admin_delivery_only_in_api (test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api) ... ok
+test_disabled_publisher_does_not_touch_authority_or_smtp (test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp) ... ok
+test_invalid_recipient_is_rejected_without_header_injection (test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection) ... ok
+test_notice_contains_actual_limits_and_moscow_time_without_login_proof (test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof) ... ok
+test_notification_failure_does_not_block_audit_or_log_private_error (test_personal_demo_admin.AdminNoticeContractTests.test_notification_failure_does_not_block_audit_or_log_private_error) ... ok
+test_smtp_preserves_stable_notification_message_id (test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.141s
+
+OK
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/personal-demo.test.tsx packages/ui/components/auth-kabinet-demo.test.tsx
+
+Test Suites: 2 passed, 2 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        8.387 s
+Ran all test suites within paths "packages/ui/components/personal-demo.test.tsx", "packages/ui/components/auth-kabinet-demo.test.tsx".
+--- personal-demo: PASS (11.5 c)
+
+=== ГЕЙТ auth20 (auth20.yml contracts) — AUTH-20 audit/ops: lockdown, marks, catalog contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/e28f7bf5e3d0/repo-709c520/../repo/.venv/bin/python -m unittest discover -s tests/unit -p test_auth20*.py -v
+test_auth_ops_changed_is_mandatory (test_auth20_ops.AuditCatalogTests.test_auth_ops_changed_is_mandatory) ... ok
+test_catalog_size_43 (test_auth20_ops.AuditCatalogTests.test_catalog_size_43) ... ok
+test_assert_open_passes_when_off (test_auth20_ops.LockdownSwitchTests.test_assert_open_passes_when_off) ... ok
+test_assert_open_raises_safe_code (test_auth20_ops.LockdownSwitchTests.test_assert_open_raises_safe_code) ... ok
+test_env_reading (test_auth20_ops.LockdownSwitchTests.test_env_reading) ... ok
+test_off_values (test_auth20_ops.LockdownSwitchTests.test_off_values) ... ok
+test_unknown_value_fails_closed (test_auth20_ops.LockdownSwitchTests.test_unknown_value_fails_closed) ... ok
+test_bad_timestamp_rejected (test_auth20_ops.MarksValidationTests.test_bad_timestamp_rejected) ... ok
+test_bad_uuid_rejected (test_auth20_ops.MarksValidationTests.test_bad_uuid_rejected) ... ok
+test_missing_row_image_rejected (test_auth20_ops.MarksValidationTests.test_missing_row_image_rejected) ... ok
+test_non_terminal_event_rejected (test_auth20_ops.MarksValidationTests.test_non_terminal_event_rejected) ... ok
+test_oversize_rejected (test_auth20_ops.MarksValidationTests.test_oversize_rejected) ... ok
+test_unknown_format_rejected (test_auth20_ops.MarksValidationTests.test_unknown_format_rejected) ... ok
+test_unreconcilable_pair_rejected (test_auth20_ops.MarksValidationTests.test_unreconcilable_pair_rejected) ... ok
+test_valid_document_passes (test_auth20_ops.MarksValidationTests.test_valid_document_passes) ... ok
+test_retention_defaults_and_minimum (test_auth20_ops.RetentionAndSweeperBoundsTests.test_retention_defaults_and_minimum) ... ok
+test_sweeper_interval_bounds (test_auth20_ops.RetentionAndSweeperBoundsTests.test_sweeper_interval_bounds) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.005s
+
+OK
+--- auth20: PASS (0.5 c)
+
+=== СВОДКА ===
+  PASS  personal-demo    11.5 c
+  PASS  auth20      0.5 c
+
+ИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: auth20 (нужны соответствующие --with-authXX-postgres; native CI отдельно)

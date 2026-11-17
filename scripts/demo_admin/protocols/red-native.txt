@@ -1,0 +1,89 @@
+test_disabled_enrollment_does_not_backfill_prior_trials (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_disabled_enrollment_does_not_backfill_prior_trials) ... ERROR
+test_environment_factory_is_used_without_injected_store (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_environment_factory_is_used_without_injected_store) ... ERROR
+test_expired_claim_recovers_and_stale_ack_cannot_overwrite (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_expired_claim_recovers_and_stale_ack_cannot_overwrite) ... ERROR
+test_mandatory_audit_fault_rolls_back_notice_and_grant (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_mandatory_audit_fault_rolls_back_notice_and_grant) ... ERROR
+test_migration_is_idempotent_and_payload_is_immutable (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_migration_is_idempotent_and_payload_is_immutable) ... ERROR
+test_only_committed_first_grant_queues_safe_notice (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_only_committed_first_grant_queues_safe_notice) ... ERROR
+test_smtp_outage_does_not_affect_login_and_is_retried (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_smtp_outage_does_not_affect_login_and_is_retried) ... ERROR
+test_two_publishers_do_not_send_same_claim (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_two_publishers_do_not_send_same_claim) ... ERROR
+test_credit_and_identity_roll_back_on_mandatory_audit_fault (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_credit_and_identity_roll_back_on_mandatory_audit_fault) ... Auth operation failed operation=consume category=RuntimeError
+ok
+test_environment_store_code_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_code_provisions_once) ... ok
+test_environment_store_link_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_link_provisions_once) ... ok
+test_existing_funded_account_is_never_reset_or_adopted (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_existing_funded_account_is_never_reset_or_adopted) ... ok
+test_expiry_and_insufficient_cu_are_enforced (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_expiry_and_insufficient_cu_are_enforced) ... ok
+test_http_environment_entry_sets_cookie_and_confirms_session (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_http_environment_entry_sets_cookie_and_confirms_session) ... ok
+test_migration_and_atomic_new_owner_ready_for_compute (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_migration_and_atomic_new_owner_ready_for_compute) ... ok
+test_paused_pool_does_not_create_unfunded_identity (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_paused_pool_does_not_create_unfunded_identity) ... ok
+test_previous_empty_single_owner_can_start_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_previous_empty_single_owner_can_start_once) ... ok
+test_repeat_login_preserves_issued_credit_expiry_and_spend (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_repeat_login_preserves_issued_credit_expiry_and_spend) ... ok
+test_two_registrations_race_for_single_pool_slot (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_two_registrations_race_for_single_pool_slot) ... ok
+
+======================================================================
+ERROR: test_disabled_enrollment_does_not_backfill_prior_trials (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_disabled_enrollment_does_not_backfill_prior_trials)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_environment_factory_is_used_without_injected_store (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_environment_factory_is_used_without_injected_store)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_expired_claim_recovers_and_stale_ack_cannot_overwrite (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_expired_claim_recovers_and_stale_ack_cannot_overwrite)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_mandatory_audit_fault_rolls_back_notice_and_grant (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_mandatory_audit_fault_rolls_back_notice_and_grant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_migration_is_idempotent_and_payload_is_immutable (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_migration_is_idempotent_and_payload_is_immutable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_only_committed_first_grant_queues_safe_notice (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_only_committed_first_grant_queues_safe_notice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_smtp_outage_does_not_affect_login_and_is_retried (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_smtp_outage_does_not_affect_login_and_is_retried)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+======================================================================
+ERROR: test_two_publishers_do_not_send_same_claim (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_two_publishers_do_not_send_same_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/integration/test_personal_demo_admin.py", line 16, in setUp
+    from apps.api.authentication.demo_admin_migrations import apply_migration
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_migrations'
+
+----------------------------------------------------------------------
+Ran 19 tests in 38.328s
+
+FAILED (errors=8)

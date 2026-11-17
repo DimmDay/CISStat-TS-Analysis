@@ -293,3 +293,16 @@ POST email/start/consume сохраняют пути; consume теперь ат�
 Обновлены registry, AUTH00 inventory/review, generated contract/OpenAPI/map и Next proxy allowlist.
 До commit явно подготовить INDEX: `git add --pathspec-from-file=scripts/personal_demo/files.txt`.
 AUTH00 `--target index` до commit, `--target head` после commit; автоматического staging нет.
+
+## Уведомления администратору о новом личном демо (база709c520)
+
+Существующий default `personal-demo` автоматически включает `tests/unit/test_personal_demo_admin.py` через прежний pattern `test_personal_demo*.py`. Проверяются безопасный текст/МСК/фактические лимиты без proof, неизменный Message-ID повтора, single recipient, API-only env и независимость аудита от ошибки SMTP. `personal-demo-postgres` и CI personal_demo.yml автоматически подхватывают `tests/integration/test_personal_demo_admin.py`: atomic notice/receipt rollback, отсутствие повторов на re-login, outage/retry, две публикации, crash lease/fence, immutable payload, default ENV factory и фактическая отправка через существующий ops cycle. Missing DSN/skips не PASS; запуск только на disposable PostgreSQL.
+
+```powershell
+git add --pathspec-from-file=scripts/demo_admin/files.txt
+python scripts/local_gates.py --only personal-demo,auth20,auth00 --skip-install
+# Отдельно native:
+python scripts/local_gates.py --only personal-demo-postgres --with-personal-demo-postgres --skip-install
+```
+
+Нового гейта/флага/workflow нет: существующий discovery включает tests автоматически. API/Next маршруты не добавлены; AUTH00 review описывает новый внутренний enqueue-effect consume и SMTP-effect существующего ops worker, fingerprints обновлены. **Нужна аддитивная0037 до запуска нового api**, когда включены уведомления. Compose default ENABLED=1, получатель admin@datasetup.ru; прежний SMTP используется только API. VM build/migrate/recreate/status/smtp-test: docs/demo_admin/deploy.md. Отправка асинхронна, ошибки SMTP не ломают login; отдельная очередь/retry не содержит кодов/ссылок входа. Это уведомление о первой выдаче trial, не рассылка о каждом входе и не backfill прежних пользователей.

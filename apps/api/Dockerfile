@@ -132,6 +132,7 @@ COPY scripts/auth14/profile.py ./scripts/auth14/profile.py
 COPY scripts/auth15/migrate.py ./scripts/auth15/migrate.py
 COPY scripts/auth16/migrate.py scripts/auth16/cleanup.py ./scripts/auth16/
 COPY scripts/personal_demo/migrate.py scripts/personal_demo/manage.py ./scripts/personal_demo/
+COPY scripts/demo_admin/migrate.py scripts/demo_admin/manage.py ./scripts/demo_admin/
 RUN python -c "from apps.api.authentication.personal_demo import metadata; from apps.api.authentication.personal_demo_migrations import check_schema; print('personal demo imports OK')"
 COPY scripts/auth18/migrate.py scripts/auth18/provision_cycle.py scripts/auth18/reconcile.py scripts/auth18/worker.py ./scripts/auth18/
 RUN python -c "from apps.api.billing.subscriptions import SubscriptionService; from apps.api.billing.subscription_migrations import check_schema; print('auth18 imports OK')"

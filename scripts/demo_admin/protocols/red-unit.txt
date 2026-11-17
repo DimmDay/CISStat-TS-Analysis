@@ -1,0 +1,50 @@
+test_compose_enables_admin_delivery_only_in_api (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api) ... FAIL
+test_disabled_publisher_does_not_touch_authority_or_smtp (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp) ... ERROR
+test_invalid_recipient_is_rejected_without_header_injection (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection) ... ERROR
+test_notice_contains_actual_limits_and_moscow_time_without_login_proof (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof) ... ERROR
+test_smtp_preserves_stable_notification_message_id (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id) ... ERROR
+
+======================================================================
+ERROR: test_disabled_publisher_does_not_touch_authority_or_smtp (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/unit/test_personal_demo_admin.py", line 23, in test_disabled_publisher_does_not_touch_authority_or_smtp
+    from apps.api.authentication.demo_admin_notifications import publish_pending
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_notifications'
+
+======================================================================
+ERROR: test_invalid_recipient_is_rejected_without_header_injection (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/unit/test_personal_demo_admin.py", line 31, in test_invalid_recipient_is_rejected_without_header_injection
+    from apps.api.authentication.demo_admin_notifications import recipient
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_notifications'
+
+======================================================================
+ERROR: test_notice_contains_actual_limits_and_moscow_time_without_login_proof (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/unit/test_personal_demo_admin.py", line 11, in test_notice_contains_actual_limits_and_moscow_time_without_login_proof
+    from apps.api.authentication.demo_admin_notifications import letter, SUBJECT
+ModuleNotFoundError: No module named 'apps.api.authentication.demo_admin_notifications'
+
+======================================================================
+ERROR: test_smtp_preserves_stable_notification_message_id (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/unit/test_personal_demo_admin.py", line 41, in test_smtp_preserves_stable_notification_message_id
+    SmtpEmailDelivery(host="smtp.example.test", sender="admin@example.test", mode="ssl").send(
+TypeError: SmtpEmailDelivery.send() got an unexpected keyword argument 'message_id'
+
+======================================================================
+FAIL: test_compose_enables_admin_delivery_only_in_api (tests.unit.test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/tests/unit/test_personal_demo_admin.py", line 50, in test_compose_enables_admin_delivery_only_in_api
+    self.assertIn(name, data["services"]["api"]["environment"])
+AssertionError: 'CISSTAT_DEMO_ADMIN_NOTIFICATIONS_ENABLED' not found in {'CISSTAT_YOOKASSA_ENABLED': '${CISSTAT_YOOKASSA_ENABLED:-off}', 'CISSTAT_YOOKASSA_SHOP_ID': '${CISSTAT_YOOKASSA_SHOP_ID:-}', 'CISSTAT_YOOKASSA_SECRET_KEY': '${CISSTAT_YOOKASSA_SECRET_KEY:-}', 'CISSTAT_PERSONAL_DEMO_ENABLED': '${CISSTAT_PERSONAL_DEMO_ENABLED:-1}', 'CISSTAT_AUTH_EMAIL_KEY': '${CISSTAT_AUTH_EMAIL_KEY:-}', 'CISSTAT_AUTH_SMTP_HOST': '${CISSTAT_AUTH_SMTP_HOST:-}', 'CISSTAT_AUTH_SMTP_PORT': '${CISSTAT_AUTH_SMTP_PORT:-587}', 'CISSTAT_AUTH_SMTP_USER': '${CISSTAT_AUTH_SMTP_USER:-}', 'CISSTAT_AUTH_SMTP_PASSWORD': '${CISSTAT_AUTH_SMTP_PASSWORD:-}', 'CISSTAT_AUTH_SMTP_FROM': '${CISSTAT_AUTH_SMTP_FROM:-}', 'CISSTAT_AUTH_SMTP_TLS': '${CISSTAT_AUTH_SMTP_TLS:-starttls}', 'CISSTAT_AUTH_TRIAL_PLAN_DAYS': '${CISSTAT_AUTH_TRIAL_PLAN_DAYS:-14}', 'PORT': '8000', 'DATABASE_URL': 'postgresql://cisstat:${CISSTAT_PG_PASSWORD}@postgres:5432/cisstat', 'CISSTAT_STORAGE_MODE': 'required', 'CISSTAT_SESSION_BACKEND': 'postgres', 'CISSTAT_WORKER_KEY': '${CISSTAT_WORKER_KEY:-}', 'CISSTAT_WORKER_ACCOUNT_SLOTS': '${CISSTAT_WORKER_ACCOUNT_SLOTS:-1}', 'CISSTAT_WORKER_PROOF_DIR': '/var/lib/cisstat-worker-proofs', 'CISSTAT_CU_PROFILE': '${CISSTAT_CU_PROFILE:-}', 'CISSTAT_CU_PROFILE_SHA256': '${CISSTAT_CU_PROFILE_SHA256:-}', 'CISSTAT_COMPUTE_CACHE_DIR': '/var/lib/cisstat-compute-cache', 'CISSTAT_DATA_DIR': '/var/lib/cisstat-data', 'CISSTAT_DEMO_SWEEPER_ENABLED': '${CISSTAT_DEMO_SWEEPER_ENABLED:-1}', 'CISSTAT_AUTH_CSRF_KEY': '${CISSTAT_AUTH_CSRF_KEY:?заполните CISSTAT_AUTH_CSRF_KEY в .env (openssl rand -base64 32)}', 'CISSTAT_AUTH_MFA_KEYS': '${CISSTAT_AUTH_MFA_KEYS:?заполните CISSTAT_AUTH_MFA_KEYS в .env (JSON-keyring, docs/auth05/design.md)}', 'CISSTAT_AUTH_MFA_ACTIVE_KEY': '${CISSTAT_AUTH_MFA_ACTIVE_KEY:?заполните CISSTAT_AUTH_MFA_ACTIVE_KEY в .env}', 'CISSTAT_AUTH_ALLOWED_ORIGINS': '${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}', 'ALLOWED_ORIGINS': '${CISSTAT_AUTH_ALLOWED_ORIGINS:-https://datasetup.ru,https://www.datasetup.ru}', 'CISSTAT_AUTH_LOCKDOWN': '${CISSTAT_AUTH_LOCKDOWN:-}', 'CISSTAT_AUTH_AUDIT_OUTBOX_INTERVAL': '${CISSTAT_AUTH_AUDIT_OUTBOX_INTERVAL:-30}', 'CISSTAT_AUTH_OPS_LEDGER_RETENTION_DAYS': '${CISSTAT_AUTH_OPS_LEDGER_RETENTION_DAYS:-180}'}
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.116s
+
+FAILED (failures=1, errors=4)

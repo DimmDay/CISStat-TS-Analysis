@@ -53,7 +53,7 @@ class SmtpEmailDelivery:
             mode=os.environ.get("CISSTAT_AUTH_SMTP_TLS", "starttls"),
         )
 
-    def send(self, to_email, subject, body):
+    def send(self, to_email, subject, body, *, message_id=None):
         message = EmailMessage()
         message["From"] = self.sender
         message["To"] = to_email
@@ -61,7 +61,7 @@ class SmtpEmailDelivery:
         # Do not rely on a relay to add RFC 5322 headers. Use the sender
         # domain instead of disclosing the container hostname in Message-ID.
         message["Date"] = formatdate(localtime=False, usegmt=True)
-        message["Message-ID"] = make_msgid(domain=message["From"].addresses[0].domain)
+        message["Message-ID"] = message_id or make_msgid(domain=message["From"].addresses[0].domain)
         message.set_content(body)
         try:
             if self.mode == "ssl":

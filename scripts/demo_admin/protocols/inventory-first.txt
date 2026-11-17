@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/scripts/auth00/inventory.py", line 444, in <module>
+    main()
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/scripts/auth00/inventory.py", line 434, in main
+    report = build(ROOT)
+             ^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/repo-709c520/scripts/auth00/inventory.py", line 330, in build
+    raise ValueError('Unclassified or removed entries: ' + repr(sorted(set(bindings) ^ {x['id'] for x in raw})))
+ValueError: Unclassified or removed entries: ['worker:apps/api/authentication/ops_sweeper.py:103', 'worker:apps/api/authentication/ops_sweeper.py:104']

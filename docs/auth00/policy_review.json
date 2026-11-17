@@ -630,6 +630,17 @@
     "T13",
     "T15"
    ]
+  },
+  "auth.ops_delivery": {
+   "observed": "Trusted required-mode internal ops worker: mandatory audit publication/retention and optional first-trial admin SMTP notice from committed queue snapshots. No public invocation or login proof in notification.",
+   "target": "Bounded SQL claims, lease/fenced acknowledgement and retry; configured single admin recipient; SMTP outside enrollment and claim transactions, no secret/error-text logging; failures preserve committed user access and audit processing.",
+   "follow_up": [
+    "AUTH-20"
+   ],
+   "threats": [
+    "T12",
+    "T14"
+   ]
   }
  },
  "entries": {
@@ -8224,19 +8235,7 @@
     "set_cookie"
    ],
    "canonical_operation": "auth.email.consume",
-   "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge"
-  },
-  "worker:apps/api/authentication/ops_sweeper.py:103": {
-   "policy": "ops.diagnostics",
-   "stage": "platform",
-   "stage_namespace": "service",
-   "resource": "mandatory audit outbox delivery and revocation ledger retention",
-   "effects": [
-    "read",
-    "write"
-   ],
-   "canonical_operation": "auth.ops.sweep",
-   "admission": "in-process daemon thread, required storage mode only, bounded publish_pending/prune batches via existing PostgresAccessStore transactions; no new authority, no secrets, failures are warnings + health counters"
+   "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit"
   },
   "api:GET:/v1/auth/personal-demo": {
    "policy": "public.metadata",
@@ -8258,7 +8257,20 @@
     "write"
    ],
    "canonical_operation": "personal_demo.enroll",
-   "admission": "verified email consume transaction; single-owner empty account; locked finite pool; immutable one-time receipt; mandatory audit"
+   "admission": "verified email consume transaction; single-owner empty account; locked finite pool; immutable one-time receipt; mandatory audit; optional0037 admin snapshot enqueue in the same commit, no SMTP in request"
+  },
+  "worker:apps/api/authentication/ops_sweeper.py:104": {
+   "policy": "auth.ops_delivery",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "mandatory audit outbox, revocation ledger retention, and first-trial admin email delivery",
+   "effects": [
+    "read",
+    "write",
+    "send_email"
+   ],
+   "canonical_operation": "auth.ops.sweep",
+   "admission": "existing required-mode in-process worker; one leased admin-notice claim per cycle, SMTP outside login/claim transactions, fenced ack/retry and configured single administrator recipient; no login proofs in notice; audit/retention independent of SMTP failure"
   }
  },
  "extra_surfaces": [
@@ -9434,6 +9446,13 @@
   ".github/workflows/personal_demo.yml",
   "tests/unit/test_auth04_routes.py",
   "tests/unit/test_email_entry_fix.py",
-  "packages/ui/components/auth19-login.test.tsx"
+  "packages/ui/components/auth19-login.test.tsx",
+  "apps/api/authentication/demo_admin_migrations.py",
+  "apps/api/authentication/demo_admin_notifications.py",
+  "apps/api/migrations/0037_demo_admin_notifications.sql",
+  "scripts/demo_admin/migrate.py",
+  "scripts/demo_admin/manage.py",
+  "tests/unit/test_personal_demo_admin.py",
+  "tests/integration/test_personal_demo_admin.py"
  ]
 }
