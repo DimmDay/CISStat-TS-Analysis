@@ -1,0 +1,888 @@
+test_credit_and_identity_roll_back_on_mandatory_audit_fault (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_credit_and_identity_roll_back_on_mandatory_audit_fault) ... Auth operation failed operation=consume category=RuntimeError
+ok
+test_environment_store_code_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_code_provisions_once) ... ok
+test_environment_store_link_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_link_provisions_once) ... ok
+test_existing_funded_account_is_never_reset_or_adopted (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_existing_funded_account_is_never_reset_or_adopted) ... ok
+test_expiry_and_insufficient_cu_are_enforced (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_expiry_and_insufficient_cu_are_enforced) ... ok
+test_http_environment_entry_sets_cookie_and_confirms_session (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_http_environment_entry_sets_cookie_and_confirms_session) ... ok
+test_migration_and_atomic_new_owner_ready_for_compute (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_migration_and_atomic_new_owner_ready_for_compute) ... ok
+test_paused_pool_does_not_create_unfunded_identity (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_paused_pool_does_not_create_unfunded_identity) ... ok
+test_previous_empty_single_owner_can_start_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_previous_empty_single_owner_can_start_once) ... ok
+test_repeat_login_preserves_issued_credit_expiry_and_spend (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_repeat_login_preserves_issued_credit_expiry_and_spend) ... ok
+test_two_registrations_race_for_single_pool_slot (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_two_registrations_race_for_single_pool_slot) ... ok
+test_disabled_enrollment_does_not_backfill_prior_trials (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_disabled_enrollment_does_not_backfill_prior_trials) ... ok
+test_environment_factory_is_used_without_injected_store (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_environment_factory_is_used_without_injected_store) ... ok
+test_existing_periodic_ops_cycle_delivers_notice (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_existing_periodic_ops_cycle_delivers_notice) ... ok
+test_expired_claim_recovers_and_stale_ack_cannot_overwrite (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_expired_claim_recovers_and_stale_ack_cannot_overwrite) ... ok
+test_mandatory_audit_fault_rolls_back_notice_and_grant (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_mandatory_audit_fault_rolls_back_notice_and_grant) ... Auth operation failed operation=consume category=RuntimeError
+ok
+test_migration_is_idempotent_and_payload_is_immutable (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_migration_is_idempotent_and_payload_is_immutable) ... ok
+test_only_committed_first_grant_queues_safe_notice (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_only_committed_first_grant_queues_safe_notice) ... ok
+test_operator_status_contains_counts_without_user_or_proof (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_operator_status_contains_counts_without_user_or_proof) ... ok
+test_smtp_outage_does_not_affect_login_and_is_retried (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_smtp_outage_does_not_affect_login_and_is_retried) ... ok
+test_two_publishers_do_not_send_same_claim (tests.integration.test_personal_demo_admin.AdminNoticeSQLTests.test_two_publishers_do_not_send_same_claim) ... ok
+test_eleventh_upload_is_refused_and_failed_upload_does_not_spend (tests.integration.test_personal_demo_http.PersonalDemoHTTPTests.test_eleventh_upload_is_refused_and_failed_upload_does_not_spend) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1AC681F73C484A189F7965F8AA8AEB20 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1AC681F73C484A189F7965F8AA8AEB20 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1AC681F73C484A189F7965F8AA8AEB20 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1AC681F73C484A189F7965F8AA8AEB20 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1AC681F73C484A189F7965F8AA8AEB20 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-579C3FA3E54B4238A4DCA9D53B0B5C3E action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-579C3FA3E54B4238A4DCA9D53B0B5C3E action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-579C3FA3E54B4238A4DCA9D53B0B5C3E action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-579C3FA3E54B4238A4DCA9D53B0B5C3E action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-579C3FA3E54B4238A4DCA9D53B0B5C3E action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-76F6902AF778402A907220AD5B423829 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-76F6902AF778402A907220AD5B423829 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-76F6902AF778402A907220AD5B423829 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-76F6902AF778402A907220AD5B423829 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-76F6902AF778402A907220AD5B423829 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-883ACD51AF8841759DBD8F3A02E7FF84 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-883ACD51AF8841759DBD8F3A02E7FF84 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-883ACD51AF8841759DBD8F3A02E7FF84 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-883ACD51AF8841759DBD8F3A02E7FF84 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-883ACD51AF8841759DBD8F3A02E7FF84 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1C565C4003DB4ADFA91BB76BD7D8F65D action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1C565C4003DB4ADFA91BB76BD7D8F65D action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1C565C4003DB4ADFA91BB76BD7D8F65D action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1C565C4003DB4ADFA91BB76BD7D8F65D action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-1C565C4003DB4ADFA91BB76BD7D8F65D action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C73D5A577DAC42988E5B5B265EC52F87 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C73D5A577DAC42988E5B5B265EC52F87 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C73D5A577DAC42988E5B5B265EC52F87 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C73D5A577DAC42988E5B5B265EC52F87 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-C73D5A577DAC42988E5B5B265EC52F87 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-E608B229679D4D5FB15C1DB20D3973CF action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-E608B229679D4D5FB15C1DB20D3973CF action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-E608B229679D4D5FB15C1DB20D3973CF action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-E608B229679D4D5FB15C1DB20D3973CF action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-E608B229679D4D5FB15C1DB20D3973CF action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2C9D2346D5F04CC3B2C81631A6252613 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2C9D2346D5F04CC3B2C81631A6252613 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2C9D2346D5F04CC3B2C81631A6252613 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2C9D2346D5F04CC3B2C81631A6252613 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2C9D2346D5F04CC3B2C81631A6252613 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A9BA0F2CA9FB44BBBB0ADDF7A69581DE action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A9BA0F2CA9FB44BBBB0ADDF7A69581DE action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A9BA0F2CA9FB44BBBB0ADDF7A69581DE action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A9BA0F2CA9FB44BBBB0ADDF7A69581DE action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A9BA0F2CA9FB44BBBB0ADDF7A69581DE action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4B8B8BD39B0942DDBDD7B387F682FA12 action=write subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4B8B8BD39B0942DDBDD7B387F682FA12 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4B8B8BD39B0942DDBDD7B387F682FA12 action=read subject=66956084-b551-43b7-a72b-98f0d4db6901 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 402 Payment Required"
+ok
+test_verified_email_starts_research_without_operator_provisioning (tests.integration.test_personal_demo_http.PersonalDemoHTTPTests.test_verified_email_starts_research_without_operator_provisioning) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/personal-demo "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+top-level pandera module will be **removed in a future version of pandera**.
+If you're using pandera to validate pandas objects, we highly recommend updating
+your import:
+
+```
+# old import
+import pandera as pa
+
+# new import
+import pandera.pandas as pa
+```
+
+If you're using pandera to validate objects from other compatible libraries
+like pyspark or polars, see the supported libraries section of the documentation
+for more information on how to import pandera:
+
+https://pandera.readthedocs.io/en/stable/supported_libraries.html
+
+To disable this warning, set the environment variable:
+
+```
+export DISABLE_PANDERA_IMPORT_WARNING=True
+```
+
+  return DataFrameSchema(columns, strict=False, coerce=True)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/validate "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/stats "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/date-column "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/dataset/passport/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.promotion_integration:Passport checkpoint freeze skipped (honest gap): run=RUN-6E3177CC675644D1BD8D06FD702C7821 checkpoint=29729ac8-0392-4319-a186-1330830ecb11 -- Снимок этапа 'validation' на момент подтверждения отсутствует -- честный недобор, ничего не фабкуется (AC12/R03; retry после фиксации точки доберёт)
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/dataset/passport/modeling_entry "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.routers.models:Modeling spec loaded: ModelingSpec(v1.4.1, families=9, models=29, rules=25)
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/candidates "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.passport_checkpoints:Passport checkpoint backfill skipped (honest gap): run=RUN-6E3177CC675644D1BD8D06FD702C7821 checkpoint=29729ac8-0392-4319-a186-1330830ecb11 -- Снимок этапа 'validation' на момент подтверждения отсутствует -- честный недобор, ничего не фабкуется (AC12/R03; retry после фиксации точки доберёт)
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/baselines "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+/home/agent/.local/lib/python3.12/site-packages/statsmodels/stats/diagnostic.py:997: FutureWarning: acorr_lm currently returns a plain tuple whose length depends on the store argument. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an LMTestResult NamedTuple. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+  return acorr_lm(
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/compare "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/selection/evaluate "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/select "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+WARNING:apps.api.promotion_integration:Artifact promotion failed (durable receipt recorded): run=RUN-6E3177CC675644D1BD8D06FD702C7821 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+WARNING:apps.api.promotion_integration:Artifact promotion failed (durable receipt recorded): run=RUN-6E3177CC675644D1BD8D06FD702C7821 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.passport_checkpoints:Passport checkpoint backfill skipped (honest gap): run=RUN-6E3177CC675644D1BD8D06FD702C7821 checkpoint=29729ac8-0392-4319-a186-1330830ecb11 -- Снимок этапа 'validation' на момент подтверждения отсутствует -- честный недобор, ничего не фабкуется (AC12/R03; retry после фиксации точки доберёт)
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/card "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+WARNING:apps.api.promotion_integration:Artifact promotion failed (durable receipt recorded): run=RUN-6E3177CC675644D1BD8D06FD702C7821 operation=freeze_visual:modeling.backtest.comparison producer_key=pgv.visual_result:modeling.backtest.comparison error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+WARNING:apps.api.promotion_integration:Artifact promotion failed (durable receipt recorded): run=RUN-6E3177CC675644D1BD8D06FD702C7821 operation=freeze_visual:modeling.backtest.oof producer_key=pgv.visual_result:modeling.backtest.oof error=Тот же producer_key с другим payload -- 409 (§11: иной payload с прежним idempotency-ключом конфликтует)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.passport_checkpoints:Passport checkpoint backfill skipped (honest gap): run=RUN-6E3177CC675644D1BD8D06FD702C7821 checkpoint=29729ac8-0392-4319-a186-1330830ecb11 -- Снимок этапа 'validation' на момент подтверждения отсутствует -- честный недобор, ничего не фабкуется (AC12/R03; retry после фиксации точки доберёт)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=write subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/modeling/forecast "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-6E3177CC675644D1BD8D06FD702C7821 action=read subject=70aa07e4-e558-4528-86c7-f672bd6db70c via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/modeling/forecast/522fb4d8-ee5d-439e-8ef9-2d8e187babb1/export.csv "HTTP/1.1 200 OK"
+ok
+test_clean_otp_and_repeat_magic_link_do_not_refill_trial (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_clean_otp_and_repeat_magic_link_do_not_refill_trial) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-5A2C1DB74A7247F89FECC2CE2AB289E5 action=write subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=write subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=read subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=write subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=write subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-05D5B7EB9D134801BE4C39611D2B4E76 action=write subject=e8faf817-07c6-4b77-9eed-de03463a53b7 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+ok
+test_otp_after_previous_user_research_loads_all_four_demo_cards (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_otp_after_previous_user_research_loads_all_four_demo_cards) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-58630135 action=write subject=ef42d259-d1e7-4476-9e3e-d4f35fe987c5 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4623D3D9E3A74288959067C6981665CF action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-183132F426E947ADA4AB139CC901C084 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9097A0F946674BB39C8CD767C96F5095 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+WARNING:apps.api.promotion_integration:Artifact promotion failed (durable receipt recorded): run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 operation=promote_data_version:upload producer_key=data_version:upload error=Артефакт недоступен
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+WARNING:apps.api.identity:Run access: DENY run=RUN-58630135 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 404 Not Found"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=read subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4E3C5DDC626A4CA7BE4C17FF3A2BCDB5 action=write subject=3dd7f0f6-9ae7-4d1b-b0a8-6375f522e4ab via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+ok
+test_admin_password_is_not_full_mfa_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_admin_password_is_not_full_mfa_session) ... ok
+test_checksums_of_previous_auth_migrations_unchanged (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_checksums_of_previous_auth_migrations_unchanged) ... ok
+test_chosen_or_missing_sid_is_not_used_on_login (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_chosen_or_missing_sid_is_not_used_on_login) ... ok
+test_concurrent_touch_logout_cannot_resurrect_sid (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_concurrent_touch_logout_cannot_resurrect_sid) ... ok
+test_connection_outage_is_safe_503 (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_connection_outage_is_safe_503) ... WARNING:apps.api.authentication.sessions:Auth operation failed operation=verify category=AuthStoreUnavailable
+ok
+test_credential_revoke_invalidates_sessions_and_password (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_credential_revoke_invalidates_sessions_and_password) ... ok
+test_direct_role_change_invalidates_session_version (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_direct_role_change_invalidates_session_version) ... ok
+test_durable_throttle_limits_attempts (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_durable_throttle_limits_attempts) ... ok
+test_email_bind_consume_by_foreign_session_rejected (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_email_bind_consume_by_foreign_session_rejected) ... ok
+test_email_bind_requires_session_and_is_idempotent (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_email_bind_requires_session_and_is_idempotent) ... ok
+test_existing_postgres_audit_sink_deduplicates_after_lost_ack (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_existing_postgres_audit_sink_deduplicates_after_lost_ack) ... WARNING:apps.api.authentication.sessions:Auth operation failed operation=publish_pending category=RuntimeError
+ok
+test_family_revoke_does_not_affect_other_login (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_family_revoke_does_not_affect_other_login) ... ok
+test_fixation_login_always_rotates_and_revokes_old (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_fixation_login_always_rotates_and_revokes_old) ... ok
+test_foreign_or_missing_account_not_adopted (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_foreign_or_missing_account_not_adopted) ... ok
+test_foreign_session_id_cannot_be_revoked (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_foreign_session_id_cannot_be_revoked) ... ok
+test_fresh_python_process_observes_persisted_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_fresh_python_process_observes_persisted_session) ... ok
+test_hash_only_persistence_and_safe_public_list (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_hash_only_persistence_and_safe_public_list) ... ok
+test_idle_touch_does_not_move_absolute_expiry (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_idle_touch_does_not_move_absolute_expiry) ... ok
+test_inclusive_idle_expiry (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_inclusive_idle_expiry) ... ok
+test_logout_idempotent_and_replay_rejected (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_logout_idempotent_and_replay_rejected) ... ok
+test_member_revoke_and_account_close_checked_online (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_member_revoke_and_account_close_checked_online) ... ok
+test_migration_repeat_and_guards (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_migration_repeat_and_guards) ... ok
+test_multi_account_trial_login_requires_selection (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_multi_account_trial_login_requires_selection) ... ok
+test_oidc_admin_requires_local_mfa_path (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_admin_requires_local_mfa_path) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+ok
+test_oidc_disabled_without_config (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_disabled_without_config) ... ok
+test_oidc_id_token_contract_drift (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_id_token_contract_drift) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 503 Service Unavailable"
+ok
+test_oidc_link_flow_idempotent_and_conflict (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_link_flow_idempotent_and_conflict) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+ok
+test_oidc_login_happy_path_and_rotation (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_login_happy_path_and_rotation) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+ok
+test_oidc_state_hash_only_and_replay (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_state_hash_only_and_replay) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+ok
+test_oidc_unknown_binding_no_merge_even_with_known_email (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_unknown_binding_no_merge_even_with_known_email) ... INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/.well-known/openid-configuration "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://idp.example.test/token "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://idp.example.test/jwks "HTTP/1.1 200 OK"
+ok
+test_outbox_failure_rolls_back_issue_and_revoke (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_outbox_failure_rolls_back_issue_and_revoke) ... WARNING:apps.api.authentication.sessions:Auth operation failed operation=revoke category=RuntimeError
+WARNING:apps.api.authentication.sessions:Auth operation failed operation=login category=RuntimeError
+ok
+test_outbox_replay_preserves_ids_across_partial_delivery_failure (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_outbox_replay_preserves_ids_across_partial_delivery_failure) ... ok
+test_password_change_during_verification_never_issues_stale_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_password_change_during_verification_never_issues_stale_session) ... ok
+test_password_change_revokes_all_and_rejects_old_password (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_password_change_revokes_all_and_rejects_old_password) ... ok
+test_revoke_all_is_subject_scoped_and_terminal (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoke_all_is_subject_scoped_and_terminal) ... ok
+test_revoke_one_does_not_revoke_other (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoke_one_does_not_revoke_other) ... ok
+test_revoked_member_loses_session_without_harming_owner (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoked_member_loses_session_without_harming_owner) ... ok
+test_same_identity_two_accounts_keep_server_bindings (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_same_identity_two_accounts_keep_server_bindings) ... ok
+test_schema_checksum_drift_denies_session_resolution (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_schema_checksum_drift_denies_session_resolution) ... WARNING:apps.api.authentication.sessions:Auth operation failed operation=verify category=AuthSchemaNotReady
+ok
+test_schema_outage_never_falls_back_or_exposes_driver_error (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_schema_outage_never_falls_back_or_exposes_driver_error) ... WARNING:apps.api.authentication.sessions:Auth operation failed operation=logout category=AuthSchemaNotReady
+ok
+test_session_security_fields_cannot_be_rebound_or_unrevoked (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_session_security_fields_cannot_be_rebound_or_unrevoked) ... ok
+test_suspend_then_reactivate_does_not_resurrect (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_suspend_then_reactivate_does_not_resurrect) ... ok
+test_trial_code_path_wrong_code_attempts_and_replay (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_code_path_wrong_code_attempts_and_replay) ... ok
+test_trial_consume_creates_identity_mono_starter_owner (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_consume_creates_identity_mono_starter_owner) ... ok
+test_trial_expiry_origin_and_delivery_failure (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_expiry_origin_and_delivery_failure) ... ok
+test_trial_plan_days_policy (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_plan_days_policy) ... ok
+test_trial_rate_limits (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_rate_limits) ... ok
+test_trial_replay_and_second_login_same_identity (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_replay_and_second_login_same_identity) ... ok
+test_trial_start_uniform_and_hash_only (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_start_uniform_and_hash_only) ... ok
+test_wrong_and_unknown_login_same_error (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_wrong_and_unknown_login_same_error) ... ok
+test_wrong_current_password_does_not_mutate (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_wrong_current_password_does_not_mutate) ... ok
+test_account_switch_login_rotates_auth_and_clears_research (tests.integration.test_auth09_objects.OwnershipSQLTests.test_account_switch_login_rotates_auth_and_clears_research) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_e9bda23b423645f7bed1a5dbd0732e38:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/auth/login "HTTP/1.1 200 OK"
+ok
+test_bound_account_and_provenance_immutable (tests.integration.test_auth09_objects.OwnershipSQLTests.test_bound_account_and_provenance_immutable) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_13b88894d5204516bf0bce37fb309da5:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse (tests.integration.test_auth09_objects.OwnershipSQLTests.test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse) ... DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_2d8d92b078d04f03a12c0443ec259427:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 401 Unauthorized"
+ok
+test_fresh_process_and_doclog_gate_after_migration (tests.integration.test_auth09_objects.OwnershipSQLTests.test_fresh_process_and_doclog_gate_after_migration) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4BA749F9 action=read subject=1f7af84e-15fa-46e4-9f75-205bf0004325 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-4BA749F9 action=read subject=1f7af84e-15fa-46e4-9f75-205bf0004325 via=auth_session reason=account_member
+ERROR
+test_legacy_cookie_no_auto_claim (tests.integration.test_auth09_objects.OwnershipSQLTests.test_legacy_cookie_no_auto_claim) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_8938fa351c484ed2b3375f797a322d1f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 404 Not Found"
+ok
+test_member_post_restore_csrf_and_author_preserved (tests.integration.test_auth09_objects.OwnershipSQLTests.test_member_post_restore_csrf_and_author_preserved) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_babf7910db3e4649a3a762511e3648cf:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/progress/runs/RUN-2DE1B8E6/restore "HTTP/1.1 403 Forbidden"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/progress/runs/RUN-2DE1B8E6/restore "HTTP/1.1 403 Forbidden"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2DE1B8E6 action=read subject=60a58f01-6b1b-48a5-85cd-551dac1d4fad via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2DE1B8E6 action=read subject=60a58f01-6b1b-48a5-85cd-551dac1d4fad via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-2DE1B8E6 action=write subject=60a58f01-6b1b-48a5-85cd-551dac1d4fad via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/progress/runs/RUN-2DE1B8E6/restore "HTTP/1.1 200 OK"
+ok
+test_migration_preserves_data_provenance_and_fences_stale_save (tests.integration.test_auth09_objects.OwnershipSQLTests.test_migration_preserves_data_provenance_and_fences_stale_save) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_new_named_run_and_session_account (tests.integration.test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_6586a19cdb8c4e7fb91359a65dc8ce04:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_one_time_and_expected_source (tests.integration.test_auth09_objects.OwnershipSQLTests.test_one_time_and_expected_source) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_real_audit_insert_failure_rolls_back_everything (tests.integration.test_auth09_objects.OwnershipSQLTests.test_real_audit_insert_failure_rolls_back_everything) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_receipt_immutable_and_no_raw_cookie_in_audit (tests.integration.test_auth09_objects.OwnershipSQLTests.test_receipt_immutable_and_no_raw_cookie_in_audit) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_regular_sql_upsert_cannot_claim_legacy (tests.integration.test_auth09_objects.OwnershipSQLTests.test_regular_sql_upsert_cannot_claim_legacy) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_reject_unsupported_non_atomic_topologies (tests.integration.test_auth09_objects.OwnershipSQLTests.test_reject_unsupported_non_atomic_topologies) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_restore_unknown_author_preserves_tenant_and_source_bytes (tests.integration.test_auth09_objects.OwnershipSQLTests.test_restore_unknown_author_preserves_tenant_and_source_bytes) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_eaee2fcdcfa24913b693b986fdb50320:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=write subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/progress/runs/RUN-F7489DD8/restore "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F7489DD8 action=read subject=3dd897d3-917a-4d02-988e-2f6eef8af300 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 200 OK"
+ok
+test_revoked_member_cannot_fallback_pointer (tests.integration.test_auth09_objects.OwnershipSQLTests.test_revoked_member_cannot_fallback_pointer) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_f2e5ba8d5a82460a9e7696325ba5588c:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9E368780 action=read subject=9a875aa3-5a92-4498-a80f-9285dcdaba29 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9E368780 action=read subject=9a875aa3-5a92-4498-a80f-9285dcdaba29 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-9E368780 action=write subject=9a875aa3-5a92-4498-a80f-9285dcdaba29 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/progress/runs/RUN-9E368780/restore "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 401 Unauthorized"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/documentation/runs/RUN-9E368780/documents "HTTP/1.1 401 Unauthorized"
+ok
+test_same_person_other_account_denied_session_trace_doclog_and_uniform404 (tests.integration.test_auth09_objects.OwnershipSQLTests.test_same_person_other_account_denied_session_trace_doclog_and_uniform404) ... DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.session_store:DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_ffd1d384368c4d5f9484f0af0314e11e:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:httpx:HTTP Request: POST https://ownership.example/v1/session/demo "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.identity:Run access: DENY run=RUN-F8BACF2F action=read subject=99332825-bf68-489a-996d-8bb183faa6fd via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/session/current "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.identity:Run access: DENY run=RUN-F8BACF2F action=read subject=99332825-bf68-489a-996d-8bb183faa6fd via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/progress/trace "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.identity:Run access: DENY run=RUN-F8BACF2F action=read subject=99332825-bf68-489a-996d-8bb183faa6fd via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/progress/runs/RUN-F8BACF2F "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/progress/runs/RUN-FFFFFFFF "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.identity:Run access: DENY run=RUN-F8BACF2F action=read subject=99332825-bf68-489a-996d-8bb183faa6fd via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/documentation/runs/RUN-F8BACF2F/documents "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://ownership.example/v1/documentation/runs/RUN-FFFFFFFF/documents "HTTP/1.1 404 Not Found"
+ok
+test_sql_new_binding_cannot_have_null_ownership_state (tests.integration.test_auth09_objects.OwnershipSQLTests.test_sql_new_binding_cannot_have_null_ownership_state) ... ok
+test_stale_and_suspended_target_do_not_claim (tests.integration.test_auth09_objects.OwnershipSQLTests.test_stale_and_suspended_target_do_not_claim) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_two_concurrent_targets_one_winner (tests.integration.test_auth09_objects.OwnershipSQLTests.test_two_concurrent_targets_one_winner) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+test_unknown_author_not_invented (tests.integration.test_auth09_objects.OwnershipSQLTests.test_unknown_author_not_invented) ... INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+ok
+
+======================================================================
+ERROR: test_fresh_process_and_doclog_gate_after_migration (tests.integration.test_auth09_objects.OwnershipSQLTests.test_fresh_process_and_doclog_gate_after_migration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/test_auth09_objects.py", line 458, in test_fresh_process_and_doclog_gate_after_migration
+    self.assertEqual(self.client(member=True).get(path).status_code, 200)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/testclient.py", line 473, in get
+    return super().get(
+           ^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/testclient.py", line 445, in request
+    return super().request(
+           ^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/testclient.py", line 348, in handle_request
+    raise exc
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/testclient.py", line 345, in handle_request
+    portal.call(self.app, scope, receive, send)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/from_thread.py", line 338, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/from_thread.py", line 263, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/applications.py", line 1194, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/trace_hook.py", line 851, in __call__
+    await self.app(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 1839, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 2894, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 1865, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 1328, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/workers/bridge.py", line 23, in wrapped
+    return await original(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/routers/documentation.py", line 424, in list_documents
+    pairs = _delivery_service().list_documents(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/document_jobs.py", line 2002, in list_documents
+    document = self.registry.find_document_by_kind(run_id, code)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/document_jobs.py", line 997, in find_document_by_kind
+    with self._connect() as conn, conn.cursor() as cur:
+         ^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/apps/api/document_jobs.py", line 958, in _connect
+    conn = psycopg.connect(self._dsn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent/.local/lib/python3.12/site-packages/psycopg/connection.py", line 126, in connect
+    raise last_ex.with_traceback(None)
+psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 55432 failed: FATAL:  database "authcert_43d172ed227c4031" does not exist
+
+----------------------------------------------------------------------
+Ran 96 tests in 87.183s
+
+FAILED (errors=1)

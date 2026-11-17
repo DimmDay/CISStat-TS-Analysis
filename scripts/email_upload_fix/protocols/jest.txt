@@ -1,0 +1,6 @@
+
+Test Suites: 5 passed, 5 total
+Tests:       87 passed, 87 total
+Snapshots:   0 total
+Time:        14.345 s
+Ran all test suites within paths "packages/ui/components/auth19-login.test.tsx", "packages/ui/components/LoginScreen.test.tsx", "packages/ui/components/TsAnalysisUpload.test.tsx", "packages/ui/lib/browserTransport.test.ts", "packages/ui/server/firstPartyProxy.test.ts".

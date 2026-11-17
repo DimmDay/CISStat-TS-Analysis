@@ -668,7 +668,7 @@
     ".github/workflows/auth17.yml": "ced87344e8713014d05a50a9221f2dd82a76a55da6eb888a05dda65f838a8afb",
     ".github/workflows/auth18.yml": "283abc400fd1164854a5d003805be32d233fde7f4a3d7a8dbc20dc097123d20e",
     ".github/workflows/kabinet_demo_cert.yml": "7befc1073a4a46ebd69de5c5ddd81b245d6017afcb91a79bc3dcb5fda0fa8a79",
-    ".github/workflows/personal_demo.yml": "f58d77b788b43cf88cb0b2a16084c807b07345b18847945b2ea0d7e20f236289",
+    ".github/workflows/personal_demo.yml": "5761498e4db379ca3448349540541d47021a59014d656a17b2dd565bf44f513d",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
@@ -879,7 +879,7 @@
     "apps/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/routers/accounts.py": "11c85c988cb41c7e7037f840993fce05fbbfa20104b63701760c561f7365b348",
     "apps/api/routers/api_keys.py": "9e0c62f1fc970b43b4c5034a480e8814b2002b38b7795e142fa1485c575b4b47",
-    "apps/api/routers/authentication.py": "c9b9a0c19e7b93068f48484760adc04557bd8bfbd74d7c57eb084c090b12073b",
+    "apps/api/routers/authentication.py": "a6cf00505c2f539715df2098ca6bd1f549d1091043627c3aba4089b739e6c6fd",
     "apps/api/routers/billing.py": "6d6d8b15b7f8854b4b525fa20a6971ef9719d5d677f1459e27a535f6b33adf29",
     "apps/api/routers/demo.py": "b59544da01442940adaf7dd6a70f60d49b42e03caba17c9c5cc6cd0bd0a1f4dc",
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
@@ -1132,7 +1132,8 @@
     "scripts/auth22/migrate.py": "b5f8077f34ef6a3c3c1944ffcae15c82a800a8e5910e38ef843b298ed8fe63e7",
     "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
     "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
-    "scripts/local_gates.md": "bd1f39d297d6de55b537c0ee885655047fb2077e66fc29ffa482bde57872afc8",
+    "scripts/email_upload_fix/demo_files.js": "68f93512bb115a3b6d9f874128f324f1120c8ebe8b9a3e5e51e24dfd53be82f7",
+    "scripts/local_gates.md": "87be1dc24498c5724ccda34882d49cab6551d36136796cc2d42cb641786baf98",
     "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
@@ -1152,6 +1153,7 @@
     "tests/integration/test_personal_demo.py": "b9167c11614badbb7e1fbcb1eff4cf4d13729e3c6d8ec3fe5b16e4bd3880e50a",
     "tests/integration/test_personal_demo_admin.py": "e1993b3f63bff88d592dc1b2b043cb50d539e3eaddfc252880042101e1c4fd64",
     "tests/integration/test_personal_demo_http.py": "0c72de66aab295778588c1e5f417bd02b616ee6fc3750a517c7226ceae8167f2",
+    "tests/integration/test_personal_demo_upload_e2e.py": "eaccb67a430b8e5c784905dda1c5cb77e0b4082e158dde1d119cbaffbb8f9ba2",
     "tests/unit/test_auth00_local_output.py": "d1126bdb8c0f089f9b91b6e404209a5191b9586e8c8d4c37a44c31640a49d9cf",
     "tests/unit/test_auth00_precommit.py": "75799d1035f3b67a4fa71d8a088ed891895f009b466862bc85887d31774b0513",
     "tests/unit/test_auth04_routes.py": "535359903a609048b1e26b6479775b23430b845df356612b31dc6c2203193955",
@@ -1169,6 +1171,7 @@
     "tests/unit/test_kabinet_demo_cert.py": "67dbf92df7eaed1cf66fbb2deb01b4187fa90d45ed7974465be79b26d2cc94c9",
     "tests/unit/test_personal_demo.py": "87b3639df4b8fe516404223f1625b1f4b4051e4e3571f68912fb75094cb334ec",
     "tests/unit/test_personal_demo_admin.py": "26db032d88c09cf264043cc7b2f4f7b74d315a4c30b1ad72696d2d0910b03de9",
+    "tests/unit/test_personal_demo_entry_pointer.py": "6ae17f273d6d4e523ba2d0049018112e3beb1684b880b65d8bf001a52bb5bd41",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -6829,7 +6832,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 490,
+          "line": 494,
           "symbol": "email_consume"
         },
         {
@@ -6854,7 +6857,7 @@
         "set_cookie"
       ],
       "canonical_operation": "auth.email.consume",
-      "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit"
+      "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit; issued login session clears previous research/CSRF cookies, selection/email_bind responses preserve them"
     },
     {
       "kind": "api",
@@ -6864,7 +6867,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 478,
+          "line": 482,
           "symbol": "email_start"
         },
         {
@@ -7067,7 +7070,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 446,
+          "line": 450,
           "symbol": "oidc_callback"
         },
         {
@@ -7092,7 +7095,7 @@
         "set_cookie"
       ],
       "canonical_operation": "auth.oidc.callback",
-      "admission": "CSRF + one-time state consume + RS256 id_token (iss/aud/exp/nonce) + issuer+subject binding, no email merge"
+      "admission": "CSRF + one-time state consume + RS256 id_token (iss/aud/exp/nonce) + issuer+subject binding, no email merge; issued login session clears previous research/CSRF cookies, selection/link responses preserve them"
     },
     {
       "kind": "api",
@@ -7102,7 +7105,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/authentication.py",
-          "line": 435,
+          "line": 439,
           "symbol": "oidc_start"
         },
         {

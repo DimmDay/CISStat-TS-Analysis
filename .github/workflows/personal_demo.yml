@@ -50,4 +50,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r apps/api/requirements.txt -r scripts/personal_demo/requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: python scripts/personal_demo/verify_postgres.py

@@ -1,0 +1,3 @@
+/usr/bin/chromium: 9: [: 5223559168: unexpected operator
+[5:5:1117/201509.026075:FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)
+[1117/201509.027379:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)

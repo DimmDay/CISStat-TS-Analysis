@@ -1,0 +1,86 @@
+test_clean_otp_and_repeat_magic_link_do_not_refill_trial (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_clean_otp_and_repeat_magic_link_do_not_refill_trial) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run= action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-353B089E7A5E43AFA6CE678F480E4B19 action=write subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-353B089E7A5E43AFA6CE678F480E4B19 action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-353B089E7A5E43AFA6CE678F480E4B19 action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-353B089E7A5E43AFA6CE678F480E4B19 action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-353B089E7A5E43AFA6CE678F480E4B19 action=read subject=d7cf7472-71ed-463a-9e9c-d45d767cb521 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+FAIL
+test_otp_after_previous_user_research_loads_all_four_demo_cards (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_otp_after_previous_user_research_loads_all_four_demo_cards) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-DC4765C8 action=write subject=0b541fca-8a80-4713-958b-f26cd31256c3 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/me "HTTP/1.1 200 OK"
+WARNING:apps.api.identity:Run access: DENY run=RUN-DC4765C8 action=read subject=865bdeb4-eeda-4b49-8f2b-09c1e8ef14a1 via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 404 Not Found"
+FAIL
+
+======================================================================
+FAIL: test_clean_otp_and_repeat_magic_link_do_not_refill_trial (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_clean_otp_and_repeat_magic_link_do_not_refill_trial)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/test_personal_demo_upload_e2e.py", line 112, in test_clean_otp_and_repeat_magic_link_do_not_refill_trial
+    self.assert_workspace_ready(client, empty=True)
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/test_personal_demo_upload_e2e.py", line 64, in assert_workspace_ready
+    self.assertEqual(current.json()["has_active_dataset"], not empty)
+AssertionError: True != False
+
+======================================================================
+FAIL: test_otp_after_previous_user_research_loads_all_four_demo_cards (tests.integration.test_personal_demo_upload_e2e.EmailUploadE2ETests.test_otp_after_previous_user_research_loads_all_four_demo_cards)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/test_personal_demo_upload_e2e.py", line 82, in test_otp_after_previous_user_research_loads_all_four_demo_cards
+    self.assert_workspace_ready(client, empty=True)
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/test_personal_demo_upload_e2e.py", line 63, in assert_workspace_ready
+    self.assertEqual(current.status_code, 200, current.text)
+AssertionError: 404 != 200 : {"detail":{"code":"scientific_object_not_found","message":"Объект исследования не найден","request_id":"req-5a746a7456ce"}}
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.514s
+
+FAILED (failures=2)

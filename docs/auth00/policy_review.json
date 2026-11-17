@@ -8212,7 +8212,7 @@
     "set_cookie"
    ],
    "canonical_operation": "auth.oidc.callback",
-   "admission": "CSRF + one-time state consume + RS256 id_token (iss/aud/exp/nonce) + issuer+subject binding, no email merge"
+   "admission": "CSRF + one-time state consume + RS256 id_token (iss/aud/exp/nonce) + issuer+subject binding, no email merge; issued login session clears previous research/CSRF cookies, selection/link responses preserve them"
   },
   "api:POST:/v1/auth/email/start": {
    "policy": "auth.external",
@@ -8235,7 +8235,7 @@
     "set_cookie"
    ],
    "canonical_operation": "auth.email.consume",
-   "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit"
+   "admission": "CSRF + POST-only consume + keyed token/OTP + finite attempts + verified email binding, no email merge; first personal trial grant atomically queues optional admin notice without token/code, delivered by existing worker after commit; issued login session clears previous research/CSRF cookies, selection/email_bind responses preserve them"
   },
   "api:GET:/v1/auth/personal-demo": {
    "policy": "public.metadata",
@@ -9453,6 +9453,9 @@
   "scripts/demo_admin/migrate.py",
   "scripts/demo_admin/manage.py",
   "tests/unit/test_personal_demo_admin.py",
-  "tests/integration/test_personal_demo_admin.py"
+  "tests/integration/test_personal_demo_admin.py",
+  "tests/unit/test_personal_demo_entry_pointer.py",
+  "tests/integration/test_personal_demo_upload_e2e.py",
+  "scripts/email_upload_fix/demo_files.js"
  ]
 }

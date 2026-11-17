@@ -1,0 +1,98 @@
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_admin_password_is_not_full_mfa_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_admin_password_is_not_full_mfa_session) ... ok
+test_checksums_of_previous_auth_migrations_unchanged (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_checksums_of_previous_auth_migrations_unchanged) ... ok
+test_chosen_or_missing_sid_is_not_used_on_login (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_chosen_or_missing_sid_is_not_used_on_login) ... ok
+test_concurrent_touch_logout_cannot_resurrect_sid (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_concurrent_touch_logout_cannot_resurrect_sid) ... ok
+test_connection_outage_is_safe_503 (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_connection_outage_is_safe_503) ... Auth operation failed operation=verify category=AuthStoreUnavailable
+ok
+test_credential_revoke_invalidates_sessions_and_password (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_credential_revoke_invalidates_sessions_and_password) ... ok
+test_direct_role_change_invalidates_session_version (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_direct_role_change_invalidates_session_version) ... ok
+test_durable_throttle_limits_attempts (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_durable_throttle_limits_attempts) ... ok
+test_email_bind_consume_by_foreign_session_rejected (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_email_bind_consume_by_foreign_session_rejected) ... ok
+test_email_bind_requires_session_and_is_idempotent (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_email_bind_requires_session_and_is_idempotent) ... ok
+test_existing_postgres_audit_sink_deduplicates_after_lost_ack (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_existing_postgres_audit_sink_deduplicates_after_lost_ack) ... Auth operation failed operation=publish_pending category=RuntimeError
+ok
+test_family_revoke_does_not_affect_other_login (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_family_revoke_does_not_affect_other_login) ... ok
+test_fixation_login_always_rotates_and_revokes_old (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_fixation_login_always_rotates_and_revokes_old) ... ok
+test_foreign_or_missing_account_not_adopted (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_foreign_or_missing_account_not_adopted) ... ok
+test_foreign_session_id_cannot_be_revoked (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_foreign_session_id_cannot_be_revoked) ... ok
+test_fresh_python_process_observes_persisted_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_fresh_python_process_observes_persisted_session) ... ok
+test_hash_only_persistence_and_safe_public_list (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_hash_only_persistence_and_safe_public_list) ... ok
+test_idle_touch_does_not_move_absolute_expiry (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_idle_touch_does_not_move_absolute_expiry) ... ok
+test_inclusive_idle_expiry (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_inclusive_idle_expiry) ... ok
+test_logout_idempotent_and_replay_rejected (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_logout_idempotent_and_replay_rejected) ... ok
+test_member_revoke_and_account_close_checked_online (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_member_revoke_and_account_close_checked_online) ... ok
+test_migration_repeat_and_guards (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_migration_repeat_and_guards) ... ok
+test_multi_account_trial_login_requires_selection (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_multi_account_trial_login_requires_selection) ... ok
+test_oidc_admin_requires_local_mfa_path (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_admin_requires_local_mfa_path) ... ok
+test_oidc_disabled_without_config (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_disabled_without_config) ... ok
+test_oidc_id_token_contract_drift (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_id_token_contract_drift) ... ok
+test_oidc_link_flow_idempotent_and_conflict (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_link_flow_idempotent_and_conflict) ... ok
+test_oidc_login_happy_path_and_rotation (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_login_happy_path_and_rotation) ... ok
+test_oidc_state_hash_only_and_replay (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_state_hash_only_and_replay) ... ok
+test_oidc_unknown_binding_no_merge_even_with_known_email (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_oidc_unknown_binding_no_merge_even_with_known_email) ... ok
+test_outbox_failure_rolls_back_issue_and_revoke (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_outbox_failure_rolls_back_issue_and_revoke) ... Auth operation failed operation=revoke category=RuntimeError
+Auth operation failed operation=login category=RuntimeError
+ok
+test_outbox_replay_preserves_ids_across_partial_delivery_failure (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_outbox_replay_preserves_ids_across_partial_delivery_failure) ... ok
+test_password_change_during_verification_never_issues_stale_session (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_password_change_during_verification_never_issues_stale_session) ... ok
+test_password_change_revokes_all_and_rejects_old_password (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_password_change_revokes_all_and_rejects_old_password) ... ok
+test_revoke_all_is_subject_scoped_and_terminal (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoke_all_is_subject_scoped_and_terminal) ... ok
+test_revoke_one_does_not_revoke_other (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoke_one_does_not_revoke_other) ... ok
+test_revoked_member_loses_session_without_harming_owner (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_revoked_member_loses_session_without_harming_owner) ... ok
+test_same_identity_two_accounts_keep_server_bindings (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_same_identity_two_accounts_keep_server_bindings) ... ok
+test_schema_checksum_drift_denies_session_resolution (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_schema_checksum_drift_denies_session_resolution) ... Auth operation failed operation=verify category=AuthSchemaNotReady
+ok
+test_schema_outage_never_falls_back_or_exposes_driver_error (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_schema_outage_never_falls_back_or_exposes_driver_error) ... Auth operation failed operation=logout category=AuthSchemaNotReady
+ok
+test_session_security_fields_cannot_be_rebound_or_unrevoked (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_session_security_fields_cannot_be_rebound_or_unrevoked) ... ok
+test_suspend_then_reactivate_does_not_resurrect (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_suspend_then_reactivate_does_not_resurrect) ... ok
+test_trial_code_path_wrong_code_attempts_and_replay (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_code_path_wrong_code_attempts_and_replay) ... ok
+test_trial_consume_creates_identity_mono_starter_owner (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_consume_creates_identity_mono_starter_owner) ... ok
+test_trial_expiry_origin_and_delivery_failure (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_expiry_origin_and_delivery_failure) ... ok
+test_trial_plan_days_policy (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_plan_days_policy) ... ok
+test_trial_rate_limits (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_rate_limits) ... ok
+test_trial_replay_and_second_login_same_identity (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_replay_and_second_login_same_identity) ... ok
+test_trial_start_uniform_and_hash_only (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_trial_start_uniform_and_hash_only) ... ok
+test_wrong_and_unknown_login_same_error (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_wrong_and_unknown_login_same_error) ... ok
+test_wrong_current_password_does_not_mutate (tests.integration.test_auth19_email_oidc.Auth19SQLTests.test_wrong_current_password_does_not_mutate) ... ok
+test_account_switch_login_rotates_auth_and_clears_research (tests.integration.test_auth09_objects.OwnershipSQLTests.test_account_switch_login_rotates_auth_and_clears_research) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_f9f7ac87c72b4c2ba32d8980b9494c56:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_bound_account_and_provenance_immutable (tests.integration.test_auth09_objects.OwnershipSQLTests.test_bound_account_and_provenance_immutable) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_50671a81e67a4850b26f26cdbb1db90f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse (tests.integration.test_auth09_objects.OwnershipSQLTests.test_chosen_unknown_cookie_rotated_and_anonymous_cannot_reuse) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_6c002a8f2f59456eb1de7b55d669126a:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_fresh_process_and_doclog_gate_after_migration (tests.integration.test_auth09_objects.OwnershipSQLTests.test_fresh_process_and_doclog_gate_after_migration) ... Run access: DENY run=RUN-4194BED6 action=read subject=19dd8f9c-3ab8-454e-a85e-1fb56370ca25 via=auth_session reason=account_boundary
+ok
+test_legacy_cookie_no_auto_claim (tests.integration.test_auth09_objects.OwnershipSQLTests.test_legacy_cookie_no_auto_claim) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_e5f2e179c9644b74888d9d257704c7f5:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_member_post_restore_csrf_and_author_preserved (tests.integration.test_auth09_objects.OwnershipSQLTests.test_member_post_restore_csrf_and_author_preserved) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_ff115bda4deb43d0a5f729cf8c9c2d1f:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_migration_preserves_data_provenance_and_fences_stale_save (tests.integration.test_auth09_objects.OwnershipSQLTests.test_migration_preserves_data_provenance_and_fences_stale_save) ... ok
+test_new_named_run_and_session_account (tests.integration.test_auth09_objects.OwnershipSQLTests.test_new_named_run_and_session_account) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_6ea0a6ed6d2c4f44a613278fc4e1790a:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_one_time_and_expected_source (tests.integration.test_auth09_objects.OwnershipSQLTests.test_one_time_and_expected_source) ... ok
+test_real_audit_insert_failure_rolls_back_everything (tests.integration.test_auth09_objects.OwnershipSQLTests.test_real_audit_insert_failure_rolls_back_everything) ... ok
+test_receipt_immutable_and_no_raw_cookie_in_audit (tests.integration.test_auth09_objects.OwnershipSQLTests.test_receipt_immutable_and_no_raw_cookie_in_audit) ... ok
+test_regular_sql_upsert_cannot_claim_legacy (tests.integration.test_auth09_objects.OwnershipSQLTests.test_regular_sql_upsert_cannot_claim_legacy) ... ok
+test_reject_unsupported_non_atomic_topologies (tests.integration.test_auth09_objects.OwnershipSQLTests.test_reject_unsupported_non_atomic_topologies) ... ok
+test_restore_unknown_author_preserves_tenant_and_source_bytes (tests.integration.test_auth09_objects.OwnershipSQLTests.test_restore_unknown_author_preserves_tenant_and_source_bytes) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_2cc676d956d240b8a3696ba4632b11b0:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_revoked_member_cannot_fallback_pointer (tests.integration.test_auth09_objects.OwnershipSQLTests.test_revoked_member_cannot_fallback_pointer) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_fd6c6dd167da40859b0a1b7d6d3d89a4:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+ok
+test_same_person_other_account_denied_session_trace_doclog_and_uniform404 (tests.integration.test_auth09_objects.OwnershipSQLTests.test_same_person_other_account_denied_session_trace_doclog_and_uniform404) ... DATABASE_URL scheme 'user=agent dbname=postgres host=127.0.0.1 port=55432 options=-csearch_path=auth09_c8bd2639a1e54402a6e920d07edea784:' не является Postgres DSN -- для auto-выбора session backend игнорируется
+Run access: DENY run=RUN-154EAFBD action=read subject=6302318f-98cb-4125-a81e-b9a8994c9525 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-154EAFBD action=read subject=6302318f-98cb-4125-a81e-b9a8994c9525 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-154EAFBD action=read subject=6302318f-98cb-4125-a81e-b9a8994c9525 via=auth_session reason=account_boundary
+Run access: DENY run=RUN-154EAFBD action=read subject=6302318f-98cb-4125-a81e-b9a8994c9525 via=auth_session reason=account_boundary
+ok
+test_sql_new_binding_cannot_have_null_ownership_state (tests.integration.test_auth09_objects.OwnershipSQLTests.test_sql_new_binding_cannot_have_null_ownership_state) ... ok
+test_stale_and_suspended_target_do_not_claim (tests.integration.test_auth09_objects.OwnershipSQLTests.test_stale_and_suspended_target_do_not_claim) ... ok
+test_two_concurrent_targets_one_winner (tests.integration.test_auth09_objects.OwnershipSQLTests.test_two_concurrent_targets_one_winner) ... ok
+test_unknown_author_not_invented (tests.integration.test_auth09_objects.OwnershipSQLTests.test_unknown_author_not_invented) ... ok
+
+----------------------------------------------------------------------
+Ran 71 tests in 67.290s
+
+OK

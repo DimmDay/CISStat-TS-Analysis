@@ -1,0 +1,41 @@
+test_disabled_metadata_honest_without_store (test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+test_compose_enables_admin_delivery_only_in_api (test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api) ... ok
+test_disabled_publisher_does_not_touch_authority_or_smtp (test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp) ... ok
+test_invalid_recipient_is_rejected_without_header_injection (test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection) ... ok
+test_notice_contains_actual_limits_and_moscow_time_without_login_proof (test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof) ... ok
+test_notification_failure_does_not_block_audit_or_log_private_error (test_personal_demo_admin.AdminNoticeContractTests.test_notification_failure_does_not_block_audit_or_log_private_error) ... ok
+test_smtp_preserves_stable_notification_message_id (test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id) ... ok
+test_only_issued_session_clears_pointer_for_all_external_login_paths (test_personal_demo_entry_pointer.ExternalEntryPointerTests.test_only_issued_session_clears_pointer_for_all_external_login_paths) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.349s
+
+OK
+test_disabled_without_env (test_auth19_challenges.ConfigTests.test_disabled_without_env) ... ok
+test_enabled_and_https_only (test_auth19_challenges.ConfigTests.test_enabled_and_https_only) ... ok
+test_disabled_without_host (test_auth19_challenges.DeliveryConfigTests.test_disabled_without_host) ... ok
+test_env_config (test_auth19_challenges.DeliveryConfigTests.test_env_config) ... ok
+test_send_failure_is_safe (test_auth19_challenges.DeliveryConfigTests.test_send_failure_is_safe) ... ok
+test_email_issuer_is_not_an_idp (test_auth19_challenges.EmailSecretTests.test_email_issuer_is_not_an_idp) ... ok
+test_keyed_digests_domain_separated (test_auth19_challenges.EmailSecretTests.test_keyed_digests_domain_separated) ... ok
+test_normalize_email (test_auth19_challenges.EmailSecretTests.test_normalize_email) ... ok
+test_otp_code_shape (test_auth19_challenges.EmailSecretTests.test_otp_code_shape) ... ok
+test_token_format_gate (test_auth19_challenges.EmailSecretTests.test_token_format_gate) ... ok
+test_pair_shape_and_s256_challenge (test_auth19_challenges.PkceTests.test_pair_shape_and_s256_challenge) ... ok
+test_authorization_url_exact_params (test_auth19_challenges.ProviderTests.test_authorization_url_exact_params) ... ok
+test_discovery_issuer_mismatch_and_https (test_auth19_challenges.ProviderTests.test_discovery_issuer_mismatch_and_https) ... ok
+test_exchange_bounded_and_basic_auth (test_auth19_challenges.ProviderTests.test_exchange_bounded_and_basic_auth) ... ok
+test_id_token_happy_path_and_nonce (test_auth19_challenges.ProviderTests.test_id_token_happy_path_and_nonce) ... ok
+test_id_token_rejects_forgery_and_contract_drift (test_auth19_challenges.ProviderTests.test_id_token_rejects_forgery_and_contract_drift) ... ok
+test_no_secret_in_repr (test_auth19_challenges.ProviderTests.test_no_secret_in_repr) ... ok
+test_csrf_flags_declared (test_auth19_routes.RouteTests.test_csrf_flags_declared) ... ok
+test_new_routes_present_and_post_only (test_auth19_routes.RouteTests.test_new_routes_present_and_post_only) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.245s
+
+OK

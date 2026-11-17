@@ -1,0 +1,53 @@
+test_repro (__main__.Repro.test_repro) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-FC5F661C action=write subject=3061b3a5-d3df-4b0e-bbba-d57fe91ccf64 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/start "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/email/consume "HTTP/1.1 200 OK"
+WARNING:apps.api.identity:Run access: DENY run=RUN-FC5F661C action=read subject=494f60b6-a133-4c4c-81d9-d5daaf0cf60f via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 404 Not Found"
+WARNING:apps.api.identity:Run access: DENY run=RUN-FC5F661C action=read subject=494f60b6-a133-4c4c-81d9-d5daaf0cf60f via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/target-column "HTTP/1.1 404 Not Found"
+WARNING:apps.api.identity:Run access: DENY run=RUN-FC5F661C action=read subject=494f60b6-a133-4c4c-81d9-d5daaf0cf60f via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+WARNING:apps.api.identity:Run access: DENY run=RUN-FC5F661C action=read subject=494f60b6-a133-4c4c-81d9-d5daaf0cf60f via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 404 Not Found"
+FAIL
+
+======================================================================
+FAIL: test_repro (__main__.Repro.test_repro)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/repro-personal-upload.py", line 21, in test_repro
+    Deployment.upload(c)
+  File "/workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/tests/integration/authcert_harness.py", line 564, in upload
+    assert response.status_code == 200, response.text
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {"detail":{"code":"scientific_object_not_found","message":"Объект исследования не найден","request_id":"req-ca39967d4e93"}}
+
+----------------------------------------------------------------------
+Ran 1 test in 4.556s
+
+FAILED (failures=1)
+prior pointer 6044d1ee9e704d40894f0d542d3168da
+start 200 {"status":"email_sent"}
+consume 200 {"status":"authenticated","session":{"session_id":"2a0dee73-3b06-4134-a748-9ad55dd5cef4","family_id":"c4584417-7910-4d29-b9aa-404845c02d89","account_id":"65326dd3-928d-4860-8f30-90c959c1145e","issued_at":"2026-11-17T17:07:47.774876+00:00","last_seen_at":"2026-11-17T17:07:47.774876+00:00","idle_expires_at":"2026-11-17T17:22:47.774876+00:00","absolute_expires_at":"2026-11-18T01:07:47.774876+00:00","revoked_at":null}}
+before /v1/session/current 404 {"detail":{"code":"scientific_object_not_found","message":"Объект исследования не найден","request_id":"req-437f372bcf1d"}}
+before /v1/session/target-column 404 {"detail":{"code":"scientific_object_not_found","message":"Объект исследования не найден","request_id":"req-62a9793a7098"}}
+before /v1/progress/trace 404 {"detail":{"code":"scientific_object_not_found","message":"Объект исследования не найден","request_id":"req-b7fe13657d3b"}}

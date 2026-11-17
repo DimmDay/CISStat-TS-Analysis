@@ -429,6 +429,10 @@ class EmailConsumeBody(AuthBody):
 def _external_result(response, result):
     if isinstance(result, dict):
         return result
+    # External login changes the personal session just like password login.
+    # A browser's previous research pointer can belong to another Account.
+    # Clear it only after successful issuance; selection/binding preserve it.
+    _clear(response)
     return _authenticated(response, result)
 
 

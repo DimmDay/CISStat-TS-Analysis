@@ -306,3 +306,19 @@ python scripts/local_gates.py --only personal-demo-postgres --with-personal-demo
 ```
 
 Нового гейта/флага/workflow нет: существующий discovery включает tests автоматически. API/Next маршруты не добавлены; AUTH00 review описывает новый внутренний enqueue-effect consume и SMTP-effect существующего ops worker, fingerprints обновлены. **Нужна аддитивная0037 до запуска нового api**, когда включены уведомления. Compose default ENABLED=1, получатель admin@datasetup.ru; прежний SMTP используется только API. VM build/migrate/recreate/status/smtp-test: docs/demo_admin/deploy.md. Отправка асинхронна, ошибки SMTP не ломают login; отдельная очередь/retry не содержит кодов/ссылок входа. Это уведомление о первой выдаче trial, не рассылка о каждом входе и не backfill прежних пользователей.
+
+
+## EMAIL-UPLOAD-FIX (17.11.2026, база68430f7)
+
+`personal-demo` автоматически включает новый `test_personal_demo_entry_pointer.py`: email OTP/link/Account selection и SSO callback/selection очищают прежний research pointer только после выдачи AuthSession. Отказы и binding/selection-ответы сохраняют cookie. `personal-demo-postgres` автоматически включает `test_personal_demo_upload_e2e.py`: полный apps.api.main/lifespan, реальный PostgreSQL/CSRF/OTP/cookies, смена прежнего пользователя, четыре фактических UI CSV, current/dataset/trace, foreign-pointer404 и отсутствие refill trial. Это HTTP E2E, не визуальный browser click test.
+
+Нативный прогон теперь требует **Node>=22 и `npm ci` из корня**: `scripts/email_upload_fix/demo_files.js` исполняет настоящие UI-генераторы вместо копии CSV. CI personal_demo.yml postgres job получил setup-node22/npm ci; новых гейтов/флагов нет. Без DSN/skips не PASS.
+
+```powershell
+git add --pathspec-from-file=scripts/email_upload_fix/files.txt
+python scripts/local_gates.py --only personal-demo,auth19,auth06,auth00 --skip-install
+# Только disposable PostgreSQL, не БД платформы:
+python scripts/local_gates.py --only personal-demo-postgres --with-personal-demo-postgres --skip-install
+```
+
+Методы/пути/DTO прежние (282 API/286 bindings), Set-Cookie успешных email/consume и oidc/callback изменён; review/карта обновлены. Только api rebuild, без migrations/web rebuild; после деплоя повторить email-вход свежим кодом. Инструкция/риски: docs/email_upload_fix.md.

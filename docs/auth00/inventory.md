@@ -227,15 +227,15 @@
 | api:POST:/v1/auth/demo/leave | apps.api.routers.demo:leave / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:124 |
 | api:POST:/v1/auth/demo/prepare | apps.api.routers.demo:prepare / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:73 |
 | api:POST:/v1/auth/demo/resume | apps.api.routers.demo:resume / service:platform | demo.entry / private demo grant | apps/api/routers/demo.py:110 |
-| api:POST:/v1/auth/email/consume | apps.api.routers.authentication:email_consume / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:490 |
-| api:POST:/v1/auth/email/start | apps.api.routers.authentication:email_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:478 |
+| api:POST:/v1/auth/email/consume | apps.api.routers.authentication:email_consume / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:494 |
+| api:POST:/v1/auth/email/start | apps.api.routers.authentication:email_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:482 |
 | api:POST:/v1/auth/login | apps.api.routers.authentication:login / service:platform | auth.entry / self authentication session | apps/api/routers/authentication.py:165 |
 | api:POST:/v1/auth/logout | apps.api.routers.authentication:logout / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:243 |
 | api:POST:/v1/auth/mfa/enroll | apps.api.routers.authentication:mfa_enroll / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:301 |
 | api:POST:/v1/auth/mfa/replace | apps.api.routers.authentication:mfa_replace / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:346 |
 | api:POST:/v1/auth/mfa/verify | apps.api.routers.authentication:mfa_verify / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:314 |
-| api:POST:/v1/auth/oidc/callback | apps.api.routers.authentication:oidc_callback / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:446 |
-| api:POST:/v1/auth/oidc/start | apps.api.routers.authentication:oidc_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:435 |
+| api:POST:/v1/auth/oidc/callback | apps.api.routers.authentication:oidc_callback / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:450 |
+| api:POST:/v1/auth/oidc/start | apps.api.routers.authentication:oidc_start / service:platform | auth.external / self authentication session | apps/api/routers/authentication.py:439 |
 | api:POST:/v1/auth/password | apps.api.routers.authentication:change_password / service:platform | auth.session / self authentication session | apps/api/routers/authentication.py:269 |
 | api:POST:/v1/auth/recovery | apps.api.routers.authentication:recovery / service:platform | auth.mfa.entry / self MFA credential or scoped challenge | apps/api/routers/authentication.py:359 |
 | api:POST:/v1/auth/recovery/rotate | apps.api.routers.authentication:recovery_rotate / service:platform | auth.mfa.session / self MFA credential or scoped challenge | apps/api/routers/authentication.py:371 |

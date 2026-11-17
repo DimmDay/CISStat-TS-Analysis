@@ -1,0 +1,170 @@
+Локальные гейты (база 68430f7, AUTH-00 target=INDEX): personal-demo, auth19, auth06, auth00
+
+=== ГЕЙТ personal-demo (personal_demo.yml contracts) — Personal MONO trial, SMTP and two-column entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest discover -s tests/unit -p test_personal_demo*.py -v
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_disabled_metadata_honest_without_store (test_personal_demo.PersonalDemoContractTests.test_disabled_metadata_honest_without_store) ... ok
+test_finite_integer_recommendation (test_personal_demo.PersonalDemoContractTests.test_finite_integer_recommendation) ... ok
+test_compose_forwards_secrets_without_values_or_web_exposure (test_personal_demo.SmtpContractTests.test_compose_forwards_secrets_without_values_or_web_exposure) ... ok
+test_smtp_requires_sender_and_valid_port_before_advertising_signup (test_personal_demo.SmtpContractTests.test_smtp_requires_sender_and_valid_port_before_advertising_signup) ... ok
+test_tls_transport_verifies_certificate_and_preserves_unicode (test_personal_demo.SmtpContractTests.test_tls_transport_verifies_certificate_and_preserves_unicode) ... ok
+test_compose_enables_admin_delivery_only_in_api (test_personal_demo_admin.AdminNoticeContractTests.test_compose_enables_admin_delivery_only_in_api) ... ok
+test_disabled_publisher_does_not_touch_authority_or_smtp (test_personal_demo_admin.AdminNoticeContractTests.test_disabled_publisher_does_not_touch_authority_or_smtp) ... ok
+test_invalid_recipient_is_rejected_without_header_injection (test_personal_demo_admin.AdminNoticeContractTests.test_invalid_recipient_is_rejected_without_header_injection) ... ok
+test_notice_contains_actual_limits_and_moscow_time_without_login_proof (test_personal_demo_admin.AdminNoticeContractTests.test_notice_contains_actual_limits_and_moscow_time_without_login_proof) ... ok
+test_notification_failure_does_not_block_audit_or_log_private_error (test_personal_demo_admin.AdminNoticeContractTests.test_notification_failure_does_not_block_audit_or_log_private_error) ... ok
+test_smtp_preserves_stable_notification_message_id (test_personal_demo_admin.AdminNoticeContractTests.test_smtp_preserves_stable_notification_message_id) ... ok
+test_only_issued_session_clears_pointer_for_all_external_login_paths (test_personal_demo_entry_pointer.ExternalEntryPointerTests.test_only_issued_session_clears_pointer_for_all_external_login_paths) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.362s
+
+OK
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath packages/ui/components/personal-demo.test.tsx packages/ui/components/auth-kabinet-demo.test.tsx
+
+Test Suites: 2 passed, 2 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        4.863 s
+Ran all test suites within paths "packages/ui/components/personal-demo.test.tsx", "packages/ui/components/auth-kabinet-demo.test.tsx".
+--- personal-demo: PASS (7.0 c)
+
+=== ГЕЙТ auth19 (auth19.yml contracts) — AUTH-19 OIDC / personal email entry contracts
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest discover -s tests/unit -p test_auth19*.py -v
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_disabled_without_env (test_auth19_challenges.ConfigTests.test_disabled_without_env) ... ok
+test_enabled_and_https_only (test_auth19_challenges.ConfigTests.test_enabled_and_https_only) ... ok
+test_disabled_without_host (test_auth19_challenges.DeliveryConfigTests.test_disabled_without_host) ... ok
+test_env_config (test_auth19_challenges.DeliveryConfigTests.test_env_config) ... ok
+test_send_failure_is_safe (test_auth19_challenges.DeliveryConfigTests.test_send_failure_is_safe) ... ok
+test_email_issuer_is_not_an_idp (test_auth19_challenges.EmailSecretTests.test_email_issuer_is_not_an_idp) ... ok
+test_keyed_digests_domain_separated (test_auth19_challenges.EmailSecretTests.test_keyed_digests_domain_separated) ... ok
+test_normalize_email (test_auth19_challenges.EmailSecretTests.test_normalize_email) ... ok
+test_otp_code_shape (test_auth19_challenges.EmailSecretTests.test_otp_code_shape) ... ok
+test_token_format_gate (test_auth19_challenges.EmailSecretTests.test_token_format_gate) ... ok
+test_pair_shape_and_s256_challenge (test_auth19_challenges.PkceTests.test_pair_shape_and_s256_challenge) ... ok
+test_authorization_url_exact_params (test_auth19_challenges.ProviderTests.test_authorization_url_exact_params) ... ok
+test_discovery_issuer_mismatch_and_https (test_auth19_challenges.ProviderTests.test_discovery_issuer_mismatch_and_https) ... ok
+test_exchange_bounded_and_basic_auth (test_auth19_challenges.ProviderTests.test_exchange_bounded_and_basic_auth) ... ok
+test_id_token_happy_path_and_nonce (test_auth19_challenges.ProviderTests.test_id_token_happy_path_and_nonce) ... ok
+test_id_token_rejects_forgery_and_contract_drift (test_auth19_challenges.ProviderTests.test_id_token_rejects_forgery_and_contract_drift) ... ok
+test_no_secret_in_repr (test_auth19_challenges.ProviderTests.test_no_secret_in_repr) ... ok
+test_csrf_flags_declared (test_auth19_routes.RouteTests.test_csrf_flags_declared) ... ok
+test_new_routes_present_and_post_only (test_auth19_routes.RouteTests.test_new_routes_present_and_post_only) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.178s
+
+OK
+--- auth19: PASS (0.7 c)
+
+=== ГЕЙТ auth06 (auth06.yml contracts) — AUTH-06 proxy / CSRF / login UI
+    (установка зависимостей пропущена: --skip-install)
+    (установка зависимостей пропущена: --skip-install)
+    $ node node_modules/jest/bin/jest.js --ci --runInBand packages/ui/server/firstPartyProxy.test.ts packages/ui/lib/browserTransport.test.ts packages/ui/lib/authClient.test.ts packages/ui/lib/auth06SourceBoundary.test.ts packages/ui/components/LoginScreen.test.tsx packages/ui/context/AuthContext.test.tsx
+
+Test Suites: 6 passed, 6 total
+Tests:       29 passed, 29 total
+Snapshots:   0 total
+Time:        4.711 s
+Ran all test suites matching packages/ui/server/firstPartyProxy.test.ts|packages/ui/lib/browserTransport.test.ts|packages/ui/lib/authClient.test.ts|packages/ui/lib/auth06SourceBoundary.test.ts|packages/ui/components/LoginScreen.test.tsx|packages/ui/context/AuthContext.test.tsx.
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest discover -s tests/unit -p test_auth06*.py -v
+test_cors_exact_allowlist (test_auth06_csrf.Auth06Contracts.test_cors_exact_allowlist) ... ok
+test_csrf_reuse_is_bound_to_sid (test_auth06_csrf.Auth06Contracts.test_csrf_reuse_is_bound_to_sid) ... ok
+test_me_contract_is_generated (test_auth06_csrf.Auth06Contracts.test_me_contract_is_generated) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.019s
+
+OK
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python scripts/auth06/generate_proxy_routes.py --check
+{"status": "ok", "api_routes": 282}
+--- auth06: PASS (9.9 c)
+
+=== ГЕЙТ auth00 (auth00.yml) — AUTH-00 inventory + Git snapshot parity (default INDEX)
+    AUTH-00 full log: /workspace/scratch/d4153a1cfd25/CISStat-TS-Analysis/logs/local_gates/auth00.log
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (598 discovery surfaces; full reviewed inventory/source parity)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest discover -s tests/unit -p test_auth00*.py -v
+test_auth06_migration_manifest_contains_only_application_sources (test_auth00_inventory.InventoryTests.test_auth06_migration_manifest_contains_only_application_sources) ... ok
+test_binary_fingerprint_does_not_normalize_crlf (test_auth00_inventory.InventoryTests.test_binary_fingerprint_does_not_normalize_crlf) ... ok
+test_binding_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_binding_threat_reference_must_exist) ... ok
+test_changed_next_proxy_requires_review (test_auth00_inventory.InventoryTests.test_changed_next_proxy_requires_review) ... ok
+test_crlf_checkout_does_not_change_source_fingerprints (test_auth00_inventory.InventoryTests.test_crlf_checkout_does_not_change_source_fingerprints) ... ok
+test_disabled_docs_do_not_invent_framework_routes (test_auth00_inventory.InventoryTests.test_disabled_docs_do_not_invent_framework_routes) ... ok
+test_duplicate_method_path_fails (test_auth00_inventory.InventoryTests.test_duplicate_method_path_fails) ... ok
+test_dynamic_path_is_not_silently_ignored (test_auth00_inventory.InventoryTests.test_dynamic_path_is_not_silently_ignored) ... ok
+test_factory_expands_both_mounts_without_losing_key_gate (test_auth00_inventory.InventoryTests.test_factory_expands_both_mounts_without_losing_key_gate) ... ok
+test_foreign_asgi_root_requires_review (test_auth00_inventory.InventoryTests.test_foreign_asgi_root_requires_review) ... ok
+test_foreign_http_server_requires_review (test_auth00_inventory.InventoryTests.test_foreign_http_server_requires_review) ... ok
+test_functional_route_registration_is_not_silently_skipped (test_auth00_inventory.InventoryTests.test_functional_route_registration_is_not_silently_skipped) ... ok
+test_generic_model_jobs_are_classified_as_tuning (test_auth00_inventory.InventoryTests.test_generic_model_jobs_are_classified_as_tuning) ... ok
+test_guard_body_change_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_guard_body_change_invalidates_snapshot) ... ok
+test_installed_typescript_does_not_change_repository_inventory (test_auth00_inventory.InventoryTests.test_installed_typescript_does_not_change_repository_inventory) ... ok
+test_invalid_methods_cannot_be_split_into_characters (test_auth00_inventory.InventoryTests.test_invalid_methods_cannot_be_split_into_characters) ... ok
+test_manual_extra_cannot_invent_an_http_route (test_auth00_inventory.InventoryTests.test_manual_extra_cannot_invent_an_http_route) ... ok
+test_method_path_prefix_and_dependencies (test_auth00_inventory.InventoryTests.test_method_path_prefix_and_dependencies) ... ok
+test_named_bypass_surfaces_are_present (test_auth00_inventory.InventoryTests.test_named_bypass_surfaces_are_present) ... ok
+test_nested_router_and_multiple_methods (test_auth00_inventory.InventoryTests.test_nested_router_and_multiple_methods) ... ok
+test_new_registration_form_requires_collector_review (test_auth00_inventory.InventoryTests.test_new_registration_form_requires_collector_review) ... ok
+test_new_route_cannot_inherit_a_generic_allow_classification (test_auth00_inventory.InventoryTests.test_new_route_cannot_inherit_a_generic_allow_classification) ... ok
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_policy_drift_and_unclassified_entry_are_rejected (test_auth00_inventory.InventoryTests.test_policy_drift_and_unclassified_entry_are_rejected) ... ok
+test_policy_threat_reference_must_exist (test_auth00_inventory.InventoryTests.test_policy_threat_reference_must_exist) ... ok
+test_real_new_route_has_no_review_binding (test_auth00_inventory.InventoryTests.test_real_new_route_has_no_review_binding) ... ok
+test_repository_snapshot_and_all_entries_classified (test_auth00_inventory.InventoryTests.test_repository_snapshot_and_all_entries_classified) ... ok
+test_review_cannot_overwrite_a_discovered_path (test_auth00_inventory.InventoryTests.test_review_cannot_overwrite_a_discovered_path) ... ok
+test_reviewed_application_source_change_still_invalidates_snapshot (test_auth00_inventory.InventoryTests.test_reviewed_application_source_change_still_invalidates_snapshot) ... ok
+test_reviewed_dependency_sources_require_catalogue_correction (test_auth00_inventory.InventoryTests.test_reviewed_dependency_sources_require_catalogue_correction) ... ok
+test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails (test_auth00_inventory.InventoryTests.test_reviewed_dockerfile_crlf_is_portable_but_content_drift_fails) ... ok
+test_reviewed_env_example_crlf_portable_content_change_fails (test_auth00_inventory.InventoryTests.test_reviewed_env_example_crlf_portable_content_change_fails) ... ok
+test_reviewed_password_blocklist_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_password_blocklist_fingerprint_is_checkout_portable) ... ok
+test_reviewed_sql_fingerprint_is_checkout_portable (test_auth00_inventory.InventoryTests.test_reviewed_sql_fingerprint_is_checkout_portable) ... ok
+test_shared_next_proxy_discovery (test_auth00_inventory.InventoryTests.test_shared_next_proxy_discovery) ... ok
+test_trailing_slash_is_a_distinct_route (test_auth00_inventory.InventoryTests.test_trailing_slash_is_a_distinct_route) ... ok
+test_unmounted_router_fails (test_auth00_inventory.InventoryTests.test_unmounted_router_fails) ... ok
+test_utf8_bom_is_supported (test_auth00_inventory.InventoryTests.test_utf8_bom_is_supported) ... ok
+test_auth00_checks_prepared_snapshot_before_slow_unit_suite (test_auth00_local_output.LocalOutputTests.test_auth00_checks_prepared_snapshot_before_slow_unit_suite) ... ok
+test_failed_step_and_unicode_output_saved_without_losing_exit (test_auth00_local_output.LocalOutputTests.test_failed_step_and_unicode_output_saved_without_losing_exit) ... ok
+test_other_gate_keeps_original_execution_and_creates_no_auth00_log (test_auth00_local_output.LocalOutputTests.test_other_gate_keeps_original_execution_and_creates_no_auth00_log) ... ok
+test_passed_auth00_log_contains_all_steps (test_auth00_local_output.LocalOutputTests.test_passed_auth00_log_contains_all_steps) ... ok
+test_real_cp1252_console_supports_heading_child_output_and_failure_summary (test_auth00_local_output.LocalOutputTests.test_real_cp1252_console_supports_heading_child_output_and_failure_summary) ... ok
+test_summary_does_not_prescribe_staging_for_worktree_drift (test_auth00_local_output.LocalOutputTests.test_summary_does_not_prescribe_staging_for_worktree_drift) ... ok
+test_summary_repeats_snapshot_failure_and_manual_staging_hint (test_auth00_local_output.LocalOutputTests.test_summary_repeats_snapshot_failure_and_manual_staging_hint) ... ok
+test_crlf_index_dockerfile_matches_lf_worktree (test_auth00_precommit.PrecommitTests.test_crlf_index_dockerfile_matches_lf_worktree) ... ok
+test_crlf_index_env_example_matches_lf_worktree_without_staging (test_auth00_precommit.PrecommitTests.test_crlf_index_env_example_matches_lf_worktree_without_staging) ... ok
+test_crlf_worktree_matches_lf_index (test_auth00_precommit.PrecommitTests.test_crlf_worktree_matches_lf_index) ... ok
+test_empty_index_is_not_pass (test_auth00_precommit.PrecommitTests.test_empty_index_is_not_pass) ... ok
+test_format_only_drift_is_explicit_and_still_fails (test_auth00_precommit.PrecommitTests.test_format_only_drift_is_explicit_and_still_fails) ... ok
+test_head_does_not_silently_fall_back_to_index (test_auth00_precommit.PrecommitTests.test_head_does_not_silently_fall_back_to_index) ... ok
+test_ignored_page_still_blocks_pass (test_auth00_precommit.PrecommitTests.test_ignored_page_still_blocks_pass) ... ok
+test_index_drift_names_partial_staging_and_source (test_auth00_precommit.PrecommitTests.test_index_drift_names_partial_staging_and_source) ... ok
+test_invalid_inventory_drift_has_context_without_traceback (test_auth00_precommit.PrecommitTests.test_invalid_inventory_drift_has_context_without_traceback) ... ok
+test_local_gate_target_is_explicit_and_does_not_mutate_commands (test_auth00_precommit.PrecommitTests.test_local_gate_target_is_explicit_and_does_not_mutate_commands) ... ok
+test_partially_staged_source_with_old_inventory_fails (test_auth00_precommit.PrecommitTests.test_partially_staged_source_with_old_inventory_fails) ... ok
+test_staged_before_first_commit_passes_without_changing_index (test_auth00_precommit.PrecommitTests.test_staged_before_first_commit_passes_without_changing_index) ... ok
+test_unstaged_guard_change_with_same_routes_fails (test_auth00_precommit.PrecommitTests.test_unstaged_guard_change_with_same_routes_fails) ... ok
+test_untracked_reviewed_helper_cannot_be_left_out (test_auth00_precommit.PrecommitTests.test_untracked_reviewed_helper_cannot_be_left_out) ... ok
+test_worktree_drift_names_source_before_index_is_checked (test_auth00_precommit.PrecommitTests.test_worktree_drift_names_source_before_index_is_checked) ... ok
+
+----------------------------------------------------------------------
+Ran 60 tests in 46.511s
+
+OK
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 282, "framework": 8, "internal_operation": 37, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 2, "worker": 11}, "entries": 661}
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (598 discovery surfaces; full reviewed inventory/source parity)
+--- auth00: PASS (80.4 c)
+
+=== СВОДКА ===
+  PASS  personal-demo     7.0 c
+  PASS  auth19      0.7 c
+  PASS  auth06      9.9 c
+  PASS  auth00     80.4 c
+
+ИТОГ: выбранные гейты зелёные; live PostgreSQL не проверен: auth06, auth19 (нужны соответствующие --with-authXX-postgres; native CI отдельно)
