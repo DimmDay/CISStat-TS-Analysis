@@ -1,0 +1,39 @@
+test_environment_store_link_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_link_provisions_once) ... Auth operation failed operation=consume category=AttributeError
+ERROR
+test_environment_store_code_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_code_provisions_once) ... Auth operation failed operation=consume category=AttributeError
+ERROR
+
+======================================================================
+ERROR: test_environment_store_link_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_link_provisions_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/tests/integration/test_personal_demo.py", line 254, in test_environment_store_link_provisions_once
+    self._environment_entry(False)
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/tests/integration/test_personal_demo.py", line 238, in _environment_entry
+    issued = service.consume(
+             ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/apps/api/authentication/sessions.py", line 50, in call
+    auth_error(503, "auth_authority_unavailable")
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/apps/api/authentication/context.py", line 252, in auth_error
+    raise AuthHTTPException(
+apps.api.authentication.context.AuthHTTPException: 503: {'code': 'auth_authority_unavailable', 'message': 'Сервис аутентификации недоступен', 'request_id': ''}
+
+======================================================================
+ERROR: test_environment_store_code_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_code_provisions_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/tests/integration/test_personal_demo.py", line 257, in test_environment_store_code_provisions_once
+    self._environment_entry(True)
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/tests/integration/test_personal_demo.py", line 238, in _environment_entry
+    issued = service.consume(
+             ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/apps/api/authentication/sessions.py", line 50, in call
+    auth_error(503, "auth_authority_unavailable")
+  File "/workspace/scratch/e28f7bf5e3d0/repo-124a4ee/apps/api/authentication/context.py", line 252, in auth_error
+    raise AuthHTTPException(
+apps.api.authentication.context.AuthHTTPException: 503: {'code': 'auth_authority_unavailable', 'message': 'Сервис аутентификации недоступен', 'request_id': ''}
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.588s
+
+FAILED (errors=2)

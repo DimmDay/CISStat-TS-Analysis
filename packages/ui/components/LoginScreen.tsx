@@ -39,6 +39,7 @@ export function LoginScreen({
   ),
     [email, setEmail] = useState(""),
     [emailSent, setEmailSent] = useState(false),
+    [emailCode, setEmailCode] = useState(""),
     [linkToken, setLinkToken] = useState<string | null>(null),
     [selection, setSelection] = useState<{ token: string; source: "oidc" | "email" } | null>(
       null,
@@ -218,7 +219,32 @@ export function LoginScreen({
       await authCommand("email/start", { email, purpose: "trial_login" });
       if (mounted.current) {
         setEmailSent(true);
-        setEmail("");
+        setEmailCode("");
+      }
+    });
+  }
+  function confirmEmailCode(event: FormEvent) {
+    event.preventDefault();
+    if (!/^[0-9]{8}$/.test(emailCode)) return;
+    const entered = emailCode;
+    setEmailCode("");
+    void action(async () => {
+      try {
+        await handleExternal(
+          await authCommand("email/consume", { email, code: entered }),
+          "email",
+        );
+      } catch (caught) {
+        if (
+          caught instanceof AuthFailure &&
+          caught.status === 401 &&
+          caught.code === "invalid_credential"
+        ) {
+          if (mounted.current)
+            setError("Код неверен, уже использован или срок его действия истёк. Проверьте код или запросите новое письмо.");
+          return;
+        }
+        throw caught;
       }
     });
   }
@@ -299,6 +325,8 @@ export function LoginScreen({
     setError("");
     setStatus("");
     setEmailSent(false);
+    setEmail("");
+    setEmailCode("");
     setLinkToken(null);
     setSelection(null);
   }
@@ -527,13 +555,35 @@ export function LoginScreen({
           </button>
         </form>
       ) : emailSent ? (
-        <div className="space-y-4">
+        <form onSubmit={confirmEmailCode} className="space-y-4">
           <h2 className="font-semibold">Проверьте почту</h2>
           <p className="text-sm text-neutral-600">
-            Если адрес зарегистрирован, письмо со ссылкой и кодом отправлено.
+            Введите восьмизначный код из письма или откройте ссылку в письме.
             Ссылка и код работают один раз и действительны 15 минут.
           </p>
-        </div>
+          <label className="block space-y-2 text-sm">
+            Код из письма
+            <input
+              name="email_code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{8}"
+              maxLength={8}
+              className={input}
+              value={emailCode}
+              onChange={(e) => setEmailCode(e.target.value)}
+              required
+              disabled={busy}
+            />
+          </label>
+          <button type="submit" className={button} disabled={busy || !/^[0-9]{8}$/.test(emailCode)}>
+            Подтвердить код
+          </button>
+          <button type="button" className="block text-sm text-neutral-600 underline" disabled={busy} onClick={reset}>
+            Другой email или новое письмо
+          </button>
+        </form>
       ) : (
         <>
           <form onSubmit={signIn} className="space-y-4">

@@ -131,6 +131,9 @@ def enroll(c, store, subject, account, email, now):
         (expires, now, account),
     )
     reason = "Verified email personal trial; one-time pilot allocation"
+    # Production EmailChallengeService has no injected store. Resolve the
+    # environment authority before binding this transaction for policy/wallet.
+    store = store if store is not None else PostgresAccessStore.from_env()
     policy = BudgetPolicy(store)
     with bind_connection(c, store):
         policy.create_scope(

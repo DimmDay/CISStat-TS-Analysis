@@ -1,0 +1,6 @@
+test_http_environment_entry_sets_cookie_and_confirms_session (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_http_environment_entry_sets_cookie_and_confirms_session) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.951s
+
+OK

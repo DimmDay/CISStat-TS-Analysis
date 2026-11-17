@@ -207,3 +207,38 @@ test("authority outage keeps the email link for retry without exposing server de
   expect(confirm).toBeInTheDocument();
   expect(window.location.search).not.toContain("email_challenge");
 });
+
+test("email code confirms the retained mailbox and returns to upload", async () => {
+  flags.mockResolvedValue({ oidc: false, email_trial: true });
+  command.mockResolvedValueOnce({ status: "email_sent" }).mockResolvedValueOnce({ status: "authenticated" });
+  const navigate = renderForm("/upload");
+  fireEvent.change(await screen.findByLabelText(/Вход по email/), { target: { value: "reader@example.test" } });
+  fireEvent.click(screen.getByRole("button", { name: "Отправить письмо для входа" }));
+  const field = await screen.findByLabelText("Код из письма");
+  me.mockResolvedValue(session);
+  fireEvent.change(field, { target: { value: "01234567" } });
+  fireEvent.click(screen.getByRole("button", { name: "Подтвердить код" }));
+  await waitFor(() => expect(command).toHaveBeenLastCalledWith("email/consume", { email: "reader@example.test", code: "01234567" }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith("/upload"));
+  expect(window.location.search).not.toContain("01234567");
+});
+
+test("wrong email code can be retried and a different mailbox can be selected", async () => {
+  flags.mockResolvedValue({ oidc: false, email_trial: true });
+  command.mockResolvedValueOnce({ status: "email_sent" }).mockRejectedValueOnce(new AuthFailure(401, "invalid_credential"));
+  renderForm();
+  fireEvent.change(await screen.findByLabelText(/Вход по email/), { target: { value: "reader@example.test" } });
+  fireEvent.click(screen.getByRole("button", { name: "Отправить письмо для входа" }));
+  const field = await screen.findByLabelText("Код из письма");
+  expect(screen.getByRole("button", { name: "Подтвердить код" })).toBeDisabled();
+  fireEvent.change(field, { target: { value: "1234567" } });
+  expect(screen.getByRole("button", { name: "Подтвердить код" })).toBeDisabled();
+  expect(command).toHaveBeenCalledTimes(1);
+  fireEvent.change(field, { target: { value: "00000000" } });
+  fireEvent.click(screen.getByRole("button", { name: "Подтвердить код" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Код неверен, уже использован или срок его действия истёк");
+  expect(field).toHaveValue("");
+  fireEvent.click(screen.getByRole("button", { name: "Другой email или новое письмо" }));
+  expect(await screen.findByLabelText(/Вход по email/)).toHaveValue("");
+  expect(command).toHaveBeenCalledTimes(2);
+});

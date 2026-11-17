@@ -1,0 +1,118 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+FAIL packages/ui/components/auth19-login.test.tsx (8.398 s)
+  ● email code confirms the retained mailbox and returns to upload
+
+    Unable to find a label with the text of: Код из письма
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<section[39m
+          [33maria-busy[39m=[32m"false"[39m
+          [33mclass[39m=[32m"mx-auto max-w-lg space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"text-2xl font-semibold text-neutral-900"[39m
+            [36m>[39m
+              [0mВход в CISStat DataTime Lab[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-2 text-sm text-neutral-600"[39m
+            [36m>[39m
+              [0mЛичная учётная запись для работы с платформой[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"font-semibold"[39m
+            [36m>[39m
+              [0mПроверьте почту[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-sm text-neutral-600"[39m
+            [36m>[39m
+              [0mЕсли адрес зарегистрирован, письмо со ссылкой и кодом отправлено. Ссылка и код работают один раз и действительны 15 минут.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</section>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      215 |   fireEvent.change(await screen.findByLabelText(/Вход по email/), { target: { value: "reader@example.test" } });
+      216 |   fireEvent.click(screen.getByRole("button", { name: "Отправить письмо для входа" }));
+    > 217 |   const field = await screen.findByLabelText("Код из письма");
+          |                              ^
+      218 |   me.mockResolvedValue(session);
+      219 |   fireEvent.change(field, { target: { value: "01234567" } });
+      220 |   fireEvent.click(screen.getByRole("button", { name: "Подтвердить код" }));
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+      at Object.<anonymous> (packages/ui/components/auth19-login.test.tsx:217:30)
+
+  ● wrong email code can be retried and a different mailbox can be selected
+
+    Unable to find a label with the text of: Код из письма
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<section[39m
+          [33maria-busy[39m=[32m"false"[39m
+          [33mclass[39m=[32m"mx-auto max-w-lg space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"text-2xl font-semibold text-neutral-900"[39m
+            [36m>[39m
+              [0mВход в CISStat DataTime Lab[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-2 text-sm text-neutral-600"[39m
+            [36m>[39m
+              [0mЛичная учётная запись для работы с платформой[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"font-semibold"[39m
+            [36m>[39m
+              [0mПроверьте почту[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-sm text-neutral-600"[39m
+            [36m>[39m
+              [0mЕсли адрес зарегистрирован, письмо со ссылкой и кодом отправлено. Ссылка и код работают один раз и действительны 15 минут.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</section>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+      230 |   fireEvent.change(await screen.findByLabelText(/Вход по email/), { target: { value: "reader@example.test" } });
+      231 |   fireEvent.click(screen.getByRole("button", { name: "Отправить письмо для входа" }));
+    > 232 |   const field = await screen.findByLabelText("Код из письма");
+          |                              ^
+      233 |   fireEvent.change(field, { target: { value: "00000000" } });
+      234 |   fireEvent.click(screen.getByRole("button", { name: "Подтвердить код" }));
+      235 |   expect(await screen.findByRole("alert")).toHaveTextContent("Код неверен, уже использован или срок его действия истёк");
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+      at Object.<anonymous> (packages/ui/components/auth19-login.test.tsx:232:30)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 9 passed, 11 total
+Snapshots:   0 total
+Time:        10.444 s
+Ran all test suites matching packages/ui/components/auth19-login.test.tsx.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

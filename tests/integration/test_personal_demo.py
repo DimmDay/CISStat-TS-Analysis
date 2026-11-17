@@ -220,3 +220,71 @@ class PersonalDemoSQLTests(unittest.TestCase):
         self.signup("funded@example.test")
         self.assertEqual(self.rows("auth_wallet_lots"), before)
         self.assertFalse(self.rows("auth_personal_trials"))
+
+    def _environment_entry(self, use_code):
+        """Production creates EmailChallengeService() without an injected store."""
+        from apps.api.authentication.email_challenges import EmailChallengeService
+        from apps.api.authentication.storage import PostgresAccessStore
+
+        email = "environment-entry@example.test"
+        token = self.token(email)
+        letter = self.f.delivery.letters[-1]["body"]
+        code = letter.splitlines()[0].rsplit(" ", 1)[-1]
+        service = EmailChallengeService(clock=lambda: self.f.now)
+        self.assertIsNone(service.store)
+        # Only route the environment factory to this test's isolated real PG
+        # schema. The service itself must resolve the store, just as on the VM.
+        with patch.object(PostgresAccessStore, "from_env", return_value=self.store):
+            issued = service.consume(
+                **({"email": email, "code": code} if use_code else {"token": token}),
+                origin=previous.previous.ORIGIN,
+            )
+            service.verify(issued.token)
+            receipt = self.rows("auth_personal_trials")
+            self.assertEqual(len(receipt), 1)
+            self.assertEqual(len(self.rows("auth_wallets")), 1)
+            self.assertEqual(self.rows("auth_wallet_lots")[0]["available"], 100000000)
+            self.f.error(lambda: service.consume(token=token, origin=previous.previous.ORIGIN), 401)
+            second = service.consume(token=self.token(email), origin=previous.previous.ORIGIN)
+            service.verify(second.token)
+            self.assertEqual(self.rows("auth_personal_trials"), receipt)
+            self.assertEqual(len(self.rows("auth_wallet_lots")), 1)
+
+    def test_environment_store_link_provisions_once(self):
+        self._environment_entry(False)
+
+    def test_environment_store_code_provisions_once(self):
+        self._environment_entry(True)
+
+    def test_http_environment_entry_sets_cookie_and_confirms_session(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from apps.api.routers.authentication import router
+        from apps.api.authentication.storage import PostgresAccessStore
+
+        token = self.token("http-environment@example.test")
+        origin = previous.previous.ORIGIN
+        app = FastAPI()
+        app.include_router(router, prefix="/v1/auth")
+        # No auth_access_store or auth_email_service override on app.state.
+        with (
+            patch.dict(os.environ, {
+                "CISSTAT_AUTH_ALLOWED_ORIGINS": origin,
+                "CISSTAT_AUTH_CSRF_KEY": "test-csrf-" + "z" * 40,
+            }),
+            patch.object(PostgresAccessStore, "from_env", return_value=self.store),
+            TestClient(app, base_url=origin) as client,
+        ):
+            proof = client.get("/v1/auth/csrf", headers={"Origin": origin})
+            self.assertEqual(proof.status_code, 200, proof.text)
+            response = client.post(
+                "/v1/auth/email/consume", json={"token": token},
+                headers={"Origin": origin, "X-CSRF-Token": proof.json()["csrf_token"]},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["status"], "authenticated")
+            self.assertNotIn(token, response.text)
+            me = client.get("/v1/auth/me", headers={"Origin": origin})
+            self.assertEqual(me.status_code, 200, me.text)
+            self.assertEqual(me.json()["account_type"], "mono")
+            self.assertEqual(len(self.rows("auth_personal_trials")), 1)

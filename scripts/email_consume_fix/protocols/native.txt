@@ -1,0 +1,16 @@
+test_credit_and_identity_roll_back_on_mandatory_audit_fault (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_credit_and_identity_roll_back_on_mandatory_audit_fault) ... Auth operation failed operation=consume category=RuntimeError
+ok
+test_environment_store_code_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_code_provisions_once) ... ok
+test_environment_store_link_provisions_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_environment_store_link_provisions_once) ... ok
+test_existing_funded_account_is_never_reset_or_adopted (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_existing_funded_account_is_never_reset_or_adopted) ... ok
+test_expiry_and_insufficient_cu_are_enforced (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_expiry_and_insufficient_cu_are_enforced) ... ok
+test_migration_and_atomic_new_owner_ready_for_compute (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_migration_and_atomic_new_owner_ready_for_compute) ... ok
+test_paused_pool_does_not_create_unfunded_identity (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_paused_pool_does_not_create_unfunded_identity) ... ok
+test_previous_empty_single_owner_can_start_once (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_previous_empty_single_owner_can_start_once) ... ok
+test_repeat_login_preserves_issued_credit_expiry_and_spend (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_repeat_login_preserves_issued_credit_expiry_and_spend) ... ok
+test_two_registrations_race_for_single_pool_slot (tests.integration.test_personal_demo.PersonalDemoSQLTests.test_two_registrations_race_for_single_pool_slot) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 16.326s
+
+OK
