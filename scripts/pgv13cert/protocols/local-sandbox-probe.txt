@@ -1,0 +1,5 @@
+{
+  "verdict": "failed",
+  "scenario": "probe-cyrillic",
+  "error": "ENOENT: no such file or directory, mkdtemp '/tmp/playwright-artifacts-9T1CCj' Failed to launch browser."
+}

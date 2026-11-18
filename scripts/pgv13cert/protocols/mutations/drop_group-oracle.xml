@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="0.741" timestamp="2026-11-18T20:05:06.319901+03:00" hostname="43ea163d967e"><testcase classname="scripts.pgv13cert.test_contracts" name="test_all_groups_survive_without_session_or_scientific_calls" time="0.558"><failure message="AssertionError: assert {'basic_stats...: False}, ...} == {'basic_stats...: False}, ...}&#10;  &#10;  Omitting 5 identical items, use -vv to show&#10;  Right contains 1 more item:&#10;  {'trend': {'direction': 'flat'}}&#10;  Use -v to get more diff">scripts/pgv13cert/test_contracts.py:140: in test_all_groups_survive_without_session_or_scientific_calls
+    assert record["passport"] == facts.contents[0]
+E   AssertionError: assert {'basic_stats...: False}, ...} == {'basic_stats...: False}, ...}
+E     
+E     Omitting 5 identical items, use -vv to show
+E     Right contains 1 more item:
+E     {'trend': {'direction': 'flat'}}
+E     Use -v to get more diff</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_exact_request_is_idempotent" time="0.006" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_valid_renderer_html_preserves_all_groups" time="0.094" /></testsuite></testsuites>

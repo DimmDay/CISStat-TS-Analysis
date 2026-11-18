@@ -1,0 +1,8 @@
+PGV13 renderer diagnostics (no host changes)
+5d83967b83ddccd74db552ac4d05a43012073ec8
+Linux 6.18.57
+kernel.unprivileged_userns_clone=not_exposed
+user.max_user_namespaces=2147483647
+kernel.apparmor_restrict_unprivileged_userns=not_exposed
+host_userns_probe=allowed
+Docker unavailable: final-image/VM result NOT CHECKED

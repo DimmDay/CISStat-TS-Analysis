@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="14" time="8.346" timestamp="2026-11-18T19:57:35.548203+03:00" hostname="43ea163d967e"><testcase classname="scripts.pgv13cert.test_contracts" name="test_all_groups_survive_without_session_or_scientific_calls" time="1.029" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_exact_request_is_idempotent" time="0.644" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_requested_profile_matches_revision_and_render_payload[single]" time="0.702"><failure message="AssertionError: F-C13-01: cached figure basis overrides requested A4&#10;assert 'figure-landscape' == 'a4-portrait'&#10;  &#10;  - a4-portrait&#10;  + figure-landscape">scripts/pgv13cert/test_contracts.py:162: in test_requested_profile_matches_revision_and_render_payload
+    assert payload["snapshot"]["print"]["profile_id"] == revision.profile_id, "F-C13-01: cached figure basis overrides requested A4"
+E   AssertionError: F-C13-01: cached figure basis overrides requested A4
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_requested_profile_matches_revision_and_render_payload[compare]" time="1.520"><failure message="AssertionError: F-C13-01: cached figure basis overrides requested A4&#10;assert 'figure-landscape' == 'a4-portrait'&#10;  &#10;  - a4-portrait&#10;  + figure-landscape">scripts/pgv13cert/test_contracts.py:162: in test_requested_profile_matches_revision_and_render_payload
+    assert payload["snapshot"]["print"]["profile_id"] == revision.profile_id, "F-C13-01: cached figure basis overrides requested A4"
+E   AssertionError: F-C13-01: cached figure basis overrides requested A4
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_p01_reused_checkpoint_prints_three_records_and_confirmation" time="0.387"><failure message="AssertionError: F-C13-02: reused alias becomes a fourth full printed passport&#10;assert 4 == 3&#10; +  where 4 = len(['rs-b6adcade7e8243a49fc456961b637f73', 'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'])&#10; +  and   3 = len({'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-b6adcade7e8243a49fc456961b637f73', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'})&#10;[+1 more line; full report in element text]">scripts/pgv13cert/test_contracts.py:169: in test_p01_reused_checkpoint_prints_three_records_and_confirmation
+    assert len(refs) == len(set(refs)) == 3, "F-C13-02: reused alias becomes a fourth full printed passport"
+E   AssertionError: F-C13-02: reused alias becomes a fourth full printed passport
+E   assert 4 == 3
+E    +  where 4 = len(['rs-b6adcade7e8243a49fc456961b637f73', 'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'])
+E    +  and   3 = len({'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-b6adcade7e8243a49fc456961b637f73', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'})
+E    +    where {'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-b6adcade7e8243a49fc456961b637f73', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'} = set(['rs-b6adcade7e8243a49fc456961b637f73', 'rs-2032eefbe7e34620ab8955f7dd27d372', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359', 'rs-c13d150e2e7f4e0fb5bcf84030c8e359'])</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_p01_confirmation_is_visible_in_compiled_renderer" time="0.474"><failure message="AssertionError: F-C13-02: P01 confirmation fact is absent from actual SSR&#10;assert ('pck-cert-confirmation-2' in '&lt;!DOCTYPE html&gt;&lt;html lang=&quot;ru&quot;&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;defaul...size:10px;color:#525252;font-family:monospace&quot;&gt;Стр. 1 из 1&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/footer&gt;&lt;/div&gt;&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;')&#10;[+1 more line; full report in element text]">scripts/pgv13cert/test_contracts.py:176: in test_p01_confirmation_is_visible_in_compiled_renderer
+    assert facts.unchanged in html and "2026" in html and "10:02" in html, "F-C13-02: P01 confirmation fact is absent from actual SSR"
+E   AssertionError: F-C13-02: P01 confirmation fact is absent from actual SSR
+E   assert ('pck-cert-confirmation-2' in '&lt;!DOCTYPE html&gt;&lt;html lang="ru"&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;meta http-equiv="Content-Security-Policy" content="defaul...size:10px;color:#525252;font-family:monospace"&gt;Стр. 1 из 1&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/footer&gt;&lt;/div&gt;&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;')
+E    +  where 'pck-cert-confirmation-2' = namespace(run='RUN-C13A0001', owner=SubjectRef(subject_id='032803cf-ce25-44a2-abaf-ec57ac582f7c', tenant_id='tenant-ce...], unchanged='pck-cert-confirmation-2', objects=&lt;apps.api.artifact_store.ArtifactObjectStore object at 0x7fb42b8aa450&gt;).unchanged</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_different_confirmation_keeps_its_own_frozen_metadata" time="0.429"><failure message="AssertionError: F-C13-03: second checkpoint silently reuses first confirmation&#10;assert 'pck-cert-confirmation-0' == 'pck-cert-confirmation-1'&#10;  &#10;  - pck-cert-confirmation-1&#10;  ?                       ^&#10;  + pck-cert-confirmation-0&#10;  ?                       ^">scripts/pgv13cert/test_contracts.py:183: in test_different_confirmation_keeps_its_own_frozen_metadata
+    assert basis(two)["snapshot"]["checkpoint"]["checkpoint_id"] == two["checkpoint_id"], "F-C13-03: second checkpoint silently reuses first confirmation"
+E   AssertionError: F-C13-03: second checkpoint silently reuses first confirmation
+E   assert 'pck-cert-confirmation-0' == 'pck-cert-confirmation-1'
+E     
+E     - pck-cert-confirmation-1
+E     ?                       ^
+E     + pck-cert-confirmation-0
+E     ?                       ^</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_historical_refs_do_not_follow_newest_record" time="0.501" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_actual_foreign_principal_and_missing_run_uniform_denial" time="0.273" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_missing_reference_is_gap_and_single_is_unavailable" time="0.367" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_corrupt_source_never_exposes_passport" time="0.277" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_valid_renderer_html_preserves_all_groups" time="0.492" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_python_payload_passes_actual_compiled_renderer[single]" time="0.559"><failure message="subprocess.CalledProcessError: Command '['node', '-e', &quot;const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(r.buildPrintHtml(p,1,1));&quot;]' returned non-zero exit status 1.">scripts/pgv13cert/test_contracts.py:248: in test_python_payload_passes_actual_compiled_renderer
+    assert "Паспорт" in ssr(payload), "F-C13-00: real Python P01/P02 input is not renderable"
+                        ^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:121: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_python_payload_passes_actual_compiled_renderer[compare]" time="0.497"><failure message="subprocess.CalledProcessError: Command '['node', '-e', &quot;const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(r.buildPrintHtml(p,1,1));&quot;]' returned non-zero exit status 1.">scripts/pgv13cert/test_contracts.py:248: in test_python_payload_passes_actual_compiled_renderer
+    assert "Паспорт" in ssr(payload), "F-C13-00: real Python P01/P02 input is not renderable"
+                        ^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:121: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.</failure></testcase></testsuite></testsuites>

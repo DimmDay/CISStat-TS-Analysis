@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="0.765" timestamp="2026-11-18T20:05:25.521693+03:00" hostname="43ea163d967e"><testcase classname="scripts.pgv13cert.test_contracts" name="test_all_groups_survive_without_session_or_scientific_calls" time="0.545" /><testcase classname="scripts.pgv13cert.test_contracts" name="test_exact_request_is_idempotent" time="0.012"><failure message="AssertionError: assert 'job-93b767b4...b505c88b9c700' == 'job-af6d1a08...63a4d52266df2'&#10;  &#10;  - job-af6d1a08ba5340139ab63a4d52266df2&#10;  + job-93b767b45d174157969b505c88b9c700">scripts/pgv13cert/test_contracts.py:149: in test_exact_request_is_idempotent
+    assert one["job"]["job_id"] == two["job"]["job_id"]
+E   AssertionError: assert 'job-93b767b4...b505c88b9c700' == 'job-af6d1a08...63a4d52266df2'
+E     
+E     - job-af6d1a08ba5340139ab63a4d52266df2
+E     + job-93b767b45d174157969b505c88b9c700</failure></testcase><testcase classname="scripts.pgv13cert.test_contracts" name="test_valid_renderer_html_preserves_all_groups" time="0.112" /></testsuite></testsuites>

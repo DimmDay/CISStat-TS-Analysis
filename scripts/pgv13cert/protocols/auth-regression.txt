@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 86 items
+
+tests/unit/test_auth00_inventory.py .................................... [ 41%]
+..                                                                       [ 44%]
+tests/unit/test_auth00_local_output.py .......                           [ 52%]
+tests/unit/test_auth00_precommit.py ...............                      [ 69%]
+tests/unit/test_auth01_registry.py ..........................            [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/unit/test_auth01_registry.py::RegistryTests::test_demo_starter_split_without_reinterpreting_legacy_flag
+tests/unit/test_auth01_registry.py::RegistryTests::test_demo_starter_split_without_reinterpreting_legacy_flag
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/tests/unit/test_auth01_registry.py:33: DeprecationWarning: deprecated
+    self.assertFalse(caps.can_train_models)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 86 passed, 3 warnings in 40.82s ========================

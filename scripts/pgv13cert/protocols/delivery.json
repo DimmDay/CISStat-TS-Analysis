@@ -1,0 +1,102 @@
+{
+  "base": "5d83967b83ddccd74db552ac4d05a43012073ec8",
+  "verdict": "NOT CERTIFIED",
+  "package_kind": "certification only; no runtime fixes",
+  "file_count": 51,
+  "contracts": {
+    "memory": {
+      "tests": 14,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "tests": 14,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "cert_gate": {
+    "failed": 10,
+    "passed": 8,
+    "exit": 1
+  },
+  "clean_base_zip_overlay": {
+    "renderer_build": "PASS",
+    "raw_gate_failed": 10,
+    "raw_gate_passed": 8,
+    "exit": 1,
+    "dependency_install": "node_modules reused via symlink; project sources from clean base + ZIP"
+  },
+  "routes": {
+    "actual_api": 284,
+    "bindings": 288,
+    "inventory_entries": 663,
+    "entry_delta": 0,
+    "strict_index": "PASS",
+    "crlf_index_lf_worktree": "PASS"
+  },
+  "runtime_source_delta": [],
+  "real_index_empty": true,
+  "commit_push_vm": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest membership",
+    "each archived payload byte equals source",
+    "safe relative paths",
+    "overlay exact source equality after final repack"
+  ],
+  "payload_sha256_excluding_self": {
+    "docs/auth00/inventory.json": "2c92806f044091b12cd1a6b90ca364f74c616e52baca2f2c892779539b24d415",
+    "docs/auth00/policy_review.json": "21c2045aea6e32234b647020ad1a62752c83900be05d0c2e657a8e5c191c2f82",
+    "docs/pgv13_certification.md": "981f21dbd282d23def2f306a5a3c90f29fc98a05c0031875a20ba940f0a724b4",
+    "scripts/local_gates.md": "ada0d3c6b8ca25a9ce66671edc5e86af269954d32dd1307d5e31c6bbb049c97a",
+    "scripts/pgv13cert/.gitattributes": "ac57ff44e0530e07fbf6635bae31524be80d23c6b268ffa6bacd799d783405ee",
+    "scripts/pgv13cert/diagnose_vm.sh": "7e6c174775695e03fcba1b1cb83560fa5157c02d91e474f62fcea06dff8dcb03",
+    "scripts/pgv13cert/files.txt": "9c2b5a7c6ed6a707f6abe508cbb4d76e443861b2b814a100b348d8617df28494",
+    "scripts/pgv13cert/mutations.py": "9e362b25ce6b9b3f7e0540a950928d71de1db907461b5fa7de08af5b4d9b85e0",
+    "scripts/pgv13cert/mutator.py": "e057b268ae8198b4133ecedd002aff92ff5efe83e67243bac923a03ac66337d7",
+    "scripts/pgv13cert/protocols/auth-regression.txt": "d604cdad915a3a1fea386905838fb26ea48c14ef6ae3f15f22820068503471d7",
+    "scripts/pgv13cert/protocols/cert-final.txt": "b3225191b4d65421a1c4d8469ce337d89401d4a7dbbac96eb51dd57d8cef2080",
+    "scripts/pgv13cert/protocols/deployment.txt": "d074752b08014e2cf43b417e7bd205e8d6725a0f76f10d0de0cfff04a3a20b55",
+    "scripts/pgv13cert/protocols/diagnose-local.txt": "23b4df61e919118b7f9623b89db69773e3eb852d8693535b20742f9024f36220",
+    "scripts/pgv13cert/protocols/independent-first.txt": "fcd69f3e02c82654b514d9bdf863a75bf173c1d08056567c1886e8eb82a262b9",
+    "scripts/pgv13cert/protocols/independent-memory.txt": "17d423033de29e444adef722e166adc7ac04836677783fc6ffe7f7cf65061956",
+    "scripts/pgv13cert/protocols/independent-memory.xml": "f776816c89e02d474f2f99cd0f4750a0aea091f2e98958475f30530aa6c2bcb4",
+    "scripts/pgv13cert/protocols/independent-postgres.txt": "5f50ea729468912b109d7918b994862a031647dc066290d9f26b517b7836be83",
+    "scripts/pgv13cert/protocols/independent-postgres.xml": "2d08614da40467bf18a02c5f62028af3e4c1b019b5e1316a8600ce3ea6973189",
+    "scripts/pgv13cert/protocols/local-sandbox-probe.txt": "35f6ef658d24a63d9f151fa59802b952d69d24506bdc3d7aa883bbbad07196dd",
+    "scripts/pgv13cert/protocols/local-sandbox-probe2.txt": "7046a5cadb52a1da67d3e0b51ef80321ea224807673d09326a210ce98ccc8318",
+    "scripts/pgv13cert/protocols/mutations.txt": "2d63562dfb72a1c34c2a578398f289beacea71ca815496de8f67d6f677f34d1c",
+    "scripts/pgv13cert/protocols/mutations/control-oracle.txt": "e3f640aabd77a18eda5eb7723abadd88d524ecc7f95f5a34b760582f9f1d0625",
+    "scripts/pgv13cert/protocols/mutations/control-oracle.xml": "3a8c99d97937f0ebc40b9521fc6fbdacc2742fc5861f6c4f456422f469021558",
+    "scripts/pgv13cert/protocols/mutations/control-repo.txt": "5e354e98e5bb3e76af3d014338464e4109ddcf410065713568b05f9a5e506d55",
+    "scripts/pgv13cert/protocols/mutations/control-repo.xml": "343148b1e870d0e0b3b27ac42636c1508ce0f8e8a6ddf87f7ae795cdc64da87b",
+    "scripts/pgv13cert/protocols/mutations/drop_group-oracle.txt": "b96ae9b64470b5dbf86d266745dddf4b64397cc008eeeffcb5fb61567cda13d0",
+    "scripts/pgv13cert/protocols/mutations/drop_group-oracle.xml": "dba94c7bae0367d708e5c05305fc3ee289a686ab7093c0e9b7b69622dcbd8506",
+    "scripts/pgv13cert/protocols/mutations/drop_group-repo.txt": "692b1bb15303abc40aa5b0aa6cc8d0baf88c690795ae9aa81db880506053c4f6",
+    "scripts/pgv13cert/protocols/mutations/drop_group-repo.xml": "57076f8494401869ba3e7f9c91ff8aeb73a2da12e1f88fba040962c710349ffd",
+    "scripts/pgv13cert/protocols/mutations/matrix.json": "2d63562dfb72a1c34c2a578398f289beacea71ca815496de8f67d6f677f34d1c",
+    "scripts/pgv13cert/protocols/mutations/wrong_job_id-oracle.txt": "1836342229d2276326b71baefc7fe4e2b0397d251e77a95eca1dd7d63867488b",
+    "scripts/pgv13cert/protocols/mutations/wrong_job_id-oracle.xml": "e4fef7e0eb1c957af9f0924984e05d29575780e29a37a4008a2c1d02b19231fe",
+    "scripts/pgv13cert/protocols/mutations/wrong_job_id-repo.txt": "c20c795af205aff3840772df6123aa38729cc1574d110900dd183ae7535e5897",
+    "scripts/pgv13cert/protocols/mutations/wrong_job_id-repo.xml": "e1b5aa559edf59a474e091bc6918c8e068e9910cf3d6816c5127b91fffb6d00e",
+    "scripts/pgv13cert/protocols/mutations/wrong_source_hash-oracle.txt": "6953fdcf743277240560fa11acf1ad997b2aa828029ddf1013131404ace67d8c",
+    "scripts/pgv13cert/protocols/mutations/wrong_source_hash-oracle.xml": "f1770dc5c25cb66a6d52e8b264d76abbe5c824fb47a940974d5f7e6feaacb029",
+    "scripts/pgv13cert/protocols/mutations/wrong_source_hash-repo.txt": "b32b0724a66cb49aa356515e21e00f7dc4815095e276df07435a12b119bcd09c",
+    "scripts/pgv13cert/protocols/mutations/wrong_source_hash-repo.xml": "7f771ee5eb56c0e1ffb02212844935745a84bfb5bc2c837390c636be1b25bb36",
+    "scripts/pgv13cert/protocols/overlay-cert.txt": "ca8d474358d5d03b11fbe7d57fd02724c04db17f3bc70f81f4c1a7a64ed98158",
+    "scripts/pgv13cert/protocols/renderer-build.txt": "de34d736259bd1402e3c790201b7664d3a03054c54f5febe40b47c928a79acad",
+    "scripts/pgv13cert/protocols/repo-python-initial.txt": "ae786846a2079fa95ce4d6c4d8de7a0baecceff0477c8fdb13f7663fa18b5b30",
+    "scripts/pgv13cert/protocols/repo-python-pinned.txt": "6a28af9c152395ccdbf37048e077e2d6bfa8a9aa5d5ef67ede48844cc21751d9",
+    "scripts/pgv13cert/protocols/repo-ts.txt": "a619a2aa1dbdcf3a1b59a3fdad41d3e2184152f3e39f54ea2b9ae98be4bf5aff",
+    "scripts/pgv13cert/protocols/routes.txt": "a027609751358819deeae5b1e7748ba309bfe49681f0fcfddec08164939ede65",
+    "scripts/pgv13cert/protocols/web-builds.txt": "4b1318701fbb32b17c9259530c4a499135e84fdc1ee58a3d958c86c7edad9403",
+    "scripts/pgv13cert/requirements.txt": "9d85500d64bbbf0c4c497cd7cd0d8b2fc9e1a948d47e058d85fdb63f4d3a498a",
+    "scripts/pgv13cert/test_contracts.py": "bcbb662ca5c0fc5f3792ec7bbde53dee228bbcff981ff186d08a478c08de5257",
+    "scripts/pgv13cert/test_deployment.py": "d29915b87b026c8d5d77bdbecb00bf4615bc9a2a47d40c5459d07c2334660d06",
+    "scripts/pgv13cert/verify.py": "50a939f75b269125c359aa5d5c421c5a6bdcfbcfdd48da95b6c2b9b18470aa85",
+    "worklog/worklog12.md": "b1387a9303a88ff81e703b0895a03dd802e62669e192f93a970ded0dee8b650b"
+  }
+}

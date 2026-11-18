@@ -1,0 +1,4 @@
+-r ../personal_demo/requirements.txt
+pytest>=8,<10
+PyYAML>=6,<7
+# Scientific runtime is the existing apps/api/requirements.txt, not replaced here.

@@ -1,0 +1,21 @@
+$ scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 284, "framework": 8, "internal_operation": 37, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 2, "worker": 11}, "entries": 663}
+exit=0
+$ scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 663, "added": [], "missing": []}
+exit=0
+$ scripts/pgv13/check_routes_auth00.py
+OK: added=2 (passport-sources GET, passport-documents POST), removed=0; api 284 = actual-карта; bindings 288; basis-каталог V01+P01+P02; kinds/validators согласованы
+exit=0
+$ scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (600 discovery surfaces; full reviewed inventory/source parity)
+exit=0
+CERT delta vs 5d83967: entries/counts/policies unchanged; product source bytes unchanged
+Changed reviewed fingerprints: ["scripts/local_gates.md", "scripts/pgv13cert/mutations.py", "scripts/pgv13cert/mutator.py", "scripts/pgv13cert/requirements.txt", "scripts/pgv13cert/test_contracts.py", "scripts/pgv13cert/test_deployment.py", "scripts/pgv13cert/verify.py"]
+Real Git INDEX empty; temporary INDEX only; no commit/push
+$ strict INDEX with CRLF new Python sources / LF worktree
+auth00 INDEX-parity: ok (600 discovery surfaces; full reviewed inventory/source parity)
+exit=0
+$ strict INDEX: final source/manifest (51 files)
+auth00 INDEX-parity: ok (600 discovery surfaces; full reviewed inventory/source parity)
+exit=0

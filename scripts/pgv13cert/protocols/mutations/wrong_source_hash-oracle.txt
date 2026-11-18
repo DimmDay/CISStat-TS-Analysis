@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 14 items / 11 deselected / 3 selected
+
+scripts/pgv13cert/test_contracts.py F..                                  [100%]
+
+=================================== FAILURES ===================================
+_________ test_all_groups_survive_without_session_or_scientific_calls __________
+scripts/pgv13cert/test_contracts.py:141: in test_all_groups_survive_without_session_or_scientific_calls
+    assert record["source_hash"] == facts.artifacts[0].payload_sha256
+E   AssertionError: assert 'ffffffffffff...fffffffffffff' == '3bf040d91e68...c82678554a326'
+E     
+E     - 3bf040d91e688a9ed4e17770889b30568ff0a75698f1c747952c82678554a326
+E     + ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/scripts/pgv13cert/protocols/mutations/wrong_source_hash-oracle.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_contracts.py::test_all_groups_survive_without_session_or_scientific_calls
+============ 1 failed, 2 passed, 11 deselected, 1 warning in 0.71s =============

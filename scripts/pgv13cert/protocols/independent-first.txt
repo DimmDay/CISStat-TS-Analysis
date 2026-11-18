@@ -1,0 +1,129 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 12 items
+
+scripts/pgv13cert/test_contracts.py EEEEEEEEEEEE                         [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of test_all_groups_survive_without_session_or_scientific_calls _
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+______________ ERROR at setup of test_exact_request_is_idempotent ______________
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_ ERROR at setup of test_requested_profile_matches_revision_and_render_payload[single] _
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_ ERROR at setup of test_requested_profile_matches_revision_and_render_payload[compare] _
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_ ERROR at setup of test_p01_reused_checkpoint_prints_three_records_and_confirmation _
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+___ ERROR at setup of test_p01_confirmation_is_visible_in_compiled_renderer ____
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_ ERROR at setup of test_different_confirmation_keeps_its_own_frozen_metadata __
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+______ ERROR at setup of test_historical_refs_do_not_follow_newest_record ______
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_ ERROR at setup of test_actual_foreign_principal_and_missing_run_uniform_denial _
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+__ ERROR at setup of test_missing_reference_is_gap_and_single_is_unavailable ___
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_________ ERROR at setup of test_corrupt_source_never_exposes_passport _________
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+_______ ERROR at setup of test_valid_renderer_html_preserves_all_groups ________
+scripts/pgv13cert/test_contracts.py:94: in facts
+    register_passport_checkpoint(run, owner, payload=payload)
+apps/api/visual_artifacts.py:1113: in register_passport_checkpoint
+    return service.persist_visual_artifact(
+apps/api/artifact_promotion.py:296: in persist_visual_artifact
+    raise ArtifactPayloadInvalid(violations)
+E   apps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: invalid_value@previous_snapshot_ref: самоссылка: previous_snapshot_ref обязан отличаться от snapshot_ref (§8: ссылка на ПРЕДЫДУЩИЙ снимок)
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR scripts/pgv13cert/test_contracts.py::test_all_groups_survive_without_session_or_scientific_calls
+ERROR scripts/pgv13cert/test_contracts.py::test_exact_request_is_idempotent
+ERROR scripts/pgv13cert/test_contracts.py::test_requested_profile_matches_revision_and_render_payload[single]
+ERROR scripts/pgv13cert/test_contracts.py::test_requested_profile_matches_revision_and_render_payload[compare]
+ERROR scripts/pgv13cert/test_contracts.py::test_p01_reused_checkpoint_prints_three_records_and_confirmation
+ERROR scripts/pgv13cert/test_contracts.py::test_p01_confirmation_is_visible_in_compiled_renderer
+ERROR scripts/pgv13cert/test_contracts.py::test_different_confirmation_keeps_its_own_frozen_metadata
+ERROR scripts/pgv13cert/test_contracts.py::test_historical_refs_do_not_follow_newest_record
+ERROR scripts/pgv13cert/test_contracts.py::test_actual_foreign_principal_and_missing_run_uniform_denial
+ERROR scripts/pgv13cert/test_contracts.py::test_missing_reference_is_gap_and_single_is_unavailable
+ERROR scripts/pgv13cert/test_contracts.py::test_corrupt_source_never_exposes_passport
+ERROR scripts/pgv13cert/test_contracts.py::test_valid_renderer_html_preserves_all_groups
+======================== 1 warning, 12 errors in 0.67s =========================

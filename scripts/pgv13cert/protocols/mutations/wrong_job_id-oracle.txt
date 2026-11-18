@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 14 items / 11 deselected / 3 selected
+
+scripts/pgv13cert/test_contracts.py .F.                                  [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_exact_request_is_idempotent _______________________
+scripts/pgv13cert/test_contracts.py:149: in test_exact_request_is_idempotent
+    assert one["job"]["job_id"] == two["job"]["job_id"]
+E   AssertionError: assert 'job-93b767b4...b505c88b9c700' == 'job-af6d1a08...63a4d52266df2'
+E     
+E     - job-af6d1a08ba5340139ab63a4d52266df2
+E     + job-93b767b45d174157969b505c88b9c700
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/scripts/pgv13cert/protocols/mutations/wrong_job_id-oracle.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_contracts.py::test_exact_request_is_idempotent
+============ 1 failed, 2 passed, 11 deselected, 1 warning in 0.76s =============

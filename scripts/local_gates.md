@@ -326,3 +326,43 @@ python scripts/local_gates.py --only personal-demo-postgres --with-personal-demo
 ## PGV-13 (2026-11-18) — P01/P02 builders: карта роутов расширена аддитивно
 
 **Роуты затронуты: +2 READ/WRITE-маршрута документации** (`GET /v1/documentation/runs/{run_id}/passport-sources`, `POST /v1/documentation/runs/{run_id}/passport-documents`): actual 284 = inventory 284, bindings 288 (+2, операции `documentation.list_passport_sources_route` / `documentation.request_passport_document_route`, policy `document.object`), added/missing=[]; научные пути не переименованы. Inventory 661→663, OpenAPI/TS (auth01), proxy allowlist (auth06) перегенерированы (порядок: access_registry → auth01 → auth06 → inventory). policy_review: +2 классификации +1 reviewed source (`apps/api/passport_documents.py`). Новый task-specific гейт: `python scripts/pgv13/check_routes_auth00.py` (AST-дифф с картой fc510f0 = ровно 2 added/0 removed + классификации + basis-каталог V01/P01/P02 + согласованность kinds/валидаторов). Гейты local_gates.py НЕ менялись (корпус PGV-13 — tests/api/test_pgv13_passport_documents.py, 39 тестов; TS — apps/print-renderer/src/rendererCore.test.ts +5). Предсуществующий красный на fc510f0 (не PGV-13): test_pgv05_cert_findings::test_b1 — докстринг scripts/pgv05/check_reader.py содержит «13 метрик».
+
+## PGV-13-CERT — независимая приёмка 5d83967 (18.11.2026)
+
+Вердикт базы — **NOT CERTIFIED**. Default local_gates не заменяет эту приёмку:
+штатные PGV-13 39 Python / 41 renderer-тест зелёные, независимый контрактный
+прогон выявляет блокеры Python→TS envelope, profile cache, reused/confirmation
+и checkpoint identity; отдельно проверяются ошибки rollout. Акт и границы —
+`docs/pgv13_certification.md`. Runtime этой поставкой не исправляется.
+
+Явный opt-in (из корня, после установки API scientific runtime):
+
+```bash
+python -m pip install -r scripts/pgv13cert/requirements.txt
+npm ci
+python scripts/pgv13cert/verify.py
+# На 5d83967 ожидается exit 1: 10 failed / 8 passed, NOT CERTIFIED.
+# Только disposable PostgreSQL с CREATE DATABASE, не production DSN:
+# CISSTAT_PGV13_CERT_DSN задаётся в защищённом окружении.
+python scripts/pgv13cert/verify.py --postgres
+```
+
+Без DSN native возвращает 2 до запуска; skips/no tests не PASS. Нужна история
+`fc510f0` для source-проверки BFF rollout. Memory mode использует настоящие
+builder/registry/object-store пути, native — отдельные временные PostgreSQL БД.
+Renderer собирается автоматически. `python scripts/pgv13cert/mutations.py`
+повторяет два канала executable mutants после сборки, с GREEN control и
+только положительными oracle-тестами; это не сертификат всей задачи.
+
+Этот gate намеренно не включён в default `scripts/local_gates.py` и не маскирует
+известные FAIL через xfail. После доработки продукта нужен raw GREEN и отдельная
+приёмка final image / sandbox / содержимого PNG на VM. Read-only диагностика:
+`bash scripts/pgv13cert/diagnose_vm.sh`; она не меняет sysctl/права/контейнеры,
+не отключает sandbox и не выводит environment/credentials. Exit 0 подтверждает
+лишь readiness/transport; отсутствующий Docker даёт 2.
+
+Сертификационная поставка не меняет роуты/DTO/BFF: 284 API / 288 bindings /
+663 entries. Reviewed fingerprints дополнены сертификационными Python-источниками.
+Перед строгим precommit AUTH-00: `git add --pathspec-from-file=scripts/pgv13cert/files.txt`,
+затем `python scripts/auth00/check_committed.py --target index` и
+`python scripts/auth06/check_routes.py`. Эта поставка не требует rebuild образов.
