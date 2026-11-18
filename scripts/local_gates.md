@@ -376,3 +376,18 @@ Read-only probe дополнен профилями/uid maps и раздельн
 Это 4 unit-сценария, не final-image/VM acceptance и не замена красному PGV-13 cert gate.
 Default local_gates.py не меняется. Детали/команды VM — docs/pgv13_vm_followup.md.
 HTTP/DTO/BFF/роуты не затронуты; rebuild этой поставке не требуется.
+
+
+## PGV-13-SANDBOX-AB — изолированная трёхвариантная диагностика поверх857a4d9
+
+Контроли без Docker: `python -m pytest scripts/pgv13sandbox/test_probe.py -q`.
+VM-эксперимент отдельно: `python3 scripts/pgv13sandbox/probe.py --out /tmp/pgv13-seccomp-ab.json`.
+Запускает/удаляет три временных контейнера с image ID действующего renderer,
+не меняет running services/host profiles/compose. Нужен доступ к Docker;
+дополнительных Python/npm зависимостей и rebuild images нет. Комплект vendor
+поставляется offline с pinned source/checksum/LICENSE и eol=lf.
+Exit0 — только namespace-rule candidate (не PGV-13 PASS), 1 — blocked/неатрибутированный
+результат, 2 — setup failure/нет Docker. Полный отчёт в --out, на stdout краткая
+матрица. Builtin и reference НЕ считаются идентичными; causal diff только ref→namespaces.
+Это не default local_gates и не замена final-image/content certification.
+Границы/расшифровка: docs/pgv13_sandbox_ab.md. Роуты не меняются.

@@ -110,3 +110,60 @@ Python-источник; local_gates.md дополнен явной команд
 ## Локальная проверка поставки
 
 Shell/probe regression: 4 PASS; bash и фактический Node-probe синтаксически проверены; renderer tsc build PASS. Повтор исходного PGV-13 cert gate: те же 10 FAIL / 8 PASS, exit1 NOT CERTIFIED. Локальный диагностический скрипт даёт exit2 (Docker отсутствует), не VM PASS. AUTH-00 actual/strict INDEX, semantic route parity и ZIP overlay фиксируются в protocols/routes.txt и delivery.json. Полный default/Windows/Docker/VM заново не исполнялся; production code прежний.
+
+
+## Второй вывод VM: 857a4d9 (18.11.2026)
+
+Синхронизирован точный `857a4d94b43a0221fa508666440e81d59f355823`.
+Commit включает предыдущую диагностическую поставку; apps/packages/deployment
+относительно338b15a не менялись. CI зелёный по сообщению тимлида. Новые
+нормализованные факты сохранены отдельно в
+`scripts/pgv13vm/protocols/vm_evidence_857a4d9.json`, предыдущие не заменены.
+
+1. **Sandbox:** внутри renderer установлен `docker-default (enforce)`;
+   unshare от UID10001 действительно возвращает EPERM. UsernsMode пуст,
+   uid_map/gid_map — identity mapping. Host `unconfined` не означает отсутствия
+   AppArmor mediation ограничений userns. Chrome всё ещё падает с
+   `No usable sandbox!`, readyz503. Это подтверждает отказ на VM, но не
+   определяет автоматически AppArmor или seccomp как единственную причину.
+2. **Transport:** API-клиент enabled, target_scope=loopback,
+   ConnectionRefusedError errno111. API пытается подключиться в собственном
+   network namespace; renderer отдельно в network:none. Поставленные compose
+   не объявляют канал между ними. Поэтому изменение только sandbox не
+   исправит transport. Scope не содержит точного адреса/порта; source default
+   —127.0.0.1:8907, наличие override другого loopback endpoint не проверено.
+3. Image ID в обоих выводах одинаков. Это подтверждает отсутствие замены
+   запущенного renderer image между двумя наблюдениями; commit внутри образа
+   остаётся неизвестным. Pull Python/TS исходников сам не обновляет Docker image.
+
+**Новый push/ZIP или пересборка для получения оставшегося audit не нужны.**
+На уже установленной857a4d9 достаточно следующей read-only команды:
+
+```bash
+sudo journalctl -k --since '30 minutes ago' --no-pager \
+  | grep -E 'apparmor="DENIED"|userns_create|SECCOMP|seccomp'
+```
+
+Нужен именно этот вывод: журнал ядра не был приложен к обоим предыдущим
+диагностическим выводам. Он должен связать denial с Chromium/контейнером,
+profile/operation и временем. Если свежая попытка старше окна, сначала
+повторить уже имеющийся diagnose_vm.sh (учитывая30s readiness cache).
+Отсутствие записей не исключает seccomp ERRNO: не каждый такой отказ аудируется.
+При пустом журнале следующий шаг — проверить загруженные политики/эффективный
+seccomp с контролируемым trace, не делать вывод «sandbox исправен».
+
+Проверены официальные Docker AppArmor/Seccomp docs (те же AppArmor URL выше и
+https://docs.docker.com/engine/security/seccomp/): сведения current profile и
+Seccomp mode не дают полного списка фактически разрешённых syscall/flags.
+Без этого нельзя честно сертифицировать подготовленную вслепую policy правку.
+Другие F-C13-00…03 остаются; версия PGV-13 не принята.
+
+Текущая поставка — только дополнение акта, нормализованное VM evidence и
+worklog. Диагностика/runtime/compose/local_gates.py не меняются. Карта роутов
+и local_gates.md не требуют изменения; AUTH-00 проверяется, новые handlers
+отсутствуют. Коммитов/push и действий на VM агентом нет. Этот ZIP можно
+сохранить как журнал работ без отдельного цикла развёртывания на VM.
+
+## Холодная проба и следующий эксперимент
+
+Предоставленная cold smoke --probe воспроизвела No usable sandbox!/SIGABRT, kernel journal сразу после неё пуст. Дальнейшее повторение readyz/journal не устанавливает причину. Подготовлена трёхвариантная изолированная seccomp-проверка без изменения работающего renderer/host policy: docs/pgv13_sandbox_ab.md. Она проверяет кандидата, не внедряет исправление и не сертифицирует PGV-13.

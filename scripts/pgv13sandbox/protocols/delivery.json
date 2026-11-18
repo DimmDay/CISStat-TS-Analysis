@@ -1,0 +1,40 @@
+{
+  "base": "857a4d94b43a0221fa508666440e81d59f355823",
+  "kind": "isolated disposable-container three-arm diagnostic; not production fix",
+  "file_count": 26,
+  "offline_controls": {
+    "initial_red": 8,
+    "stale_report_red": 1,
+    "final_green": 9,
+    "zip_overlay_green": 9,
+    "docker_stubbed": true
+  },
+  "node_payload_syntax": "PASS",
+  "renderer_build": "PASS",
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_index": "PASS",
+    "zip_overlay_actual": "PASS"
+  },
+  "local_live_probe": {
+    "exit": 2,
+    "conclusion": "INCONCLUSIVE_SETUP",
+    "Docker": "unavailable"
+  },
+  "vm_arms_executed_by_agent": false,
+  "pgv13_certified": false,
+  "runtime_delta": [],
+  "images_rebuild_required": false,
+  "real_index_empty": true,
+  "commit_push": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest membership",
+    "every payload byte equals source",
+    "safe relative paths",
+    "clean exact-base overlay unit and actual routes"
+  ]
+}

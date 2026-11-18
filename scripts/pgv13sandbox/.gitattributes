@@ -1,0 +1,3 @@
+vendor/default.json text eol=lf
+vendor/source.json text eol=lf
+vendor/LICENSE text eol=lf

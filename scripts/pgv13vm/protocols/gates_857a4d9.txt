@@ -1,0 +1,22 @@
+BASE 857a4d94b43a0221fa508666440e81d59f355823
+DOCUMENTATION/EVIDENCE ONLY; no changed runtime, routes or default gates
+$ /workspace/scratch/d4153a1cfd25/pgv13-cert-venv/bin/python scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 284, "framework": 8, "internal_operation": 37, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 2, "worker": 11}, "entries": 663}
+exit=0
+$ /workspace/scratch/d4153a1cfd25/pgv13-cert-venv/bin/python scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 663, "added": [], "missing": []}
+exit=0
+$ /workspace/scratch/d4153a1cfd25/pgv13-cert-venv/bin/python scripts/auth00/check_committed.py --target head
+auth00 HEAD-parity: ok (600 discovery surfaces; full reviewed inventory/source parity)
+exit=0
+$ git diff --check
+exit=0
+$ npm run build --workspace=@cisstat/print-renderer (dependencies reused; sources from exact checkout)
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+exit=0
+Runtime files unchanged vs 338b15a/857a4d9; no new tests for prose/evidence changes.
+No direct VM/Docker execution; kernel audit attribution still missing; no commit/push.

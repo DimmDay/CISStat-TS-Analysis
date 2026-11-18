@@ -1,0 +1,11 @@
+{
+  "source": "user-provided cold smoke --probe and immediate kernel journal output, not direct agent VM access",
+  "base": "857a4d94b43a0221fa508666440e81d59f355823",
+  "scenario": "probe-cyrillic",
+  "verdict": "failed",
+  "fatal": "No usable sandbox!",
+  "browser_exit": "SIGABRT",
+  "kernel_journal_filtered_last_2_minutes": "empty",
+  "attribution": "not established; absence of audit does not distinguish all policies",
+  "host_audit_prior": "comm=unshare; unconfined->unprivileged_userns; sys_admin denied; not Chromium attribution"
+}

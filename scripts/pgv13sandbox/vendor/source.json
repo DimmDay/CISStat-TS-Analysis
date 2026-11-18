@@ -1,0 +1,10 @@
+{
+  "repository": "moby/profiles",
+  "commit": "f862455628f78f84c937e967e4a03902fb1dee11",
+  "path": "seccomp/default.json",
+  "github_blob_sha": "9c0fcd1c2ab524e1044af172b003b8b5563388f5",
+  "sha256": "3320527d4568265ac97a077609b1bfd4cfd0d789eeb9239b7e094b1526675406",
+  "license": "Apache-2.0; bundled LICENSE",
+  "scope": "reference profile, NOT claimed identical to Docker 29.9.2 builtin",
+  "namespace_extension_reference": "microsoft/playwright v1.57.0 utils/docker/seccomp_profile.json"
+}

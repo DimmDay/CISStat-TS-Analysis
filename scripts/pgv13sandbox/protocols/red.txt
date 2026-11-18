@@ -1,0 +1,61 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-SANDBOX-PROBE
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 8 items
+
+scripts/pgv13sandbox/test_probe.py FFFFFFFF                              [100%]
+
+=================================== FAILURES ===================================
+_________ test_reference_hash_and_only_three_namespace_syscalls_change _________
+scripts/pgv13sandbox/test_probe.py:14: in test_reference_hash_and_only_three_namespace_syscalls_change
+    from scripts.pgv13sandbox.probe import profiles
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+_ test_classification_requires_reference_control[states0-NAMESPACE_RULES_CANDIDATE] _
+scripts/pgv13sandbox/test_probe.py:34: in test_classification_requires_reference_control
+    from scripts.pgv13sandbox.probe import classify
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+_ test_classification_requires_reference_control[states1-REFERENCE_DIFF_UNATTRIBUTED] _
+scripts/pgv13sandbox/test_probe.py:34: in test_classification_requires_reference_control
+    from scripts.pgv13sandbox.probe import classify
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+____ test_classification_requires_reference_control[states2-STILL_BLOCKED] _____
+scripts/pgv13sandbox/test_probe.py:34: in test_classification_requires_reference_control
+    from scripts.pgv13sandbox.probe import classify
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+___ test_classification_requires_reference_control[states3-BASELINE_PASSED] ____
+scripts/pgv13sandbox/test_probe.py:34: in test_classification_requires_reference_control
+    from scripts.pgv13sandbox.probe import classify
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+_________ test_instrument_failure_and_isolation_never_become_candidate _________
+scripts/pgv13sandbox/test_probe.py:40: in test_instrument_failure_and_isolation_never_become_candidate
+    from scripts.pgv13sandbox.probe import classify
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.probe'
+____________ test_three_arms_keep_image_and_hardening_and_clean_up _____________
+scripts/pgv13sandbox/test_probe.py:49: in test_three_arms_keep_image_and_hardening_and_clean_up
+    from scripts.pgv13sandbox import probe
+E   ImportError: cannot import name 'probe' from 'scripts.pgv13sandbox' (unknown location)
+_________ test_timeout_is_not_a_pass_and_only_own_container_is_removed _________
+scripts/pgv13sandbox/test_probe.py:77: in test_timeout_is_not_a_pass_and_only_own_container_is_removed
+    from scripts.pgv13sandbox import probe
+E   ImportError: cannot import name 'probe' from 'scripts.pgv13sandbox' (unknown location)
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_probe.py::test_reference_hash_and_only_three_namespace_syscalls_change
+FAILED scripts/pgv13sandbox/test_probe.py::test_classification_requires_reference_control[states0-NAMESPACE_RULES_CANDIDATE]
+FAILED scripts/pgv13sandbox/test_probe.py::test_classification_requires_reference_control[states1-REFERENCE_DIFF_UNATTRIBUTED]
+FAILED scripts/pgv13sandbox/test_probe.py::test_classification_requires_reference_control[states2-STILL_BLOCKED]
+FAILED scripts/pgv13sandbox/test_probe.py::test_classification_requires_reference_control[states3-BASELINE_PASSED]
+FAILED scripts/pgv13sandbox/test_probe.py::test_instrument_failure_and_isolation_never_become_candidate
+FAILED scripts/pgv13sandbox/test_probe.py::test_three_arms_keep_image_and_hardening_and_clean_up
+FAILED scripts/pgv13sandbox/test_probe.py::test_timeout_is_not_a_pass_and_only_own_container_is_removed
+========================= 8 failed, 1 warning in 0.11s =========================

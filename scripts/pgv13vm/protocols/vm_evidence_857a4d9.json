@@ -1,0 +1,67 @@
+{
+  "source": "second user-provided VM diagnostic output; not a live agent VM probe",
+  "reported_head": "857a4d94b43a0221fa508666440e81d59f355823",
+  "kernel": "Linux 6.8.0-147-generic",
+  "sysctls": {
+    "kernel.unprivileged_userns_clone": 1,
+    "user.max_user_namespaces": 63378,
+    "kernel.apparmor_restrict_unprivileged_userns": 1
+  },
+  "host_userns_probe": {
+    "result": "denied",
+    "message": "write failed /proc/self/uid_map: Operation not permitted"
+  },
+  "docker_server_version": "29.9.2",
+  "renderer": {
+    "image": "cisstat-print-renderer:pgv08-fix",
+    "image_id": "sha256:1837bee8994e42b97b548de5ecf4d3e026f8b3e6624d9ac42822a4ed290f81b3",
+    "user": "10001:10001",
+    "network": "none",
+    "readonly": true,
+    "security_opt": [
+      "no-new-privileges:true"
+    ],
+    "cap_drop": [
+      "ALL"
+    ],
+    "node": "v24.22.3",
+    "playwright": "1.57.0",
+    "seccomp": 2,
+    "seccomp_filters": 1,
+    "no_new_privs": 1,
+    "effective_caps": "0000000000000000",
+    "readyz_status": 503,
+    "smoke": false,
+    "fatal": "No usable sandbox!",
+    "browser_exit_signal": "SIGABRT",
+    "apparmor_profile": "docker-default",
+    "apparmor_current": "docker-default (enforce)",
+    "userns_mode": "",
+    "uid_map": "0 0 4294967295",
+    "gid_map": "0 0 4294967295",
+    "userns_probe": {
+      "status": 1,
+      "error_code": null,
+      "stderr": "unshare: unshare failed: Operation not permitted"
+    }
+  },
+  "api": {
+    "renderer_enabled": true,
+    "target_scope": "loopback",
+    "error": "api_to_renderer_unreachable",
+    "reason_type": "ConnectionRefusedError",
+    "errno": 111
+  },
+  "not_observed": [
+    "kernel audit denial/syscall attribution",
+    "image git revision",
+    "exact API target host/port (scope only was printed)"
+  ],
+  "verdict": "NOT CERTIFIED: container namespace creation denied; API loopback connection refused; exact sandbox-denying policy still needs kernel audit",
+  "host_apparmor_current": "unconfined",
+  "docker_security_options": [
+    "name=apparmor,profile=default",
+    "name=seccomp,profile=builtin",
+    "name=cgroupns"
+  ]
+}
