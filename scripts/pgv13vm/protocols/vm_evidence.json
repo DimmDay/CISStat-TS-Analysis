@@ -1,0 +1,50 @@
+{
+  "source": "user-provided VM diagnostic output; not a live agent VM probe",
+  "reported_head": "338b15aa2c305a1be565289d075d2fb34e9ea46d",
+  "kernel": "Linux 6.8.0-147-generic",
+  "sysctls": {
+    "kernel.unprivileged_userns_clone": 1,
+    "user.max_user_namespaces": 63378,
+    "kernel.apparmor_restrict_unprivileged_userns": 1
+  },
+  "host_userns_probe": {
+    "result": "denied",
+    "message": "write failed /proc/self/uid_map: Operation not permitted"
+  },
+  "docker_server_version": "29.9.2",
+  "renderer": {
+    "image": "cisstat-print-renderer:pgv08-fix",
+    "image_id": "sha256:1837bee8994e42b97b548de5ecf4d3e026f8b3e6624d9ac42822a4ed290f81b3",
+    "user": "10001:10001",
+    "network": "none",
+    "readonly": true,
+    "security_opt": [
+      "no-new-privileges:true"
+    ],
+    "cap_drop": [
+      "ALL"
+    ],
+    "node": "v24.22.3",
+    "playwright": "1.57.0",
+    "seccomp": 2,
+    "seccomp_filters": 1,
+    "no_new_privs": 1,
+    "effective_caps": "0000000000000000",
+    "readyz_status": 503,
+    "smoke": false,
+    "fatal": "No usable sandbox!",
+    "browser_exit_signal": "SIGABRT"
+  },
+  "api": {
+    "renderer_enabled": true,
+    "transport_error_class": "URLError"
+  },
+  "not_observed": [
+    "kernel audit denial/profile attribution",
+    "container AppArmorProfile/current",
+    "seccomp syscall attribution",
+    "API configured target/errno",
+    "image git revision"
+  ],
+  "verdict": "NOT CERTIFIED; VM sandbox blocker confirmed; exact policy attribution and transport reason remain open"
+}

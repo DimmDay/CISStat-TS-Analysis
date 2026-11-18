@@ -1,0 +1,37 @@
+{
+  "base": "338b15aa2c305a1be565289d075d2fb34e9ea46d",
+  "kind": "VM evidence and read-only diagnostic refinement; no sandbox/transport runtime fix",
+  "file_count": 18,
+  "tests": {
+    "red": 4,
+    "green": 4,
+    "clean_zip_overlay": 4
+  },
+  "renderer_build": "PASS",
+  "cert_recheck": {
+    "failed": 10,
+    "passed": 8,
+    "exit": 1,
+    "verdict": "NOT CERTIFIED"
+  },
+  "routes": {
+    "actual_api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "entry_delta": 0,
+    "strict_index": "PASS",
+    "clean_zip_overlay": "PASS"
+  },
+  "vm_evidence_provenance": "user-supplied stdout, not direct access",
+  "docker_vm_live_tested": false,
+  "image_rebuild_required": false,
+  "commit_push": false,
+  "runtime_delta": [],
+  "zip_checks": [
+    "CRC",
+    "manifest equality",
+    "every byte equals source",
+    "safe relative names",
+    "clean exact-base overlay tests and actual routes"
+  ]
+}

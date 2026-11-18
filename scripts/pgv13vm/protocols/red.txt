@@ -1,0 +1,72 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-VM
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 4 items
+
+scripts/pgv13vm/test_diagnose.py FFFF                                    [100%]
+
+=================================== FAILURES ===================================
+_ test_diagnostic_preserves_layers_and_exit_codes[http_503-1-api_to_renderer_reached_http 503] _
+scripts/pgv13vm/test_diagnose.py:74: in test_diagnostic_preserves_layers_and_exit_codes
+    assert marker in result.stdout,(result.stdout,result.stderr)
+E   AssertionError: ('PGV13 renderer diagnostics (no host changes)
+E     cert-sha
+E     Linux 6.18.57
+E     kernel.unprivileged_userns_clone=1
+E     user.max_...ne 15, in <module>
+E         assert path in code, path
+E                ^^^^^^^^^^^^
+E     AssertionError: /proc/self/attr/current
+E     ')
+E   assert 'api_to_renderer_reached_http 503' in 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...\napi_to_renderer_error HTTPError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n'
+E    +  where 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...\napi_to_renderer_error HTTPError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n' = CompletedProcess(args=['bash', '/workspace/scratch/d4153a1cfd25/pgv13-vm-red/test_diagnostic_preserves_laye0/scripts/p...ne 15, in <module>\n    assert path in code, path\n           ^^^^^^^^^^^^\nAssertionError: /proc/self/attr/current\n').stdout
+_ test_diagnostic_preserves_layers_and_exit_codes[unreachable-1-api_to_renderer_unreachable] _
+scripts/pgv13vm/test_diagnose.py:74: in test_diagnostic_preserves_layers_and_exit_codes
+    assert marker in result.stdout,(result.stdout,result.stderr)
+E   AssertionError: ('PGV13 renderer diagnostics (no host changes)
+E     cert-sha
+E     Linux 6.18.57
+E     kernel.unprivileged_userns_clone=1
+E     user.max_...ne 15, in <module>
+E         assert path in code, path
+E                ^^^^^^^^^^^^
+E     AssertionError: /proc/self/attr/current
+E     ')
+E   assert 'api_to_renderer_unreachable' in 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...}\napi_to_renderer_error URLError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n'
+E    +  where 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...}\napi_to_renderer_error URLError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n' = CompletedProcess(args=['bash', '/workspace/scratch/d4153a1cfd25/pgv13-vm-red/test_diagnostic_preserves_laye1/scripts/p...ne 15, in <module>\n    assert path in code, path\n           ^^^^^^^^^^^^\nAssertionError: /proc/self/attr/current\n').stdout
+__ test_diagnostic_preserves_layers_and_exit_codes[browser_blocked-1-BLOCKED] __
+scripts/pgv13vm/test_diagnose.py:75: in test_diagnostic_preserves_layers_and_exit_codes
+    assert 'apparmor=docker-default' in result.stdout
+E   AssertionError: assert 'apparmor=docker-default' in 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...}\napi_to_renderer_error URLError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n'
+E    +  where 'PGV13 renderer diagnostics (no host changes)\ncert-sha\nLinux 6.18.57\nkernel.unprivileged_userns_clone=1\nuser.max_u...}\napi_to_renderer_error URLError\nBLOCKED: inspect readiness and transport separately; no automatic settings change\n' = CompletedProcess(args=['bash', '/workspace/scratch/d4153a1cfd25/pgv13-vm-red/test_diagnostic_preserves_laye2/scripts/p...ne 15, in <module>\n    assert path in code, path\n           ^^^^^^^^^^^^\nAssertionError: /proc/self/attr/current\n').stdout
+_ test_diagnostic_preserves_layers_and_exit_codes[healthy-0-Readiness/transport probes passed] _
+scripts/pgv13vm/test_diagnose.py:73: in test_diagnostic_preserves_layers_and_exit_codes
+    assert result.returncode==expected_exit,(result.stdout,result.stderr)
+E   AssertionError: ('PGV13 renderer diagnostics (no host changes)
+E     cert-sha
+E     Linux 6.18.57
+E     kernel.unprivileged_userns_clone=1
+E     user.max_...ne 15, in <module>
+E         assert path in code, path
+E                ^^^^^^^^^^^^
+E     AssertionError: /proc/self/attr/current
+E     ')
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['bash', '/workspace/scratch/d4153a1cfd25/pgv13-vm-red/test_diagnostic_preserves_laye3/scripts/p...ne 15, in <module>\n    assert path in code, path\n           ^^^^^^^^^^^^\nAssertionError: /proc/self/attr/current\n').returncode
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13vm/test_diagnose.py::test_diagnostic_preserves_layers_and_exit_codes[http_503-1-api_to_renderer_reached_http 503]
+FAILED scripts/pgv13vm/test_diagnose.py::test_diagnostic_preserves_layers_and_exit_codes[unreachable-1-api_to_renderer_unreachable]
+FAILED scripts/pgv13vm/test_diagnose.py::test_diagnostic_preserves_layers_and_exit_codes[browser_blocked-1-BLOCKED]
+FAILED scripts/pgv13vm/test_diagnose.py::test_diagnostic_preserves_layers_and_exit_codes[healthy-0-Readiness/transport probes passed]
+========================= 4 failed, 1 warning in 1.21s =========================

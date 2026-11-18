@@ -226,3 +226,7 @@ worklog12, local_gates.md, manifest и карту AUTH-00. Исходные runt
 не записано отдельным блокером PGV-13. Выполненные здесь проверки не заявляются
 real-browser E2E, pixel/OCR acceptance, Windows/Docker/VM certification или
 полным default/scientific regression.
+
+## Дополнение VM на 338b15a
+
+Тимлид предоставил реальный вывод VM: readyz503 с Chromium `No usable sandbox!`/SIGABRT и отдельный API URLError. Теперь VM sandbox blocker подтверждён; прежнее OPEN относится к точной политике отказа, а не существованию сбоя. AppArmor restriction=1 и host uid_map denial — ведущая гипотеза, но контейнерный audit/profile и вклад seccomp пока не установлены. Подробный разбор, границы и следующий read-only сбор: `docs/pgv13_vm_followup.md`. Известные контрактные блокеры/вердикт не изменились.

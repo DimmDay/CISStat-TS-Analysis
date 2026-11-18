@@ -366,3 +366,13 @@ Renderer собирается автоматически. `python scripts/pgv13c
 Перед строгим precommit AUTH-00: `git add --pathspec-from-file=scripts/pgv13cert/files.txt`,
 затем `python scripts/auth00/check_committed.py --target index` и
 `python scripts/auth06/check_routes.py`. Эта поставка не требует rebuild образов.
+
+## PGV-13-CERT-VM — уточнение диагностики поверх 338b15a
+
+Вывод VM подтвердил Chromium `No usable sandbox!` и отдельный API URLError.
+Причину AppArmor/seccomp уточняем по current profile/audit; runtime не меняется.
+Read-only probe дополнен профилями/uid maps и раздельными HTTPError/URLError.
+Контроль shell/probe с Docker stub: `python -m pytest scripts/pgv13vm/test_diagnose.py -q`.
+Это 4 unit-сценария, не final-image/VM acceptance и не замена красному PGV-13 cert gate.
+Default local_gates.py не меняется. Детали/команды VM — docs/pgv13_vm_followup.md.
+HTTP/DTO/BFF/роуты не затронуты; rebuild этой поставке не требуется.

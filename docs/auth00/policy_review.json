@@ -9453,6 +9453,7 @@
   "scripts/pgv13cert/test_contracts.py",
   "scripts/pgv13cert/test_deployment.py",
   "scripts/pgv13cert/verify.py",
+  "scripts/pgv13vm/test_diagnose.py",
   "spec_auth.md",
   "spec_auth_architecture.md",
   "spec_billing_accounts.md",
