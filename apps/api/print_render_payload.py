@@ -52,7 +52,33 @@ from typing import Any, Mapping
 # Контракт версии payload'а (паритет rendererCore.tsx PGV-08).
 RENDER_PAYLOAD_VERSION = "pgv.render_payload/1"
 
-_SECTION_KINDS = ("recharts_svg", "html_table", "html_heatmap", "html_cards", "ih_conditional")
+# PGV-13: печатные секции паспортов (P01/P02) -- контейнер рендерит их
+# компонентами PGV-07 (PrintPassportPage/PrintPassportComparisonPage),
+# Python не перерисовывает паспорта (§4.1, паритет «recharts не
+# перерисовывается»).
+_SECTION_KINDS = (
+    "recharts_svg",
+    "html_table",
+    "html_heatmap",
+    "html_cards",
+    "ih_conditional",
+    "passport_record",
+    "passport_comparison",
+)
+
+# PGV-13: самодостаточные basis-виды печатных входов (контент -- в
+# снапшоте; зависимости visual_result НЕ требуется).
+_PASSPORT_BASIS_KINDS = (
+    "passport_print_snapshot",
+    "passport_comparison_snapshot",
+)
+
+# Схемы снапшотов, допустимые в pgv.render_payload/1 (PGV-01 + PGV-13).
+_SNAPSHOT_SCHEMA_VERSIONS = (
+    "pgv.visual_print_snapshot/1",
+    "pgv.passport_print_snapshot/1",
+    "pgv.passport_comparison_print_snapshot/1",
+)
 
 
 class PrintRenderPayloadIncomplete(RuntimeError):
@@ -291,6 +317,44 @@ def section_content_from_visual_result(
     return out
 
 
+def section_content_from_snapshot_self(
+    snapshot_payload: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Контент секций САМОДОСТАТОЧНОГО печатного входа (PGV-13: P01/P02
+    -- записи/сравнение встроены в снапшот в момент сборки; зависимости
+    visual_result не требуется). Отсутствие встроенного контента -- честный
+    отказ (§3.6)."""
+    sections = _rec(snapshot_payload.get("display")).get("sections") or []
+    out: dict[str, dict[str, Any]] = {}
+    for section in sections:
+        section_rec = _rec(section)
+        section_id = section_rec.get("section_id")
+        kind = section_rec.get("renderer_kind")
+        if not isinstance(section_id, str) or not section_id:
+            continue
+        if kind == "passport_record":
+            content_key = "record"
+        elif kind == "passport_comparison":
+            content_key = "comparison"
+        else:  # pragma: no cover -- каталог фиксирован валидатором
+            raise PrintRenderPayloadIncomplete(
+                f"missing_section_content: неизвестный renderer_kind {kind!r} "
+                "самодостаточного входа"
+            )
+        content = section_rec.get(content_key)
+        if not isinstance(content, dict) or not content:
+            raise PrintRenderPayloadIncomplete(
+                f"missing_section_content: секция {section_id!r} без "
+                f"встроенного {content_key} (§3.6: контент не фабрикуется)"
+            )
+        out[section_id] = {content_key: content}
+    if not out:
+        raise PrintRenderPayloadIncomplete(
+            "missing_section_content: ни одна секция не имеет контента"
+        )
+    return out
+
+
 def build_render_payload(
     snapshot_payload: Mapping[str, Any],
     content_by_section: Mapping[str, Mapping[str, Any]],
@@ -308,10 +372,10 @@ def build_render_payload(
             "invalid_payload: frozen snapshot обязателен"
         )
     schema_version = snapshot_payload.get("schema_version")
-    if schema_version != "pgv.visual_print_snapshot/1":
+    if schema_version not in _SNAPSHOT_SCHEMA_VERSIONS:
         raise PrintRenderPayloadInvalid(
-            "invalid_payload: ожидается pgv.visual_print_snapshot/1, "
-            f"получено {schema_version!r}"
+            "invalid_payload: ожидается один из "
+            f"{list(_SNAPSHOT_SCHEMA_VERSIONS)}, получено {schema_version!r}"
         )
     sections_meta = _rec(snapshot_payload.get("display")).get("sections") or []
     if not isinstance(sections_meta, list) or not sections_meta:
@@ -402,6 +466,28 @@ def build_render_payload(
             composed["svg_xml"] = svg
             if isinstance(content.get("height_px"), (int, float)):
                 composed["height_px"] = content["height_px"]
+        elif kind == "passport_record":
+            # PGV-13 (P01): полная запись pgv.passport_history/1,
+            # встроенная в frozen снапшот; контейнер рендерит её
+            # компонентом PGV-07 (PrintPassportPage) -- Python не
+            # перерисовывает паспорт и не фабкует группы (AC09/AC12).
+            record = content.get("record")
+            if not isinstance(record, dict) or not record:
+                raise PrintRenderPayloadIncomplete(
+                    f"missing_section_content: секция {section_id!r} без "
+                    "frozen записи паспорта (§3.6)"
+                )
+            composed["record"] = record
+        elif kind == "passport_comparison":
+            # PGV-13 (P02): frozen сравнение pgv.passport_comparison/1,
+            # встроенное в снапшот (PrintPassportComparisonPage, AC13).
+            comparison = content.get("comparison")
+            if not isinstance(comparison, dict) or not comparison:
+                raise PrintRenderPayloadIncomplete(
+                    f"missing_section_content: секция {section_id!r} без "
+                    "frozen сравнения (§3.6)"
+                )
+            composed["comparison"] = comparison
         sections.append(composed)
     return {
         "schema_version": RENDER_PAYLOAD_VERSION,
@@ -430,8 +516,10 @@ def load_print_render_input(basis_artifact_id: str) -> dict[str, Any]:
     pins/dependencies артефакта (§16: metadata graph хранит причины
     ссылок). Никакой науки (AC06), никакого SessionStore (§8).
 
-    Возвращает {"snapshot": ..., "visual_result": ..., "basis_sha256"}.
-    Отсутствие/чужой kind/расхождение digest -- честные исключения."""
+    Возвращает {"snapshot": ..., "visual_result": ..., "basis_kind": ...,
+    "basis_sha256"}. Для самодостаточных входов PGV-13 (P01/P02)
+    visual_result равен None (контент встроен в снапшот). Отсутствие/
+    чужой kind/расхождение digest -- честные исключения."""
     import hashlib
     import json
 
@@ -448,10 +536,12 @@ def load_print_render_input(basis_artifact_id: str) -> dict[str, Any]:
             "render_basis_unavailable: basis-артефакт печатной ревизии "
             "отсутствует в реестре"
         )
-    if artifact.kind != "visual_print_snapshot":
+    is_passport_basis = artifact.kind in _PASSPORT_BASIS_KINDS
+    if artifact.kind not in ("visual_print_snapshot",) and not is_passport_basis:
         raise PrintRenderBasisUnavailable(
-            f"render_basis_unavailable: kind {artifact.kind!r} не является "
-            "visual_print_snapshot"
+            f"render_basis_unavailable: kind {artifact.kind!r} не входит в "
+            "каталог печатных basis (visual_print_snapshot / "
+            "passport_print_snapshot / passport_comparison_snapshot)"
         )
     try:
         data = get_artifact_object_store().read_bytes(artifact.storage_key)
@@ -479,6 +569,17 @@ def load_print_render_input(basis_artifact_id: str) -> dict[str, Any]:
         raise PrintRenderBasisUnavailable(
             "render_basis_unavailable: payload_not_object"
         )
+    if is_passport_basis:
+        # PGV-13: самодостаточный печатный вход P01/P02 -- контент
+        # (записи/сравнение) встроен в снапшот; зависимости visual_result
+        # не требуется (§10.2 «revision с frozen refs/pins без capture и
+        # перерасчёта»).
+        return {
+            "snapshot": snapshot_payload,
+            "visual_result": None,
+            "basis_kind": artifact.kind,
+            "basis_sha256": artifact.payload_sha256 or "",
+        }
     # Зависимость visual_result (§6: «результат переносится из
     # фактического response в durable слой» -- контент секций).
     result_payload: dict[str, Any] | None = None
@@ -516,12 +617,20 @@ def build_print_render_payload_from_basis(
 ) -> dict[str, Any]:
     """Сборка pgv.render_payload/1 из загруженного basis (префетч
     load_print_render_input + preflight PGV-01 до постановки байтов в
-    сеть -- «preflight либо явный отказ», §7)."""
+    сеть -- «preflight либо явный отказ», §7).
+
+    PGV-13: самодостаточные basis (passport_print_snapshot /
+    passport_comparison_snapshot) несут контент в самом снапшоте --
+    ветка section_content_from_snapshot_self; V01 -- прежний путь из
+    frozen visual_result."""
     snapshot_payload = basis.get("snapshot")
-    visual_result_payload = basis.get("visual_result")
-    content = section_content_from_visual_result(
-        snapshot_payload, visual_result_payload
-    )
+    if basis.get("basis_kind") in _PASSPORT_BASIS_KINDS:
+        content = section_content_from_snapshot_self(snapshot_payload)
+    else:
+        visual_result_payload = basis.get("visual_result")
+        content = section_content_from_visual_result(
+            snapshot_payload, visual_result_payload
+        )
     return build_render_payload(
         snapshot_payload, content, request_id=request_id
     )

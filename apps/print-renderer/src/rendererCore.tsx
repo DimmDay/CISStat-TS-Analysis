@@ -45,6 +45,13 @@ import {
 } from "../../../packages/ui/print/printSections";
 import { PrintIhConditionalMatrix } from "../../../packages/ui/print/printIh";
 import type { PrintIhConditionalInput } from "../../../packages/ui/print/printIh";
+// PGV-13: печатные виды паспортов маршрутизируются на компоненты PGV-07 --
+// единственная реализация печатной композиции паспорта/сравнения (§4.1),
+// без второй реализации на Python (AC09/AC12/AC13).
+import { PrintPassportPage } from "../../../packages/ui/print/printPassport";
+import type { PrintPassportRecord } from "../../../packages/ui/print/printPassport";
+import { PrintPassportComparisonPage } from "../../../packages/ui/print/printComparison";
+import type { PrintComparisonSnapshot } from "../../../packages/ui/print/printComparison";
 
 // ── Версии контрактов ─────────────────────────────────────────────
 
@@ -79,7 +86,9 @@ export type RenderSectionContent =
   | { section_id: string; kind: "html_heatmap"; title?: string | null; row_headings: readonly string[]; column_headings: readonly string[]; cells: readonly (readonly (number | null)[])[]; cell_texts: readonly (readonly (string | null)[])[]; domain?: [number, number] | null; units?: UnitDeclaration }
   | { section_id: string; kind: "html_cards"; title?: string | null; cards: readonly { label: string; value: string; unit?: { value: string | null; reason: string | null } }[] }
   | { section_id: string; kind: "ih_conditional"; title?: string | null; ih_input: PrintIhConditionalInput }
-  | { section_id: string; kind: "recharts_svg"; title?: string | null; svg_xml?: string | null; height_px?: number };
+  | { section_id: string; kind: "recharts_svg"; title?: string | null; svg_xml?: string | null; height_px?: number }
+  | { section_id: string; kind: "passport_record"; title?: string | null; record: PrintPassportRecord }
+  | { section_id: string; kind: "passport_comparison"; title?: string | null; comparison: PrintComparisonSnapshot };
 
 /** Payload POST /v1/render: frozen снапшот PGV-01 + контент секций. */
 export interface RenderPagePayload {
@@ -104,6 +113,9 @@ const SECTION_KINDS: readonly string[] = [
   "html_cards",
   "ih_conditional",
   "recharts_svg",
+  // PGV-13: печатные виды паспортов (P01/P02, §10.2).
+  "passport_record",
+  "passport_comparison",
 ];
 
 function violation(code: string, path: string, message: string): RenderPayloadViolation {
@@ -201,6 +213,26 @@ export function validateRenderPayload(raw: unknown): {
       }
       if (kind === "html_cards" && !Array.isArray(rec.cards)) {
         out.push(violation("missing_field", `${path}.cards`, "карточки обязаны нести cards"));
+      }
+      if (kind === "passport_record") {
+        // PGV-13 (P01): полная запись pgv.passport_history/1 обязана
+        // быть встроена (контент не фабрикуется, §3.6/AC09/AC12).
+        const record = rec.record;
+        if (typeof record !== "object" || record === null || Array.isArray(record)) {
+          out.push(violation("missing_field", `${path}.record`, "passport_record обязан нести frozen запись паспорта"));
+        } else if (typeof (record as Record<string, unknown>).schema_version !== "string") {
+          out.push(violation("missing_field", `${path}.record.schema_version`, "запись паспорта обязана нести schema_version"));
+        }
+      }
+      if (kind === "passport_comparison") {
+        // PGV-13 (P02): frozen сравнение pgv.passport_comparison/1
+        // обязано быть встроено (AC13).
+        const comparison = rec.comparison;
+        if (typeof comparison !== "object" || comparison === null || Array.isArray(comparison)) {
+          out.push(violation("missing_field", `${path}.comparison`, "passport_comparison обязан нести frozen сравнение"));
+        } else if (typeof (comparison as Record<string, unknown>).schema_version !== "string") {
+          out.push(violation("missing_field", `${path}.comparison.schema_version`, "сравнение обязано нести schema_version"));
+        }
       }
     });
   }
@@ -512,7 +544,34 @@ export function injectPngPhys(png: Buffer, ppi: number): Buffer {
 const CSP_META =
   "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none'; script-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
-function renderSectionElement(section: RenderSectionContent): React.ReactElement {
+function renderSectionElement(
+  section: RenderSectionContent,
+  pageIndex: number,
+  pageCount: number,
+): React.ReactElement {
+  if (section.kind === "passport_record") {
+    // PGV-13 (P01): печатная страница паспорта -- компонент PGV-07
+    // (PrintPassportPage): провенанс + ВСЕ группы существующей схемы,
+    // honest-баннеры content-гэпов/unsupported_schema (AC09/AC12/§8).
+    return React.createElement(PrintPassportPage, {
+      key: section.section_id,
+      record: section.record,
+      pageIndex,
+      pageCount,
+    });
+  }
+  if (section.kind === "passport_comparison") {
+    // PGV-13 (P02): печатное сравнение -- компонент PGV-07
+    // (PrintPassportComparisonPage): дельты по этапам, категории/
+    // списки/качественные изменения, confirmation reused, honest gaps
+    // (AC11/AC13/§9).
+    return React.createElement(PrintPassportComparisonPage, {
+      key: section.section_id,
+      snapshot: section.comparison,
+      pageIndex,
+      pageCount,
+    });
+  }
   if (section.kind === "html_table") {
     return React.createElement(PrintTableSection, {
       key: section.section_id,
@@ -664,7 +723,9 @@ export function buildPrintHtml(
     React.createElement(
       PrintPageFrame,
       { snapshot, pageIndex, pageCount, profileId: profile.id, scale },
-      payload.sections.map((section) => renderSectionElement(section)),
+      payload.sections.map((section) =>
+        renderSectionElement(section, pageIndex, pageCount),
+      ),
     ),
   );
   const sanitizerWarnings: string[] = [];

@@ -61,9 +61,15 @@ PANEL_PASSPORT_STAGE = "panel_entry"
 # имя источника истины -- apps/api/visual_artifacts.py
 # (VISUAL_ARTIFACT_KINDS с версиями схем; здесь -- только множество имён
 # для гейта persist_visual_artifact, ленивый импорт без цикла модулей).
-VISUAL_ARTIFACT_KIND_NAMES = frozenset(
-    {"visual_result", "visual_print_snapshot", "passport_checkpoint"}
-)
+# PGV-13: + passport_print_snapshot / passport_comparison_snapshot
+# (самодостаточные печатные входы P01/P02).
+VISUAL_ARTIFACT_KIND_NAMES = frozenset({
+    "visual_result",
+    "visual_print_snapshot",
+    "passport_checkpoint",
+    "passport_print_snapshot",
+    "passport_comparison_snapshot",
+})
 
 
 # ── Исключения контура ───────────────────────────────────────────────

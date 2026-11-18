@@ -70,6 +70,7 @@ from apps.api.print_schema import (
     PrintSchemaViolation,
     _violation,
     load_visual_registry,
+    resolve_print_profile,
     resolve_scope,
     validate_print_snapshot,
     validate_visual_result,
@@ -79,10 +80,20 @@ from apps.api.print_schema import (
 
 CHECKPOINT_SCHEMA_VERSION = "pgv.passport_checkpoint/1"
 
+# PGV-13 (§10.2/§13): frozen печатные входы документов P01/P02.
+PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION = "pgv.passport_print_snapshot/1"
+PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION = (
+    "pgv.passport_comparison_print_snapshot/1"
+)
+
 VISUAL_ARTIFACT_SCHEMA_VERSIONS: dict[str, str] = {
     "visual_result": PRINT_RESULT_SCHEMA_VERSION,
     "visual_print_snapshot": PRINT_SNAPSHOT_SCHEMA_VERSION,
     "passport_checkpoint": CHECKPOINT_SCHEMA_VERSION,
+    "passport_print_snapshot": PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION,
+    "passport_comparison_snapshot": (
+        PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION
+    ),
 }
 
 VISUAL_ARTIFACT_KIND_NAMES = frozenset(VISUAL_ARTIFACT_SCHEMA_VERSIONS)
@@ -351,6 +362,317 @@ def validate_passport_checkpoint(
     return out
 
 
+def validate_passport_print_snapshot(
+    payload: Any,
+) -> list[PrintSchemaViolation]:
+    """Валидация pgv.passport_print_snapshot/1 (PGV-13, P01; §8/§10.2):
+    самодостаточный печатный вход из записей pgv.passport_history/1.
+    Правила честности: content_status=corrupt/missing не несёт контента
+    (AC12: контент не выдаётся под порчей); completeness согласован с
+    фактическими content_status; identity (mode/refs/digest) обязательна
+    для идемпотентности §11."""
+    out: list[PrintSchemaViolation] = []
+    if not isinstance(payload, dict):
+        return [_violation("missing_field", "(root)", "print snapshot must be an object")]
+
+    if payload.get("schema_version") != PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION:
+        out.append(
+            _violation(
+                "schema_version_mismatch",
+                "schema_version",
+                f"ожидается {PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION}",
+            )
+        )
+    documents = _rec(payload.get("documents"))
+    if documents.get("print_kind") != "P01":
+        out.append(
+            _violation(
+                "invalid_value",
+                "documents.print_kind",
+                "print_kind обязан быть P01",
+            )
+        )
+    if documents.get("mode") not in ("single", "set"):
+        out.append(
+            _violation("invalid_value", "documents.mode", "mode: single|set")
+        )
+    if payload.get("scope") != "passport":
+        out.append(_violation("invalid_value", "scope", "scope обязан быть passport"))
+
+    print_rec = _rec(payload.get("print"))
+    if resolve_print_profile(str(print_rec.get("profile_id") or "")) is None:
+        out.append(
+            _violation(
+                "invalid_profile",
+                "print.profile_id",
+                "профиль обязан быть из каталога PGV-01",
+            )
+        )
+    if print_rec.get("theme") != "light-print":
+        out.append(
+            _violation(
+                "theme_not_light_print",
+                "print.theme",
+                "печать -- только light-print (§3.4)",
+            )
+        )
+
+    times = _rec(payload.get("times"))
+    if not str(times.get("render_requested_at") or ""):
+        out.append(
+            _violation(
+                "missing_date",
+                "times.render_requested_at",
+                "время запроса рендера фиксируется отдельно (§6)",
+            )
+        )
+
+    identity = _rec(payload.get("identity"))
+    refs_list = identity.get("snapshot_refs")
+    if not isinstance(refs_list, list) or not refs_list or not all(
+        isinstance(ref, str) and _SNAPSHOT_REF_PATTERN.match(ref) for ref in refs_list
+    ):
+        out.append(
+            _violation(
+                "missing_required_ref",
+                "identity.snapshot_refs",
+                "упорядоченные rs-refs обязательны (§11: refs/checkpoint)",
+            )
+        )
+    if not str(identity.get("digest") or ""):
+        out.append(
+            _violation(
+                "missing_field",
+                "identity.digest",
+                "digest identity обязателен (идемпотентность §11)",
+            )
+        )
+
+    display = _rec(payload.get("display"))
+    sections = display.get("sections")
+    if not isinstance(sections, list) or not sections:
+        return out + [
+            _violation(
+                "empty_sections", "display.sections", "секции паспортов обязательны"
+            )
+        ]
+    statuses: list[str] = []
+    for index, section in enumerate(sections):
+        path = f"display.sections[{index}]"
+        section_rec = _rec(section)
+        if section_rec.get("renderer_kind") != "passport_record":
+            out.append(
+                _violation(
+                    "invalid_section_kind",
+                    f"{path}.renderer_kind",
+                    "секция P01 -- только passport_record",
+                )
+            )
+            continue
+        record = _rec(section_rec.get("record"))
+        if record.get("schema_version") != "pgv.passport_history/1":
+            out.append(
+                _violation(
+                    "invalid_value",
+                    f"{path}.record.schema_version",
+                    "запись обязана быть pgv.passport_history/1 (PGV-05)",
+                )
+            )
+        status = record.get("content_status")
+        statuses.append(str(status))
+        if status not in ("present", "missing_artifact", "corrupt"):
+            out.append(
+                _violation(
+                    "invalid_value",
+                    f"{path}.record.content_status",
+                    "content_status: present|missing_artifact|corrupt",
+                )
+            )
+        ref = record.get("snapshot_ref")
+        if not (isinstance(ref, str) and _SNAPSHOT_REF_PATTERN.match(ref)):
+            out.append(
+                _violation(
+                    "invalid_value",
+                    f"{path}.record.snapshot_ref",
+                    "формат rs-*",
+                )
+            )
+        passport = record.get("passport")
+        if status == "present" and not isinstance(passport, dict):
+            out.append(
+                _violation(
+                    "missing_field",
+                    f"{path}.record.passport",
+                    "present-запись несёт полный паспорт (AC09)",
+                )
+            )
+        if status in ("missing_artifact", "corrupt") and passport is not None:
+            out.append(
+                _violation(
+                    "conflicting_flags",
+                    f"{path}.record.passport",
+                    "corrupt/missing запись НЕ выдаёт контент (AC12)",
+                )
+            )
+    completeness = display.get("completeness")
+    if completeness not in ("complete", "partial"):
+        out.append(
+            _violation(
+                "invalid_value",
+                "display.completeness",
+                "completeness: complete|partial",
+            )
+        )
+    elif completeness == "complete" and any(s != "present" for s in statuses):
+        out.append(
+            _violation(
+                "conflicting_flags",
+                "display.completeness",
+                "complete при не-present записи -- фабкация полноты (§9)",
+            )
+        )
+    if not isinstance(display.get("gaps"), list):
+        out.append(
+            _violation("invalid_value", "display.gaps", "gaps -- список")
+        )
+    return out
+
+
+def validate_passport_comparison_print_snapshot(
+    payload: Any,
+) -> list[PrintSchemaViolation]:
+    """Валидация pgv.passport_comparison_print_snapshot/1 (PGV-13, P02;
+    §9): frozen сравнение pgv.passport_comparison/1 встроено в секцию;
+    completeness снапшота -- честное эхо completeness сравнения."""
+    # Ленивый импорт константы PGV-06 (модуль движка тянет scipy/statsmodels
+    # -- не утяжеляем импорт durable-слоя).
+    from apps.api.passport_comparison import PASSPORT_COMPARISON_SCHEMA_VERSION
+
+    out: list[PrintSchemaViolation] = []
+    if not isinstance(payload, dict):
+        return [_violation("missing_field", "(root)", "print snapshot must be an object")]
+
+    if payload.get("schema_version") != (
+        PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION
+    ):
+        out.append(
+            _violation(
+                "schema_version_mismatch",
+                "schema_version",
+                f"ожидается {PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION}",
+            )
+        )
+    documents = _rec(payload.get("documents"))
+    if documents.get("print_kind") != "P02":
+        out.append(
+            _violation(
+                "invalid_value",
+                "documents.print_kind",
+                "print_kind обязан быть P02",
+            )
+        )
+    if payload.get("scope") != "comparison":
+        out.append(
+            _violation("invalid_value", "scope", "scope обязан быть comparison")
+        )
+
+    print_rec = _rec(payload.get("print"))
+    if resolve_print_profile(str(print_rec.get("profile_id") or "")) is None:
+        out.append(
+            _violation(
+                "invalid_profile",
+                "print.profile_id",
+                "профиль обязан быть из каталога PGV-01",
+            )
+        )
+    if print_rec.get("theme") != "light-print":
+        out.append(
+            _violation(
+                "theme_not_light_print",
+                "print.theme",
+                "печать -- только light-print (§3.4)",
+            )
+        )
+
+    times = _rec(payload.get("times"))
+    if not str(times.get("render_requested_at") or ""):
+        out.append(
+            _violation(
+                "missing_date",
+                "times.render_requested_at",
+                "время запроса рендера фиксируется отдельно (§6)",
+            )
+        )
+
+    identity = _rec(payload.get("identity"))
+    if not str(identity.get("digest") or ""):
+        out.append(
+            _violation(
+                "missing_field",
+                "identity.digest",
+                "digest identity обязателен (идемпотентность §11)",
+            )
+        )
+
+    display = _rec(payload.get("display"))
+    sections = display.get("sections")
+    if not isinstance(sections, list) or len(sections) != 1:
+        return out + [
+            _violation(
+                "empty_sections",
+                "display.sections",
+                "P02 -- ровно одна секция сравнения",
+            )
+        ]
+    section_rec = _rec(sections[0])
+    if section_rec.get("renderer_kind") != "passport_comparison":
+        out.append(
+            _violation(
+                "invalid_section_kind",
+                "display.sections[0].renderer_kind",
+                "секция P02 -- только passport_comparison",
+            )
+        )
+    comparison = _rec(section_rec.get("comparison"))
+    if comparison.get("schema_version") != PASSPORT_COMPARISON_SCHEMA_VERSION:
+        out.append(
+            _violation(
+                "invalid_value",
+                "display.sections[0].comparison.schema_version",
+                f"сравнение обязано быть {PASSPORT_COMPARISON_SCHEMA_VERSION} (PGV-06)",
+            )
+        )
+    if comparison.get("mode") not in ("trajectory_checkpoint", "explicit_refs"):
+        out.append(
+            _violation(
+                "invalid_value",
+                "display.sections[0].comparison.mode",
+                "mode: trajectory_checkpoint|explicit_refs",
+            )
+        )
+    ordered_refs = comparison.get("ordered_refs")
+    if not isinstance(ordered_refs, list) or not ordered_refs or not all(
+        isinstance(ref, str) and _SNAPSHOT_REF_PATTERN.match(ref)
+        for ref in ordered_refs
+    ):
+        out.append(
+            _violation(
+                "missing_required_ref",
+                "display.sections[0].comparison.ordered_refs",
+                "ordered_refs -- непустой список rs-*",
+            )
+        )
+    if comparison.get("completeness") != display.get("completeness"):
+        out.append(
+            _violation(
+                "conflicting_flags",
+                "display.completeness",
+                "completeness снапшота -- эхо completeness сравнения (§9)",
+            )
+        )
+    return out
+
+
 def validate_visual_artifact_payload(
     kind: str, payload: Any, *, site: dict[str, Any] | None = None
 ) -> list[PrintSchemaViolation]:
@@ -380,6 +702,10 @@ def validate_visual_artifact_payload(
         return violations
     if kind == "passport_checkpoint":
         return validate_passport_checkpoint(payload)
+    if kind == "passport_print_snapshot":
+        return validate_passport_print_snapshot(payload)
+    if kind == "passport_comparison_snapshot":
+        return validate_passport_comparison_print_snapshot(payload)
     return [_violation("invalid_value", "kind", f"kind {kind!r} не является visual artifact kind")]
 
 
@@ -422,6 +748,30 @@ def checkpoint_producer_key(payload: dict[str, Any]) -> str:
     """pgv.checkpoint:{checkpoint_id} -- идемпотентность по checkpoint_id
     (§8)."""
     return f"pgv.checkpoint:{_str(payload.get('checkpoint_id')) or 'unknown'}"
+
+
+def _passport_document_identity_core(payload: dict[str, Any]) -> str:
+    """Референс identity печатного входа P01/P02: mode + упорядоченные
+    refs + digest (§11 идемпотентность по телу; digest строит builder
+    из identity-ядер записей/сравнения)."""
+    identity = _rec(payload.get("identity"))
+    mode = _str(identity.get("mode")) or "unknown"
+    refs = ",".join(str(ref) for ref in identity.get("snapshot_refs") or [])
+    digest = (_str(identity.get("digest")) or "unknown")[:16]
+    return f"{mode}:{refs}:{digest}"
+
+
+def passport_print_producer_key(payload: dict[str, Any]) -> str:
+    """pgv.passport_print:{mode}:{refs}:{digest16} (PGV-13, P01) --
+    тот же комплект из тех же refs идемпотентен; иная траектория --
+    другой immutable снапшот (§8 «старые snapshots не переписываются»)."""
+    return f"pgv.passport_print:{_passport_document_identity_core(payload)}"
+
+
+def passport_comparison_producer_key(payload: dict[str, Any]) -> str:
+    """pgv.passport_comparison_print:{mode}:{refs}:{digest16}
+    (PGV-13, P02)."""
+    return f"pgv.passport_comparison_print:{_passport_document_identity_core(payload)}"
 
 
 # ── CAS freeze (PGV-AC07) ────────────────────────────────────────────
@@ -616,6 +966,135 @@ def freeze_visual_print_snapshot(
                 )
         raise
     return artifact
+
+
+def _freeze_passport_document_snapshot(
+    run_id: str,
+    subject: Any,
+    *,
+    kind: str,
+    payload: dict[str, Any],
+    producer_key: str,
+    dependency_artifact_ids: list[str],
+    pin_reason_prefix: str,
+    session_id: str = "",
+    created_by: Optional[str] = None,
+) -> Any:
+    """Общий freeze печатного входа P01/P02 (PGV-13). БЕЗ CAS
+    current-context: POST /passport-documents восстанавливает
+    ИСТОРИЧЕСКИЕ refs -- ожидание контекста клиента к ним не применимо
+    (§3.3 «stale относительно текущих данных не уничтожает историческую
+    действительность»; контракт §11 несёт refs/checkpoint, не
+    expected_context). Целостность -- content-addressed хранение +
+    payload_sha256 (T8) и producer_key-конфликт (§11). Пины
+    passport-артефактов present-записей с причиной (§16); AC08-компенсация
+    -- паритет freeze_visual_print_snapshot (F-P2C5)."""
+    service, _run = _authorized_run(run_id, subject, session_id)
+    pre_existing = service.find_by_producer(run_id, producer_key)
+    artifact = service.persist_visual_artifact(
+        run_id,
+        subject,
+        kind=kind,
+        payload=payload,
+        producer_key=producer_key,
+        session_id=session_id,
+        dependencies=list(dependency_artifact_ids),
+        refs={
+            "print_kind": _rec(payload.get("documents")).get("print_kind"),
+            "mode": _rec(payload.get("documents")).get("mode"),
+            "scope": payload.get("scope"),
+            "profile_id": _rec(payload.get("print")).get("profile_id"),
+        },
+        created_by=created_by,
+    )
+    pre_pinned = {
+        pin.ref_id
+        for pin in service.registry.list_pins(run_id, ref_kind="artifact")
+    }
+    pinned_now: list[str] = []
+    try:
+        for dependency_id in dependency_artifact_ids:
+            service.registry.pin_ref(
+                run_id,
+                "artifact",
+                dependency_id,
+                reason=f"{pin_reason_prefix}:{artifact.artifact_id}",
+                created_by=created_by or getattr(subject, "subject_id", None),
+            )
+            pinned_now.append(dependency_id)
+    except Exception:
+        for dependency_id in pinned_now:
+            if dependency_id in pre_pinned:
+                continue  # пин существовал до операции -- не наш
+            try:
+                service.registry.unpin_ref(run_id, "artifact", dependency_id)
+            except Exception as unpin_exc:  # pragma: no cover
+                logger.warning(
+                    "_freeze_passport_document_snapshot: unpin-компенсация "
+                    "не удалась для %s: %s",
+                    dependency_id,
+                    unpin_exc,
+                )
+        if pre_existing is None:
+            try:
+                service.registry.unregister_artifact(artifact.artifact_id)
+            except Exception as unregister_exc:  # pragma: no cover
+                logger.warning(
+                    "_freeze_passport_document_snapshot: AC08-компенсация "
+                    "не удалась для %s: %s",
+                    artifact.artifact_id,
+                    unregister_exc,
+                )
+        raise
+    return artifact
+
+
+def freeze_passport_print_snapshot(
+    run_id: str,
+    subject: Any,
+    *,
+    payload: dict[str, Any],
+    session_id: str = "",
+    dependency_artifact_ids: Optional[list[str]] = None,
+    created_by: Optional[str] = None,
+) -> Any:
+    """Freeze pgv.passport_print_snapshot/1 -- печатный вход P01
+    (PGV-13); зависимости -- passport-артефакты present-записей."""
+    return _freeze_passport_document_snapshot(
+        run_id,
+        subject,
+        kind="passport_print_snapshot",
+        payload=payload,
+        producer_key=passport_print_producer_key(payload),
+        dependency_artifact_ids=list(dependency_artifact_ids or []),
+        pin_reason_prefix="passport_print",
+        session_id=session_id,
+        created_by=created_by,
+    )
+
+
+def freeze_passport_comparison_snapshot(
+    run_id: str,
+    subject: Any,
+    *,
+    payload: dict[str, Any],
+    session_id: str = "",
+    dependency_artifact_ids: Optional[list[str]] = None,
+    created_by: Optional[str] = None,
+) -> Any:
+    """Freeze pgv.passport_comparison_print_snapshot/1 -- печатный вход
+    P02 (PGV-13); зависимости -- passport-артефакты записей пути."""
+    return _freeze_passport_document_snapshot(
+        run_id,
+        subject,
+        kind="passport_comparison_snapshot",
+        payload=payload,
+        producer_key=passport_comparison_producer_key(payload),
+        dependency_artifact_ids=list(dependency_artifact_ids or []),
+        pin_reason_prefix="passport_comparison",
+        session_id=session_id,
+        created_by=created_by,
+    )
 
 
 def register_passport_checkpoint(

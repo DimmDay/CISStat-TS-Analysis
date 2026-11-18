@@ -1,0 +1,1 @@
+OK: added=2 (passport-sources GET, passport-documents POST), removed=0; api 284 = actual-карта; bindings 288; basis-каталог V01+P01+P02; kinds/validators согласованы

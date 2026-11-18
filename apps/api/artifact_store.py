@@ -113,6 +113,15 @@ ARTIFACT_KINDS: tuple[str, ...] = (
     "visual_result",
     "visual_print_snapshot",
     "passport_checkpoint",
+    # PGV-13 (spec_passport_graphics_visual.md §10.2/§13): frozen печатные
+    # входы документов паспортов. passport_print_snapshot -- P01 (полные
+    # записи истории паспортов pgv.passport_history/1, встроенные в секции);
+    # passport_comparison_snapshot -- P02 (frozen сравнение
+    # pgv.passport_comparison/1). Самодостаточные входы: контент
+    # фиксируется В МОМЕНТ сборки (XOR-причины/content_status, AC12),
+    # рендер не пере-выводит историю. Без capture/науки (§3.1).
+    "passport_print_snapshot",
+    "passport_comparison_snapshot",
 )
 
 ARTIFACT_ID_PATTERN = re.compile(r"^art-[0-9a-f]{32}$")

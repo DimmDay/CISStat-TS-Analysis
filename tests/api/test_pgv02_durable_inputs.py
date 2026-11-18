@@ -350,10 +350,17 @@ class TestVisualArtifactKinds:
     def test_schema_versions_pinned(self):
         from apps.api.visual_artifacts import VISUAL_ARTIFACT_SCHEMA_VERSIONS
 
+        # PGV-13: каталог durable inputs расширен АДДИТИВНО печатными
+        # входами паспортов (spec §10.2/§13: «Требуются versioned
+        # catalog/validators...»; legacy kinds не менялись).
         assert VISUAL_ARTIFACT_SCHEMA_VERSIONS == {
             "visual_result": "pgv.visual_result/1",
             "visual_print_snapshot": "pgv.visual_print_snapshot/1",
             "passport_checkpoint": "pgv.passport_checkpoint/1",
+            "passport_print_snapshot": "pgv.passport_print_snapshot/1",
+            "passport_comparison_snapshot": (
+                "pgv.passport_comparison_print_snapshot/1"
+            ),
         }
 
     def test_kind_registry_roundtrip_memory(self):

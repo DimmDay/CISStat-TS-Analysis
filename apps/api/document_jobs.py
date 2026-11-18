@@ -194,6 +194,15 @@ def is_valid_print_revision_id(value: Any) -> bool:
 # PGV-13/14.
 PRINT_RENDITION_FORMATS = frozenset({"png"})
 
+# Каталог basis-артефактов печатного рендера (§10.2; PGV-09 -- V01,
+# PGV-13 -- самодостаточные входы P01/P02). Иные basis_kind -- честный
+# PrintRenderBasisUnsupported (не тихий рендер).
+PRINT_RENDER_BASIS_KINDS = frozenset({
+    "visual_print_snapshot",
+    "passport_print_snapshot",
+    "passport_comparison_snapshot",
+})
+
 
 # ── Ошибки контура ───────────────────────────────────────────────────
 
@@ -238,7 +247,8 @@ class PrintBasisInvalid(ValueError):
 
 class PrintRenderBasisUnsupported(RuntimeError):
     """PGV-09: basis печатной ревизии не входит в каталог рендера
-    поставки (PGV-09 -- только V01/visual_print_snapshot; P01/P02 --
+    поставки (PRINT_RENDER_BASIS_KINDS: V01/visual_print_snapshot --
+    PGV-09; passport_print_snapshot/passport_comparison_snapshot --
     PGV-13) -- честный 422, не тихий рендер чужого basis."""
 
 
@@ -2264,12 +2274,18 @@ class DocumentDeliveryService:
         if spec is None:  # pragma: no cover -- каталог согласован
             raise UnsupportedFormatError(f"Формат {format!r} отсутствует в каталоге")
         # Basis-каталог поставки: V01 (visual_print_snapshot) -- substrate
-        # PGV-09; P01/P02 -- PGV-13 (честный 422, не тихий рендер).
-        if revision.basis_kind != "visual_print_snapshot" or not revision.basis_artifact_ids:
+        # PGV-09; P01/P02 (passport_print_snapshot /
+        # passport_comparison_snapshot) -- PGV-13 (самодостаточные
+        # печатные входы паспортов/сравнения). Иные basis -- честный 422,
+        # не тихий рендер.
+        if (
+            revision.basis_kind not in PRINT_RENDER_BASIS_KINDS
+            or not revision.basis_artifact_ids
+        ):
             raise PrintRenderBasisUnsupported(
                 "print_basis_unsupported: печатная ревизия с basis_kind "
                 f"{revision.basis_kind!r} не входит в каталог рендера "
-                "PGV-09 (только visual_print_snapshot; P01/P02 -- PGV-13)"
+                f"{sorted(PRINT_RENDER_BASIS_KINDS)} (§10.2; PGV-09/PGV-13)"
             )
         basis_artifact_id = revision.basis_artifact_ids[0]
         # Идемпотентность (AC09): печатная цель --

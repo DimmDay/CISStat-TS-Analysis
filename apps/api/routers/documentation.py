@@ -1259,3 +1259,105 @@ def _now_iso_for_export() -> str:
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).isoformat()
+
+
+# ── PGV-13: печатные документы паспортов (spec_passport_graphics_
+#    visual.md §9/§10.2/§11/§13, строка PGV-13) ─────────────────────────
+
+
+@router.get("/runs/{run_id}/passport-sources")
+def list_passport_sources_route(request: Request, run_id: str) -> dict[str, Any]:
+    """GET passport-sources (§11): durable версии/чекпоинты/гэпы БЕЗ
+    session DataFrame -- субстрат пикера «Документов» (PassportHistoryReader,
+    read-only, AC09). Чужой run -- uniform 404 (AC18-дух)."""
+    from apps.api.passport_documents import (
+        PassportDocumentAccessDenied,
+        list_passport_sources,
+    )
+
+    subject, session_id = _subject_and_session(request)
+    try:
+        return list_passport_sources(run_id, subject, session_id=session_id)
+    except PassportDocumentAccessDenied:
+        return _export_flat_error(404, "not_found", "Паспортные источники недоступны")
+
+
+@router.post("/runs/{run_id}/passport-documents", status_code=202)
+def request_passport_document_route(
+    request: Request, run_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """POST /passport-documents (§10.2/§11): single/set/compare ->
+    freeze печатного входа P01/P02 (passport_documents, без capture и
+    перерасчёта науки, AC06/AC09) -> печатная ревизия -> PNG job
+    (PGV-09) -> 202 + status_url. Идемпотентность -- §11/§12.2."""
+    from apps.api.document_jobs import (
+        DocumentAccessDenied,
+        DocumentQuotaExceeded,
+        DocumentRetryLimitExceeded,
+        UnsupportedFormatError,
+    )
+    from apps.api.passport_documents import (
+        PassportDocumentAccessDenied,
+        PassportDocumentIncompatible,
+        PassportDocumentInvalidSelection,
+        PassportDocumentSourceUnavailable,
+        request_passport_document,
+    )
+
+    mode = str(payload.get("mode", "") or "").strip()
+    if not mode:
+        return _export_flat_error(
+            422, "invalid_selection", "mode обязателен: single|set|compare"
+        )
+    raw_refs = payload.get("snapshot_refs")
+    snapshot_refs = (
+        [str(ref) for ref in raw_refs if str(ref).strip()]
+        if isinstance(raw_refs, list)
+        else None
+    )
+    checkpoint_id = str(payload.get("checkpoint_id") or "").strip() or None
+    subject, session_id = _subject_and_session(request)
+    try:
+        outcome = request_passport_document(
+            run_id,
+            subject,
+            mode=mode,
+            checkpoint_id=checkpoint_id,
+            snapshot_refs=snapshot_refs,
+            profile_id=str(payload.get("profile_id") or "figure-landscape"),
+            redaction_profile=str(payload.get("redaction_profile") or "default"),
+            session_id=session_id,
+            render_requested_at=_now_iso_for_export(),
+        )
+    except PassportDocumentInvalidSelection as exc:
+        return _export_flat_error(422, "invalid_selection", str(exc))
+    except PassportDocumentSourceUnavailable as exc:
+        return _export_flat_error(409, "source_unavailable", str(exc))
+    except PassportDocumentIncompatible as exc:
+        return _export_flat_error(409, "comparison_incompatible", str(exc))
+    except PassportDocumentAccessDenied as exc:
+        return _export_flat_error(404, "not_found", "Паспортный документ недоступен")
+    except DocumentAccessDenied:
+        return _export_flat_error(404, "not_found", "Паспортный документ недоступен")
+    except DocumentQuotaExceeded as exc:
+        return _export_flat_error(429, "quota_exceeded", str(exc))
+    except DocumentRetryLimitExceeded as exc:
+        return _export_flat_error(429, "retry_limit_exceeded", str(exc))
+    except UnsupportedFormatError as exc:
+        return _export_flat_error(400, "unsupported_format", str(exc))
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        from apps.api.telemetry import emit
+
+        emit(
+            "passport_document_unexpected_error",
+            "WARN",
+            message_template="passport document export failed with unexpected error",
+            error_code=type(exc).__name__,
+        )
+        return _export_flat_error(
+            503, "passport_document_unavailable", "Экспорт временно недоступен"
+        )
+    return {
+        **outcome,
+        "status_url": outcome.get("status_url", ""),
+    }

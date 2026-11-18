@@ -129,6 +129,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/passport-sources"
+  },
+  {
+    "method": "GET",
     "path": "/v1/documentation/runs/{run_id}/visual-sources"
   },
   {
@@ -742,6 +746,10 @@
   {
     "method": "POST",
     "path": "/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/documentation/runs/{run_id}/passport-documents"
   },
   {
     "method": "POST",

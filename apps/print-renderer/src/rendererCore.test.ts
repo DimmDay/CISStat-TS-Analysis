@@ -33,6 +33,8 @@ import {
   type RenderPagePayload,
 } from "./rendererCore";
 import type { VisualPrintSnapshotV1 } from "../../../packages/ui/print/printSchema";
+import type { PrintPassportRecord } from "../../../packages/ui/print/printPassport";
+import type { PrintComparisonSnapshot } from "../../../packages/ui/print/printComparison";
 
 // ── Тестовый PNG-конструктор (минимальный валидный PNG, RGB 8-bit) ──
 
@@ -587,5 +589,234 @@ describe("PGV-08 rendererCore: SSR print page из общего бандла PGV
     expect(html).toContain("Наблюдений");
     expect(html).toContain("600");
     expect(html).toContain("без единицы (dimensionless)");
+  });
+});
+
+// ── PGV-13: секции паспорта/сравнения (PrintPassportPage/PrintComparisonPage)
+//    spec_passport_graphics_visual.md §10.2/§13 PGV-13: контейнер
+//    маршрутизирует печатные виды паспортов на компоненты PGV-07 --
+//    единственная реализация печатной композиции (§4.1), без второй
+//    реализации на Python (AC06/AC09/AC11/AC12).
+
+const PASSPORT_RECORD_FIXTURE: PrintPassportRecord = {
+  schema_version: "pgv.passport_history/1",
+  snapshot_ref: "rs-0123456789abcdef0123456789abcdef",
+  session_snapshot_id: "rs-0123456789abcdef0123456789abcdef",
+  artifact_id: "art-0123456789abcdef0123456789abcdef",
+  stage: "start",
+  universe: "single",
+  passport: {
+    basic_stats: { n: 84, mean: 21.5 },
+    freq: { period_days: 7.0 },
+  },
+  content_status: "present",
+  content_gap_reason: null,
+  target_column: "value",
+  date_column: "date",
+  context_id: "ctx-0001",
+  data_revision: "3",
+  captured_at: "2026-11-18T10:00:00+00:00",
+  created_at: "2026-11-18T10:00:05+00:00",
+  fingerprint: "fp-0001",
+  fingerprint_reason: null,
+  source_hash: "hash-0001",
+  source_hash_reason: null,
+  passport_schema_version: "passport/1.0",
+  passport_schema_version_reason: null,
+  calculation_version: null,
+  calculation_version_reason: "legacy_unknown",
+};
+
+const GAP_RECORD_FIXTURE: PrintPassportRecord = {
+  ...PASSPORT_RECORD_FIXTURE,
+  artifact_id: null,
+  passport: null,
+  content_status: "missing_artifact",
+  content_gap_reason: "passport_artifact_absent",
+  fingerprint: null,
+  fingerprint_reason: "legacy_unknown",
+};
+
+const PASSPORT_SNAPSHOT = {
+  ...makeSnapshot(),
+  schema_version: "pgv.passport_print_snapshot/1",
+  view_id: "passport.document.p01",
+  scope: "passport",
+  display: {
+    title: "Паспорт свойств ряда",
+    subtitle: null,
+    detail_level: "compact",
+    completeness: "complete",
+    gaps: [],
+    sections: [
+      {
+        section_id: "passport:rs-0123456789abcdef0123456789abcdef",
+        renderer_kind: "passport_record",
+        title: "Паспорт свойств ряда: start",
+      },
+    ],
+  },
+} as unknown as VisualPrintSnapshotV1;
+
+const COMPARISON_FIXTURE: PrintComparisonSnapshot = {
+  schema_version: "pgv.passport_comparison/1",
+  mode: "trajectory_checkpoint",
+  run_id: "RUN-PGV13-TEST",
+  ordered_refs: [
+    "rs-0123456789abcdef0123456789abcdef",
+    "rs-ffffffffffffffffffffffffffffffff",
+  ],
+  path: ["start", "exit"],
+  comparisons: [
+    {
+      from_stage: "start",
+      to_stage: "exit",
+      from_snapshot_id: null,
+      to_snapshot_id: null,
+      comparison: {
+        metrics: {
+          "basic_stats.mean": { v_old: 21.5, v_new: 26.5, delta: 5, delta_pct: 23.25581395348837 },
+        },
+        qualitative_changes: ["тренд: горизонтальный -> восходящий"],
+        categorical_changes: {},
+        list_changes: {},
+        boolean_changes: {},
+        summary: "изменения зафиксированы",
+      },
+      cross_context: false,
+    },
+  ],
+  confirmation: null,
+  checkpoint: null,
+  context: null,
+  cross_context: false,
+  aliases: [],
+  method_versions: { engine: { id: "app.core.passport._compare_ts_props", version: "v1.0" }, records: [] },
+  definitions: {
+    absolute: "delta = v_new - v_old",
+    relative: "delta_pct = (delta / abs(v_old)) * 100",
+    zero_denominator_reason: "при |v_old| <= 1e-10 относительное изменение не определено",
+    delta_color: "цвет delta не означает статистическую значимость",
+  },
+  gaps: [],
+  completeness: "complete",
+};
+
+const COMPARISON_SNAPSHOT = {
+  ...makeSnapshot(),
+  schema_version: "pgv.passport_comparison_print_snapshot/1",
+  view_id: "passport.document.p02",
+  scope: "comparison",
+  display: {
+    title: "Сравнение паспортов свойств ряда",
+    subtitle: null,
+    detail_level: "compact",
+    completeness: "complete",
+    gaps: [],
+    sections: [
+      { section_id: "comparison:main", renderer_kind: "passport_comparison", title: "Сравнение паспортов" },
+    ],
+  },
+} as unknown as VisualPrintSnapshotV1;
+
+describe("PGV-13 rendererCore: секции паспорта/сравнения (P01/P02)", () => {
+  it("passport_record-секция валидна и рендерит PrintPassportPage (§8: все группы)", () => {
+    const payload: RenderPagePayload = {
+      schema_version: RENDER_PAYLOAD_SCHEMA_VERSION,
+      request_id: "req-p01-1",
+      snapshot: PASSPORT_SNAPSHOT,
+      sections: [
+        {
+          section_id: "passport:rs-0123456789abcdef0123456789abcdef",
+          kind: "passport_record" as const,
+          record: PASSPORT_RECORD_FIXTURE,
+        },
+      ],
+      options: {},
+    };
+    const result = validateRenderPayload(payload);
+    expect(result.violations).toEqual([]);
+    const html = buildPrintHtml(payload, 1, 1);
+    expect(html).toContain("Паспорт свойств ряда");
+    // §8: группы печатаются с человекочитаемыми подписями PGV-07.
+    expect(html).toContain("Базовые статистики");
+    expect(html).toContain("Частота ряда");
+    expect(html).toContain("21,5");
+    // Провенанс печати (§8): XOR-поля честны.
+    expect(html).toContain("legacy_unknown");
+    expect(html).toContain('data-testid="print-passport-page"');
+  });
+
+  it("gap-запись рендерится баннером без фабкации таблиц (AC12)", () => {
+    const payload: RenderPagePayload = {
+      schema_version: RENDER_PAYLOAD_SCHEMA_VERSION,
+      request_id: "req-p01-2",
+      snapshot: PASSPORT_SNAPSHOT,
+      sections: [
+        {
+          section_id: "passport:rs-0123456789abcdef0123456789abcdef",
+          kind: "passport_record" as const,
+          record: GAP_RECORD_FIXTURE,
+        },
+      ],
+      options: {},
+    };
+    const html = buildPrintHtml(payload, 1, 1);
+    expect(html).toContain("Паспорт недоступен из durable-источника");
+    expect(html).toContain("missing_artifact");
+    expect(html).toContain("passport_artifact_absent");
+    expect(html).not.toContain("basic_stats");
+  });
+
+  it("passport_comparison-секция рендерит PrintPassportComparisonPage (AC13)", () => {
+    const payload: RenderPagePayload = {
+      schema_version: RENDER_PAYLOAD_SCHEMA_VERSION,
+      request_id: "req-p02-1",
+      snapshot: COMPARISON_SNAPSHOT,
+      sections: [
+        {
+          section_id: "comparison:main",
+          kind: "passport_comparison" as const,
+          comparison: COMPARISON_FIXTURE,
+        },
+      ],
+      options: {},
+    };
+    const result = validateRenderPayload(payload);
+    expect(result.violations).toEqual([]);
+    const html = buildPrintHtml(payload, 1, 1);
+    expect(html).toContain("Сравнение паспортов свойств ряда");
+    expect(html).toContain("basic_stats.mean");
+    expect(html).toContain("+23,3");
+    expect(html).toContain("не означает статистическую значимость");
+    expect(html).toContain('data-testid="print-comparison-page"');
+  });
+
+  it("passport_record без record → missing_field (контент не фабрикуется)", () => {
+    const payload: RenderPagePayload = {
+      schema_version: RENDER_PAYLOAD_SCHEMA_VERSION,
+      request_id: "req-p01-3",
+      snapshot: PASSPORT_SNAPSHOT,
+      sections: [
+        { section_id: "passport:empty", kind: "passport_record" as const } as never,
+      ],
+      options: {},
+    };
+    const result = validateRenderPayload(payload);
+    expect(result.violations.map((v) => v.code)).toContain("missing_field");
+  });
+
+  it("passport_comparison без comparison → missing_field", () => {
+    const payload: RenderPagePayload = {
+      schema_version: RENDER_PAYLOAD_SCHEMA_VERSION,
+      request_id: "req-p02-2",
+      snapshot: COMPARISON_SNAPSHOT,
+      sections: [
+        { section_id: "comparison:empty", kind: "passport_comparison" as const } as never,
+      ],
+      options: {},
+    };
+    const result = validateRenderPayload(payload);
+    expect(result.violations.map((v) => v.code)).toContain("missing_field");
   });
 });

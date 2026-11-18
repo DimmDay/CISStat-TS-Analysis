@@ -1010,6 +1010,14 @@
         "selector": "none",
         "authority": "functional"
       },
+      "documentation.list_passport_sources_route": {
+        "operation_id": "documentation.list_passport_sources_route",
+        "stage_namespace": "service",
+        "stage": "documentation",
+        "capability": null,
+        "selector": "none",
+        "authority": "functional"
+      },
       "documentation.monitoring.create_comparison": {
         "operation_id": "documentation.monitoring.create_comparison",
         "stage_namespace": "service",
@@ -1060,6 +1068,14 @@
       },
       "documentation.request_visual_export_route": {
         "operation_id": "documentation.request_visual_export_route",
+        "stage_namespace": "service",
+        "stage": "documentation",
+        "capability": null,
+        "selector": "none",
+        "authority": "functional"
+      },
+      "documentation.request_passport_document_route": {
+        "operation_id": "documentation.request_passport_document_route",
         "stage_namespace": "service",
         "stage": "documentation",
         "capability": null,
@@ -2800,6 +2816,10 @@
         "operation_id": "documentation.list_visual_sources_route",
         "programmatic_api": false
       },
+      "api:GET:/v1/documentation/runs/{run_id}/passport-sources": {
+        "operation_id": "documentation.list_passport_sources_route",
+        "programmatic_api": false
+      },
       "api:GET:/v1/internal/rules/load/{template_id}": {
         "operation_id": "validation.rules.load_rules_template",
         "programmatic_api": false
@@ -3238,6 +3258,10 @@
       },
       "api:POST:/v1/documentation/runs/{run_id}/visuals": {
         "operation_id": "documentation.request_visual_export_route",
+        "programmatic_api": false
+      },
+      "api:POST:/v1/documentation/runs/{run_id}/passport-documents": {
+        "operation_id": "documentation.request_passport_document_route",
         "programmatic_api": false
       },
       "api:POST:/v1/internal/models/backtest": {
