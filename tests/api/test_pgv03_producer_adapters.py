@@ -290,7 +290,8 @@ class TestProducerRegistry:
             f"{sorted(all_ids - wired - unwired)}"
         )
         assert not wired & unwired, "пересечение wired/unwired"
-        assert unwired, "честный недобор PGV-10/11/12 задекларирован"
+        # PGV-12: честный недобор закрыт -- unwired может быть пуст
+        # (паритет wired|unwired == all_ids сохранён).
 
     def test_out_of_scope_views_not_in_adapters(self):
         """Вне pgv-03: demo (navigator), passport (PGV-04), comparison
@@ -348,16 +349,23 @@ class TestProducerRegistry:
         """Незавайренный pgv-03 view -- честный out-of-scope с указанием
         добирающей задачи (PGV-10/11/12), не молчаливый успех."""
         from apps.api.visual_producers import (
+            UnknownVisualView,
             VisualViewOutOfScope,
             resolve_producer_view,
             unwired_view_ids,
         )
 
         unwired = sorted(unwired_view_ids())
-        assert unwired, "санити: недобор существует"
-        with pytest.raises(VisualViewOutOfScope) as excinfo:
-            resolve_producer_view(unwired[0])
-        assert "PGV-1" in str(excinfo.value)
+        if unwired:
+            with pytest.raises(VisualViewOutOfScope) as excinfo:
+                resolve_producer_view(unwired[0])
+            assert "PGV-1" in str(excinfo.value)
+        else:
+            # PGV-12: недобор закрыт; legacy-сайт снят с учёта реестра
+            # (клиентский PNG переехал на общий pipeline) -- честный
+            # unknown, не молчаливый успех.
+            with pytest.raises(UnknownVisualView):
+                resolve_producer_view("forecasting.forecast.legacy_png")
 
 
 # ══════════════════════════════════════════════════════════════════════

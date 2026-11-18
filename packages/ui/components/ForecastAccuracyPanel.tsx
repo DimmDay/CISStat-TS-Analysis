@@ -9,6 +9,9 @@
 // «Точность этого прогноза» запрещена -- платформа не обещает недостижимое.
 
 import type { ForecastRun } from "../lib/forecasting";
+// PGV-12: «Скачать PNG» ожидаемой точности (html_cards -- печать из
+// frozen данных выпуска; freeze в момент POST /forecast и GET /forecast/{id}).
+import { VisualExportButton } from "./VisualExportButton";
 
 const METRIC_LABELS: Array<{ key: string; label: string; hint: string }> = [
   { key: "mae", label: "MAE", hint: "Средняя абсолютная ошибка бэктеста" },
@@ -31,6 +34,13 @@ export function ForecastAccuracyPanel({ run }: { run: ForecastRun }) {
     <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="forecast-accuracy-panel">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h4 className="text-sm font-semibold text-neutral-800">Ожидаемая точность</h4>
+        {/* PGV-12: печать метрик бэктеста (оговорка «не точность этого
+            прогноза» переносится в печатную подпись вида). */}
+        <VisualExportButton
+          viewId="forecasting.accuracy.metrics"
+          label="Скачать PNG: ожидаемая точность"
+          compact
+        />
         <span
           className="rounded bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand"
           data-testid="accuracy-disclaimer"

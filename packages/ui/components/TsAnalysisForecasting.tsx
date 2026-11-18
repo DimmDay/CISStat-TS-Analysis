@@ -86,6 +86,12 @@ import { ForecastChart } from "./ForecastChart";
 import { ForecastAccuracyPanel } from "./ForecastAccuracyPanel";
 import { ForecastHistoryList } from "./ForecastHistoryList";
 import { ForecastExportMenu } from "./ForecastExportMenu";
+// PGV-12 (spec_passport_graphics_visual.md §13 «Export modeling/
+// forecast/panel»): «Скачать PNG» прогноза, панельных видов,
+// наложения/веера/точности (freeze в момент фактического ответа;
+// chart-виды -- сериализация СВОЕГО узла, не первый SVG документа).
+import { VisualExportButton } from "./VisualExportButton";
+import { serializeChartSvgSafe } from "../lib/serializeChartSvg";
 import { useAppShell } from "../context/AppShellContext";
 import { describeNode } from "../lib/knowledge/knowledge";
 import {
@@ -546,9 +552,17 @@ export function TsAnalysisForecasting() {
             )}
             {comparison && comparison.length >= 2 && (
               <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="comparison-view">
-                <h4 className="mb-2 text-sm font-semibold text-neutral-800">
-                  Наложение прогнозов ({comparison.length})
-                </h4>
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="mb-2 text-sm font-semibold text-neutral-800">
+                    Наложение прогнозов ({comparison.length})
+                  </h4>
+                  {/* PGV-12: печать наложения (frozen -- POST /forecast/compare). */}
+                  <VisualExportButton
+                    viewId="forecasting.forecast.comparison"
+                    label="Скачать PNG: наложение прогнозов"
+                    compact
+                  />
+                </div>
                 <ul className="mb-2 flex flex-wrap gap-2 text-[10px] text-neutral-600">
                   {comparison.map((run) => (
                     <li key={run.forecast_id} className="rounded bg-brand/10 px-2 py-0.5 text-brand">
@@ -567,6 +581,20 @@ export function TsAnalysisForecasting() {
                 <div id="forecast-chart-export-anchor" data-testid="forecast-chart-anchor">
                   <ForecastChart run={activeForecast} />
                 </div>
+                {/* PGV-12: печать прогноза через общий pipeline; legacy
+                    клиентский canvas-PNG меню переехало (ForecastExportMenu). */}
+                <div className="flex justify-end">
+                  <VisualExportButton
+                    viewId="forecasting.forecast.chart"
+                    label="Скачать PNG: график прогноза"
+                    compact
+                    getScreenSvg={() =>
+                      serializeChartSvgSafe(
+                        () => document.getElementById("forecast-chart-export-anchor"),
+                      )
+                    }
+                  />
+                </div>
                 <ForecastAccuracyPanel run={activeForecast} />
                 {(activeForecast.warnings ?? []).length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3" data-testid="warnings-block">
@@ -582,9 +610,17 @@ export function TsAnalysisForecasting() {
                 )}
                 {activeForecast.sensitivity && (
                   <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="sensitivity-view">
-                    <h4 className="mb-1 text-sm font-semibold text-neutral-800">
-                      Веер чувствительности · {activeForecast.sensitivity.combos.length} комбинаций
-                    </h4>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="mb-1 text-sm font-semibold text-neutral-800">
+                        Веер чувствительности · {activeForecast.sensitivity.combos.length} комбинаций
+                      </h4>
+                      {/* PGV-12: печать веера (frozen -- POST /forecast/{id}/sensitivity). */}
+                      <VisualExportButton
+                        viewId="forecasting.forecast.sensitivity"
+                        label="Скачать PNG: веер чувствительности"
+                        compact
+                      />
+                    </div>
                     <p className="mb-2 text-[11px] text-neutral-500">
                       Оси: {activeForecast.sensitivity.varied_axes.join(", ")}
                       {activeForecast.sensitivity.truncated ? " · усечено до 8 комбинаций" : ""}
@@ -1048,7 +1084,7 @@ function PanelForecastSection() {
 
               {/* ── Мульти-сущностный график ── */}
               {chartData.length > 0 && (
-                <div className="h-56" data-testid="panel-forecast-chart">
+                <div className="h-56" data-testid="panel-forecast-chart" id="panel-forecast-chart-anchor">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -1069,6 +1105,20 @@ function PanelForecastSection() {
                   </ResponsiveContainer>
                 </div>
               )}
+              {/* PGV-12: печать панельного графика (сериализация СВОЕГО
+                  узла; dimensions.mode=panel -- AC14). */}
+              <div className="flex justify-end">
+                <VisualExportButton
+                  viewId="forecasting.forecast.panel_chart"
+                  label="Скачать PNG: панельный график"
+                  compact
+                  getScreenSvg={() =>
+                    serializeChartSvgSafe(
+                      () => document.getElementById("panel-forecast-chart-anchor"),
+                    )
+                  }
+                />
+              </div>
               <div className="flex flex-wrap gap-1" data-testid="panel-forecast-entity-switch">
                 {result.entities.map((record) => (
                   <button
@@ -1083,6 +1133,13 @@ function PanelForecastSection() {
               </div>
 
               {/* ── Таблица по-сущностных прогнозов ── */}
+              <div className="mb-1 flex justify-end">
+                <VisualExportButton
+                  viewId="forecasting.forecast.panel_table"
+                  label="Скачать PNG: панельная таблица"
+                  compact
+                />
+              </div>
               <div className="overflow-x-auto max-h-64 overflow-y-auto">
                 <table className="text-[10px] w-full" data-testid="panel-forecast-table">
                   <thead className="sticky top-0 bg-white">

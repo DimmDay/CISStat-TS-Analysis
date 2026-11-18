@@ -886,12 +886,12 @@
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
     "apps/api/routers/documentation.py": "99d77b3619c1e473404e34f13651f38a2f331060b8fc8c78e9e2cdee98106f3e",
-    "apps/api/routers/forecasting_session.py": "95e2500b152b2cf68243571dd57850fd12fba1e218c6b6df6c99cbaeaf5ff62e",
+    "apps/api/routers/forecasting_session.py": "ceba05d7cadd3b5d8fd3dd1b211b1cd66a112b461a40b7b84bf3fb07cc36f020",
     "apps/api/routers/internal.py": "2b305db5940c65c75f2190341b33d7a6d0df6aa81586ea7e38b7661d22234b2c",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
-    "apps/api/routers/modeling_session.py": "e518f895c4323c87aa4e9a799368f7241057c7f65ccfe60711715c208d5f1b21",
+    "apps/api/routers/modeling_session.py": "d5b2f08f9e7892f7a72f87af8c381f7db305d1afd1667be28bc5e6044c7fdc66",
     "apps/api/routers/models.py": "8bc6f5f8999ccbf070b7bfdf29a2329241d6d31cac5cfb07ad79f63c25000e18",
-    "apps/api/routers/monitoring.py": "1434ced6583ed9dc57d07d4c98be2c740b27957d6ca9540b1af46ef4ca1f70e8",
+    "apps/api/routers/monitoring.py": "c4c9d804d3c622e1ac72049dc0803d9d94e2e2b47fcd0c2cf9e3abd9c91afb79",
     "apps/api/routers/progress.py": "aaa03337f710af42d882d0008162733cda411872b5e570d53543f98536c77865",
     "apps/api/routers/public.py": "3a342cecaa7f41e529e0cf700d3456edd2227aae7802e97ca259ccbf3470d197",
     "apps/api/routers/session.py": "10a0bb771705066be7bbe9b48682a9e9cddb8a714badf3b48508f8c54f265046",
@@ -915,8 +915,8 @@
     "apps/api/uniqueness_correction.py": "306cf1bb356f79819859cbc56ad453b16ad14c3999a439eb6df70179f2c85f21",
     "apps/api/upload_common.py": "64255490462e78fbc9c94489f3f7bc0d685b9d36808be1be66bdd41bb3d032cd",
     "apps/api/visual_artifacts.py": "c0fd49dae7ad8e01454ddc0b1fa8884a255afb9502ee011716747b037fd261f4",
-    "apps/api/visual_exports.py": "d56e4372af466ac5f9b71b7699b76f90e34c27ba481e6139cf0f562cb66c8fe4",
-    "apps/api/visual_producers.py": "c985cdeaa0f42628d2caad46f0269f56e187c248324b557a4362a190275f2787",
+    "apps/api/visual_exports.py": "59e9aaa50a840676a344a54cb10982b441e60b51c264306d0897c82cc868c89e",
+    "apps/api/visual_producers.py": "bd96c3b9a4c37aa7f8881b6f8e65c3ebbc0e85ae1252667cd2f711804d943b7f",
     "apps/api/volatility_contract.py": "06b3797b819b2b23b1b81861134615477a530e3aa9c251a604133ecb8c2508e2",
     "apps/api/workers/__init__.py": "ee70622c30146a1d9ead84e0400e61f15458998a6380753fb89757052f273482",
     "apps/api/workers/authority.py": "0b4d55d31ac7026fcece3c4a169b2be2571ad86a881add02c9bff878daf7d491",
@@ -1022,7 +1022,7 @@
     "packages/ui/components/EdaDescriptiveOverview.tsx": "153b137fe5a33bc3e22891825f8059bf470de0d07a69de1f16bb03aa7e2401e7",
     "packages/ui/components/EmbeddedHome.tsx": "974bb36b70595d2563264473927fc02303c7e7b79d01232c561040ce2affb9e4",
     "packages/ui/components/LoginScreen.tsx": "c5e430833659164b799e52fdfc2dd3735ae94dbfe54b5827f491ea7bdf126b4b",
-    "packages/ui/components/ModelingWorkflowOverview.tsx": "dc6f1f235f223202f11bda3181bc58be1586e7ad8495e6fe431df11141cb2431",
+    "packages/ui/components/ModelingWorkflowOverview.tsx": "ae4e42f452267dd01c55160da39ef63503be67b8c8a747890493b5b686850839",
     "packages/ui/components/PersonalDemoEntry.tsx": "9cd5f0af71d1c1ad6ea7ff344702461904826b42c7fc9e28c1a9c4a2c4d16808",
     "packages/ui/components/PreprocessingDecompositionPipeline.tsx": "5d257fd64d4b10ebaa04a087a4f0e11e1da5664f6d6106678c978b70915ba806",
     "packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx": "b06fe06c733e9c3360a0f0d761b69d2f91f227b999a16f52a67fb04cfc6fc251",
@@ -1047,8 +1047,8 @@
     "packages/ui/components/ResidualDiagnosticsPanel.tsx": "164473f0d1680cf695577a6c4bc76511c96f3678b7f77a545f5781e7119b6da2",
     "packages/ui/components/RulesManagementPanel.tsx": "7e687cf134b28a12609a167ffd33a35a336ccf9b0ac1fdead39a26dd3b08da5a",
     "packages/ui/components/TsAnalysisEDA.tsx": "1b64a8e12c92aa5d7cc19d059f341ea70161b9f97fc30a46413e89149ce051fc",
-    "packages/ui/components/TsAnalysisForecasting.tsx": "fe2a6171587e83566ecd5531767a817c150e7cc79a91bd95f24e325af5a8dc7e",
-    "packages/ui/components/TsAnalysisModeling.tsx": "b209dcb4e25c26e70294b55060ba1f949aa62c6da274061a3504b0bc54d2f02b",
+    "packages/ui/components/TsAnalysisForecasting.tsx": "46db311249a4bd07d8b7208d40b7ebfa83e22e4695be58b5d572626af543b16e",
+    "packages/ui/components/TsAnalysisModeling.tsx": "6c9ad634278b9444bfe54f7232c49cac4cd0afe9fa32c07e2383cb6302117768",
     "packages/ui/components/TsAnalysisPreprocessing.tsx": "2503608522b5307a9905890b3298692a781313642cdfe69d0b5b74b4478b259e",
     "packages/ui/components/TsAnalysisUpload.tsx": "cbc6b375cf5013cacff84e1be1c461180a2e4ca3462a339af942f0a61e50bd27",
     "packages/ui/components/TsAnalysisValidation.tsx": "45ba5febd3bc8be84f94eefa616792583ef0fae739c144b4f52838d7c7f6b919",
@@ -2324,7 +2324,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/monitoring.py",
-          "line": 189,
+          "line": 210,
           "symbol": "list_comparisons"
         },
         {
@@ -2358,7 +2358,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/monitoring.py",
-          "line": 203,
+          "line": 224,
           "symbol": "get_comparison"
         },
         {
@@ -2392,7 +2392,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/monitoring.py",
-          "line": 246,
+          "line": 270,
           "symbol": "list_decisions"
         },
         {
@@ -5364,7 +5364,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3339,
+          "line": 3369,
           "symbol": "list_model_cards"
         },
         {
@@ -5401,7 +5401,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3362,
+          "line": 3392,
           "symbol": "get_model_card"
         },
         {
@@ -5476,7 +5476,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1110,
+          "line": 1120,
           "symbol": "get_modeling_feature_regressors"
         },
         {
@@ -5512,7 +5512,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 376,
+          "line": 379,
           "symbol": "list_forecasts"
         },
         {
@@ -5549,7 +5549,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 384,
+          "line": 387,
           "symbol": "get_forecast"
         },
         {
@@ -5586,7 +5586,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 429,
+          "line": 446,
           "symbol": "export_forecast_csv"
         },
         {
@@ -5621,7 +5621,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 442,
+          "line": 459,
           "symbol": "export_forecast_json"
         },
         {
@@ -5656,7 +5656,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2178,
+          "line": 2198,
           "symbol": "get_modeling_job"
         },
         {
@@ -5694,7 +5694,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3610,
+          "line": 3640,
           "symbol": "panel_candidates"
         },
         {
@@ -5730,7 +5730,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1192,
+          "line": 1202,
           "symbol": "get_modeling_state"
         },
         {
@@ -8031,7 +8031,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/monitoring.py",
-          "line": 162,
+          "line": 182,
           "symbol": "create_comparison"
         },
         {
@@ -8066,7 +8066,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/monitoring.py",
-          "line": 219,
+          "line": 243,
           "symbol": "create_decision"
         },
         {
@@ -10458,7 +10458,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1404,
+          "line": 1424,
           "symbol": "run_modeling_backtest"
         },
         {
@@ -10502,7 +10502,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1621,
+          "line": 1641,
           "symbol": "decide_modeling_backtest_scope"
         },
         {
@@ -10542,7 +10542,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1292,
+          "line": 1312,
           "symbol": "bootstrap_modeling_baselines"
         },
         {
@@ -10585,7 +10585,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1216,
+          "line": 1236,
           "symbol": "generate_modeling_candidates"
         },
         {
@@ -10626,7 +10626,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3161,
+          "line": 3191,
           "symbol": "create_model_card"
         },
         {
@@ -10671,7 +10671,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2828,
+          "line": 2858,
           "symbol": "compare_modeling_candidates"
         },
         {
@@ -10712,7 +10712,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2767,
+          "line": 2787,
           "symbol": "diagnose_modeling_candidate"
         },
         {
@@ -10751,7 +10751,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2787,
+          "line": 2817,
           "symbol": "ensure_modeling_diagnostics"
         },
         {
@@ -10828,7 +10828,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 466,
+          "line": 483,
           "symbol": "compare_forecasts"
         },
         {
@@ -10865,7 +10865,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 530,
+          "line": 556,
           "symbol": "forecast_sensitivity"
         },
         {
@@ -10905,7 +10905,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/forecasting_session.py",
-          "line": 449,
+          "line": 466,
           "symbol": "record_client_export_event"
         },
         {
@@ -10939,7 +10939,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2085,
+          "line": 2105,
           "symbol": "start_modeling_job"
         },
         {
@@ -10979,7 +10979,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2188,
+          "line": 2208,
           "symbol": "cancel_modeling_job"
         },
         {
@@ -11018,7 +11018,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2223,
+          "line": 2243,
           "symbol": "step_modeling_job"
         },
         {
@@ -11060,7 +11060,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3684,
+          "line": 3714,
           "symbol": "panel_backtest"
         },
         {
@@ -11099,7 +11099,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3742,
+          "line": 3782,
           "symbol": "panel_forecast"
         },
         {
@@ -11138,7 +11138,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3473,
+          "line": 3503,
           "symbol": "build_panel_passport_for_session"
         },
         {
@@ -11178,7 +11178,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3546,
+          "line": 3576,
           "symbol": "confirm_panel_entry_checkpoint"
         },
         {
@@ -11220,7 +11220,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3051,
+          "line": 3081,
           "symbol": "select_modeling_candidate"
         },
         {
@@ -11258,7 +11258,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 3011,
+          "line": 3041,
           "symbol": "evaluate_modeling_selection"
         },
         {
@@ -11297,7 +11297,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1779,
+          "line": 1799,
           "symbol": "tune_modeling_candidate"
         },
         {
@@ -11340,7 +11340,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1661,
+          "line": 1681,
           "symbol": "skip_modeling_tuning"
         },
         {
@@ -11379,7 +11379,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1703,
+          "line": 1723,
           "symbol": "skip_all_pending_modeling_tuning"
         },
         {
@@ -11419,7 +11419,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2397,
+          "line": 2417,
           "symbol": "start_modeling_tuning"
         },
         {
@@ -11462,7 +11462,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 2500,
+          "line": 2520,
           "symbol": "step_modeling_tuning"
         },
         {
@@ -11733,7 +11733,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/modeling_session.py",
-          "line": 1120,
+          "line": 1130,
           "symbol": "set_modeling_feature_regressors"
         },
         {

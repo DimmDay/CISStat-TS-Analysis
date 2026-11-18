@@ -13,6 +13,10 @@
 // offline; цвет НЕ единственный носитель статуса (текст).
 
 import { useEffect, useState } from "react";
+// PGV-12: «Скачать PNG» сверки D12 (html_table -- печать из frozen
+// записи сверки; freeze -- POST/GET monitoring/comparisons, lazy
+// transfer §6 идемпотентен).
+import { VisualExportButton } from "./VisualExportButton";
 import {
   getComparison,
   listRunComparisons,
@@ -167,6 +171,15 @@ export function MonitoringComparisonPanel({ runId }: { runId: string | null | un
       aria-label="Сверка прогноза с фактом"
       className="flex flex-col gap-2"
     >
+      {/* PGV-12: печать сверки D12 (frozen запись -- comparison_id и
+          vintage-refs из durable слоя, без SessionStore). */}
+      <div className="flex justify-end">
+        <VisualExportButton
+          viewId="forecasting.monitoring.d12"
+          label="Скачать PNG: сверка с фактом"
+          compact
+        />
+      </div>
       {summaries.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-neutral-600 dark:text-neutral-300">Сверки:</span>

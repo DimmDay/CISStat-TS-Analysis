@@ -9,10 +9,10 @@
     "preprocessing": 20,
     "eda": 18,
     "modeling": 6,
-    "forecasting": 8,
+    "forecasting": 7,
     "tasks": 1
   },
-  "total_sites": 93,
+  "total_sites": 92,
   "sites": [
     {
       "view_id": "navigator.upload.chart.series",
@@ -2027,8 +2027,7 @@
       "required_refs": [
         "context_id",
         "data_revision",
-        "target_column",
-        "modeling_artifact_ref"
+        "target_column"
       ],
       "view_params": [
         "family_filter",
@@ -2042,7 +2041,7 @@
         "packages/ui/components/TsAnalysisModeling.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Научные таблицы workflow: модель/execution/folds/cohort (не controls/spinner, spec §5)."
+      "notes": "Научные таблицы workflow: модель/execution/folds/cohort (не controls/spinner, spec §5). PGV-12: «Скачать PNG» из GET /state (freeze в момент ответа)."
     },
     {
       "view_id": "modeling.traceability.cards",
@@ -2055,8 +2054,8 @@
       "required_refs": [
         "context_id",
         "data_revision",
-        "modeling_artifact_ref",
-        "event_refs"
+        "target_column",
+        "checkpoint_id"
       ],
       "view_params": [
         "node_filter"
@@ -2069,7 +2068,7 @@
         "packages/ui/components/TsAnalysisModeling.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Карточки трассируемости узлов (trace-node); печатная форма решается в PGV-01 (html_cards → композиция)."
+      "notes": "Карточки трассируемости узлов (trace-node); печатная форма решена в PGV-01 (html_cards → композиция). PGV-12: «Скачать PNG» из GET /context (freeze в момент ответа)."
     },
     {
       "view_id": "modeling.backtest.comparison",
@@ -2082,8 +2081,7 @@
       "required_refs": [
         "context_id",
         "data_revision",
-        "target_column",
-        "modeling_artifact_ref"
+        "target_column"
       ],
       "view_params": [
         "metric",
@@ -2098,7 +2096,7 @@
         "packages/ui/components/TsAnalysisModeling.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Сравнение моделей по метрикам бэктеста (Bar); uncertainty/folds — в подписи (spec §5)."
+      "notes": "Сравнение моделей по метрикам бэктеста (Bar); uncertainty/folds -- в подписи (spec §5). PGV-12: «Скачать PNG» (freeze -- sweep modeling_artifacts)."
     },
     {
       "view_id": "modeling.backtest.oof",
@@ -2111,8 +2109,7 @@
       "required_refs": [
         "context_id",
         "data_revision",
-        "target_column",
-        "modeling_artifact_ref"
+        "target_column"
       ],
       "view_params": [
         "fold",
@@ -2125,7 +2122,7 @@
         "packages/ui/components/BacktestOofChart.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "OOF-предсказания по fold'ам (Line); требует явных result refs/folds и сопоставимости (spec §2)."
+      "notes": "OOF-предсказания по fold'ам (Line); явные result refs/folds -- execution.result_ref + fold-состав frozen данных (spec §2). PGV-12: «Скачать PNG» (freeze -- sweep modeling_artifacts)."
     },
     {
       "view_id": "modeling.panel.metrics",
@@ -2138,8 +2135,8 @@
         "context_id",
         "data_revision",
         "target_column",
-        "entity_column",
-        "modeling_artifact_ref"
+        "panel_model_id",
+        "entity_column"
       ],
       "view_params": [
         "entity"
@@ -2151,31 +2148,34 @@
         "packages/ui/components/TsAnalysisModeling.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Панельные модели FE/RE/Panel VAR/GMM: метрики по сущностям; panel entities не смешиваются (spec §9, PGV-AC14)."
+      "notes": "Панельные модели FE/RE/Panel VAR/GMM: метрики по сущностям; panel entities не смешиваются (spec §9, PGV-AC14; dimensions.mode=panel). PGV-12: «Скачать PNG» из POST /panel/backtest."
     },
     {
       "view_id": "modeling.diagnostics.residuals",
       "module_id": "modeling",
       "stop_id": "diagnostics",
-      "render_site": "packages/ui/components/ResidualDiagnosticsPanel.tsx",
+      "render_site": "packages/ui/components/ModelingWorkflowOverview.tsx#diagnostics-report",
+      "mounted_at": "packages/ui/components/TsAnalysisModeling.tsx#diagnostics",
       "renderer_kind": "html_table",
       "source_adapter": "pgv-03/modeling_diagnostics",
       "required_refs": [
         "context_id",
         "data_revision",
-        "modeling_artifact_ref"
+        "target_column",
+        "backtest_run_id"
       ],
       "view_params": [
         "model"
       ],
       "applicability": "univariate",
       "caption_schema": "pgv.caption/modeling.diagnostics/1",
-      "export_status": "not_mounted",
+      "export_status": "planned",
       "tests": [
         "packages/ui/components/ResidualDiagnosticsPanel.test.tsx",
+        "packages/ui/components/ModelingWorkflowOverview.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Честная маркировка: компонент существует и протестирован, но в UI v1 не смонтирован; PNG-экспорт — после подключения (PGV-12)."
+      "notes": "Четыре теста по OOF (ljung_box/jarque_bera/arch_lm/durbin_watson) с lineage; standalone ResidualDiagnosticsPanel остаётся несмонтированным компонентом (честная маркировка), печатная поверхность -- workflow-обзор. PGV-12: «Скачать PNG» из POST /diagnostics."
     },
     {
       "view_id": "forecasting.forecast.chart",
@@ -2204,9 +2204,10 @@
       "tests": [
         "packages/ui/components/ForecastChart.test.tsx",
         "packages/ui/components/TsAnalysisForecasting.test.tsx",
+        "packages/ui/components/ForecastExportMenu.vars.test.ts",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Frozen origin/as-of, alpha/метод, inverse transform, интервалы — в подписи (spec §2/§5)."
+      "notes": "Frozen origin/as-of, alpha/метод, inverse transform, интервалы — в подписи (spec §2/§5). PGV-12: PNG-кнопка ForecastExportMenu переехала на общий pipeline (serializeChartSvgSafe СВОГО узла + POST /visuals); CSV/JSON и recordClientExport audit сохранены (§10.1)."
     },
     {
       "view_id": "forecasting.forecast.panel_chart",
@@ -2219,8 +2220,8 @@
         "context_id",
         "data_revision",
         "target_column",
-        "entity_column",
-        "forecast_artifact_ref"
+        "panel_model_id",
+        "entity_column"
       ],
       "view_params": [
         "entity",
@@ -2234,7 +2235,7 @@
         "packages/ui/components/TsAnalysisForecasting.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Инлайн LineChart панельного прогноза (по-сущностной прогноз DeepAR-панели)."
+      "notes": "Инлайн LineChart панельного прогноза (по-сущностной прогноз DeepAR-панели). PGV-12: «Скачать PNG» (dimensions.mode=panel)."
     },
     {
       "view_id": "forecasting.forecast.panel_table",
@@ -2247,8 +2248,8 @@
         "context_id",
         "data_revision",
         "target_column",
-        "entity_column",
-        "forecast_artifact_ref"
+        "panel_model_id",
+        "entity_column"
       ],
       "view_params": [
         "entity"
@@ -2260,7 +2261,7 @@
         "packages/ui/components/TsAnalysisForecasting.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Таблица панельного прогноза (data-testid=panel-forecast-table)."
+      "notes": "Таблица панельного прогноза (data-testid=panel-forecast-table). PGV-12: «Скачать PNG» (dimensions.mode=panel)."
     },
     {
       "view_id": "forecasting.forecast.comparison",
@@ -2272,7 +2273,7 @@
       "required_refs": [
         "context_id",
         "data_revision",
-        "forecast_artifact_ref"
+        "forecast_artifact_refs"
       ],
       "view_params": [
         "model_name",
@@ -2285,7 +2286,7 @@
         "packages/ui/components/TsAnalysisForecasting.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3."
+      "notes": "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3. PGV-12: «Скачать PNG» из POST /forecast/compare."
     },
     {
       "view_id": "forecasting.forecast.sensitivity",
@@ -2310,35 +2311,7 @@
         "packages/ui/components/TsAnalysisForecasting.test.tsx",
         "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
       ],
-      "notes": "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3."
-    },
-    {
-      "view_id": "forecasting.forecast.legacy_png",
-      "module_id": "forecasting",
-      "stop_id": "forecast",
-      "render_site": "packages/ui/components/ForecastExportMenu.tsx",
-      "renderer_kind": "recharts_svg",
-      "source_adapter": "pgv-12/forecast_menu_rewire",
-      "required_refs": [
-        "context_id",
-        "data_revision",
-        "target_column",
-        "forecast_artifact_ref"
-      ],
-      "view_params": [
-        "origin",
-        "horizon",
-        "alpha"
-      ],
-      "applicability": "univariate",
-      "caption_schema": "pgv.caption/forecast.chart/1",
-      "export_status": "legacy_client",
-      "tests": [
-        "packages/ui/components/ForecastExportMenu.vars.test.ts",
-        "packages/ui/components/TsAnalysisForecasting.test.tsx",
-        "packages/ui/lib/visualExportRegistry.coverage.test.ts#PGV-00"
-      ],
-      "notes": "Legacy: клиентский PNG из первого SVG контейнера (spec §2/§10.1); CSV/JSON сохраняются; до переезда на общий pipeline не является архивным воспроизводимым экспортом (PGV-12)."
+      "notes": "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3. PGV-12: «Скачать PNG» из POST /forecast/{id}/sensitivity."
     },
     {
       "view_id": "forecasting.accuracy.metrics",
@@ -2420,6 +2393,13 @@
     }
   ],
   "exclusions": [
+    {
+      "targets": [
+        "packages/ui/components/ResidualDiagnosticsPanel.tsx"
+      ],
+      "reason_class": "placeholder_soon",
+      "reason": "Standalone компонент диагностики остатков не смонтирован в UI v1 (честная маркировка §3.6); научная таблица диагностики печатается со смонтированной поверхности workflow-обзора -- modeling.diagnostics.residuals (PGV-12)."
+    },
     {
       "targets": [
         "packages/ui/components/HomeWavesBackground.tsx",

@@ -226,10 +226,15 @@ describe("PGV-00: интегрити реестра render-sites", () => {
   });
 
   it("честность export_status: legacy_client и not_mounted — ровно известные записи", () => {
+    // PGV-12: legacy клиентский PNG переехал на общий pipeline
+    // (forecasting.forecast.chart) -- сайт legacy_png снят с учёта,
+    // статус legacy_client в реестре больше не используется;
+    // diagnostics.residuals печатается со смонтированной поверхности
+    // workflow-обзора (planned), standalone панель -- исключение.
     const legacy = VISUAL_SITE_REGISTRY.filter((s) => s.export_status === "legacy_client").map((s) => s.view_id);
-    expect(legacy).toEqual(["forecasting.forecast.legacy_png"]);
+    expect(legacy).toEqual([]);
     const notMounted = VISUAL_SITE_REGISTRY.filter((s) => s.export_status === "not_mounted").map((s) => s.view_id);
-    expect(notMounted).toEqual(["modeling.diagnostics.residuals"]);
+    expect(notMounted).toEqual([]);
     // Реальные научные preview Навигатора зарегистрированы как planned
     // (static_demo), а не как вычислительные экспорты:
     for (const site of VISUAL_SITE_REGISTRY.filter((s) => s.module_id === "navigator")) {
@@ -268,7 +273,10 @@ describe("PGV-00: интегрити реестра render-sites", () => {
     const summary = visualRegistrySummary();
     // PGV-00-FIX (2026-10-28, находки F-P0C2/C3/C4 акта PGV-00-CERT):
     // navigator 14→16 (+KDE distribution, +схема пайплайна автопревью),
-    // forecasting 6→8 (+comparison-view, +sensitivity-view).
+    // forecasting 6→8 (+comparison-view, +sensitivity-view);
+    // PGV-12 (2026-11-18): forecasting 8→7 -- legacy_png снят с учёта
+    // (клиентский canvas-PNG меню переехал на общий pipeline view
+    // forecasting.forecast.chart, §10.1).
     expect(summary.modules).toEqual({
       navigator: 16,
       upload: 12,
@@ -276,10 +284,10 @@ describe("PGV-00: интегрити реестра render-sites", () => {
       preprocessing: 20,
       eda: 18,
       modeling: 6,
-      forecasting: 8,
+      forecasting: 7,
       tasks: 1,
     });
-    expect(summary.total).toBe(93);
+    expect(summary.total).toBe(92);
   });
 });
 
@@ -328,7 +336,9 @@ describe("PGV-00: coverage-оракул — unknown scientific site blocks CERT"
     // Пин состава: 9 записей (декор ×3 группы, админ-таблицы, контролы
     // DocumentationWorkspace, редакторы ×1 группа, история прогнозов,
     // placeholder, мастера-контролы ×1 группа). Удаление записи падает.
-    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(9);
+    // PGV-12: +1 -- standalone ResidualDiagnosticsPanel (не смонтирован;
+    // печать диагностики -- workflow-обзор).
+    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(10);
     for (const exclusion of VISUAL_RENDER_SITE_EXCLUSIONS) {
       expect(exclusion.reason).toMatch(/\S/);
       expect(exclusion.reason_class.length).toBeGreaterThan(0);

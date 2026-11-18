@@ -100,8 +100,10 @@ describe("PGV-00-FIX / F-P0C3: forecasting forecast comparison+sensitivity", () 
     expect(site.stop_id).toBe("forecast");
     expect(site.renderer_kind).toBe("html_cards");
     expect(site.render_site).toBe("packages/ui/components/TsAnalysisForecasting.tsx#comparison-view");
+    // PGV-12: наложение -- НЕСКОЛЬКО артефактов; перечень
+    // forecast_artifact_refs детерминирован (sorted join).
     expect(site.required_refs).toEqual(
-      expect.arrayContaining(["context_id", "data_revision", "forecast_artifact_ref"]),
+      expect.arrayContaining(["context_id", "data_revision", "forecast_artifact_refs"]),
     );
     expect(site.view_params).toEqual(expect.arrayContaining(["model_name", "horizon"]));
     expect(site.export_status).toBe("planned");
@@ -182,15 +184,17 @@ describe("PGV-00-FIX / F-P0C4: navigator.upload.preview.schema", () => {
     }
   });
 
-  it("группа исключений по-прежнему одна из 9 (сужение без роста групп)", () => {
-    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(9);
+  it("группа исключений: 10 после PGV-12 (+standalone diagnostics panel)", () => {
+    // PGV-12: +1 -- ResidualDiagnosticsPanel не смонтирован; печать
+    // диагностики -- смонтированная поверхность workflow-обзора.
+    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(10);
   });
 });
 
 // ── Denominator после фикса (синхронно с cert-корпусом) ─────────────
 
-describe("PGV-00-FIX: denominator 93", () => {
-  it("состав по модулям: navigator 16, forecasting 8, всего 93", () => {
+describe("PGV-00-FIX: denominator 92 (после PGV-12: -legacy_png)", () => {
+  it("состав по модулям: navigator 16, forecasting 7, всего 92", () => {
     expect(visualRegistrySummary().modules).toEqual({
       navigator: 16,
       upload: 12,
@@ -198,10 +202,12 @@ describe("PGV-00-FIX: denominator 93", () => {
       preprocessing: 20,
       eda: 18,
       modeling: 6,
-      forecasting: 8,
+      // PGV-12: legacy_png снят с учёта (клиентский canvas-PNG меню
+      // переехал на общий pipeline view forecast.chart, §10.1).
+      forecasting: 7,
       tasks: 1,
     });
-    expect(visualRegistrySummary().total).toBe(93);
-    expect(VISUAL_SITE_REGISTRY.length).toBe(93);
+    expect(visualRegistrySummary().total).toBe(92);
+    expect(VISUAL_SITE_REGISTRY.length).toBe(92);
   });
 });

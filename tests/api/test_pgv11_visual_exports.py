@@ -654,8 +654,14 @@ class TestExportScope:
         pgv11 = set(pgv11_export_view_ids())
         assert not (pgv10 & pgv11)
         assert len(pgv10) == 38 and len(pgv11) == 17
-        assert list(export_view_ids()) == sorted(pgv10 | pgv11)
-        assert len(export_view_ids()) == 55
+        # PGV-12: объединённый скоуп расширен modeling/forecasting (13).
+        from apps.api.visual_exports import pgv12_export_view_ids
+
+        pgv12 = set(pgv12_export_view_ids())
+        assert not (pgv10 & pgv12) and not (pgv11 & pgv12)
+        assert len(pgv12) == 13
+        assert list(export_view_ids()) == sorted(pgv10 | pgv11 | pgv12)
+        assert len(export_view_ids()) == 68
 
     def test_every_pgv11_view_is_wired_with_print_forms(self):
         """Все 17 view скоупа -- wired адаптеры с канонической печатной
@@ -688,8 +694,8 @@ class TestExportScope:
 
     def test_out_of_scope_views_still_refuse_with_task_hint(self):
         """Паспорта (PGV-04/13), demo, modeling/forecasting (PGV-12) --
-        честный отказ экспорта с именем добирающей задачи; EDA/tasks
-        скоупа PGV-11 -- РАЗРЕШАЮТСЯ (пин скоупа)."""
+        честный отказ экспорта; EDA/tasks скоупа PGV-11 и
+        modeling/forecasting скоупа PGV-12 -- РАЗРЕШАЮТСЯ (пин скоупа)."""
         import pytest
 
         from apps.api.visual_exports import (
@@ -701,8 +707,6 @@ class TestExportScope:
             ("eda.passport.panel", "PGV-04"),
             ("eda.passport.comparison", "PGV-13"),
             ("navigator.upload.chart.series", "static demo"),
-            ("modeling.backtest.comparison", "PGV-12"),
-            ("forecasting.forecast.chart", "PGV-12"),
         ):
             with pytest.raises(VisualExportOutOfScope) as excinfo:
                 resolve_export_view(view_id)
@@ -1223,7 +1227,8 @@ class TestVisualSourcesList:
         assert body["status"] == 200
         sources = body["data"]["sources"]
         ids = [s["view_id"] for s in sources]
-        assert len(ids) == 55, "38 PGV-10 + 17 PGV-11"
+        # PGV-12: объединённый скоуп 68 (38 PGV-10 + 17 PGV-11 + 13 PGV-12).
+        assert len(ids) == 68, "38 PGV-10 + 17 PGV-11 + 13 PGV-12"
         ih = next(s for s in sources if s["view_id"] == "eda.ih.metrics_table")
         assert ih["export_ready"] is True
         assert ih["latest_result"]["result_ref"]

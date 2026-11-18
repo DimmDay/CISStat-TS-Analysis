@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Circle, MinusCircle } from "lucide-react";
 import { Metric } from "./Metric";
+// PGV-12: «Скачать PNG» карточек трассируемости (html_cards -- печать
+// из frozen данных, freeze в момент ответа GET /modeling/context).
+import { VisualExportButton } from "./VisualExportButton";
 import type { ModelingContext, ModelingTraceNode, TraceabilityStatus } from "../lib/modeling";
 
 
@@ -60,6 +63,15 @@ export function ModelingTraceabilityOverview({ context }: { context: ModelingCon
           <Metric label="Зафиксировано" value={String(summary.done)} />
           <Metric label="Внимание" value={String(summary.warning)} />
           <Metric label="Блокеры" value={String(summary.blocking)} />
+        </div>
+        {/* PGV-12: экспорт карточек трассируемости (frozen результат --
+            GET /v1/session/modeling/context). */}
+        <div className="mt-2 flex justify-end">
+          <VisualExportButton
+            viewId="modeling.traceability.cards"
+            label="Скачать PNG: трассируемость"
+            compact
+          />
         </div>
         <div className="my-3 flex flex-wrap gap-2">
           {GROUPS.map((item) => (

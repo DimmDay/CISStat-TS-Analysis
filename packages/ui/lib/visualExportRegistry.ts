@@ -1418,13 +1418,17 @@ export const VISUAL_SITE_REGISTRY_MODELING: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisModeling.tsx#workflow",
     renderer_kind: "html_table",
     source_adapter: "pgv-03/modeling_workflow",
-    required_refs: ["context_id", "data_revision", "target_column", "modeling_artifact_ref"],
+    // PGV-12 (честная коррекция refs): ответ GET /v1/session/modeling/
+    // state несёт трассу сессии (context/revision/target) и per-model
+    // фактуру; modeling_artifact_ref в ответе отсутствует -- refs не
+    // фабрикуются (§6), артефактный ref результата -- execution.result_ref.
+    required_refs: ["context_id", "data_revision", "target_column"],
     view_params: ["family_filter", "cohort"],
     applicability: "univariate+panel",
     caption_schema: "pgv.caption/modeling.workflow/1",
     export_status: "planned",
     tests: ["packages/ui/components/ModelingWorkflowOverview.test.tsx", "packages/ui/components/TsAnalysisModeling.test.tsx", REG_TEST],
-    notes: "Научные таблицы workflow: модель/execution/folds/cohort (не controls/spinner, spec §5).",
+    notes: "Научные таблицы workflow: модель/execution/folds/cohort (не controls/spinner, spec §5). PGV-12: «Скачать PNG» из GET /state (freeze в момент ответа).",
   },
   {
     view_id: "modeling.traceability.cards",
@@ -1434,13 +1438,19 @@ export const VISUAL_SITE_REGISTRY_MODELING: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisModeling.tsx#traceability",
     renderer_kind: "html_cards",
     source_adapter: "pgv-03/modeling_traceability",
-    required_refs: ["context_id", "data_revision", "modeling_artifact_ref", "event_refs"],
+    // PGV-12: checkpoint ref момента подтверждения EDA handoff -- из
+    // frozen context.checkpoint (не фабрикуется; PGV-12-коррекция:
+    // event_refs в ответе /context отсутствует). Вид трассируемости --
+    // research-поверхность контекста моделирования (scope research):
+    // snapshot_id переносится в frozen data (extract), scope-refs
+    // паспортных печатных видов -- PGV-13.
+    required_refs: ["context_id", "data_revision", "target_column", "checkpoint_id"],
     view_params: ["node_filter"],
     applicability: "univariate+panel",
     caption_schema: "pgv.caption/modeling.traceability/1",
     export_status: "planned",
     tests: ["packages/ui/components/ModelingTraceabilityOverview.test.tsx", "packages/ui/components/TsAnalysisModeling.test.tsx", REG_TEST],
-    notes: "Карточки трассируемости узлов (trace-node); печатная форма решается в PGV-01 (html_cards → композиция).",
+    notes: "Карточки трассируемости узлов (trace-node); печатная форма решена в PGV-01 (html_cards → композиция). PGV-12: «Скачать PNG» из GET /context (freeze в момент ответа).",
   },
   {
     view_id: "modeling.backtest.comparison",
@@ -1450,13 +1460,16 @@ export const VISUAL_SITE_REGISTRY_MODELING: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisModeling.tsx#backtest",
     renderer_kind: "recharts_svg",
     source_adapter: "pgv-03/modeling_backtest",
-    required_refs: ["context_id", "data_revision", "target_column", "modeling_artifact_ref"],
+    // PGV-12 (честная коррекция refs): срез session.modeling_artifacts
+    // ['backtests'] не несёт id карточки/артефакта -- refs трассы
+    // сессии; артефактный ref -- execution.result_ref (vr-...).
+    required_refs: ["context_id", "data_revision", "target_column"],
     view_params: ["metric", "models", "folds"],
     applicability: "univariate",
     caption_schema: "pgv.caption/modeling.backtest/1",
     export_status: "planned",
     tests: ["packages/ui/components/BacktestComparisonChart.test.tsx", "packages/ui/components/TsAnalysisModeling.test.tsx", REG_TEST],
-    notes: "Сравнение моделей по метрикам бэктеста (Bar); uncertainty/folds — в подписи (spec §5).",
+    notes: "Сравнение моделей по метрикам бэктеста (Bar); uncertainty/folds -- в подписи (spec §5). PGV-12: «Скачать PNG» (freeze -- sweep modeling_artifacts).",
   },
   {
     view_id: "modeling.backtest.oof",
@@ -1466,13 +1479,13 @@ export const VISUAL_SITE_REGISTRY_MODELING: VisualSiteRecord[] = [
     mounted_at: "packages/ui/components/TsAnalysisModeling.tsx#backtest",
     renderer_kind: "recharts_svg",
     source_adapter: "pgv-03/modeling_backtest",
-    required_refs: ["context_id", "data_revision", "target_column", "modeling_artifact_ref"],
+    required_refs: ["context_id", "data_revision", "target_column"],
     view_params: ["fold", "window"],
     applicability: "univariate",
     caption_schema: "pgv.caption/modeling.backtest/1",
     export_status: "planned",
     tests: ["packages/ui/components/BacktestOofChart.test.tsx", REG_TEST],
-    notes: "OOF-предсказания по fold'ам (Line); требует явных result refs/folds и сопоставимости (spec §2).",
+    notes: "OOF-предсказания по fold'ам (Line); явные result refs/folds -- execution.result_ref + fold-состав frozen данных (spec §2). PGV-12: «Скачать PNG» (freeze -- sweep modeling_artifacts).",
   },
   {
     view_id: "modeling.panel.metrics",
@@ -1481,28 +1494,39 @@ export const VISUAL_SITE_REGISTRY_MODELING: VisualSiteRecord[] = [
     render_site: "packages/ui/components/TsAnalysisModeling.tsx#panel-entity-metrics",
     renderer_kind: "html_table",
     source_adapter: "pgv-03/modeling_panel",
-    required_refs: ["context_id", "data_revision", "target_column", "entity_column", "modeling_artifact_ref"],
+    // PGV-12 (AC14): entity scope -- dimensions.entity_ids из frozen
+    // panel.entity_columns_order; entity_column -- имя колонки из
+    // ЗАФИКСИРОВАННЫХ panel_columns сессии (без них панельный бэктест
+    // не выполняется); panel_model_id -- из response.model_id.
+    required_refs: ["context_id", "data_revision", "target_column", "panel_model_id", "entity_column"],
     view_params: ["entity"],
     applicability: "panel",
     caption_schema: "pgv.caption/modeling.panel/1",
     export_status: "planned",
     tests: ["packages/ui/components/TsAnalysisModeling.test.tsx", REG_TEST],
-    notes: "Панельные модели FE/RE/Panel VAR/GMM: метрики по сущностям; panel entities не смешиваются (spec §9, PGV-AC14).",
+    notes: "Панельные модели FE/RE/Panel VAR/GMM: метрики по сущностям; panel entities не смешиваются (spec §9, PGV-AC14; dimensions.mode=panel). PGV-12: «Скачать PNG» из POST /panel/backtest.",
   },
   {
     view_id: "modeling.diagnostics.residuals",
     module_id: "modeling",
     stop_id: "diagnostics",
-    render_site: "packages/ui/components/ResidualDiagnosticsPanel.tsx",
+    // PGV-12 (честная коррекция поверхности): standalone
+    // ResidualDiagnosticsPanel в UI v1 не смонтирован; отчёт диагностики
+    // рендерится в workflow-обзоре (data-testid=diagnostics-report) --
+    // печать следует смонтированной поверхности.
+    render_site: "packages/ui/components/ModelingWorkflowOverview.tsx#diagnostics-report",
+    mounted_at: "packages/ui/components/TsAnalysisModeling.tsx#diagnostics",
     renderer_kind: "html_table",
     source_adapter: "pgv-03/modeling_diagnostics",
-    required_refs: ["context_id", "data_revision", "modeling_artifact_ref"],
+    // PGV-12: backtest_run_id -- ref OOF-источника отчёта (из ответа
+    // POST /diagnostics); modeling_artifact_ref в ответе отсутствует.
+    required_refs: ["context_id", "data_revision", "target_column", "backtest_run_id"],
     view_params: ["model"],
     applicability: "univariate",
     caption_schema: "pgv.caption/modeling.diagnostics/1",
-    export_status: "not_mounted",
-    tests: ["packages/ui/components/ResidualDiagnosticsPanel.test.tsx", REG_TEST],
-    notes: "Честная маркировка: компонент существует и протестирован, но в UI v1 не смонтирован; PNG-экспорт — после подключения (PGV-12).",
+    export_status: "planned",
+    tests: ["packages/ui/components/ResidualDiagnosticsPanel.test.tsx", "packages/ui/components/ModelingWorkflowOverview.test.tsx", REG_TEST],
+    notes: "Четыре теста по OOF (ljung_box/jarque_bera/arch_lm/durbin_watson) с lineage; standalone ResidualDiagnosticsPanel остаётся несмонтированным компонентом (честная маркировка), печатная поверхность -- workflow-обзор. PGV-12: «Скачать PNG» из POST /diagnostics.",
   },
 ];
 
@@ -1522,8 +1546,8 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     applicability: "univariate",
     caption_schema: "pgv.caption/forecast.chart/1",
     export_status: "planned",
-    tests: ["packages/ui/components/ForecastChart.test.tsx", "packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Frozen origin/as-of, alpha/метод, inverse transform, интервалы — в подписи (spec §2/§5).",
+    tests: ["packages/ui/components/ForecastChart.test.tsx", "packages/ui/components/TsAnalysisForecasting.test.tsx", "packages/ui/components/ForecastExportMenu.vars.test.ts", REG_TEST],
+    notes: "Frozen origin/as-of, alpha/метод, inverse transform, интервалы — в подписи (spec §2/§5). PGV-12: PNG-кнопка ForecastExportMenu переехала на общий pipeline (serializeChartSvgSafe СВОГО узла + POST /visuals); CSV/JSON и recordClientExport audit сохранены (§10.1).",
   },
   {
     view_id: "forecasting.forecast.panel_chart",
@@ -1532,13 +1556,16 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     render_site: "packages/ui/components/TsAnalysisForecasting.tsx#panel-chart",
     renderer_kind: "recharts_svg",
     source_adapter: "pgv-03/forecast_chart",
-    required_refs: ["context_id", "data_revision", "target_column", "entity_column", "forecast_artifact_ref"],
+    // PGV-12 (AC14): entity scope -- dimensions.entity_ids из frozen
+    // ответа; entity_column -- из зафиксированных panel_columns сессии
+    // (панельные ответы несут значения сущностей, не имя колонки).
+    required_refs: ["context_id", "data_revision", "target_column", "panel_model_id", "entity_column"],
     view_params: ["entity", "origin", "horizon"],
     applicability: "panel",
     caption_schema: "pgv.caption/forecast.chart/1",
     export_status: "planned",
     tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Инлайн LineChart панельного прогноза (по-сущностной прогноз DeepAR-панели).",
+    notes: "Инлайн LineChart панельного прогноза (по-сущностной прогноз DeepAR-панели). PGV-12: «Скачать PNG» (dimensions.mode=panel).",
   },
   {
     view_id: "forecasting.forecast.panel_table",
@@ -1547,13 +1574,13 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     render_site: "packages/ui/components/TsAnalysisForecasting.tsx#panel-forecast-table",
     renderer_kind: "html_table",
     source_adapter: "pgv-03/forecast_chart",
-    required_refs: ["context_id", "data_revision", "target_column", "entity_column", "forecast_artifact_ref"],
+    required_refs: ["context_id", "data_revision", "target_column", "panel_model_id", "entity_column"],
     view_params: ["entity"],
     applicability: "panel",
     caption_schema: "pgv.caption/forecast.table/1",
     export_status: "planned",
     tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Таблица панельного прогноза (data-testid=panel-forecast-table).",
+    notes: "Таблица панельного прогноза (data-testid=panel-forecast-table). PGV-12: «Скачать PNG» (dimensions.mode=panel).",
   },
   {
     // PGV-00-FIX (F-P0C3, акт PGV-00-CERT): научные ветки «Наложение
@@ -1566,13 +1593,15 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     render_site: "packages/ui/components/TsAnalysisForecasting.tsx#comparison-view",
     renderer_kind: "html_cards",
     source_adapter: "pgv-03/forecast_chart",
-    required_refs: ["context_id", "data_revision", "forecast_artifact_ref"],
+    // PGV-12: refs -- наложение НЕСКОЛЬКИХ артефактов, перечень
+    // forecast_artifact_refs детерминирован (sorted, из frozen данных).
+    required_refs: ["context_id", "data_revision", "forecast_artifact_refs"],
     view_params: ["model_name", "horizon"],
     applicability: "univariate",
     caption_schema: "pgv.caption/forecast.comparison/1",
     export_status: "planned",
     tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3.",
+    notes: "Наложение уже построенных прогнозов (data-testid=comparison-view): чипы научных прогонов model_name·horizon; сравнение — наложение артефактов без нового ранжирования (FORECAST-1 §5.6). Находка F-P0C3. PGV-12: «Скачать PNG» из POST /forecast/compare.",
   },
   {
     view_id: "forecasting.forecast.sensitivity",
@@ -1587,23 +1616,14 @@ export const VISUAL_SITE_REGISTRY_FORECASTING: VisualSiteRecord[] = [
     caption_schema: "pgv.caption/forecast.sensitivity/1",
     export_status: "planned",
     tests: ["packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3.",
+    notes: "Веер чувствительности (data-testid=sensitivity-view): комбинации param_space с финальными точками; усечение до 8 комбинаций честно помечено в UI. Находка F-P0C3. PGV-12: «Скачать PNG» из POST /forecast/{id}/sensitivity.",
   },
-  {
-    view_id: "forecasting.forecast.legacy_png",
-    module_id: "forecasting",
-    stop_id: "forecast",
-    render_site: "packages/ui/components/ForecastExportMenu.tsx",
-    renderer_kind: "recharts_svg",
-    source_adapter: "pgv-12/forecast_menu_rewire",
-    required_refs: ["context_id", "data_revision", "target_column", "forecast_artifact_ref"],
-    view_params: ["origin", "horizon", "alpha"],
-    applicability: "univariate",
-    caption_schema: "pgv.caption/forecast.chart/1",
-    export_status: "legacy_client",
-    tests: ["packages/ui/components/ForecastExportMenu.vars.test.ts", "packages/ui/components/TsAnalysisForecasting.test.tsx", REG_TEST],
-    notes: "Legacy: клиентский PNG из первого SVG контейнера (spec §2/§10.1); CSV/JSON сохраняются; до переезда на общий pipeline не является архивным воспроизводимым экспортом (PGV-12).",
-  },
+  // PGV-12: legacy клиентский PNG ForecastExportMenu переехал на
+  // общий pipeline (§10.1) -- отдельный render site forecasting.forecast.
+  // legacy_png СНЯТ С УЧЁТА (запись удалена): PNG меню морозится через
+  // view forecasting.forecast.chart (serializeChartSvgSafe СВОЕГО узла),
+  // downloadChartPng удалён; CSV/JSON и recordClientExport audit
+  // сохранены (критерий §13). История пути -- worklog12/git.
   {
     view_id: "forecasting.accuracy.metrics",
     module_id: "forecasting",
@@ -1676,6 +1696,16 @@ export const VISUAL_SITE_REGISTRY: VisualSiteRecord[] = [
 // ── Явные исключения (spec §5: «Decoration exclusions имеют причины») ──
 
 export const VISUAL_RENDER_SITE_EXCLUSIONS: VisualExclusionRecord[] = [
+  {
+    // PGV-12 (честная коррекция поверхности diagnostics.residuals):
+    // standalone панель диагностики существует и протестирована, но в
+    // UI v1 НЕ смонтирована -- научных render sites в ней нет; печать
+    // отчёта диагностики следует смонтированной поверхности
+    // ModelingWorkflowOverview#diagnostics-report (реестр, PGV-12).
+    targets: ["packages/ui/components/ResidualDiagnosticsPanel.tsx"],
+    reason_class: "placeholder_soon",
+    reason: "Standalone компонент диагностики остатков не смонтирован в UI v1 (честная маркировка §3.6); научная таблица диагностики печатается со смонтированной поверхности workflow-обзора -- modeling.diagnostics.residuals (PGV-12).",
+  },
   {
     targets: [
       "packages/ui/components/HomeWavesBackground.tsx",

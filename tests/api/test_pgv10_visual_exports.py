@@ -352,8 +352,9 @@ class TestExportScope:
             ("upload.passport.panel", "PGV-04"),
             ("upload.passport.comparison", "PGV-13"),
             ("navigator.upload.chart.series", "static demo"),
-            ("modeling.backtest.comparison", "PGV-12"),
-            ("forecasting.forecast.chart", "PGV-12"),
+            # PGV-12: modeling/forecasting вошли в скоуп -- отказ убран
+            # честным сужением списка; legacy PNG -- подсказка переезда.
+            ("forecasting.forecast.legacy_png", "forecasting.forecast.chart"),
         ):
             with pytest.raises(VisualExportOutOfScope) as excinfo:
                 resolve_export_view(view_id)
@@ -1073,7 +1074,7 @@ class TestRequestVisualExport:
 class TestVisualExportHttp:
     def test_visual_sources_lists_scope_without_science(self):
         """GET visual-sources: объединённый скоуп 38 PGV-10 + 17 PGV-11
-        = 55 view, frozen-факты, БЕЗ запуска науки (§11 «без запуска
+        = 68 view, frozen-факты, БЕЗ запуска науки (§11 «без запуска
         науки»; расширение списка -- поставка PGV-11)."""
         _seed_run()
         _freeze_visual_result()
@@ -1086,7 +1087,7 @@ class TestVisualExportHttp:
         data = body["data"]
         assert data["run_id"] == RUN_ID
         ids = [source["view_id"] for source in data["sources"]]
-        assert len(ids) == 55, "38 PGV-10 + 17 PGV-11 (EDA/tasks)"
+        assert len(ids) == 68, "38 PGV-10 + 17 PGV-11 + 13 PGV-12 (modeling/forecast/panel)"
         assert "upload.overview.tech_table" in ids
         source = next(s for s in data["sources"]
                       if s["view_id"] == "upload.overview.tech_table")

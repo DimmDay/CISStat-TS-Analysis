@@ -246,7 +246,8 @@ class TestPrintSchemaTwin:
     def test_twin_consistent_with_pgv00_registry(self):
         registry = load_visual_registry()
         assert registry["schema_version"] == "pgv.visual_registry/1"
-        assert registry["total_sites"] == 93
+        # PGV-12: legacy_png снят с учёта (93 -> 92, forecasting 7).
+        assert registry["total_sites"] == 92
 
 
 # ── 2. Профили и лимиты (spec §7, PGV-AC16) ──────────────────────

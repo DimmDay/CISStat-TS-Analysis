@@ -32,6 +32,9 @@ import {
   YAxis,
 } from "recharts";
 import type { BacktestResponse } from "../lib/modeling";
+// PGV-12: «Скачать PNG» сравнения бэктестов (recharts -- сериализация
+// СВОЕГО chart-узла; freeze -- sweep modeling_artifacts, AC06).
+import { VisualExportChartScope } from "./VisualExportButton";
 
 const BRAND = "var(--chart-brand)";
 const BRAND_BEST = "var(--status-success)"; // green-600 -- лучшая (минимальная ошибка) модель
@@ -89,6 +92,7 @@ export function BacktestComparisonChart({
   const bestScore = rows[0]?.mase_score;
 
   return (
+    <VisualExportChartScope viewId="modeling.backtest.comparison" label="сравнение бэктестов">
     <div>
       <div className="h-[180px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
@@ -143,5 +147,6 @@ export function BacktestComparisonChart({
         из {rows.length} протестированных
       </p>
     </div>
+    </VisualExportChartScope>
   );
 }

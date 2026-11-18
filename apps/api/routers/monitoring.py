@@ -159,6 +159,26 @@ def list_actuals(request: Request, run_id: str) -> Any:
 # ── Frozen сверки (§6 D12) ───────────────────────────────────────────
 
 
+def _freeze_d12_visual(run_id: str, subject: Any, record: Any) -> None:
+    """PGV-12: best-effort freeze вида D12 (forecasting.monitoring.d12)
+    из фактической записи сверки (POST при создании; GET -- lazy
+    transfer §6, идемпотентно по producer key). Сбой freeze не ломает
+    ответ эндпоинта (паритет notify_visual_result best-effort); наука
+    не вызывается (AC06 -- сверка уже зафиксирована сервисом)."""
+    try:
+        from apps.api.visual_producers import freeze_visual_from_response
+
+        freeze_visual_from_response(
+            run_id,
+            subject,
+            view_id="forecasting.monitoring.d12",
+            response={"comparison": record.to_dict()},
+            computed_at=getattr(record, "created_at", None) or None,
+        )
+    except Exception:  # noqa: BLE001 -- freeze не критичен для ответа
+        logger.debug("D12 visual freeze skipped", exc_info=True)
+
+
 @router.post("/runs/{run_id}/monitoring/comparisons", status_code=201)
 def create_comparison(
     request: Request,
@@ -183,6 +203,7 @@ def create_comparison(
         )
     except Exception as exc:
         return _error_response(exc)
+    _freeze_d12_visual(run_id, subject, record)
     return {"created": created, "comparison": _comparison_json(record)}
 
 
@@ -210,6 +231,9 @@ def get_comparison(
         record = _service().get_comparison(run_id, subject, comparison_id)
     except Exception as exc:
         return _error_response(exc)
+    # PGV-12: lazy transfer (§6) -- чтение сверки морозит вид D12
+    # идемпотентно (тот же producer key -- no-op), без науки (AC06).
+    _freeze_d12_visual(run_id, subject, record)
     return _comparison_json(record)
 
 

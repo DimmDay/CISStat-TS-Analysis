@@ -11,6 +11,9 @@ import {
   YAxis,
 } from "recharts";
 import type { BacktestResponse } from "../lib/modeling";
+// PGV-12: «Скачать PNG» OOF-предсказаний (recharts -- сериализация
+// СВОЕГО chart-узла; freeze -- sweep modeling_artifacts, AC06).
+import { VisualExportChartScope } from "./VisualExportButton";
 
 const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
@@ -27,6 +30,7 @@ export function BacktestOofChart({ result }: { result: BacktestResponse }) {
   const data = points.map((point) => ({ ...point, x: point.label ?? String(point.index) }));
 
   return (
+    <VisualExportChartScope viewId="modeling.backtest.oof" label="OOF бэктеста">
     <div>
       <div
         role="img"
@@ -61,5 +65,6 @@ export function BacktestOofChart({ result }: { result: BacktestResponse }) {
         {points.length} OOF-точки · {result.n_folds ?? new Set(points.map((point) => point.fold)).size} folds · чёрный — факт, синий — fixed-origin прогноз
       </p>
     </div>
+    </VisualExportChartScope>
   );
 }

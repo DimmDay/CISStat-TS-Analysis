@@ -691,3 +691,37 @@ TDD RED: новый endpoint/CSRF unit —5 failing subcases issued (OTP/link/se
 Финальный общий pinned-runtime regression после test-isolation исправления:96/96 OK,0 skips (90.827s). Product sources по-прежнему только4 добавленных строки authentication.py. Все4 выбранных local gates PASS; перед финальной поставкой повторяются clean-base ZIP overlay, CRLF INDEX/LF WORKTREE и exact actual routes.
 
 Финальная поставка: clean68430f7+реальный ZIP overlay проверен CRC/manifest/каждым payload byte; strict INDEX598 PASS с CRLF JS/Python при LF WORKTREE; actual ASGI282/registry286/entries661 PASS; на распакованном overlay pinned-runtime HTTP E2E2+transport1 =3/3 OK. Runtime/policy/test sources после этих проверок не менялись; добавлены только журнальные протоколы/документы/manifest. Финальный ZIP перепакован и повторно проверен по CRC/paths/каждому byte/SHA256. Source HEAD68430f7, реальный INDEX пуст; commits/push/VM отсутствуют.
+
+---
+
+## Task ID: PGV-12 (18.11.2026) — Export modeling/forecast/panel: «Скачать PNG» на 13 render sites + переезд legacy PNG-меню
+
+База: 1cc4022 (origin/main, клон после перезапуска песочницы). Постановка: спроектировать и реализовать PGV-12 из spec_passport_graphics_visual.md §13 («Entity/folds/origin/interval metadata верны, CSV/JSON/audit сохранены»); проверить роуты; при необходимости обновить local_gates.md и карту роутов; ZIP в download/. Изучены спека, реализованный контур PGV-00…11 (адаптеры/durable-слой/печать/контейнер/jobs), паттерны поставок PGV-10/11. AGENTS.md соблюдён: TDD (RED до кода), check_routes, без commit/push.
+
+Реализация. Сервер: apps/api/visual_producers.py -- 8 новых адаптеров честных недоборов (workflow/traceability/panel.metrics/diagnostics + comparison/sensitivity/accuracy/d12; UNWIRED_PGV03_VIEWS пуст), аддитивные печатные формы {columns,rows}/{cards} из ТЕХ ЖЕ frozen данных, панельные экстракторы несут panel_model_id/entity_ids (AC14); apps/api/visual_exports.py -- pgv12_export_view_ids (13), union 68, resolve_export_view (legacy_png -- честный отказ с подсказкой переезда на forecasting.forecast.chart), CHART_AXES/TABLE_HEADINGS/VIEW_TITLES 13 видов, _snapshot_refs (+backtest_run_id/checkpoint_id/forecast_artifact_ref(s)/panel_model_id/comparison-refs/research_run_id/entity_column из panel_columns сессии), _snapshot_dimensions (mode=panel + entity_ids, AC14); routers: modeling_session (state/context/panel/backtest/diagnostics), forecasting_session (create+get forecast -- chart+accuracy, compare, sensitivity), monitoring (create/get comparison -- direct best-effort freeze d12). UI: VisualExportButton/ChartScope на 8 поверхностях (WorkflowOverview x2, Traceability, BacktestComparison/Oof, TsAnalysisModeling panel, TsAnalysisForecasting x5, ForecastAccuracyPanel, MonitoringComparisonPanel); ForecastExportMenu ПЕРЕЕХАЛ на общий pipeline (serializeChartSvgSafe СВОЕГО узла + requestVisualExport view forecasting.forecast.chart; downloadChartPng/canvas удалён; CSV/JSON/recordClientExport сохранены). Реестр PGV-00 честно скорректирован: legacy_png снят с учёта (92 сайта, forecasting 7, исключений 10 -- standalone ResidualDiagnosticsPanel не смонтирован), render_site diagnostics -- смонтированный workflow-обзор, refs-коррекции по фактическим формам ответов (без фабрикации); config/visual_registry.json регенерирован export_registry.ts.
+
+TDD/верификация: RED python 38F/3P + TS 6F/2P (протоколы scripts/pgv12/protocols/) -> GREEN: корпус PGV-12 41/41 (скоуп/адаптеры/снапшот/refs/dimensions AC14/HTTP 202+ready/идемпотентность/wiring-гвардия/CSV-JSON-сохранение), TS-гвард pgv12coverage 8/8, гварды реестра 00/10/11/12 43/43, затронутые сьюты зелёные, tsc packages/ui без ошибок кода. check_routes scripts/pgv12/check_routes_auth00.py: PASS -- added=[] (новых HTTP-маршрутов НЕТ; wiring -- notify-вызовы внутри существующих эндпоинтов), карта роутов AUTH-00 НЕ менялась (local_gates.md не требует обновления -- гейты не изменялись).
+
+Честные коррекции по ходу: forecast_artifact_ref из forecast_id (экстрактор PGV-03 аддитивно); panel-refs -- entity_column из зафиксированных panel_columns сессии (валидатор PGV-02 «панельный вид обязан нести entity_column»; honest-источник -- контракт POST /panel/passport), entity_ids -- в dimensions; traceability -- research-поверхность (checkpoint_id в refs, snapshot_id в frozen data; паспортный scope -- PGV-13).
+
+Границы: полный tests/api и полный jest -- затронутый регресс зелёный в песочнице, полный корпус (дельта-0) за тимлидом (local_gates); контейнер PGV-08/Docker/живой PostgreSQL недоступны (job -- штатный worker с fake-renderer'ом, унаследовано); inventory --check в песочнице падает на предсуществующем CRLF-классе page:*/upload -- не поставка PGV-12; native Windows не исполнялся. Поставка: ZIP cisstat-pgv12-modeling-forecast-exports.zip в download/ (файлы только текущей задачи + files.txt + docs/pgv12_modeling_forecast_exports.md); VM: git pull --ff-only && docker compose build api web && env -u CISSTAT_AUTH_MFA_KEYS -u CISSTAT_AUTH_MFA_ACTIVE_KEY docker compose up -d (изменены python api и UI-бандл web -- паритет практик AUTH-07-HOTFIX1/AUTH-KABINET-DEMO). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PGV-12-FIX (18.11.2026) — красные local_gates у тимлида: карта AUTH-00 + старый ZIP
+
+Прогон local_gates у тимлида: auth00 FAIL + jest FAIL, остальные PASS. Разбор auth00.log: (а) fingerprints 8 reviewed-источников изменились поставкой, карта inventory.json в ZIP не входила; (б) evidence-поля 41 api-записи — сдвиг line из-за вставок notify-вызовов; маршруты/классификация НЕ менялись. Выполнен честный review-шаг: scripts/auth00/inventory.py --write, верификация диффа — counts (api 282/661) и все не-evidence поля идентичны, added/removed ids: нет, fingerprints ровно 8 файлов, evidence — только line (41). Карта включена в поставку.
+
+jest FAIL: тимлид применил ПЕРВЫЙ ZIP (09:05) со сломанным JSX-комментарием в TsAnalysisModeling.tsx (TS2304, сьютет не компилировался); в финальном ZIP файл исправлен (сьютет 53/53). Требуется пере-применение финального ZIP целиком.
+
+Попутно найдена предсуществующая порча worktree-клона песочницы: отсутствовали apps/{embedded,standalone}/app/upload/page.tsx (в HEAD есть) — восстановлены из HEAD, без них inventory build не собирается («Unclassified or removed entries: page:*/upload»). В поставку не входят.
+
+Корпус PGV-12 после восстановления из ZIP: 41/41; TS-гварды/сьюты: 102/102; check_routes: PASS (added=[]).
+
+---
+
+## Task ID: PGV-12-FIX2 (18.11.2026) — второй прогон: jest FAIL (3 устаревших source-scan пина)
+
+Полный jest у тимлида: dkt5-open-questions (§10.1: клиентские canvas-паттерны resolveSvgVarsLight/ fillStyle=#FFFFFF удалены PGV-12) + printSchema.test.ts:577 (VISUAL_SITE_REGISTRY.length==93, TS-двойник Python-пина). Пины переписаны честно на новый источник инварианта: клиентский PNG-экспорт ушёл в печатный конвейер (requestVisualExport, view forecasting.forecast.chart), светлость гарантирует серверная печать (print.theme light-print обязателен схемой — theme_not_light_print, spec §3.4; белый фон printTheme.ts page_background=#FFFFFF); denominator 93→92 (legacy_png снят с учёта). Сьютеты зелёные, полный jest 2913 passed (2 «failed suites» песочницы — OOM-SIGKILL воркеров, не воспроизводится по отдельности: 5/5).
+
+Установлено также: пиновые python-тесты pgv01/03/10/11 никогда не входили в ZIP (packager-список) — их правки терялись при пересоздании песочницы; применены заново (226 passed) и добавлены в поставку вместе с dkt5/printSchema (packager +6 файлов).

@@ -71,6 +71,9 @@ import { Button } from "./Button";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { Metric } from "./Metric";
 import { BacktestComparisonChart } from "./BacktestComparisonChart";
+// PGV-12: «Скачать PNG» панельных метрик (html_table -- печать из
+// frozen данных, freeze в момент ответа POST /panel/backtest).
+import { VisualExportButton } from "./VisualExportButton";
 import { BacktestOofChart } from "./BacktestOofChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import {
@@ -2040,6 +2043,15 @@ function PanelContourSection() {
               </div>
               {backtest.panel?.entity_metrics && (
                 <div className="overflow-x-auto">
+                  {/* PGV-12: печать per-entity метрик (AC14 -- entity scope
+                      в frozen данных и panel_columns сессии). */}
+                  <div className="mb-1 flex justify-end">
+                    <VisualExportButton
+                      viewId="modeling.panel.metrics"
+                      label="Скачать PNG: метрики по сущностям"
+                      compact
+                    />
+                  </div>
                   <table className="text-[10px] w-full" data-testid="panel-entity-metrics">
                     <thead>
                       <tr className="text-left text-neutral-500">

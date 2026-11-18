@@ -82,6 +82,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -216,22 +217,13 @@ def resolve_producer_view(view_id: str) -> dict[str, Any]:
     return site
 
 
-# ── Честный недобор (PGV-10/11/12): заявлены в реестре, не в поставке ─
+# ── Честный недобор (закрыт PGV-10/11/12): реестр PGV-00 полон ────────
+# PGV-10: 12 view «Предобработки» добраны; PGV-11: EDA/tasks; PGV-12:
+# modeling/forecasting (workflow/traceability/panel.metrics/diagnostics
+# + comparison/sensitivity/accuracy/d12). Паспорта pgv-04/13 и demo --
+# отдельные категории скоупа (не недобор), resolve отказывает честно.
 
-UNWIRED_PGV03_VIEWS: frozenset[str] = frozenset(
-    {
-        # ── Моделирование -> PGV-12 ──
-        "modeling.workflow.overview",
-        "modeling.traceability.cards",
-        "modeling.panel.metrics",
-        "modeling.diagnostics.residuals",
-        # ── Прогнозирование -> PGV-12 ──
-        "forecasting.forecast.comparison",
-        "forecasting.forecast.sensitivity",
-        "forecasting.accuracy.metrics",
-        "forecasting.monitoring.d12",
-    }
-)
+UNWIRED_PGV03_VIEWS: frozenset[str] = frozenset()
 # PGV-10: 12 недобранных view «Предобработки» добраны адаптерами ниже
 # (честный недобор PGV-03 сужен; EDA/tasks -- PGV-11, modeling/forecast
 # -- PGV-12, паспорта -- PGV-04/13).
@@ -1023,7 +1015,10 @@ def _detail_level_sampling(
 
 
 def _forecast_chart(response: Mapping[str, Any]) -> dict[str, Any]:
+    # PGV-12: forecast_artifact_ref -- из forecast_id фактического
+    # выпуска (refs без фабрикации; origin/alpha -- trusted параметры).
     return {
+        "forecast_artifact_ref": response.get("forecast_id") or None,
         "points": response.get("points") or [],
         "history": response.get("history") or {},
         "horizon": response.get("horizon"),
@@ -1034,7 +1029,10 @@ def _forecast_chart(response: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _panel_forecast_chart(response: Mapping[str, Any]) -> dict[str, Any]:
+    # PGV-12: panel_model_id -- ref панельной модели (AC14, refs без
+    # фабрикации; entity scope -- dimensions снапшота из entities).
     return {
+        "panel_model_id": response.get("model_id") or None,
         "panel": response.get("panel") or {},
         "entities": response.get("entities") or [],
         "horizon": response.get("horizon"),
@@ -1042,10 +1040,49 @@ def _panel_forecast_chart(response: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _panel_forecast_table(response: Mapping[str, Any]) -> dict[str, Any]:
+    # PGV-12: каноническая печатная форма {columns, rows} -- по-сущностные
+    # строки прогноза (entity/date/point) с ЧЕСТНЫМИ границами интервала
+    # (None, если адаптер не отдал lower/upper -- §13 «interval metadata
+    # верны», нули не фабрикуются).
+    rows: list[dict[str, Any]] = []
+    for entry in response.get("entities") or []:
+        if isinstance(entry, dict):
+            dates = entry.get("dates") or []
+            points = entry.get("point") or []
+            lowers = entry.get("lower") or []
+            uppers = entry.get("upper") or []
+            for index, date in enumerate(dates):
+                rows.append(
+                    {
+                        "entity": entry.get("entity"),
+                        "date": date,
+                        "forecast": (
+                            points[index] if index < len(points) else None
+                        ),
+                        "lower": (
+                            lowers[index] if index < len(lowers) else None
+                        ),
+                        "upper": (
+                            uppers[index] if index < len(uppers) else None
+                        ),
+                    }
+                )
+        elif entry:
+            rows.append(
+                {"entity": str(entry), "date": None, "forecast": None,
+                 "lower": None, "upper": None}
+            )
     return {
+        "panel_model_id": response.get("model_id") or None,
         "entities": response.get("entities") or [],
         "variables": response.get("variables") or [],
         "panel": response.get("panel") or {},
+        "horizon": response.get("horizon"),
+        **_print_table(
+            ["entity", "date", "forecast", "lower", "upper"],
+            rows,
+            target={},
+        ),
     }
 
 
@@ -1115,6 +1152,373 @@ def _tasks_causes_data(response: Mapping[str, Any]) -> dict[str, Any]:
     not_computed НЕ фабрикуется: данные вида -- только available-метод
     (адаптер вызывает freeze только при available, см. wiring)."""
     return {"method": response.get("method") or {}, "card": response.get("card") or {}}
+
+
+# ── Экстракторы PGV-12 (Export modeling/forecast/panel) ──────────────
+# Срезы фактических ответов остановок моделирования/прогнозирования:
+# печатные формы ({columns, rows}/{cards}) достраиваются АДДИТИВНО из
+# ТЕХ ЖЕ frozen данных (паритет добора PGV-10/11); панельные виды несут
+# явный список entity_ids (AC14: entities не смешиваются).
+
+
+def _workflow_stage_rows(pipeline: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for stage, status in (pipeline or {}).items():
+        if isinstance(status, str):
+            rows.append({"stage": str(stage), "status": status})
+    return rows
+
+
+def _model_stage_flags(artifacts: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    backtests = artifacts.get("backtests") or {}
+    baselines = artifacts.get("baselines") or {}
+    tunings = artifacts.get("tuning") or {}
+    diagnostics = artifacts.get("diagnostics") or {}
+    cards = artifacts.get("model_cards") or {}
+    selection = artifacts.get("selection") or {}
+    selected_model_id = (
+        selection.get("selected_model_id") if isinstance(selection, dict) else None
+    )
+    model_ids: set[str] = set()
+    for source in (baselines, backtests, tunings, diagnostics):
+        if isinstance(source, dict):
+            model_ids.update(str(key) for key in source)
+    if isinstance(cards, dict):
+        for entry in cards.values():
+            card = entry.get("card") if isinstance(entry, dict) else None
+            if isinstance(card, dict) and card.get("model_id"):
+                model_ids.add(str(card["model_id"]))
+    return {
+        model_id: {
+            "baseline": model_id in baselines,
+            "backtest": model_id in backtests,
+            "tuning": model_id in tunings,
+            "diagnostics": model_id in diagnostics,
+            "selection": bool(selected_model_id) and model_id == str(selected_model_id),
+            "card": any(
+                isinstance(entry, dict)
+                and isinstance(entry.get("card"), dict)
+                and str((entry.get("card") or {}).get("model_id") or "") == model_id
+                for entry in (cards.values() if isinstance(cards, dict) else [])
+            ),
+        }
+        for model_id in sorted(model_ids)
+    }
+
+
+def _modeling_workflow_overview(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез GET /v1/session/modeling/state: научные таблицы workflow --
+    статусы стадий (pipeline) и per-model фактура (artifacts); не
+    controls/spinner (spec §5)."""
+    pipeline = response.get("pipeline") or {}
+    artifacts = response.get("artifacts") or {}
+    models = _model_stage_flags(artifacts)
+    return _print_table(
+        ["stage", "status"],
+        _workflow_stage_rows(pipeline),
+        target={
+            "models": models,
+            "model_count": len(models),
+            "stale": bool(response.get("stale")),
+        },
+    )
+
+
+def _modeling_traceability(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез GET /v1/session/modeling/context: карточки трассируемости
+    (trace-node) + checkpoint refs момента подтверждения EDA handoff."""
+    trace = response.get("traceability") or {}
+    checkpoint = response.get("checkpoint") or {}
+    nodes = [
+        node for node in (trace.get("nodes") or []) if isinstance(node, dict)
+    ]
+    rows = [
+        {
+            "node": node.get("label"),
+            "status": node.get("status"),
+            "blocking": bool(node.get("blocking")),
+        }
+        for node in nodes
+    ]
+    return _print_table(
+        ["node", "status", "blocking"],
+        rows,
+        target={
+            "nodes": nodes,
+            "summary": trace.get("summary") or {},
+            "checkpoint_id": checkpoint.get("checkpoint_id") or None,
+            "snapshot_id": checkpoint.get("snapshot_id") or None,
+            "ready": bool(response.get("ready")),
+            # PGV-12: печатная форма html_cards (мост печати -- {cards})
+            # -- по-узловые статусы трассируемости (значение -- честный
+            # статус, не «pass»).
+            "cards": [
+                {"label": str(node.get("label") or node.get("id") or "узел"),
+                 "value": str(node.get("status") or "unknown")}
+                for node in nodes
+            ],
+        },
+    )
+
+
+def _metric_fields(metrics: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "mae": metrics.get("mae"),
+        "rmse": metrics.get("rmse"),
+        "mase": metrics.get("mase"),
+    }
+
+
+def _modeling_panel_metrics(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез POST /v1/session/modeling/panel/backtest: per-entity метрики
+    (panel.entity_metrics) + pooled; AC14 -- entity_ids перечислены
+    ЯВНО (панельные виды не смешиваются с single-series)."""
+    panel = response.get("panel") or {}
+    entity_metrics = panel.get("entity_metrics") or {}
+    entity_ids = [
+        str(entity) for entity in (panel.get("entity_columns_order") or [])
+    ] or sorted(str(key) for key in entity_metrics)
+    rows = [
+        {"entity": entity, **_metric_fields(entity_metrics.get(entity) or {})}
+        for entity in entity_ids
+    ]
+    return _print_table(
+        ["entity", "mae", "rmse", "mase"],
+        rows,
+        target={
+            "panel_model_id": response.get("model_id") or None,
+            "model_name": response.get("model_name"),
+            "status": response.get("status"),
+            "entity_ids": entity_ids,
+            "pooled": _metric_fields(
+                panel.get("pooled_metrics") or response.get("metrics") or {}
+            ),
+            "folds": [
+                {"fold": fold.get("fold"), "status": fold.get("status")}
+                for fold in (response.get("folds") or [])
+                if isinstance(fold, dict)
+            ],
+            "n_folds": response.get("n_folds"),
+            "horizon": response.get("horizon"),
+        },
+    )
+
+
+def _modeling_diagnostics(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез POST /v1/session/modeling/diagnostics: отчёт тестов остатков
+    + lineage (OOF-источник/параметры/backtest_run_id -- refs без
+    фабрикации)."""
+    tests = [
+        item
+        for item in (response.get("diagnostics") or [])
+        if isinstance(item, dict)
+    ]
+    rows = [
+        {
+            "test": item.get("test"),
+            "applicable": item.get("applicable"),
+            "statistic": item.get("statistic"),
+            "p_value": item.get("p_value"),
+            "status": item.get("status"),
+            "reason": item.get("reason"),
+        }
+        for item in tests
+    ]
+    return _print_table(
+        ["test", "applicable", "statistic", "p_value", "status", "reason"],
+        rows,
+        target={
+            "model_id": response.get("model_id") or None,
+            "target_column": response.get("target_column") or None,
+            "backtest_run_id": response.get("backtest_run_id") or None,
+            "residuals_source": response.get("residuals_source"),
+            "params_source": response.get("params_source"),
+            "params": response.get("params") or {},
+            "alpha": response.get("alpha"),
+            "residuals_count": response.get("residuals_count"),
+            "cohort_id": response.get("cohort_id") or None,
+        },
+    )
+
+
+def _forecast_comparison(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез POST /v1/session/forecasting/forecast/compare: наложение уже
+    построенных прогнозов (чипы model_name·horizon; FORECAST-1 §5.6 --
+    без нового ранжирования)."""
+    runs = [
+        run for run in (response.get("forecasts") or []) if isinstance(run, dict)
+    ]
+    rows = [
+        {
+            "forecast_id": run.get("forecast_id"),
+            "model_name": run.get("model_name"),
+            "horizon": run.get("horizon"),
+            "ci_method": run.get("ci_method"),
+            "alpha_effective": run.get("alpha_effective"),
+        }
+        for run in runs
+    ]
+    refs = sorted(
+        {
+            str(run.get("forecast_id"))
+            for run in runs
+            if run.get("forecast_id")
+        }
+    )
+    cards = [
+        {
+            "label": (
+                f"{run.get('model_name')} · H={run.get('horizon')}"
+            ),
+            "value": str(run.get("forecast_id") or ""),
+        }
+        for run in runs
+    ]
+    return _print_table(
+        ["forecast_id", "model_name", "horizon", "ci_method", "alpha_effective"],
+        rows,
+        target={
+            "cards": cards,
+            "forecast_artifact_refs": refs,
+            "count": len(runs),
+        },
+    )
+
+
+def _sensitivity_rows(sensitivity: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    combos = [
+        combo
+        for combo in (sensitivity.get("combos") or [])
+        if isinstance(combo, dict)
+    ]
+    for index, combo in enumerate(combos, start=1):
+        points = [
+            point
+            for point in (combo.get("points") or [])
+            if isinstance(point, dict)
+        ]
+        terminal = points[-1].get("value") if points else None
+        rows.append(
+            {
+                "combo": index,
+                "params": json.dumps(
+                    combo.get("params") or {}, sort_keys=True, ensure_ascii=False
+                ),
+                "terminal": terminal,
+                "steps": len(points),
+            }
+        )
+    return rows
+
+
+def _forecast_sensitivity(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез POST /v1/session/forecasting/forecast/{id}/sensitivity: веер
+    чувствительности по границам param_space (§5.7); усечение до
+    8 комбинаций переносится как есть (truncated)."""
+    sensitivity = response.get("sensitivity") or {}
+    rows = _sensitivity_rows(sensitivity)
+    combos = [
+        combo
+        for combo in (sensitivity.get("combos") or [])
+        if isinstance(combo, dict)
+    ]
+    cards = [
+        {
+            "label": f"#{row['combo']}: {row['params']}",
+            "value": row["terminal"],
+        }
+        for row in rows
+    ]
+    return _print_table(
+        ["combo", "params", "terminal", "steps"],
+        rows,
+        target={
+            "cards": cards,
+            "varied_axes": [
+                str(axis) for axis in (sensitivity.get("varied_axes") or [])
+            ],
+            "truncated": bool(sensitivity.get("truncated")),
+            "forecast_artifact_ref": response.get("forecast_id") or None,
+            "model_name": response.get("model_name"),
+            "horizon": response.get("horizon"),
+            "combo_count": len(combos),
+        },
+    )
+
+
+def _forecast_accuracy(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез ответа прогноза: ожидаемая точность ПО РЕЗУЛЬТАТАМ БЭКТЕСТА
+    (spec_forecasting2 §5.4); отсутствие метрики -- None, не ноль (§3.6)."""
+    accuracy = response.get("expected_accuracy") or {}
+    labels = [
+        ("mae", "MAE"),
+        ("rmse", "RMSE"),
+        ("mape", "MAPE, %"),
+        ("mase", "MASE"),
+        ("mse", "MSE"),
+    ]
+    rows = [
+        {"metric": key, "label": label, "value": accuracy.get(key)}
+        for key, label in labels
+    ]
+    return _print_table(
+        ["metric", "value"],
+        rows,
+        target={
+            "cards": [
+                {"label": label, "value": accuracy.get(key)}
+                for key, label in labels
+            ],
+            "coverage": response.get("prediction_interval_coverage"),
+            "forecast_artifact_ref": response.get("forecast_id") or None,
+            "model_name": response.get("model_name"),
+            "method_note": "по результатам бэктеста -- не точность этого прогноза",
+        },
+    )
+
+
+def _monitoring_d12(response: Mapping[str, Any]) -> dict[str, Any]:
+    """Срез записи сверки D12 (POST/GET monitoring/comparisons): frozen
+    пары actual-vs-forecast + агрегаты с честными null (DOCLOG-8 §6)."""
+    record = response.get("comparison") or {}
+    result = record.get("result") or {}
+    alignment = result.get("alignment") or {}
+    pairs = [
+        pair for pair in (result.get("pairs") or []) if isinstance(pair, dict)
+    ]
+    rows = [
+        {
+            "period_label": pair.get("period_label"),
+            "forecast": pair.get("forecast"),
+            "actual": pair.get("actual"),
+            "error": pair.get("error"),
+            "ape": pair.get("ape"),
+            "interval_hit": pair.get("interval_hit"),
+        }
+        for pair in pairs
+    ]
+    return _print_table(
+        ["period_label", "forecast", "actual", "error", "ape", "interval_hit"],
+        rows,
+        target={
+            "comparison_id": record.get("comparison_id") or None,
+            "forecast_vintage_ref": record.get("forecast_artifact_id") or None,
+            "actual_vintage_ref": record.get("actual_batch_id") or None,
+            "target_name": record.get("target_name"),
+            "entity_id": record.get("entity_id"),
+            "units_check": record.get("units_check"),
+            "status": record.get("status"),
+            "matured_count": record.get("matured_count"),
+            "excluded_count": record.get("excluded_count"),
+            "out_of_horizon_count": record.get("out_of_horizon_count"),
+            "excluded_labels": alignment.get("excluded_labels") or [],
+            "out_of_horizon_labels": alignment.get("out_of_horizon_labels") or [],
+            "aggregates": result.get("aggregates") or {},
+            "threshold_result": result.get("threshold_result"),
+            "forecast_origin": result.get("forecast_origin") or {},
+        },
+    )
 
 
 def _ih_results_data(response: Mapping[str, Any]) -> dict[str, Any]:
@@ -1816,6 +2220,53 @@ ADAPTER_SPECS: dict[str, VisualAdapterSpec] = {
         "panel_forecast_table", _panel_forecast_table, _DIMENSIONLESS,
         dict(_FULL),
         selection_keys=("entity",),
+    ),
+    # ── PGV-12: Modeling (4 добора + 2 открытых скоупа) ──────────────
+    "modeling.workflow.overview": _spec(
+        "modeling.workflow.overview", "html_table", "modeling_workflow_state",
+        _modeling_workflow_overview, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("family_filter", "cohort"),
+    ),
+    "modeling.traceability.cards": _spec(
+        "modeling.traceability.cards", "html_cards", "modeling_traceability",
+        _modeling_traceability, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("node_filter",),
+    ),
+    "modeling.panel.metrics": _spec(
+        "modeling.panel.metrics", "html_table", "modeling_panel_metrics",
+        _modeling_panel_metrics, _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("entity",),
+    ),
+    "modeling.diagnostics.residuals": _spec(
+        "modeling.diagnostics.residuals", "html_table",
+        "modeling_residual_diagnostics", _modeling_diagnostics,
+        _DIMENSIONLESS, dict(_FULL),
+        selection_keys=("model",),
+    ),
+    # ── PGV-12: Forecasting (4 добора) ───────────────────────────────
+    "forecasting.forecast.comparison": _spec(
+        "forecasting.forecast.comparison", "html_cards",
+        "forecast_comparison_overlay", _forecast_comparison, _DIMENSIONLESS,
+        dict(_FULL),
+        selection_keys=("model_name", "horizon"),
+    ),
+    "forecasting.forecast.sensitivity": _spec(
+        "forecasting.forecast.sensitivity", "html_cards",
+        "forecast_sensitivity_fan", _forecast_sensitivity, _DIMENSIONLESS,
+        dict(_FULL),
+        selection_keys=("varied_axes", "param_space"),
+    ),
+    "forecasting.accuracy.metrics": _spec(
+        "forecasting.accuracy.metrics", "html_cards",
+        "forecast_accuracy_backtest", _forecast_accuracy, _DIMENSIONLESS,
+        dict(_FULL),
+        selection_keys=("metric_set",),
+    ),
+    "forecasting.monitoring.d12": _spec(
+        "forecasting.monitoring.d12", "html_table",
+        "forecast_monitoring_d12", _monitoring_d12, _DIMENSIONLESS,
+        dict(_FULL),
+        selection_keys=("comparison_id",),
     ),
     # ── Tasks (1) ────────────────────────────────────────────────────
     "tasks.causes.fold_importance": _spec(

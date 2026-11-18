@@ -43,10 +43,10 @@ sampling, не первый SVG».
    находит существующий frozen input по producer key ДО сборки payload
    (снапшот хранит СВОЁ время фиксации, старые не переписываются) ->
    та же V01 ревизия (basis_fingerprint) -> тот же активный/ready job.
-6. ЧЕСТНЫЕ ГРАНИЦЫ: passport/comparison view -- PGV-04/13; EDA/tasks --
-   PGV-11; modeling/forecasting -- PGV-12 (отказ с именем добирающей
-   задачи); дата-колонка и цель -- обязательные refs research-снапшота
-   (run.target_column + сессия/запрос: структура остановки).
+6. ЧЕСТНЫЕ ГРАНИЦЫ: passport/comparison view -- PGV-04/13;
+   forecasting.forecast.legacy_png -- общий pipeline (PNG меню
+   прогноза морозится через forecasting.forecast.chart, §10.1);
+   PGV-12 открыл modeling/forecasting (13 view, spec §13).
 
 Инвариант §3.1: модуль ТОЛЬКО переносит уже вычисленное в печатный
 контур; никакой науки, никакого SessionStore-расчёта, никакого DOM.
@@ -141,16 +141,55 @@ def pgv11_export_view_ids() -> tuple[str, ...]:
     )
 
 
+def pgv12_export_view_ids() -> tuple[str, ...]:
+    """Скоуп PGV-12 (spec §13 «Export modeling/forecast/panel»): pgv-03
+    research view моделирования (6) и прогнозирования (7) -- 13 сайтов.
+    forecasting.forecast.legacy_png (адаптер pgv-12/forecast_menu_rewire)
+    -- НЕ отдельный view экспорта: PNG меню морозится через
+    forecasting.forecast.chart (§10.1); паспорта pgv-04/13 и
+    static_demo -- вне."""
+    from apps.api.print_schema import load_visual_registry
+
+    return tuple(
+        sorted(
+            str(site["view_id"])
+            for site in load_visual_registry()["sites"]
+            if site["module_id"] in ("modeling", "forecasting")
+            and str(site.get("source_adapter", "")).startswith("pgv-03/")
+            and site.get("applicability") != "static_demo"
+        )
+    )
+
+
 def export_view_ids() -> tuple[str, ...]:
-    """Объединённый скоуп экспорта визуализаций (PGV-10 ∪ PGV-11 --
-    55 view): список visual-sources и валидация view_id."""
-    return tuple(sorted(set(pgv10_export_view_ids()) | set(pgv11_export_view_ids())))
+    """Объединённый скоуп экспорта визуализаций (PGV-10 ∪ PGV-11 ∪
+    PGV-12 -- 68 view): список visual-sources и валидация view_id."""
+    return tuple(
+        sorted(
+            set(pgv10_export_view_ids())
+            | set(pgv11_export_view_ids())
+            | set(pgv12_export_view_ids())
+        )
+    )
 
 
 def resolve_export_view(view_id: str) -> dict[str, Any]:
     """Сайт реестра для экспорта: unknown -- UnknownExportView; вне
     скоупа -- VisualExportOutOfScope с добирающей задачей (§5: unknown
-    site блокирует CERT; честные границы скоупа; PGV-11 -- EDA/tasks)."""
+    site блокирует CERT; честные границы скоупа; PGV-12 --
+    modeling/forecasting, legacy PNG -- общий pipeline)."""
+    if view_id == "forecasting.forecast.legacy_png":
+        # §10.1: legacy клиентский PNG ForecastExportMenu переехал на
+        # общий pipeline -- печатная геометрия того же forecast chart
+        # морозится через view forecasting.forecast.chart. Запись снята
+        # с учёта реестра (PGV-12), путь отвечает честным отказом с
+        # подсказкой (не unknown).
+        raise VisualExportOutOfScope(
+            f"view {view_id!r} -- legacy клиентский PNG меню прогноза; "
+            "PNG идёт через общий pipeline (view "
+            "'forecasting.forecast.chart'); CSV/JSON и audit сохранены "
+            "(spec §10.1)"
+        )
     site = _site_for(view_id)
     if site is None:
         raise UnknownExportView(
@@ -169,10 +208,11 @@ def resolve_export_view(view_id: str) -> dict[str, Any]:
         if module_id in ("eda", "tasks"):
             # PGV-11: Export EDA/IH/tasks (spec §13)
             return site
+        if module_id in ("modeling", "forecasting"):
+            # PGV-12: Export modeling/forecast/panel (spec §13)
+            return site
         if module_id == "navigator":
             task = "static demo -- не результат исследования (spec §1)"
-        elif module_id in ("modeling", "forecasting"):
-            task = "PGV-12 (modeling/forecasting)"
         else:
             task = "PGV-11 (EDA/tasks)"
         raise VisualExportOutOfScope(
@@ -278,6 +318,18 @@ CHART_AXES: dict[str, list[dict[str, Any]]] = {
         {"name": "Признак", "units": {"value": "dimensionless", "reason": None}},
         {"name": "Средняя доля важности (fold)", "units": {"value": "dimensionless", "reason": None}},
     ),
+    # ── PGV-12: оси chart-секций моделирования/прогнозирования
+    # (AC01: свой график; units честны: value XOR reason) ──
+    "modeling.backtest.comparison": _axes(
+        {"name": "Модель", "units": {"value": "dimensionless", "reason": None}},
+        {"name": "Значение метрики", "units": {"value": None, "reason": "legacy_unknown"}},
+    ),
+    "modeling.backtest.oof": _axes(_X_TIME, _Y_VALUE),
+    "forecasting.forecast.chart": _axes(_X_TIME, _Y_VALUE),
+    "forecasting.forecast.panel_chart": _axes(
+        {"name": "Время ряда", "units": {"value": None, "reason": "legacy_unknown"}},
+        {"name": "Прогноз по сущности", "units": {"value": None, "reason": "legacy_unknown"}},
+    ),
 }
 
 # Заголовки таблиц печати (row -- ярлыки колонок сетки, column --
@@ -348,6 +400,29 @@ TABLE_HEADINGS: dict[str, dict[str, list[str]]] = {
     # row -- ярлыки колонок данных, column -- ярлык значений) ──
     "eda.ih.metrics_table": {
         "row": ["Фактор", "Тип", "N", "I(X;Y)", "H(X)", "R(Y|X)", "R adj.", "p", "q (FDR)"],
+        "column": ["Значение"],
+    },
+    # ── PGV-12: заголовки печатных таблиц моделирования/прогнозирования
+    # (конвенция PGV-09/10/11: row -- ярлыки колонок данных, column --
+    # ярлык значений) ──
+    "modeling.workflow.overview": {
+        "row": ["Стадия", "Статус"],
+        "column": ["Значение"],
+    },
+    "modeling.panel.metrics": {
+        "row": ["Сущность", "MAE", "RMSE", "MASE"],
+        "column": ["Значение"],
+    },
+    "modeling.diagnostics.residuals": {
+        "row": ["Тест", "Применим", "Статистика", "p", "Вывод", "Причина"],
+        "column": ["Значение"],
+    },
+    "forecasting.forecast.panel_table": {
+        "row": ["Сущность", "Дата", "Прогноз", "Нижняя", "Верхняя"],
+        "column": ["Значение"],
+    },
+    "forecasting.monitoring.d12": {
+        "row": ["Период", "Прогноз", "Факт", "Ошибка", "APE, %", "Интервал"],
         "column": ["Значение"],
     },
 }
@@ -572,6 +647,20 @@ VIEW_TITLES: dict[str, str] = {
     "eda.validation_strategy.windows": "Стратегия валидации: окна",
     "eda.model_matrix.applicability": "Матрица применимости моделей",
     "tasks.causes.fold_importance": "Причины: fold-важность факторов",
+    # ── PGV-12: титулы печати моделирования/прогнозирования (§7) ──
+    "modeling.workflow.overview": "Моделирование: workflow стадий",
+    "modeling.traceability.cards": "Моделирование: трассируемость",
+    "modeling.backtest.comparison": "Моделирование: сравнение бэктестов",
+    "modeling.backtest.oof": "Моделирование: OOF предсказания",
+    "modeling.panel.metrics": "Панельные модели: метрики по сущностям",
+    "modeling.diagnostics.residuals": "Моделирование: диагностика остатков",
+    "forecasting.forecast.chart": "Прогноз: точки и интервалы",
+    "forecasting.forecast.panel_chart": "Панельный прогноз: по сущностям",
+    "forecasting.forecast.panel_table": "Панельный прогноз: таблица",
+    "forecasting.forecast.comparison": "Прогнозирование: наложение прогнозов",
+    "forecasting.forecast.sensitivity": "Прогнозирование: веер чувствительности",
+    "forecasting.accuracy.metrics": "Прогнозирование: ожидаемая точность (бэктест)",
+    "forecasting.monitoring.d12": "Сверка прогноза с фактом (D12)",
 }
 
 
@@ -768,6 +857,36 @@ def _heatmap_domain(cells: list) -> list[float]:
     return [min(values), max(values)]
 
 
+def _snapshot_dimensions(
+    site: Mapping[str, Any],
+    data: Mapping[str, Any],
+    *,
+    entity_column: Optional[str] = None,
+) -> dict[str, Any]:
+    """Dimensions снапшота (PGV-01/AC14): univariate -- как раньше;
+    панельные виды (applicability="panel") -- mode="panel" с ЯВНЫМ
+    списком entity_ids из frozen данных и именем колонки сущностей из
+    panel_columns сессии (refs.entity_column); сущности перечислены,
+    не смешиваются с single-series видами."""
+    if str(site.get("applicability") or "") != "panel":
+        return {"mode": "univariate", "entity_column": None, "entity_id": None}
+    entity_ids: list[str] = []
+    for entity in data.get("entity_ids") or data.get("entities") or []:
+        # PanelEntityForecast (dict) несёт значение в поле entity;
+        # строковые значения переносятся как есть. Иное -- честный пропуск
+        # (entity scope не фабрикуется).
+        if isinstance(entity, dict):
+            entity = entity.get("entity") or entity.get("entity_id")
+        if entity:
+            entity_ids.append(str(entity))
+    return {
+        "mode": "panel",
+        "entity_column": entity_column,
+        "entity_id": None,
+        "entity_ids": entity_ids,
+    }
+
+
 def build_visual_print_snapshot(
     run_id: str,
     *,
@@ -905,8 +1024,7 @@ def build_visual_print_snapshot(
         "schema_version": PRINT_SNAPSHOT_SCHEMA_VERSION,
         "view_id": site_view_id,
         "scope": resolve_scope(site),
-        "refs": refs,
-        "result": {
+        "refs": refs,        "result": {
             "result_artifact_id": getattr(result_artifact, "artifact_id", None),
             "result_ref": execution.get("result_ref"),
             "result_schema_version": result_payload.get("schema_version"),
@@ -961,11 +1079,9 @@ def build_visual_print_snapshot(
             "values": dict(trusted_params),
         },
         "sampling": dict(sampling),
-        "dimensions": {
-            "mode": "univariate",
-            "entity_column": None,
-            "entity_id": None,
-        },
+        "dimensions": _snapshot_dimensions(
+            site, data, entity_column=refs.get("entity_column")
+        ),
         "print": {
             "profile_id": profile_id,
             "page_count": 1,
@@ -1000,11 +1116,13 @@ def _snapshot_refs(
     result_payload: Mapping[str, Any],
     *,
     date_column: Optional[str],
+    entity_column: Optional[str] = None,
 ) -> tuple[dict[str, str], Optional[str]]:
     """refs research-снапшота (context/revision -- durable run; target --
-    run.target_column; date -- сессия/запрос; grouping/frequency
-    (structure.schema) -- из frozen data). Отсутствие обязательного
-    refs -- честный отказ (не фабрикуется)."""
+    run.target_column; date -- сессия/запрос; entity_column -- панельные
+    panel_columns сессии; grouping/frequency (structure.schema) -- из
+    frozen data). Отсутствие обязательного refs -- честный отказ (не
+    фабрикуется)."""
     from apps.api.research_runs import get_research_run_store
 
     run = get_research_run_store().get_run(run_id)
@@ -1030,6 +1148,18 @@ def _snapshot_refs(
     if not resolved_date:
         return {}, "date_column"
     refs["date_column"] = resolved_date
+    if str(site.get("applicability") or "") == "panel":
+        # AC14 (PGV-02 валидатор): панельный вид несёт entity_column --
+        # имя колонки сущностей из зафиксированных panel_columns сессии
+        # (явный аргумент экспорта имеет приоритет); отсутствие --
+        # честный отказ (не фабрикация). Перечень сущностей -- в
+        # dimensions.entity_ids из frozen данных.
+        resolved_entity = entity_column
+        if not resolved_entity:
+            resolved_entity = _session_entity_column(run)
+        if not resolved_entity:
+            return {}, "entity_column"
+        refs["entity_column"] = resolved_entity
     if "grouping_column" in set(site.get("required_refs", [])):
         data = (result_payload.get("payload") or {}).get("data") or {}
         # «(не использовать)» -- легитимное подтверждённое значение
@@ -1048,6 +1178,40 @@ def _snapshot_refs(
         if not artifact_ref:
             return {}, "modeling_artifact_ref"
         refs["modeling_artifact_ref"] = artifact_ref
+    # ── PGV-12: refs моделирования/прогнозирования из frozen данных
+    # (registry required_refs -- контракт; отсутствие -- честный отказ,
+    # refs не фабрикуются §6/§8) ──
+    data = (result_payload.get("payload") or {}).get("data") or {}
+    _REF_KEYS_FROM_DATA = (
+        "backtest_run_id",
+        "checkpoint_id",
+        "snapshot_id",
+        "forecast_artifact_ref",
+        "panel_model_id",
+        "comparison_id",
+        "forecast_vintage_ref",
+        "actual_vintage_ref",
+    )
+    for key in _REF_KEYS_FROM_DATA:
+        if key in set(site.get("required_refs", [])):
+            value = str(data.get(key) or "")
+            if not value:
+                return {}, key
+            refs[key] = value
+    if "forecast_artifact_refs" in set(site.get("required_refs", [])):
+        # Сравнение прогнозов (§5.6): наложение НЕСКОЛЬКИХ артефактов --
+        # refs перечисляются детерминированно (sorted join), без
+        # фабрикации: пустой список -- честный отказ.
+        forecast_refs = sorted(
+            str(ref) for ref in (data.get("forecast_artifact_refs") or []) if ref
+        )
+        if not forecast_refs:
+            return {}, "forecast_artifact_refs"
+        refs["forecast_artifact_refs"] = ",".join(forecast_refs)
+    if "research_run_id" in set(site.get("required_refs", [])):
+        # D12: сверка -- durable запись запуска; ref запуска известен
+        # из контекста экспорта (сам run).
+        refs["research_run_id"] = str(run_id)
     return refs, None
 
 
@@ -1059,6 +1223,22 @@ def _session_date_column(run: Any) -> Optional[str]:
 
         session = get_session_store().get_or_create(run.session_id)
         return session.date_column or None
+    except Exception:  # noqa: BLE001 -- сессия недоступна: честный None
+        return None
+
+
+def _session_entity_column(run: Any) -> Optional[str]:
+    """entity_column панельной остановки -- из ЗАФИКСИРОВАННЫХ
+    panel_columns сессии (контракт POST /panel/passport: без них
+    панельный бэктест/прогноз не выполняются, значит для существующего
+    frozen результата колонка была). Сессия утрачена -- None (честный
+    отказ наверху, имя колонки не фабрикуется)."""
+    try:
+        from apps.api.session_store import get_session_store
+
+        session = get_session_store().get_or_create(run.session_id)
+        columns = (session.modeling_artifacts or {}).get("panel_columns") or {}
+        return str(columns.get("entity_column") or "") or None
     except Exception:  # noqa: BLE001 -- сессия недоступна: честный None
         return None
 

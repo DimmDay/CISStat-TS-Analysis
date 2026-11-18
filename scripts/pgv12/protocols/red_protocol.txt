@@ -1,0 +1,3 @@
+FAILED tests/api/test_pgv12_visual_exports.py::TestPgv12NotifyWiring::test_monitoring_comparisons_freeze_d12
+FAILED tests/api/test_pgv12_visual_exports.py::TestPgv12NotifyWiring::test_notify_freeze_via_promotion_integration
+========================= 38 failed, 3 passed in 4.28s =========================

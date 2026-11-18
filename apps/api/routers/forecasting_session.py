@@ -355,10 +355,13 @@ def create_forecast(
     # context/revision, повтор по forecast_id идемпотентен)
     _promotion.notify_modeling_artifacts_updated(request, session)
     # PGV-03: freeze графика прогноза из фактического выпуска
-    # (best-effort; origin/horizon/alpha -- trusted параметры §6)
+    # (best-effort; origin/horizon/alpha -- trusted параметры §6).
+    # PGV-12: expected_accuracy/prediction_interval_coverage того же
+    # выпуска морозятся видом forecasting.accuracy.metrics (§5.4 --
+    # «по результатам бэктеста», оговорка в печатной подписи).
     _promotion.notify_visual_result(
         request, session,
-        view_ids=("forecasting.forecast.chart",),
+        view_ids=("forecasting.forecast.chart", "forecasting.accuracy.metrics"),
         response=run,
         params={
             "origin": run.get("generated_at"),
@@ -387,6 +390,20 @@ def get_forecast(forecast_id: str, request: Request, response: Response):
     run = _get_forecasts(session).get(forecast_id)
     if run is None:
         raise _forecasting_error(404, "Прогноз не найден")
+    # PGV-12: lazy transfer (§6) -- чтение существующего выпуска морозит
+    # chart/accuracy идемпотентно (producer key -- тот же digest, повтор
+    # GET -- no-op); наука не вызывается (AC06).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("forecasting.forecast.chart", "forecasting.accuracy.metrics"),
+        response=run,
+        params={
+            "origin": run.get("generated_at"),
+            "horizon": run.get("horizon"),
+            "alpha": run.get("alpha"),
+        },
+        http_response=response,
+    )
     return run
 
 
@@ -490,6 +507,15 @@ def compare_forecasts(
     session.touch()
     store.save(session)
     ordered = [forecasts[fid] for fid in payload.forecast_ids]
+    # PGV-12: freeze наложения прогнозов (§5.6 -- чипы уже построенных
+    # артефактов, без нового ранжирования; refs -- перечень forecast_id).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("forecasting.forecast.comparison",),
+        response={"forecasts": ordered},
+        params={"model_name": None, "horizon": None},
+        http_response=response,
+    )
     return {"forecasts": ordered}
 
 
@@ -632,6 +658,15 @@ def forecast_sensitivity(forecast_id: str, request: Request, response: Response)
     _append_event(session, run, event)
     session.touch()
     store.save(session)
+    # PGV-12: freeze веера чувствительности (§5.7 -- комбинации границ
+    # param_space; truncated переносится как есть).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("forecasting.forecast.sensitivity",),
+        response=run,
+        params={"varied_axes": list(param_space.keys()), "param_space": list(param_space.keys())},
+        http_response=response,
+    )
     return run
 
 

@@ -1,0 +1,3 @@
+FAILED tests/api/test_pgv11_visual_exports.py::TestVisualSourcesList::test_visual_sources_lists_combined_scope
+FAILED tests/api/test_doclog3_telemetry_audit.py::TestAuthDenialAudit::test_non_admin_403_recorded
+================= 9 failed, 594 passed, 146 warnings in 16.16s =================

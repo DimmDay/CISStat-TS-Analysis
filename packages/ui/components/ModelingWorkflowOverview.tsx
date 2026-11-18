@@ -4,6 +4,11 @@ import { apiFetch } from "../lib/browserTransport";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "./Button";
+// PGV-12 (spec_passport_graphics_visual.md §13 «Export modeling/forecast/
+// panel»): «Скачать PNG» научных таблиц workflow и отчёта диагностики
+// (печать из frozen данных -- freeze в момент ответа GET /state и
+// POST /diagnostics; таблицы печатаются без screen-геометрии).
+import { VisualExportButton } from "./VisualExportButton";
 import { getApiBase } from "../lib/apiClient";
 import type {
   ApplicabilityLevel,
@@ -405,6 +410,15 @@ export function ModelingWorkflowOverview({
   return (
     <section className="flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white p-4" data-testid="modeling-workflow-overview">
       <div className="shrink-0">
+        {/* PGV-12: экспорт таблиц workflow доступен на любой стадии
+            (frozen результат -- GET /state, html_table без геометрии). */}
+        <div className="mb-2 flex justify-end">
+          <VisualExportButton
+            viewId="modeling.workflow.overview"
+            label="Скачать PNG: workflow моделирования"
+            compact
+          />
+        </div>
         {stageId === "tuning" && (
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -548,6 +562,16 @@ export function ModelingWorkflowOverview({
       )}
       {diagnosticsResult && Array.isArray(diagnosticsResult.diagnostics) && (
         <div className="mt-3 min-h-0 flex-1 overflow-auto" data-testid="diagnostics-report">
+          {/* PGV-12: печать отчёта диагностики следует смонтированной
+              поверхности (standalone ResidualDiagnosticsPanel не
+              смонтирован -- честная маркировка реестра PGV-12). */}
+          <div className="mb-2 flex justify-end">
+            <VisualExportButton
+              viewId="modeling.diagnostics.residuals"
+              label="Скачать PNG: диагностика остатков"
+              compact
+            />
+          </div>
           <div className="mb-3 grid grid-cols-2 gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="diagnostics-lineage">
             <span><b>OOF:</b> {diagnosticsResult.residuals_source}</span>
             <span><b>Параметры:</b> {diagnosticsResult.params_source}</span>

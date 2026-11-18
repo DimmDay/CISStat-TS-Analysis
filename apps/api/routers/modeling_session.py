@@ -1073,6 +1073,16 @@ def get_modeling_context(
         or session.modeling_artifacts != previous_artifacts
     ):
         store.save(session)
+    # PGV-12: freeze карточек трассируемости из фактического контекста
+    # (best-effort; checkpoint refs -- из context.checkpoint без
+    # фабрикации).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("modeling.traceability.cards",),
+        response=context,
+        params={"node_filter": None},
+        http_response=response,
+    )
     return context
 
 
@@ -1206,11 +1216,21 @@ def get_modeling_state(request: Request, response: Response):
             store.save(session)
     except HTTPException:
         stale = bool(session.modeling_artifacts)
-    return {
+    state_response = {
         "pipeline": session.modeling_pipeline,
         "artifacts": session.modeling_artifacts,
         "stale": stale,
     }
+    # PGV-12: freeze научных таблиц workflow из фактического ответа
+    # (best-effort; AC06 -- экспорт не пересчитывает состояние).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("modeling.workflow.overview",),
+        response=state_response,
+        params={"family_filter": None, "cohort": None},
+        http_response=response,
+    )
+    return state_response
 
 
 @router.post("/candidates", response_model=CandidatesResponse)
@@ -2781,6 +2801,16 @@ def diagnose_modeling_candidate(
     session.modeling_pipeline["comparison"] = "in_progress"
     session.touch()
     store.save(session)
+    # PGV-12: freeze отчёта диагностики остатков (печать следует
+    # смонтированной поверхности workflow-обзора, data-testid=
+    # diagnostics-report; backtest_run_id -- ref OOF-источника).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("modeling.diagnostics.residuals",),
+        response=result.model_dump(mode="json"),
+        params={"model": payload.model_id},
+        http_response=response,
+    )
     return result
 
 
@@ -3736,7 +3766,17 @@ def panel_backtest(
     session.modeling_artifacts.setdefault("panel_backtests", {})[payload.model_id] = result
     session.touch()
     store.save(session)
-    return PanelBacktestResponse(**result)
+    response_model = PanelBacktestResponse(**result)
+    # PGV-12: freeze per-entity метрик панельного бэктеста (AC14 --
+    # entity scope перечислен frozen panel.entity_columns_order).
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=("modeling.panel.metrics",),
+        response=response_model.model_dump(mode="json"),
+        params={"entity": None},
+        http_response=response,
+    )
+    return response_model
 
 
 @router.post("/panel/forecast", response_model=PanelForecastResponse)

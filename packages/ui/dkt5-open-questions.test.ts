@@ -7,11 +7,13 @@
 // детектируя регрессию (появление next-themes, глобального transition
 // или темозависимого PNG-экспорта — RED).
 //
-//  - §10.1 PNG-экспорт — «всегда светлый» печатный артефакт: резолв
-//    var() из светлой карты (--chart-*/--status-*/--wave-* :root) в клоне
-//    SVG до сериализации + canvas-заливка #FFFFFF независимо от темы
-//    (реализовано DKT-3, lib/chartVars.ts; юниты резолва —
-//    ForecastExportMenu.vars.test.ts);
+//  - §10.1 PNG-экспорт — «всегда светлый» печатный артефакт. С PGV-12
+//    клиентский canvas-рендер УДАЛЁН: экспорт уходит в общий печатный
+//    конвейер PGV (requestVisualExport, view forecasting.forecast.chart),
+//    светлость гарантирует серверная печать — схема снапшота требует
+//    print.theme === "light-print" (violation theme_not_light_print,
+//    spec §3.4), белый фон и светлые var() — packages/ui/print/printTheme.ts
+//    (light-карта chartVars осталась источником значений печати);
 //  - §10.5 провайдер — hand-rolled ~50 строк ThemeContext (DKT-1,
 //    прецедент NAVSTG-2), БЕЗ зависимости next-themes; контракт §5
 //    (ключ localStorage, класс .dark, порядок init) от библиотеки не
@@ -40,14 +42,28 @@ const CHART_VARS = readFileSync(
   resolve(UI_ROOT, "lib", "chartVars.ts"),
   "utf8",
 );
+const PRINT_SCHEMA = readFileSync(
+  resolve(UI_ROOT, "print", "printSchema.ts"),
+  "utf8",
+);
+const PRINT_THEME = readFileSync(
+  resolve(UI_ROOT, "print", "printTheme.ts"),
+  "utf8",
+);
 
 describe("DKT-5 §10.1 (решено): PNG-экспорт — «всегда светлый» артефакт", () => {
-  it("экспорт резолвит var() светлой картой в клоне SVG до сериализации", () => {
-    expect(EXPORT_MENU).toContain("resolveSvgVarsLight(clone)");
+  it("PNG-экспорт — печатный конвейер PGV (PGV-12): клиентский canvas-рендер удалён", () => {
+    // Клиентских следов старого пути не осталось (canvas-клон, var()-резолв
+    // на клиенте, ручная заливка) — иначе вернулся бы темозависимый PNG.
+    expect(EXPORT_MENU).not.toMatch(/toBlob|fillStyle|resolveSvgVarsLight/);
+    expect(EXPORT_MENU).toContain("requestVisualExport");
+    expect(EXPORT_MENU).toContain('viewId: "forecasting.forecast.chart"');
   });
 
-  it("canvas-заливка — фиксированный белый (#FFFFFF), от темы не зависит", () => {
-    expect(EXPORT_MENU).toMatch(/context\.fillStyle\s*=\s*"#FFFFFF"/);
+  it("печатный PNG всегда светлый: light-print обязателен схемой, фон — #FFFFFF печатной темы", () => {
+    expect(PRINT_SCHEMA).toContain('print.theme !== "light-print"');
+    expect(PRINT_SCHEMA).toContain("theme_not_light_print");
+    expect(PRINT_THEME).toContain('page_background: "#FFFFFF"');
   });
 
   it("светлая карта chartVars — зеркало :root globals.css (источник значений)", () => {
