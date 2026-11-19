@@ -1,0 +1,4 @@
+# Finite task/thread budget for the working service (not part of the historical isolated A/B).
+services:
+  print-renderer:
+    pids_limit: 512

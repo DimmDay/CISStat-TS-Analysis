@@ -1,0 +1,45 @@
+{
+  "base": "f614a905e70d171d8cd671cbec73abf6733fcd8c",
+  "kind": "bounded working-service PID capacity candidate and existing-worker HTTP verification",
+  "file_count": 21,
+  "tests": {
+    "targeted_red": 8,
+    "final_green": 49,
+    "activate": 23,
+    "probe": 14,
+    "verification": 12,
+    "overlay_green": 49,
+    "Docker_stubbed": true,
+    "actual_Node_client": "executed with mocked fs/fetch; only existing routes allowed"
+  },
+  "renderer_build": "PASS",
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_INDEX": "PASS",
+    "overlay_actual": "PASS"
+  },
+  "user_VM_PID_limit_hit": {
+    "max": 128,
+    "peak": 128,
+    "max_events": 92
+  },
+  "forward_PID_budget": 512,
+  "rollback_PID_budget": 128,
+  "memory_limit": 2147483648,
+  "native_512_result": "PENDING VM operator verification",
+  "local_Docker": "unavailable; verify exit2, not PASS",
+  "profile_and_image_code_changed": false,
+  "rebuild_images_required": false,
+  "commit_push": false,
+  "pgv13_certified": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest",
+    "every source byte",
+    "safe names",
+    "clean exact-base overlay tests/routes"
+  ]
+}

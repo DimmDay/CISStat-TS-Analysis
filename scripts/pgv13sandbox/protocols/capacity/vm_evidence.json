@@ -1,0 +1,32 @@
+{
+  "source": "user-provided cgroup/limits stdout, not direct agent VM access",
+  "repository_baseline": "f614a905e70d171d8cd671cbec73abf6733fcd8c",
+  "pids": {
+    "current": 70,
+    "max": 128,
+    "peak": 128,
+    "events": {
+      "max": 92
+    }
+  },
+  "memory": {
+    "current": 165732352,
+    "max": 2147483648,
+    "events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    }
+  },
+  "rlimits": {
+    "processes": "unlimited",
+    "address_space": "unlimited",
+    "stack_soft": 8388608,
+    "open_files_soft": 1024
+  },
+  "interpretation": "PID/thread ceiling reached; 512 is a bounded capacity candidate requiring VM full-smoke verification",
+  "capacity512_vm_result": "PENDING"
+}

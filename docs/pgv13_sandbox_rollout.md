@@ -25,7 +25,7 @@ exit/isolation/launch/security fields, reference pin и точный профи�
 Текущий renderer image ID и AppArmor должны совпасть с report; при новом image
 нужен новый A/B. Через настоящий `docker compose config --format json` preflight
 проверяет итоговые UID10001, readonly/init, NNP, cap_dropALL, отсутствие cap_add/
-privileged/ports/volumes/devices/shared namespaces, networknone, memory2g/pids128/
+privileged/ports/volumes/devices/shared namespaces, networknone, memory2g/pids512 (forward) или128 (rollback)/
 shm256m и tmpfs/tmp. Вывод config не печатается, .Env Docker не читается.
 Применяется поставленный base Compose; произвольные VM overrides не клонируются.
 Если merge/формат отличается, helper отказывает до up; не обходите preflight.
@@ -60,16 +60,12 @@ host policy не требуется. Docker privileges у оператора д�
 ## Проверки после recreate
 
 ```bash
-docker compose -f apps/print-renderer/build/deployment/docker-compose.yml \
-  exec -T print-renderer node \
-  apps/print-renderer/dist/apps/print-renderer/src/smoke.js --smoke
-
-docker compose -f apps/print-renderer/build/deployment/docker-compose.yml \
-  exec -T print-renderer node -e \
-  "fetch('http://127.0.0.1:8907/readyz',{signal:AbortSignal.timeout(70000)}).then(async r=>{console.log(r.status,await r.text());process.exit(r.ok?0:1)}).catch(e=>{console.error(e.name);process.exit(1)})"
+python3 scripts/pgv13sandbox/verify_service.py --out /tmp/pgv13-service-smoke.json
 ```
 
 Нужны passed полного Cyrillic/IH/A4 smoke и readyz200 на рабочем контейнере.
+Клиент обращается к существующему HTTP-worker; отдельный CLI-worker рядом с
+HTTP-сервером для этой проверки больше не запускается.
 Кэш readiness30s действует внутри server, CLI full smoke — отдельный холодный
 worker. Затем проверяются реальные ограничения/нагрузка, timeout/cancel,
 PNG-content и авторизованная выдача. Не считать код выхода0 helper или mini-PNG
@@ -97,7 +93,7 @@ seccomp возвращается к builtin, image ID остаётся тест�
 после смены image нужна новая evidence. --rollback также требует согласованный
 report/current image; для произвольных старых/изменённых конфигураций нужен review.
 
-## Верификация поставки
+## Верификация исходной rollout-поставки
 
 TDD initial17 activation RED → final34 GREEN (20activation+14probe); Docker
 subprocess stubbed. Проверены допустимый и поддельный report, exact profile,
@@ -114,3 +110,69 @@ commit/push и не имеет прямого подключения к VM. Ре
 результат этой поставки пока PENDING; mini-PNG candidate — CONFIRMED по данным тимлида.
 
 Официальные форматы, проверены19.11.2026: [Compose merge](https://docs.docker.com/reference/compose-file/merge/), [Docker seccomp](https://docs.docker.com/engine/security/seccomp/). Реальный merge всё равно проверяется установленным Docker Compose до up, не эмулируется YAML-конкатенацией.
+
+
+## 19.11.2026: подтверждённый PID ceiling и ограниченный capacity fix, базаf614a90
+
+После активации sandbox рабочий CLI full smoke упал с pthread_create EAGAIN.
+Тимлид измерил pids.current70, pids.max128, pids.peak128, pids.events max92;
+memory.current165732352/max2147483648, memory.events max/oom/oom_kill0,
+RLIMIT_NPROC и address space unlimited. PID/thread ceiling реально достигался.
+Это подтверждённый resource blocker, не повтор No usable sandbox/chroot.
+Источник нормализован в protocols/capacity/vm_evidence.json, прямого доступа нет.
+
+В предыдущей процедуре CLI создавал ещё один PrintRenderWorker в контейнере,
+делящем128 задач с сервером/readiness. Его admission был отдельным от service
+worker; это могло усиливать конкуренцию. Из фактов нельзя вычислить точное
+минимальное число задач для любой будущей нагрузки, поэтому512 — **ограниченный
+кандидат бюджета**, требующий измерения на VM, не доказанный оптимум.
+Memory2g/NNP/UID/caps/readonly/networknone/seccomp/AppArmor/образ не меняются.
+
+Новый docker-compose.capacity.yml задаёт только pids_limit512. Base Compose и
+исторические isolated A/B остаются128; activate.py теперь по умолчанию подключает
+capacity overlay для forward check/apply и проверяет именно512 в реальном merged
+config. В JSON helper явно указан pids_limit. --rollback по умолчанию снимает
+sandbox и capacity, оставляя тот же image ID и прежний бюджет128.
+
+Сохранить sandbox, но вернуть только старый PID budget можно отдельно:
+
+```bash
+python3 scripts/pgv13sandbox/activate.py --report /tmp/pgv13-chroot-ab.json --apply --pids-limit 128
+```
+
+Это аварийное восстановление предыдущего бюджета с известным resource defect,
+не исправление. Принимаются только128/512, не0/-1/unlimited. Обычный --apply
+после новой поставки переводит working renderer на512 без build/pull images.
+Тот же --apply может прервать текущие рендеры при recreate, как описано выше.
+
+verify_service.py — stdlib host wrapper + Node HTTP client внутри namespace
+контейнера. Импортируется только fs, не renderer worker. После bounded liveness
+poll отправляются POST /v1/smoke и GET /readyz существующему service. Снимаются
+before/after pids/current/max/peak/events, memory/current/max/events, parent
+UID/NNP/Seccomp/CapEff. Exit0 требует smoke200+passed, readyz200+ready/smoke,
+реальные budgets512/2g, delta pids.events.max=0, delta oom=oom_kill=0 и parent
+hardening. Неизвестные counters не приравниваются к0. pids.peak — дополнительная
+диагностика, на старом kernel может отсутствовать; новые pressure events обязательны.
+Старые события в before не отменяются нулевой дельтой: оценивается окно проверки,
+не вся история. Это не concurrency2 stress, pixel/OCR или P01/P02 acceptance.
+
+Raw HTTP body/scenario errors и метрики сохраняются в --out; stdout содержит
+checks/deltas/сценарии и короткие fatal/EAGAIN причины. При потере HTTP сохраняются
+before/after доступные counters и setup error. Старый положительный JSON заменяется
+RUNNING/error до нового запуска. Timeout bounded (до360s host wrapper), exit1 —
+checks failed, exit2 — setup/transport/inconsistent exit; все сохраняют
+pgv13_certified=false. Код0 не означает сертификат всей PGV-13.
+
+TDD targeted RED8 → final49 controls (23activate+14probe+12verification).
+Собственно Node client выполняется в VM-контексте Node с mocked fs/fetch:
+проверены точные существующие routes/methods и отсутствие нового worker import,
+PID growth, OOM, missing counters, старый budget, smoke/readiness/transport failure.
+Дополнительно CLI сохраняет/проверяет child exit/report и stale-report replacement;
+capacity-only rollback сохраняет sandbox. Docker/Chromium тут не исполнялись.
+Настоящие512/full smoke результаты PENDING VM. Renderer build/ASGI/INDEX/ZIP overlay —
+protocols/capacity. Исторический sandbox candidate остаётся подтверждённым.
+
+Первичные справочники: [cgroup v2 PID controller](https://docs.kernel.org/admin-guide/cgroup-v2.html#pid),
+[pthread_create EAGAIN](https://man7.org/linux/man-pages/man3/pthread_create.3.html).
+Новый источник отказа не даёт оснований отключать sandbox или устанавливать DBus
+по сопутствующим предупреждениям. API transport и F-C13-00…03 всё ещё открыты.

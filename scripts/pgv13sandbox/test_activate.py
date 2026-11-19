@@ -26,7 +26,7 @@ def config(profile,rollback=False):
     security=['no-new-privileges:true'] if rollback else ['no-new-privileges:true','apparmor=docker-default','seccomp='+str(profile)]
     return {'services':{'print-renderer':{'image':IMAGE,'user':'10001:10001','network_mode':'none',
         'read_only':True,'cap_drop':['ALL'],'security_opt':security,'init':True,
-        'mem_limit':'2147483648','pids_limit':128,'shm_size':'268435456',
+        'mem_limit':'2147483648','pids_limit':128 if rollback else 512,'shm_size':'268435456',
         'tmpfs':['/tmp:rw,noexec,nosuid,size=512m,mode=1777']}}}
 
 
@@ -89,6 +89,7 @@ def test_preflight_and_apply_pin_image_and_profile_without_unrequested_recreate(
     assert len(up)==1
     command,kwargs=up[0]
     assert command[-1]=='print-renderer'
+    assert str(A.CAPACITY_OVERRIDE) in command
     for flag in ('--no-deps','--no-build','--pull','never','--force-recreate'):assert flag in command
     assert kwargs['env']['CISSTAT_VALIDATED_RENDERER_IMAGE']==IMAGE
     assert Path(kwargs['env']['CISSTAT_RENDERER_SECCOMP_FILE']).is_absolute()
@@ -125,6 +126,7 @@ def test_rollback_keeps_image_override_but_removes_sandbox_overlay(monkeypatch,t
     up=next(c for c in calls if 'up' in c)
     assert str(A.IMAGE_OVERRIDE) in up
     assert str(A.SANDBOX_OVERRIDE) not in up
+    assert str(A.CAPACITY_OVERRIDE) not in up
 
 
 def test_equivalent_docker_security_option_separators_keep_same_policy():
@@ -151,3 +153,41 @@ def test_compose_up_failure_reports_possible_mutation_without_automatic_rollback
     error=json.loads(capsys.readouterr().err)
     assert error['preflight_ok'] is True and error['mutation_started'] is True
     assert sum('up' in c for c in calls)==1
+
+
+def test_bounded_capacity_overlay_and_forward_budget():
+    from scripts.pgv13sandbox import activate as A
+    import yaml
+    overlay=yaml.safe_load(A.CAPACITY_OVERRIDE.read_text())
+    assert overlay=={'services':{'print-renderer':{'pids_limit':512}}}
+    forward=config(A.PROFILE);forward['services']['print-renderer']['pids_limit']=512
+    A.validate_config(forward,IMAGE,False)
+    forward['services']['print-renderer']['pids_limit']=128
+    with pytest.raises(ValueError):A.validate_config(forward,IMAGE,False)
+
+
+def test_explicit_legacy_budget_keeps_sandbox_for_capacity_rollback():
+    from scripts.pgv13sandbox import activate as A
+    legacy=config(A.PROFILE);legacy['services']['print-renderer']['pids_limit']=128
+    A.validate_config(legacy,IMAGE,False,pids_limit=128)
+    with pytest.raises(ValueError):A.validate_config(legacy,IMAGE,False,pids_limit=-1)
+
+
+def test_legacy_capacity_apply_retains_sandbox_and_omits_capacity_override(monkeypatch,tmp_path,capsys):
+    from scripts.pgv13sandbox import activate as A
+    report=tmp_path/'report.json';report.write_text(json.dumps(evidence()))
+    calls=[]
+    def fake(args,**kwargs):
+        calls.append(args)
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default'}),'')
+        if 'ps' in args:return subprocess.CompletedProcess(args,0,'container-id','')
+        if 'config' in args:
+            model=config(A.PROFILE);model['services']['print-renderer']['pids_limit']=128
+            return subprocess.CompletedProcess(args,0,json.dumps(model),'')
+        return subprocess.CompletedProcess(args,0,'','')
+    monkeypatch.setattr(A.subprocess,'run',fake)
+    monkeypatch.setattr('sys.argv',['activate.py','--report',str(report),'--apply','--pids-limit','128'])
+    assert A.main()==0
+    up=next(c for c in calls if 'up' in c)
+    assert str(A.SANDBOX_OVERRIDE) in up and str(A.CAPACITY_OVERRIDE) not in up
+    assert json.loads(capsys.readouterr().out)['pids_limit']==128

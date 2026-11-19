@@ -18,7 +18,7 @@ Do not change to host networking for convenience.
 
 ```bash
 docker compose -f apps/print-renderer/build/deployment/docker-compose.yml exec -T print-renderer node -e "fetch('http://127.0.0.1:8907/readyz').then(async r=>{console.log(r.status,await r.text());process.exit(r.ok?0:1)})"
-docker compose -f apps/print-renderer/build/deployment/docker-compose.yml exec -T print-renderer node apps/print-renderer/dist/apps/print-renderer/src/smoke.js --smoke
+python3 scripts/pgv13sandbox/verify_service.py --out /tmp/pgv13-service-smoke.json
 docker compose -f apps/print-renderer/build/deployment/docker-compose.yml exec -T print-renderer id
 ```
 
@@ -73,3 +73,12 @@ Profile derived from Moby/profiles (Apache2); adjacent chromium.seccomp.source.j
 records modifications and chromium.seccomp.LICENSE supplies the license.
 Это opt-in применение sandbox candidate, не сертификат всей PGV-13. Полный порядок,
 проверки merged config, post-deploy smoke и rollback: docs/pgv13_sandbox_rollout.md.
+
+
+Working-service capacity correction (19.11.2026): base/A-B pids128 остаётся
+historical control, forward activate.py теперь включает bounded capacity512
+(отдельный overlay). На VM128 реально достигнут: peak128/max-events92. Full smoke
+для работающего сервиса вызывайте через verify_service.py (existing HTTP worker),
+а не вторым CLI-worker в том же контейнере. Память2g и security constraints прежние.
+Rollback helper по умолчанию builtin/128; --apply --pids-limit128 возвращает только
+старый budget с сохранением sandbox. Подробности/границы в docs/pgv13_sandbox_rollout.md.

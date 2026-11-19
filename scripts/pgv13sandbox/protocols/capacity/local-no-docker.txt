@@ -1,0 +1,1 @@
+{"passed": false, "pgv13_certified": false, "setup_error": "FileNotFoundError", "detail": "[Errno 2] No such file or directory: 'docker'"}

@@ -408,7 +408,7 @@ capabilities/изменения служб/host policy/образов. Exit0 CHR
 Тимлид подтвердил на VM CHROOT_RULE_CANDIDATE: отрицательные первые3 и
 положительный namespaces-chroot, isolation true у всех. Это mini-PNG sandbox
 candidate; не вся PGV-13. Контроли: `python -m pytest scripts/pgv13sandbox -q`
-(34 теста:20 activation +14 probe). Default runner не меняется.
+(49 тестов:23 activation +14 probe +12 service verification). Default runner не меняется.
 Host-side activate.py без флагов только preflight полного сохранённого JSON,
 image ID и merged Compose config. --apply/--rollback пересоздают один renderer
 на том же immutable image, --no-build/--pull never/--no-deps. Docker default
@@ -418,3 +418,16 @@ stubs, реальный Compose merge и working-service rollout агентом 
 Операторский порядок, post-checks и rollback — docs/pgv13_sandbox_rollout.md.
 Новых HTTP routes/DTO/BFF нет, inventory fingerprints обновлены для deployment
 assets/операторского инструмента. Миграций/пересборки образов не требуется.
+
+
+## PGV-13-CAPACITY (19.11.2026), поверхf614a90
+
+VM evidence peak128/max-events92 подтвердили PID/thread ceiling. Новый opt-in
+capacity overlay —512, forward activate --apply использует его по умолчанию;
+rollback128 сохранён, память2g/остальные security limits прежние. Full working
+smoke — `python3 scripts/pgv13sandbox/verify_service.py --out /tmp/pgv13-service-smoke.json`
+через existing HTTP worker/cgroup deltas, не отдельный PrintRenderWorker.
+Локально: `python -m pytest scripts/pgv13sandbox -q` —49 controls, Docker/HTTP/fs
+подменены (реальный Node client исполнен с doubles). Default runner не меняется.
+Без images rebuild/миграций; routes/methods прежние. Native512 acceptance только
+на VM, код0 verification всё равно не сертификат PGV-13. docs/pgv13_sandbox_rollout.md.

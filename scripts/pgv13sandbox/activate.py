@@ -20,6 +20,7 @@ DEPLOY=ROOT/'apps/print-renderer/build/deployment'
 BASE=DEPLOY/'docker-compose.yml'
 IMAGE_OVERRIDE=DEPLOY/'docker-compose.validated-image.yml'
 SANDBOX_OVERRIDE=DEPLOY/'docker-compose.sandbox.yml'
+CAPACITY_OVERRIDE=DEPLOY/'docker-compose.capacity.yml'
 PROFILE=DEPLOY/'chromium.seccomp.json'
 
 
@@ -56,7 +57,9 @@ def byte_size(value):
     return int(match[1])*1024**('kmg'.index(match[2])+1) if match else -1
 
 
-def validate_config(config,image,rollback):
+def validate_config(config,image,rollback,pids_limit=None):
+    pids_limit=pids_limit if pids_limit is not None else (128 if rollback else 512)
+    require(pids_limit in (128,512),'Only finite reviewed PID budgets 128/512 are supported')
     services=config.get('services') or {}
     require(set(services)=={'print-renderer'},'Merged config must contain only renderer')
     s=services['print-renderer']
@@ -74,7 +77,7 @@ def validate_config(config,image,rollback):
             if option.startswith(name+':'):option=name+'='+option[len(name)+1:]
         normalized.add(option)
     require(normalized==expected,'Unexpected security_opt or lost NNP')
-    require(byte_size(s.get('mem_limit'))==2*1024**3 and int(s.get('pids_limit',0))==128 and byte_size(s.get('shm_size'))==256*1024**2,'Resource limits changed')
+    require(byte_size(s.get('mem_limit'))==2*1024**3 and int(s.get('pids_limit',0))==pids_limit and byte_size(s.get('shm_size'))==256*1024**2,'Resource limits changed')
     require(s.get('tmpfs')==['/tmp:rw,noexec,nosuid,size=512m,mode=1777'],'Unexpected tmpfs policy')
 
 
@@ -90,6 +93,7 @@ def main():
     action=parser.add_mutually_exclusive_group()
     action.add_argument('--apply',action='store_true')
     action.add_argument('--rollback',action='store_true')
+    parser.add_argument('--pids-limit',type=int,choices=(128,512),help='Default 512 forward, 128 rollback; 128 can restore only the previous budget')
     args=parser.parse_args()
     mutation_started=False
     try:
@@ -104,15 +108,17 @@ def main():
         env={**os.environ,'CISSTAT_VALIDATED_RENDERER_IMAGE':image,'CISSTAT_RENDERER_SECCOMP_FILE':str(PROFILE)}
         compose=['docker','compose','-f',str(BASE),'-f',str(IMAGE_OVERRIDE)]
         if not args.rollback:compose+=['-f',str(SANDBOX_OVERRIDE)]
+        pids_limit=args.pids_limit if args.pids_limit is not None else (128 if args.rollback else 512)
+        if pids_limit==512:compose+=['-f',str(CAPACITY_OVERRIDE)]
         rendered=json.loads(command(compose+['config','--format','json'],env))
-        validate_config(rendered,image,args.rollback)
+        validate_config(rendered,image,args.rollback,pids_limit)
         applied=args.apply or args.rollback
         if applied:
             mutation_started=True
             command(compose+['up','-d','--no-deps','--no-build','--pull','never','--force-recreate','print-renderer'],env)
         print(json.dumps({'preflight_ok':True,'action':'rollback' if args.rollback else ('apply' if args.apply else 'check'),
                           'image_id':image,'profile':None if args.rollback else str(PROFILE),'service_recreated':applied,
-                          'readiness_checked':False,'pgv13_certified':False},ensure_ascii=False))
+                          'pids_limit':pids_limit,'readiness_checked':False,'pgv13_certified':False},ensure_ascii=False))
         return 0
     except (OSError,ValueError,TypeError,KeyError,AttributeError,RuntimeError,subprocess.SubprocessError) as error:
         print(json.dumps({'preflight_ok':mutation_started,'mutation_started':mutation_started,'readiness_checked':False,'error_type':type(error).__name__,'detail':str(error),'pgv13_certified':False}),file=sys.stderr)

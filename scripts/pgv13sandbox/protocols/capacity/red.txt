@@ -1,0 +1,63 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CAPACITY
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.14.7, anyio-4.14.2
+collected 28 items / 20 deselected / 8 selected
+
+scripts/pgv13sandbox/test_activate.py FF                                 [ 25%]
+scripts/pgv13sandbox/test_verify_service.py FFFFFF                       [100%]
+
+=================================== FAILURES ===================================
+_______________ test_bounded_capacity_overlay_and_forward_budget _______________
+scripts/pgv13sandbox/test_activate.py:159: in test_bounded_capacity_overlay_and_forward_budget
+    overlay=yaml.safe_load(A.CAPACITY_OVERRIDE.read_text())
+                           ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'scripts.pgv13sandbox.activate' has no attribute 'CAPACITY_OVERRIDE'
+_______ test_explicit_legacy_budget_keeps_sandbox_for_capacity_rollback ________
+scripts/pgv13sandbox/test_activate.py:170: in test_explicit_legacy_budget_keeps_sandbox_for_capacity_rollback
+    A.validate_config(legacy,IMAGE,False,pids_limit=128)
+E   TypeError: validate_config() got an unexpected keyword argument 'pids_limit'
+__ test_service_client_observes_cgroup_and_uses_existing_http_worker[ok-True] __
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+_ test_service_client_observes_cgroup_and_uses_existing_http_worker[pids-False] _
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+_ test_service_client_observes_cgroup_and_uses_existing_http_worker[oom-False] _
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+_ test_service_client_observes_cgroup_and_uses_existing_http_worker[old_budget-False] _
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+_ test_service_client_observes_cgroup_and_uses_existing_http_worker[readiness-False] _
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+_ test_service_client_observes_cgroup_and_uses_existing_http_worker[smoke-False] _
+scripts/pgv13sandbox/test_verify_service.py:15: in test_service_client_observes_cgroup_and_uses_existing_http_worker
+    from scripts.pgv13sandbox.verify_service import NODE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.verify_service'
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_activate.py::test_bounded_capacity_overlay_and_forward_budget
+FAILED scripts/pgv13sandbox/test_activate.py::test_explicit_legacy_budget_keeps_sandbox_for_capacity_rollback
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[ok-True]
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[pids-False]
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[oom-False]
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[old_budget-False]
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[readiness-False]
+FAILED scripts/pgv13sandbox/test_verify_service.py::test_service_client_observes_cgroup_and_uses_existing_http_worker[smoke-False]
+================= 8 failed, 20 deselected, 1 warning in 0.10s ==================

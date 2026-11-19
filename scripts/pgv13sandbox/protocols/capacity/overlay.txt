@@ -1,0 +1,26 @@
+$ -m pytest scripts/pgv13sandbox -q --basetemp=/workspace/scratch/d4153a1cfd25/pgv13capacity-overlay
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CAPACITY-ZIP
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.14.7, anyio-4.14.2
+collected 49 items
+
+scripts/pgv13sandbox/test_activate.py .......................            [ 46%]
+scripts/pgv13sandbox/test_probe.py ..............                        [ 75%]
+scripts/pgv13sandbox/test_verify_service.py ............                 [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 49 passed, 1 warning in 0.74s =========================
+exit=0
+$ scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 663, "added": [], "missing": []}
+exit=0
