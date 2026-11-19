@@ -1,0 +1,2 @@
+kernel lock held across exec into Node: PASS (conflict exit73)
+kernel lock released on SIGTERM; persistent lockfile reusable: PASS

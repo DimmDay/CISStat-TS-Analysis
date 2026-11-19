@@ -169,7 +169,7 @@
    ]
   },
   "renderer.service": {
-   "observed": "No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints.",
+   "observed": "Four unchanged HTTP routes. TCP compatibility remains unauthenticated; selected UDS deployment binds only filesystem socket, network:none/no ports. IPC admission and hardening are reviewed under renderer.ipc; API remains job/publication authority.",
    "target": "Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output.",
    "follow_up": [
     "AUTH-03",
@@ -640,6 +640,20 @@
    "threats": [
     "T12",
     "T14"
+   ]
+  },
+  "renderer.ipc": {
+   "observed": "Opt-in HTTP over filesystem Unix socket. Dedicated external volume: renderer RW10001:10001, dir0750/socket0660, API RO+GID10001. No renderer HTTP credentials; mount/UID/GID are service admission, not end-user authority. Fixed targets, bounded IO/deadline/cancel, lifetime flock/stale checks; native VM acceptance remains required.",
+   "target": "Only approved API/renderer mounts; API retains ownership/grant/revoke/job/CAS/publication authority. No cookies/platform secrets forwarded. AUTH-13 remote_unknown is not changed into proof of remote stop.",
+   "follow_up": [
+    "AUTH-03",
+    "AUTH-11",
+    "AUTH-13",
+    "AUTH-14"
+   ],
+   "threats": [
+    "T08",
+    "T12"
    ]
   }
  },
@@ -7652,7 +7666,7 @@
    "admission": "recheck revoke/grant/reservation + fencing before execution and publication",
    "stage_namespace": "service"
   },
-  "worker:apps/api/document_render_worker.py:715": {
+  "worker:apps/api/document_render_worker.py:747": {
    "policy": "worker.authority",
    "stage": "platform",
    "stage_namespace": "service",
@@ -7663,7 +7677,7 @@
    "canonical_operation": "apps/api/document_render_worker.py:_target via _run_with_deadline",
    "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
   },
-  "worker:apps/api/document_render_worker.py:737": {
+  "worker:apps/api/document_render_worker.py:769": {
    "policy": "worker.authority",
    "stage": "platform",
    "stage_namespace": "service",
@@ -8294,6 +8308,42 @@
    ],
    "canonical_operation": "auth.ops.sweep",
    "admission": "existing required-mode in-process worker; one leased admin-notice claim per cycle, SMTP outside login/claim transactions, fenced ack/retry and configured single administrator recipient; no login proofs in notice; audit/retention independent of SMTP failure"
+  },
+  "transport:renderer-unix-http": {
+   "policy": "renderer.ipc",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "isolated PNG renderer socket",
+   "effects": [
+    "read_frozen_metadata",
+    "render_png"
+   ],
+   "canonical_operation": "renderer.ipc",
+   "admission": "operator-selected private socket; no TCP fallback/redirect/proxy; service filesystem capability only, end-user authorization remains API responsibility"
+  },
+  "worker:apps/api/document_render_worker.py:710": {
+   "policy": "worker.authority",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "authorized frozen print input",
+   "effects": [
+    "thread_dispatch",
+    "private_renderer_request"
+   ],
+   "canonical_operation": "renderer.ipc.render",
+   "admission": "managed AUTH-13 path remains fenced; legacy print worker has cancellation/deadline monitoring, backend remains publisher"
+  },
+  "worker:apps/api/png_renderer_client.py:387": {
+   "policy": "renderer.ipc",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "request-owned IPC connection",
+   "effects": [
+    "cancel_socket",
+    "deadline"
+   ],
+   "canonical_operation": "renderer.ipc.deadline",
+   "admission": "fixed configured endpoint only; helper cannot execute science or publish a rendition"
   }
  },
  "extra_surfaces": [
@@ -9193,6 +9243,30 @@
      "symbol": "enroll"
     }
    ]
+  },
+  {
+   "id": "transport:renderer-unix-http",
+   "kind": "transport",
+   "method": "CALL",
+   "path": "private /run/cisstat-renderer/render.sock; existing GET/POST renderer allowlist",
+   "operation": "renderer.ipc",
+   "evidence": [
+    {
+     "source": "apps/api/png_renderer_client.py",
+     "line": 1,
+     "symbol": "PngRendererClient._unix_request"
+    },
+    {
+     "source": "apps/print-renderer/src/socketTransport.ts",
+     "line": 1,
+     "symbol": "listenOnSocket"
+    },
+    {
+     "source": "deployment/cisstat-stack/docker-compose.renderer-uds.yml",
+     "line": 1,
+     "symbol": "API read-only IPC mount"
+    }
+   ]
   }
  ],
  "reviewed_sources": [
@@ -9285,15 +9359,22 @@
   "apps/embedded/app/layout.tsx",
   "apps/embedded/app/login/page.tsx",
   "apps/embedded/next.config.mjs",
+  "apps/print-renderer/build/.gitattributes",
   "apps/print-renderer/build/deployment/README.md",
   "apps/print-renderer/build/deployment/chromium.seccomp.json",
   "apps/print-renderer/build/deployment/chromium.seccomp.source.json",
   "apps/print-renderer/build/deployment/docker-compose.capacity.yml",
   "apps/print-renderer/build/deployment/docker-compose.sandbox.yml",
+  "apps/print-renderer/build/deployment/docker-compose.uds.yml",
   "apps/print-renderer/build/deployment/docker-compose.validated-image.yml",
   "apps/print-renderer/build/deployment/docker-compose.yml",
+  "apps/print-renderer/build/entrypoint.sh",
+  "apps/print-renderer/src/healthcheck.ts",
   "apps/print-renderer/src/renderWorker.ts",
   "apps/print-renderer/src/rendererCore.tsx",
+  "apps/print-renderer/src/socketTransport.test.ts",
+  "apps/print-renderer/src/socketTransport.ts",
+  "apps/print-renderer/src/transportCancel.test.ts",
   "apps/standalone/Dockerfile",
   "apps/standalone/app/api/v1/[...path]/route.ts",
   "apps/standalone/app/layout.tsx",
@@ -9301,6 +9382,7 @@
   "apps/standalone/components/dashboard-pivot.test.tsx",
   "apps/standalone/next.config.mjs",
   "deployment/cisstat-stack/.env.example",
+  "deployment/cisstat-stack/docker-compose.renderer-uds.yml",
   "deployment/cisstat-stack/docker-compose.yml",
   "docs/ROLES_AND_PLANS_SPEC.md",
   "docs/auth00/operation_variants.md",
@@ -9327,7 +9409,9 @@
   "docs/auth21/design.md",
   "docs/auth22/design.md",
   "docs/pgv13_fixes.md",
+  "docs/pgv13_passport_documents.md",
   "docs/pgv13_sandbox_rollout.md",
+  "docs/pgv13_uds_transport.md",
   "packages/ui/components/AccountScreen.tsx",
   "packages/ui/components/BillingPanel.tsx",
   "packages/ui/components/DatasetPassportPanel.tsx",
@@ -9471,6 +9555,9 @@
   "scripts/pgv13sandbox/vendor/default.json",
   "scripts/pgv13sandbox/vendor/source.json",
   "scripts/pgv13sandbox/verify_service.py",
+  "scripts/pgv13uds/test_client.py",
+  "scripts/pgv13uds/test_vm.py",
+  "scripts/pgv13uds/verify_vm.py",
   "scripts/pgv13vm/test_diagnose.py",
   "spec_auth.md",
   "spec_auth_architecture.md",

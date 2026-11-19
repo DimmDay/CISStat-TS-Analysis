@@ -39,6 +39,7 @@ import {
   RenderTimeoutError,
   readConfig,
 } from "./renderWorker";
+import {listenOnSocket} from "./socketTransport";
 import { runFullSmoke, runProbeSmoke, type SmokeReport } from "./smokeScenarios";
 
 const config = readConfig();
@@ -96,6 +97,7 @@ function readBody(req: IncomingMessage, maxBytes: number, onOverflow: () => void
     req.on("end", () => {
       if (!settled) resolve(Buffer.concat(chunks));
     });
+    req.on("aborted",()=>{settled=true;reject(new Error("request_aborted"));});
     req.on("error", reject);
   });
 }
@@ -217,8 +219,18 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
     });
     return;
   }
+  const cancel=new AbortController();
+  const disconnected=()=>{
+    if (!res.writableEnded) {
+      cancel.abort();
+      log("info","render_cancelled",{request_id:payload.request_id});
+    }
+  };
+  res.once("close",disconnected);
+  if (res.destroyed) cancel.abort();
   try {
-    const outcome = await worker.renderPayload(payload, 1, payload.snapshot.print.page_count || 1);
+    const outcome = await worker.renderPayload(payload, 1, payload.snapshot.print.page_count || 1,cancel.signal);
+    if (cancel.signal.aborted || res.destroyed) return;
     log("info", "render_ok", {
       request_id: payload.request_id,
       profile: payload.snapshot.print.profile_id,
@@ -242,6 +254,7 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
       filename: `page-1-${payload.snapshot.print.profile_id}.png`,
     });
   } catch (error) {
+    if (cancel.signal.aborted || res.destroyed) return;
     if (error instanceof RenderTimeoutError) {
       log("warn", "render_timeout", { request_id: payload.request_id, timeout_s: error.timeoutS });
       sendJson(res, 503, buildErrorBody("render_timeout", error.message), {
@@ -269,7 +282,7 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
     sendJson(res, 500, buildErrorBody("internal_render_error", "рендер не выполнен; детали в журнале"), {
       "X-Render-Retryable": "false",
     });
-  }
+  } finally {res.removeListener("close",disconnected);}
 }
 
 async function handleSmoke(res: ServerResponse): Promise<void> {
@@ -285,7 +298,7 @@ async function handleSmoke(res: ServerResponse): Promise<void> {
 }
 
 export function createRendererServer(): Server {
-  return createServer((req, res) => {
+  const server=createServer({maxHeaderSize:16384,connectionsCheckingInterval:1000},(req, res) => {
     void (async () => {
       const url = (req.url ?? "/").split("?")[0];
       try {
@@ -333,23 +346,28 @@ export function createRendererServer(): Server {
       }
     })();
   });
+  server.maxConnections=32;
+  server.requestTimeout=10000;
+  server.headersTimeout=10000;
+  server.keepAliveTimeout=1000;
+  return server;
 }
 
 // ── Запуск (node dist/.../server.js) ──────────────────────────────
 
 export function startRendererServer(): Server {
   const server = createRendererServer();
-  server.listen(config.port, "0.0.0.0", () => {
-    log("info", "renderer_listening", {
-      port: config.port,
-      hard_timeout_s: config.hardTimeoutS,
-      max_concurrent: config.maxConcurrent,
-      max_body_bytes: config.maxBodyBytes,
-    });
+  const socketPath=process.env.CISSTAT_PRINT_RENDERER_SOCKET;
+  const listening=()=>log("info","renderer_listening",{transport:socketPath?"unix":"tcp",hard_timeout_s:config.hardTimeoutS,max_concurrent:config.maxConcurrent,max_body_bytes:config.maxBodyBytes});
+  if (socketPath) void listenOnSocket(server,socketPath).then(listening).catch(error=>{
+    log("error","renderer_listen_failed",{error:error instanceof Error?error.message:"invalid_socket"});
+    process.exitCode=1;server.close();
   });
+  else server.listen(config.port,"0.0.0.0",listening);
   const shutdown = (signal: string): void => {
     log("info", "renderer_shutdown", { signal });
     server.close(() => undefined);
+    server.closeAllConnections();
     void worker.shutdown().finally(() => process.exit(0));
     // AC20: плавная остановка не может висеть вечно.
     setTimeout(() => process.exit(0), 5000).unref();

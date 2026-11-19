@@ -28,16 +28,22 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
 # Pinned playwright@1.57.0 installs chromium-1200 + matching shared libraries.
 RUN npx --yes playwright@1.57.0 install --with-deps chromium \
     && apt-get update \
-    && apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig util-linux \
     && rm -rf /var/lib/apt/lists/* \
     && test -x "$CISSTAT_PRINT_RENDERER_BROWSER_PATH" \
     && fc-match 'DejaVu Sans' \
     && groupadd --gid 10001 renderer \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /tmp renderer
+RUN mkdir -p /run/cisstat-renderer \
+    && touch /run/cisstat-renderer/.layout-v1 \
+    && chown -R 10001:10001 /run/cisstat-renderer \
+    && chmod 0750 /run/cisstat-renderer \
+    && chmod 0640 /run/cisstat-renderer/.layout-v1
+COPY --chmod=0555 apps/print-renderer/build/entrypoint.sh /usr/local/bin/cisstat-print-renderer
 COPY --from=production-deps /app/node_modules/ /app/node_modules/
 COPY --from=compiler /app/apps/print-renderer/dist/ /app/apps/print-renderer/dist/
 USER 10001:10001
 EXPOSE 8907
 HEALTHCHECK --interval=30s --timeout=15s --start-period=20s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:8907/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 # Direct server entrypoint owns the actual worker shutdown handlers.
-CMD ["node", "apps/print-renderer/dist/apps/print-renderer/src/server.js"]
+CMD ["/usr/local/bin/cisstat-print-renderer"]

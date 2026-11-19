@@ -1,0 +1,55 @@
+FAIL apps/print-renderer/src/transportCancel.test.ts
+  ● HTTP disconnect reaches only this request AbortSignal
+
+    abort not propagated
+
+      20 |   try {
+      21 |     await started;request.destroy();
+    > 22 |     await Promise.race([stopped,new Promise((_,reject)=>setTimeout(()=>reject(new Error('abort not propagated')),500))]);
+         |                                                                               ^
+      23 |   } finally {request.destroy();server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+      24 | });
+      25 | test('abort ends admitted worker promptly and frees its slot',async()=>{
+
+      at Timeout._onTimeout (apps/print-renderer/src/transportCancel.test.ts:22:79)
+
+  ● abort ends admitted worker promptly and frees its slot
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+      32 |   try {
+      33 |     cancel.abort();await jest.advanceTimersByTimeAsync(0);
+    > 34 |     expect(result?.message).toContain('render_cancelled');
+         |                             ^
+      35 |     expect(worker.active).toBe(0);
+      36 |   } finally {await jest.advanceTimersByTimeAsync(1000);await pending;jest.useRealTimers();}
+      37 | });
+
+      at Object.<anonymous> (apps/print-renderer/src/transportCancel.test.ts:34:29)
+
+  ● HTTP limits are finite independently of Chromium
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 32
+    Received: undefined
+
+      38 | test('HTTP limits are finite independently of Chromium',()=>{
+      39 |   const server=createRendererServer();
+    > 40 |   expect(server.maxConnections).toBe(32);
+         |                                 ^
+      41 |   expect(server.requestTimeout).toBe(10000);
+      42 |   expect(server.headersTimeout).toBeLessThanOrEqual(10000);
+      43 | });
+
+      at Object.<anonymous> (apps/print-renderer/src/transportCancel.test.ts:40:33)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        4.269 s
+Ran all test suites within paths "apps/print-renderer/src/transportCancel.test.ts".

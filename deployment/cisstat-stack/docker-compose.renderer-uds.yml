@@ -1,0 +1,20 @@
+# API remains the only platform authority. Renderer never mounts science_data.
+services:
+  api:
+    image: cisstat-api:pgv13-uds
+    environment:
+      CISSTAT_PNG_RENDERER_IPC: /run/cisstat-renderer/render.sock
+      CISSTAT_PNG_RENDERER_ENABLED: '1'
+      CISSTAT_PNG_RENDERER_TIMEOUT_S: '60'
+    group_add: ['10001']
+    volumes:
+      - type: volume
+        source: renderer_ipc
+        target: /run/cisstat-renderer
+        read_only: true
+        volume:
+          nocopy: true
+volumes:
+  renderer_ipc:
+    external: true
+    name: ${CISSTAT_RENDERER_IPC_VOLUME:-cisstat_renderer_ipc_v1}

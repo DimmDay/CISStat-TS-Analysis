@@ -1,0 +1,215 @@
+FAIL apps/print-renderer/src/socketTransport.test.ts
+  ● private owned directory and lock are accepted
+
+    Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'
+
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'
+
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].
+
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring
+
+       5 |
+       6 | // Dynamic require keeps RED about missing transport, not test collection.
+    >  7 | const transport = () => require('./socketTransport');
+         |                         ^
+       8 | let dir: string;
+       9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+      10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:13:3)
+
+  ● directory mode 511 fails closed
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /permission|mode/
+    Received message: "Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'·
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'·
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].·
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring"
+
+           5 |
+           6 | // Dynamic require keeps RED about missing transport, not test collection.
+        >  7 | const transport = () => require('./socketTransport');
+             |                         ^
+           8 | let dir: string;
+           9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+          10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at apps/print-renderer/src/socketTransport.test.ts:19:14
+      at Object.<anonymous> (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:2235:93)
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+
+  ● directory mode 504 fails closed
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /permission|mode/
+    Received message: "Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'·
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'·
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].·
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring"
+
+           5 |
+           6 | // Dynamic require keeps RED about missing transport, not test collection.
+        >  7 | const transport = () => require('./socketTransport');
+             |                         ^
+           8 | let dir: string;
+           9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+          10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at apps/print-renderer/src/socketTransport.test.ts:19:14
+      at Object.<anonymous> (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:2235:93)
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+
+  ● directory mode 493 fails closed
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /permission|mode/
+    Received message: "Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'·
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'·
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].·
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring"
+
+           5 |
+           6 | // Dynamic require keeps RED about missing transport, not test collection.
+        >  7 | const transport = () => require('./socketTransport');
+             |                         ^
+           8 | let dir: string;
+           9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+          10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at apps/print-renderer/src/socketTransport.test.ts:19:14
+      at Object.<anonymous> (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:2235:93)
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+      at apps/print-renderer/src/socketTransport.test.ts:19:76
+
+  ● symlink directory and noncanonical paths fail
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /symlink|canonical/
+    Received message: "Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'·
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'·
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].·
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring"
+
+           5 |
+           6 | // Dynamic require keeps RED about missing transport, not test collection.
+        >  7 | const transport = () => require('./socketTransport');
+             |                         ^
+           8 | let dir: string;
+           9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+          10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at apps/print-renderer/src/socketTransport.test.ts:23:19
+      at Object.<anonymous> (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-PGV13-CERT/node_modules/expect/build/index.js:2235:93)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:23:82)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:23:82)
+
+  ● regular file and symlink endpoint survive refusal
+
+    Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'
+
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'
+
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].
+
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring
+
+       5 |
+       6 | // Dynamic require keeps RED about missing transport, not test collection.
+    >  7 | const transport = () => require('./socketTransport');
+         |                         ^
+       8 | let dir: string;
+       9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+      10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:29:16)
+
+  ● missing socket needs no unlink
+
+    Cannot find module './socketTransport' from 'apps/print-renderer/src/socketTransport.test.ts'
+
+    However, Jest was able to find:
+    	'./socketTransport.test.ts'
+
+    You might want to include a file extension in your import, or update your 'moduleFileExtensions', which is currently ['ts', 'tsx', 'js', 'jsx', 'json'].
+
+    See https://jestjs.io/docs/configuration#modulefileextensions-arraystring
+
+       5 |
+       6 | // Dynamic require keeps RED about missing transport, not test collection.
+    >  7 | const transport = () => require('./socketTransport');
+         |                         ^
+       8 | let dir: string;
+       9 | beforeEach(()=>{dir=fs.mkdtempSync(join(tmpdir(),'pgv13-socket-'));fs.chmodSync(dir,0o750);});
+      10 | afterEach(()=>{jest.restoreAllMocks();fs.rmSync(dir,{recursive:true,force:true});});
+
+      at Resolver._throwModNotFoundError (../CISStat-PGV13-CERT/node_modules/jest-resolve/build/index.js:895:11)
+      at transport (apps/print-renderer/src/socketTransport.test.ts:7:25)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:36:44)
+
+  ● active endpoint or ambiguous error never unlinks
+
+    TypeError: Cannot redefine property: lstatSync
+        at Object.defineProperty (<anonymous>)
+
+      40 |   const path=join(dir,'render.sock');fs.writeFileSync(path,'fake-socket');
+      41 |   const original=fs.lstatSync;const stat=original(path);
+    > 42 |   jest.spyOn(fs,'lstatSync').mockImplementation(((p:any,...args:any[])=>p===path?{...stat,isSocket:()=>true,isSymbolicLink:()=>false}:original(p,...args)) as any);
+         |        ^
+      43 |   await expect(transport().prepareSocketPath(path,async()=>{})).rejects.toThrow(/active/);
+      44 |   await expect(transport().prepareSocketPath(path,async()=>{throw Object.assign(new Error('denied'),{code:'EACCES'});})).rejects.toThrow('denied');
+      45 |   expect(fs.readFileSync(path,'utf8')).toBe('fake-socket');
+
+      at ModuleMocker.spyOn (../CISStat-PGV13-CERT/node_modules/jest-mock/build/index.js:616:16)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:42:8)
+
+  ● only refused owned same-inode stale socket is removed
+
+    TypeError: Cannot redefine property: lstatSync
+        at Object.defineProperty (<anonymous>)
+
+      48 |   const path=join(dir,'render.sock');fs.writeFileSync(path,'fake-socket');
+      49 |   const original=fs.lstatSync;const stat=original(path);
+    > 50 |   jest.spyOn(fs,'lstatSync').mockImplementation(((p:any,...args:any[])=>p===path?{...stat,isSocket:()=>true,isSymbolicLink:()=>false}:original(p,...args)) as any);
+         |        ^
+      51 |   await transport().prepareSocketPath(path,async()=>{throw Object.assign(new Error('refused'),{code:'ECONNREFUSED'});});
+      52 |   expect(fs.existsSync(path)).toBe(false);
+      53 | });
+
+      at ModuleMocker.spyOn (../CISStat-PGV13-CERT/node_modules/jest-mock/build/index.js:616:16)
+      at Object.<anonymous> (apps/print-renderer/src/socketTransport.test.ts:50:8)
+
+Test Suites: 1 failed, 1 total
+Tests:       9 failed, 9 total
+Snapshots:   0 total
+Time:        2.93 s
+Ran all test suites within paths "apps/print-renderer/src/socketTransport.test.ts".

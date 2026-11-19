@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 1 item
+
+scripts/pgv13sandbox/test_activate.py F                                  [100%]
+
+=================================== FAILURES ===================================
+_______________ test_legacy_activator_refuses_running_uds_volume _______________
+scripts/pgv13sandbox/test_activate.py:209: in test_legacy_activator_refuses_running_uds_volume
+    assert A.main()==2
+E   AssertionError: assert 0 == 2
+E    +  where 0 = <function main at 0x7f7f8b533b00>()
+E    +    where <function main at 0x7f7f8b533b00> = <module 'scripts.pgv13sandbox.activate' from '/workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/scripts/pgv13sandbox/activate.py'>.main
+----------------------------- Captured stdout call -----------------------------
+{"preflight_ok": true, "action": "apply", "image_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "profile": "/workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/apps/print-renderer/build/deployment/chromium.seccomp.json", "service_recreated": true, "pids_limit": 512, "readiness_checked": false, "pgv13_certified": false}
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_activate.py::test_legacy_activator_refuses_running_uds_volume
+========================= 1 failed, 1 warning in 0.08s =========================

@@ -65,6 +65,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -662,8 +663,11 @@ class DocumentRenderWorker:
         # 3. Рендер контейнером с soft-timeout (§11: hard timeout --
         #    зона контейнера; здесь -- бюджет HTTP-вызова).
         try:
-            content = self._render_print_with_timeout(payload)
+            content = self._render_print_with_timeout(payload, job_id=claimed.job_id)
         except Exception as exc:
+            current=service.registry.get_job(claimed.job_id)
+            if current is not None and current.state == "cancelled":
+                return "cancelled"
             return self._fail_or_requeue(claimed, self._error_code(exc))
         # 3.5. PNG-гейт ДО staging (§11: битые байты не выдаются за
         #    валидные; защита в глубину -- клиент гейтит тоже, но worker
@@ -690,11 +694,39 @@ class DocumentRenderWorker:
         )
         return "ready"
 
-    def _render_print_with_timeout(self, payload: dict) -> bytes:
+    def _render_print_with_timeout(self, payload: dict, *, job_id: str | None = None) -> bytes:
         """POST /v1/render в daemon-потоке + join(timeout): зависший
         HTTP-вызов не держит worker'а дольше бюджета (§18; AC20)."""
         client = self._png_renderer_client()
-
+        from apps.api.png_renderer_client import PngRendererClient, RendererCancelled
+        # The UDS client owns cancellable IO and an absolute bounded deadline.
+        # Preserve the historical injection interface for existing renderers.
+        if isinstance(client,PngRendererClient) and client.ipc_socket:
+            cancel=threading.Event()
+            box: dict[str,Any]={}
+            def run():
+                try:box["result"]=client.render_page(payload,timeout_s=self._render_timeout,cancel_event=cancel)
+                except BaseException as error:box["error"]=error
+            thread=threading.Thread(target=run,name="cisstat-print-ipc",daemon=True)
+            thread.start()
+            deadline=time.monotonic()+min(self._render_timeout,60)
+            next_job_check=0.0
+            try:
+                while thread.is_alive():
+                    if self._stop_event.is_set():cancel.set()
+                    if job_id and time.monotonic() >= next_job_check:
+                        next_job_check=time.monotonic()+0.1
+                        current=self._delivery_service().registry.get_job(job_id)
+                        if current is None or current.state == "cancelled":cancel.set()
+                    if time.monotonic() >= deadline:
+                        cancel.set();thread.join(timeout=.3)
+                        raise RenderTimeoutError("render_timeout: IPC soft deadline")
+                    thread.join(timeout=.02)
+                if "error" in box:raise box["error"]
+                if cancel.is_set():raise RendererCancelled("render_cancelled")
+                return box["result"]
+            finally:
+                cancel.set()
         def _target(box: dict[str, Any]) -> None:
             try:
                 box["result"] = client.render_page(payload)

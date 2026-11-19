@@ -1,0 +1,237 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 12 items
+
+scripts/pgv13uds/test_vm.py FFFFFFFFFFFF                                 [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_valid_renderer_boundary _________________________
+scripts/pgv13uds/test_vm.py:23: in test_valid_renderer_boundary
+    def test_valid_renderer_boundary():assert implementation().validate_renderer_meta(meta())=='cisstat_renderer_ipc_candidate'
+                                              ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+____________________ test_unsafe_renderer_refused[User-0:0] ____________________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+_______________ test_unsafe_renderer_refused[NetworkMode-bridge] _______________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+______________ test_unsafe_renderer_refused[ReadOnlyRootfs-False] ______________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+_________________ test_unsafe_renderer_refused[CapDrop-value3] _________________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+________________ test_unsafe_renderer_refused[Privileged-True] _________________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+__________________ test_unsafe_renderer_refused[PidsLimit-0] ___________________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+____________________ test_unsafe_renderer_refused[Memory-0] ____________________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+_______________ test_unsafe_renderer_refused[SecurityOpt-value7] _______________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+______________ test_unsafe_renderer_refused[PortBindings-value8] _______________
+scripts/pgv13uds/test_vm.py:30: in test_unsafe_renderer_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+___________________________ test_extra_mount_refused ___________________________
+scripts/pgv13uds/test_vm.py:35: in test_extra_mount_refused
+    with pytest.raises(ValueError):implementation().validate_renderer_meta(m)
+                                   ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+_______________________ test_png_oracle_crc_and_geometry _______________________
+scripts/pgv13uds/test_vm.py:44: in test_png_oracle_crc_and_geometry
+    result=implementation().png_checks(png(),(2,1))
+           ^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_vm.py:12: in implementation
+    def implementation(): return importlib.import_module('scripts.pgv13uds.verify_vm')
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1324: in _find_and_load_unlocked
+    ???
+E   ModuleNotFoundError: No module named 'scripts.pgv13uds.verify_vm'
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13uds/test_vm.py::test_valid_renderer_boundary - ModuleNotF...
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[User-0:0] - ...
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[NetworkMode-bridge]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[ReadOnlyRootfs-False]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[CapDrop-value3]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[Privileged-True]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[PidsLimit-0]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[Memory-0] - ...
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[SecurityOpt-value7]
+FAILED scripts/pgv13uds/test_vm.py::test_unsafe_renderer_refused[PortBindings-value8]
+FAILED scripts/pgv13uds/test_vm.py::test_extra_mount_refused - ModuleNotFound...
+FAILED scripts/pgv13uds/test_vm.py::test_png_oracle_crc_and_geometry - Module...
+======================== 12 failed, 1 warning in 0.11s =========================

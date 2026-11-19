@@ -22,8 +22,8 @@
 | static_asset | 1 |
 | storage | 18 |
 | task_alias | 4 |
-| transport | 2 |
-| worker | 11 |
+| transport | 3 |
+| worker | 13 |
 
 ## Классификации
 
@@ -64,7 +64,8 @@
 | progress.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | Unified account context; сохранить object/mirror проверки, ограничить admission/observations. | AUTH-03, AUTH-09 |
 | proxy.transport | AUTH-06 shared force-dynamic Node proxy: fixed TLS target, exact configured Origin/Fetch Metadata/CSRF before forwarding, generated method/path allowlist, identity/forwarded headers stripped, explicit cookie/header forwarding, no redirect/no-store. Backend remains authority. GET restore blocked. | Scientific ownership/enforcement remains AUTH-09/11; maintain reviewed allowlist. | AUTH-09, AUTH-11 |
 | public.metadata | Открытые metadata/education endpoints; личная AuthN не заявлена. | Явный public allowlist; безопасная проекция, лимит ответа и throttle для compute. | AUTH-01, AUTH-11 |
-| renderer.service | No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints. | Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
+| renderer.ipc | Opt-in HTTP over filesystem Unix socket. Dedicated external volume: renderer RW10001:10001, dir0750/socket0660, API RO+GID10001. No renderer HTTP credentials; mount/UID/GID are service admission, not end-user authority. Fixed targets, bounded IO/deadline/cancel, lifetime flock/stale checks; native VM acceptance remains required. | Only approved API/renderer mounts; API retains ownership/grant/revoke/job/CAS/publication authority. No cookies/platform secrets forwarded. AUTH-13 remote_unknown is not changed into proof of remote stop. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
+| renderer.service | Four unchanged HTTP routes. TCP compatibility remains unauthenticated; selected UDS deployment binds only filesystem socket, network:none/no ports. IPC admission and hardening are reviewed under renderer.ipc; API remains job/publication authority. | Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output. | AUTH-03, AUTH-11, AUTH-13, AUTH-14 |
 | run.object | AUTH-03 shared context subject projection + existing authorize_run_access owner/tenant/unresolved continuity; incompatible credentials/research owner rejected before object gate. Legacy ADMIN object bypass remains AUTH-09. AUTH-09: explicit Account/tenant boundary before ADMIN/dev/creator cookie; owner_subject provenance. Named legacy write requires migration. | Authenticated account context + current tenant/object permission; uniform 404; controlled legacy migration. | AUTH-03, AUTH-09, AUTH-11 |
 | scientific.operation | AUTH-11 protected required/scoped: named browser session or durable scoped programmatic key, current Account/membership, existing run/session object policy before commercial decision. ScientificRoute before body parsing; router dependency normalizes actual workload; request execution fence rechecks kernel inputs. Baseline allowlist/bounds, actual saved model provenance on scientific result reads, no role-derived plan upgrade. Legacy dev compatibility is not production authority. Global legacy rules PATCH and train placeholder refuse protected execution. | Preserve one identity/object/functional policy path; AUTH-14 PELT/tuning use bounded metering/atomic reservations when protected; extend operational acceptance and other priced operations separately. Service progress/DOCLOG retain existing metadata semantics. | AUTH-12, AUTH-13, AUTH-20 |
 | storage.internal | Internal file/object/DB operation; content hash/path/registry checks are not user authentication. | Reach only via authorized object service; trusted roots/keys, no direct filesystem mount or public object ACL. | AUTH-09, AUTH-11, AUTH-13, AUTH-20 |
@@ -736,10 +737,10 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| renderer:GET:/healthz | renderer:/healthz / service:documentation | public.metadata / frozen print payload / PNG output | apps/print-renderer/src/server.ts:292 |
-| renderer:GET:/readyz | renderer:/readyz / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:296 |
-| renderer:POST:/v1/render | renderer:/v1/render / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:313 |
-| renderer:POST:/v1/smoke | renderer:/v1/smoke / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:317 |
+| renderer:GET:/healthz | renderer:/healthz / service:documentation | public.metadata / frozen print payload / PNG output | apps/print-renderer/src/server.ts:305 |
+| renderer:GET:/readyz | renderer:/readyz / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:309 |
+| renderer:POST:/v1/render | renderer:/v1/render / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:326 |
+| renderer:POST:/v1/smoke | renderer:/v1/smoke / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:330 |
 
 ## static_asset
 
@@ -784,6 +785,7 @@
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
 | transport:cors-preflight | transport:cors-preflight / service:transport | cors.transport / CORS preflight metadata | apps/api/main.py:199 |
+| transport:renderer-unix-http | renderer.ipc / service:platform | renderer.ipc / isolated PNG renderer socket | apps/api/png_renderer_client.py:1 |
 | transport:streamlit-runtime | transport:streamlit-runtime / service:legacy | legacy.token / Streamlit websocket/uploads/download transport | app.py:1 |
 
 ## worker
@@ -795,8 +797,10 @@
 | worker:apps/api/authentication/demo_sweeper.py:47 | apps/api/authentication/demo_sweeper.py:run / service:platform | compute.calibrated / independent physical wall deadline and aggregate Linux process-group RSS | apps/api/authentication/demo_sweeper.py:47 |
 | worker:apps/api/authentication/ops_sweeper.py:104 | apps/api/authentication/ops_sweeper.py:run / service:platform | auth.ops_delivery / mandatory audit outbox, revocation ledger retention, and first-trial admin email delivery | apps/api/authentication/ops_sweeper.py:104 |
 | worker:apps/api/delivery_worker.py:182 | apps/api/delivery_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/delivery_worker.py:182 |
-| worker:apps/api/document_render_worker.py:715 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:715 |
-| worker:apps/api/document_render_worker.py:737 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:737 |
+| worker:apps/api/document_render_worker.py:710 | apps/api/document_render_worker.py:run / service:platform | worker.authority / authorized frozen print input | apps/api/document_render_worker.py:710 |
+| worker:apps/api/document_render_worker.py:747 | apps/api/document_render_worker.py:target / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:747 |
+| worker:apps/api/document_render_worker.py:769 | apps/api/document_render_worker.py:self._loop / service:platform | worker.authority / queued operation | apps/api/document_render_worker.py:769 |
+| worker:apps/api/png_renderer_client.py:387 | apps/api/png_renderer_client.py:watch / service:platform | renderer.ipc / request-owned IPC connection | apps/api/png_renderer_client.py:387 |
 | worker:apps/api/workers/process.py:176 | apps/api/workers/process.py:supervise / service:platform | compute.calibrated / independent physical wall deadline and aggregate Linux process-group RSS | apps/api/workers/process.py:176 |
 | worker:delivery.run_once | worker:delivery.run_once / service:platform | worker.authority / delivery outbox; research runs; checkpoint files | apps/api/delivery_worker.py:118 |
 | worker:document.process | worker:document.process / service:documentation | worker.authority / render job; snapshot; rendition | apps/api/document_render_worker.py:384 |

@@ -1,0 +1,62 @@
+{
+  "base": "db10adab4ba513cc14735b4ceb3a9a645e3da637",
+  "python": {
+    "tests": 251,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "native_postgres": {
+    "tests": 24,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "strengthened_http_wire": {
+    "tests": 29,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "ts_tests": 185,
+  "renderer_build": "PASS",
+  "web_builds": [
+    "embedded:PASS",
+    "standalone:PASS"
+  ],
+  "http_endpoint_sets_unchanged": true,
+  "routes": {
+    "status": "ok",
+    "actual_api": 284,
+    "inventory_api": 284,
+    "registry_bindings": 288,
+    "inventory_entries": 666,
+    "added": [],
+    "missing": []
+  },
+  "new_inventory_counts": {
+    "api": 284,
+    "framework": 8,
+    "internal_operation": 37,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 3,
+    "worker": 13
+  },
+  "environment": {
+    "af_unix_bind": "blocked",
+    "error_type": "PermissionError",
+    "errno": 1,
+    "docker_available": false,
+    "native_uds_acceptance": "NOT RUN",
+    "kernel_flock": "PASS (separate local process/exec probe, not Docker)"
+  },
+  "pgv13_certified": false,
+  "vm_acceptance": "PENDING; follow candidate/A-B/native/recreate/live runbook"
+}

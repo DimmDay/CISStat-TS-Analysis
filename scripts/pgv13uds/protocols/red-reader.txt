@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 1 item
+
+scripts/pgv13uds/test_client.py F                                        [100%]
+
+=================================== FAILURES ===================================
+___________________ test_rejected_response_reader_is_closed ____________________
+scripts/pgv13uds/test_client.py:212: in test_rejected_response_reader_is_closed
+    assert observed and observed[0].isclosed(), 'over-limit body must not retain a buffered socket FD'
+E   AssertionError: over-limit body must not retain a buffered socket FD
+E   assert ([<http.client.HTTPResponse object at 0x7f427f359420>] and False)
+E    +  where False = isclosed()
+E    +    where isclosed = <http.client.HTTPResponse object at 0x7f427f359420>.isclosed
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13uds/test_client.py::test_rejected_response_reader_is_closed
+========================= 1 failed, 1 warning in 0.57s =========================

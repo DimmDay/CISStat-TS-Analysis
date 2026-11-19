@@ -1,0 +1,7 @@
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 8 passed, 8 total
+Tests:       185 passed, 185 total
+Snapshots:   0 total
+Time:        6.22 s
+Ran all test suites within paths "apps/print-renderer/src/socketTransport.test.ts", "apps/print-renderer/src/transportCancel.test.ts", "apps/print-renderer/src/rendererFix.test.ts", "apps/print-renderer/src/rendererCore.test.ts", "apps/print-renderer/src/launchGuard.test.ts", "packages/ui/print/printPassport.test.tsx", "packages/ui/print/printLayout.test.tsx", "packages/ui/print/printSchema.test.ts".

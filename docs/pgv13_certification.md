@@ -265,3 +265,33 @@ TS160/160. Оракулы прежнего raw P02 заголовка и author 
 старому image ID. **Общий PGV-13 по-прежнему NOT CERTIFIED**: F-C13-04 и
 transport/final-image/end-to-end PNG/content/visual acceptance остаются OPEN.
 Расширенный PGV-05/06/09:163 PASS,1 старый docstring FAIL (также на чистой базе).
+
+## 19.11.2026 — UDS transport поверх db10ada: реализация и граница acceptance
+
+Новая выбранная конфигурация связывает API с renderer через HTTP/Unix socket
+в dedicated volume. Renderer network:none, без опубликованного порта; API
+read-only IPC mount + group10001, renderer10001:10001 dir0750/socket0660 и
+эксклюзивный flock. Полный порядок candidate/A-B/native/recreate/live gate:
+`docs/pgv13_uds_transport.md`. Старые base-only команды больше не основной
+rollout; source deployment-оракулы усилены проверкой пары overlays/pinned image/
+mandatory web rebuild/shared volume/RO, вместо проверки одного boolean IPC.
+F-C13-04a/b/c проходят локальные source/contract проверки; runtime transport
+на конкретной VM пока не принят. Старый VM ops PASS относится к old image.
+
+Client проверяет filesystem admission, не делает TCP fallback/redirect/proxy,
+ограничивает request8MiB/PNG50MiB/control64KiB и whole-IO monotonic deadline60s.
+Cancel закрывает FD; renderer disconnect→AbortSignal→job-owned launch/SSR/browser.
+Legacy worker передаёт свой deadline и наблюдает cancel/stop. AUTH13 child получает
+IPC path/enabled явно; remote_unknown и authority/publication fencing прежние.
+Старый activate.py отказывает на active UDS mount, не снимая transport.
+
+Нативный AF_UNIX здесь запрещён (EPERM), Docker отсутствует. Wire bytes проверены
+по явному TCP socket adapter, Linux FS/net security — doubles; реальный kernel
+flock/exec/exit отдельно PASS. Не выдаётся за native Docker/UDS/Chromium PASS.
+VM gate требует actual UID/GID/modes/RO/lock/cgroups/no-TCP, нового image A/B,
+3 structural PNG после cancel/deadline и correlated renderer disconnect events;
+для isolated recreate требуется прежний report с тем же volume/image и новым CID.
+**Общий PGV-13 остаётся NOT CERTIFIED**, пока этот gate и последующая P01/P02/
+visual/OCR/job-download приёмка не выполнены. Протоколы текущей работы:
+`scripts/pgv13uds/protocols/`. HTTP endpoint sets прежние, AUTH-00 transport review
+расширен; миграций и разрешения новых host privileges нет.

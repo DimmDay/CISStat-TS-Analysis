@@ -1,0 +1,21 @@
+# New image must be pinned explicitly; legacy activate.py is not an image upgrader.
+services:
+  print-renderer:
+    image: ${CISSTAT_UDS_RENDERER_IMAGE:?Pin the new UDS image ID}
+    pull_policy: never
+    environment:
+      CISSTAT_PRINT_RENDERER_SOCKET: /run/cisstat-renderer/render.sock
+    pids_limit: 512
+    security_opt:
+      - apparmor=docker-default
+      - seccomp=${CISSTAT_RENDERER_SECCOMP_FILE:?Set the reviewed absolute profile path}
+    volumes:
+      - type: volume
+        source: renderer_ipc
+        target: /run/cisstat-renderer
+    healthcheck:
+      test: [CMD, node, apps/print-renderer/dist/apps/print-renderer/src/healthcheck.js]
+volumes:
+  renderer_ipc:
+    external: true
+    name: ${CISSTAT_RENDERER_IPC_VOLUME:-cisstat_renderer_ipc_v1}

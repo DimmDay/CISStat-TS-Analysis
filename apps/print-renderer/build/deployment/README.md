@@ -1,3 +1,8 @@
+> 19.11.2026: этот раздел описывает legacy TCP-only renderer. Для платформы
+> API→renderer используйте base + docker-compose.uds.yml и полный порядок
+> candidate/A-B/native gates в docs/pgv13_uds_transport.md. UDS не слушает TCP8907;
+> старый verify_service.py/activate.py не являются UDS rollout.
+
 # PGV-08 renderer deployment — recovery delivery
 
 Build context is repository root. Dockerfile/compose/runbook are source files,

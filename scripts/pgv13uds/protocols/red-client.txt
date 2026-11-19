@@ -1,0 +1,165 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 20 items
+
+scripts/pgv13uds/test_client.py FFFFFFFFFFFFFFFFFFFF                     [100%]
+
+=================================== FAILURES ===================================
+____________________ test_explicit_ipc_config_is_preserved _____________________
+scripts/pgv13uds/test_client.py:68: in test_explicit_ipc_config_is_preserved
+    assert c.ipc_socket==PATH
+           ^^^^^^^^^^^^
+E   AttributeError: 'PngRendererClient' object has no attribute 'ipc_socket'
+_____________________________ test_finite_timeout ______________________________
+scripts/pgv13uds/test_client.py:75: in test_finite_timeout
+    assert 0 < timeout <= 60
+E   assert inf <= 60
+____________________ test_wire_png_ready_and_no_credentials ____________________
+scripts/pgv13uds/test_client.py:79: in test_wire_png_ready_and_no_credentials
+    c=wire.client()
+      ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+____________ test_error_taxonomy_and_no_redirect[busy-RendererBusy] ____________
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_ test_error_taxonomy_and_no_redirect[dependency-RendererDependencyUnavailable] _
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_____ test_error_taxonomy_and_no_redirect[payload-RendererPayloadInvalid] ______
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_________ test_error_taxonomy_and_no_redirect[timeout-RendererTimeout] _________
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+__________ test_error_taxonomy_and_no_redirect[bad-RendererBadOutput] __________
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+______ test_error_taxonomy_and_no_redirect[redirect-RendererUnavailable] _______
+scripts/pgv13uds/test_client.py:94: in test_error_taxonomy_and_no_redirect
+    with pytest.raises(getattr(C,error)): wire.client().render_page({'request_id':'errors'})
+                                          ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+________________________ test_body_limit_before_connect ________________________
+scripts/pgv13uds/test_client.py:100: in test_body_limit_before_connect
+    monkeypatch.setattr(C,'MAX_REQUEST_BYTES',30)
+E   AttributeError: <module 'apps.api.png_renderer_client' from '/workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/apps/api/png_renderer_client.py'> has no attribute 'MAX_REQUEST_BYTES'
+_____________________________ test_response_bound ______________________________
+scripts/pgv13uds/test_client.py:107: in test_response_bound
+    monkeypatch.setattr(C,'MAX_PNG_BYTES',50)
+E   AttributeError: <module 'apps.api.png_renderer_client' from '/workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/apps/api/png_renderer_client.py'> has no attribute 'MAX_PNG_BYTES'
+_____________________ test_absolute_deadline_stops_trickle _____________________
+scripts/pgv13uds/test_client.py:115: in test_absolute_deadline_stops_trickle
+    with pytest.raises(C.RendererTimeout):wire.client(timeout_s=.13).render_page({'request_id':'slow'})
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+______________________ test_cancel_closes_inflight_socket ______________________
+scripts/pgv13uds/test_client.py:124: in test_cancel_closes_inflight_socket
+    with pytest.raises(C.RendererCancelled):wire.client().render_page({'request_id':'cancel'},cancel_event=cancel)
+                       ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'apps.api.png_renderer_client' has no attribute 'RendererCancelled'
+___________________ test_invalid_json_is_terminal_before_io ____________________
+scripts/pgv13uds/test_client.py:132: in test_invalid_json_is_terminal_before_io
+    with pytest.raises(C.RendererPayloadInvalid):wire.client().render_page({'x':float('nan')})
+                                                 ^^^^^^^^^^^^^
+scripts/pgv13uds/test_client.py:60: in <lambda>
+    state.client = lambda **kw:C.PngRendererClient(ipc_socket=PATH,base_url='http://must-not-be-used:1',**kw)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_____________________ test_missing_socket_never_falls_back _____________________
+scripts/pgv13uds/test_client.py:139: in test_missing_socket_never_falls_back
+    with pytest.raises(C.RendererUnavailable):C.PngRendererClient(ipc_socket=PATH).render_page({'request_id':'absent'})
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+____________ test_bad_path_is_configuration_failure[relative.sock] _____________
+scripts/pgv13uds/test_client.py:145: in test_bad_path_is_configuration_failure
+    with pytest.raises(C.RendererDependencyUnavailable):C.PngRendererClient(ipc_socket=bad).render_page({})
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_____________ test_bad_path_is_configuration_failure[/tmp/../sock] _____________
+scripts/pgv13uds/test_client.py:145: in test_bad_path_is_configuration_failure
+    with pytest.raises(C.RendererDependencyUnavailable):C.PngRendererClient(ipc_socket=bad).render_page({})
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+____________ test_bad_path_is_configuration_failure[/tmp/\x00sock] _____________
+scripts/pgv13uds/test_client.py:145: in test_bad_path_is_configuration_failure
+    with pytest.raises(C.RendererDependencyUnavailable):C.PngRendererClient(ipc_socket=bad).render_page({})
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_________________ test_bad_path_is_configuration_failure[bad3] _________________
+scripts/pgv13uds/test_client.py:145: in test_bad_path_is_configuration_failure
+    with pytest.raises(C.RendererDependencyUnavailable):C.PngRendererClient(ipc_socket=bad).render_page({})
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: PngRendererClient.__init__() got an unexpected keyword argument 'ipc_socket'
+_____________ test_managed_child_preserves_ipc_without_env_secrets _____________
+scripts/pgv13uds/test_client.py:154: in test_managed_child_preserves_ipc_without_env_secrets
+    assert print_bytes({},'http://unused',1,ipc_socket=PATH,enabled=False)==PNG
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: print_bytes() got an unexpected keyword argument 'ipc_socket'
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13uds/test_client.py::test_explicit_ipc_config_is_preserved
+FAILED scripts/pgv13uds/test_client.py::test_finite_timeout - assert inf <= 60
+FAILED scripts/pgv13uds/test_client.py::test_wire_png_ready_and_no_credentials
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[busy-RendererBusy]
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[dependency-RendererDependencyUnavailable]
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[payload-RendererPayloadInvalid]
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[timeout-RendererTimeout]
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[bad-RendererBadOutput]
+FAILED scripts/pgv13uds/test_client.py::test_error_taxonomy_and_no_redirect[redirect-RendererUnavailable]
+FAILED scripts/pgv13uds/test_client.py::test_body_limit_before_connect - Attr...
+FAILED scripts/pgv13uds/test_client.py::test_response_bound - AttributeError:...
+FAILED scripts/pgv13uds/test_client.py::test_absolute_deadline_stops_trickle
+FAILED scripts/pgv13uds/test_client.py::test_cancel_closes_inflight_socket - ...
+FAILED scripts/pgv13uds/test_client.py::test_invalid_json_is_terminal_before_io
+FAILED scripts/pgv13uds/test_client.py::test_missing_socket_never_falls_back
+FAILED scripts/pgv13uds/test_client.py::test_bad_path_is_configuration_failure[relative.sock]
+FAILED scripts/pgv13uds/test_client.py::test_bad_path_is_configuration_failure[/tmp/../sock]
+FAILED scripts/pgv13uds/test_client.py::test_bad_path_is_configuration_failure[/tmp/\x00sock]
+FAILED scripts/pgv13uds/test_client.py::test_bad_path_is_configuration_failure[bad3]
+FAILED scripts/pgv13uds/test_client.py::test_managed_child_preserves_ipc_without_env_secrets
+======================== 20 failed, 1 warning in 6.47s =========================

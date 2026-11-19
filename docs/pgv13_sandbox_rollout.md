@@ -1,3 +1,7 @@
+> UDS rollout поверх db10ada: docs/pgv13_uds_transport.md. activate.py теперь
+> отказывает при уже подключённом /run/cisstat-renderer volume; он не должен
+> снимать новый transport. Ниже — исторический TCP-only rollout/ops evidence.
+
 # PGV-13: опциональная активация sandbox candidate, 19.11.2026
 
 **Текущий статус на19.11.2026: operational renderer gate PASS по выводу VM

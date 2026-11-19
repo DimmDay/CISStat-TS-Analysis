@@ -71,7 +71,7 @@ def test_preflight_and_apply_pin_image_and_profile_without_unrequested_recreate(
     from scripts.pgv13sandbox import activate as A
     report=tmp_path/'report.json';report.write_text(json.dumps(evidence()))
     calls=[]
-    current={'image':IMAGE,'apparmor':'docker-default'}
+    current={'image':IMAGE,'apparmor':'docker-default','mounts':[]}
     def fake(args,**kwargs):
         calls.append((args,kwargs))
         if args[1]=='inspect': return subprocess.CompletedProcess(args,0,json.dumps(current),'')
@@ -102,7 +102,7 @@ def test_image_mismatch_never_runs_up(monkeypatch,tmp_path):
     calls=[]
     def fake(args,**kwargs):
         calls.append(args)
-        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':'sha256:'+'b'*64,'apparmor':'docker-default'}),'')
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':'sha256:'+'b'*64,'apparmor':'docker-default','mounts':[]}),'')
         return subprocess.CompletedProcess(args,0,'container-id','')
     monkeypatch.setattr(A.subprocess,'run',fake)
     monkeypatch.setattr('sys.argv',['activate.py','--report',str(report),'--apply'])
@@ -116,7 +116,7 @@ def test_rollback_keeps_image_override_but_removes_sandbox_overlay(monkeypatch,t
     calls=[]
     def fake(args,**kwargs):
         calls.append(args)
-        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default'}),'')
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default','mounts':[]}),'')
         if 'ps' in args:return subprocess.CompletedProcess(args,0,'container-id','')
         if 'config' in args:return subprocess.CompletedProcess(args,0,json.dumps(config(A.PROFILE,True)),'')
         return subprocess.CompletedProcess(args,0,'','')
@@ -143,7 +143,7 @@ def test_compose_up_failure_reports_possible_mutation_without_automatic_rollback
     calls=[]
     def fake(args,**kwargs):
         calls.append(args)
-        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default'}),'')
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default','mounts':[]}),'')
         if 'ps' in args:return subprocess.CompletedProcess(args,0,'container-id','')
         if 'config' in args:return subprocess.CompletedProcess(args,0,json.dumps(config(A.PROFILE)),'')
         return subprocess.CompletedProcess(args,1,'','up failed')
@@ -179,7 +179,7 @@ def test_legacy_capacity_apply_retains_sandbox_and_omits_capacity_override(monke
     calls=[]
     def fake(args,**kwargs):
         calls.append(args)
-        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default'}),'')
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default','mounts':[]}),'')
         if 'ps' in args:return subprocess.CompletedProcess(args,0,'container-id','')
         if 'config' in args:
             model=config(A.PROFILE);model['services']['print-renderer']['pids_limit']=128
@@ -191,3 +191,23 @@ def test_legacy_capacity_apply_retains_sandbox_and_omits_capacity_override(monke
     up=next(c for c in calls if 'up' in c)
     assert str(A.SANDBOX_OVERRIDE) in up and str(A.CAPACITY_OVERRIDE) not in up
     assert json.loads(capsys.readouterr().out)['pids_limit']==128
+
+
+def test_legacy_activator_refuses_running_uds_volume(monkeypatch,tmp_path,capsys):
+    from scripts.pgv13sandbox import activate as A
+    report=tmp_path/'ab.json';report.write_text(json.dumps(evidence()))
+    calls=[]
+    def fake(args,**kwargs):
+        calls.append(args)
+        if args[1]=='inspect':return subprocess.CompletedProcess(args,0,json.dumps({'image':IMAGE,'apparmor':'docker-default','mounts':[{'Destination':'/run/cisstat-renderer'}]}),'')
+        if 'ps' in args:return subprocess.CompletedProcess(args,0,'container-id','')
+        if 'config' in args:return subprocess.CompletedProcess(args,0,json.dumps(config(A.PROFILE)),'')
+        if 'up' in args:return subprocess.CompletedProcess(args,0,'','')
+        raise AssertionError(args)
+    monkeypatch.setattr(A.subprocess,'run',fake)
+    monkeypatch.setattr('sys.argv',['activate.py','--report',str(report),'--apply'])
+    assert A.main()==2
+    result=json.loads(capsys.readouterr().err)
+    assert result['preflight_ok'] is False and result['mutation_started'] is False
+    assert 'UDS' in result['detail']
+    assert not any('up' in call for call in calls)

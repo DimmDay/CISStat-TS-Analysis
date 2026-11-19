@@ -1,0 +1,23 @@
+FAIL apps/print-renderer/src/transportCancel.test.ts
+  ● operator config cannot remove the transport budgets
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 60
+    Received:    9999
+
+      44 | test('operator config cannot remove the transport budgets',()=>{
+      45 |   const config=readConfig({CISSTAT_PRINT_RENDERER_HARD_TIMEOUT_S:'9999',CISSTAT_PRINT_RENDERER_MAX_BODY_BYTES:'999999999',CISSTAT_PRINT_RENDERER_MAX_CONCURRENT:'999'});
+    > 46 |   expect(config.hardTimeoutS).toBeLessThanOrEqual(60);
+         |                               ^
+      47 |   expect(config.maxBodyBytes).toBeLessThanOrEqual(8388608);
+      48 |   expect(config.maxConcurrent).toBeLessThanOrEqual(2);
+      49 | });
+
+      at Object.<anonymous> (apps/print-renderer/src/transportCancel.test.ts:46:31)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 3 passed, 4 total
+Snapshots:   0 total
+Time:        3.654 s
+Ran all test suites within paths "apps/print-renderer/src/transportCancel.test.ts".

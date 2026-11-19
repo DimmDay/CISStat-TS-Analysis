@@ -1,0 +1,65 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS-OVERLAY
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 251 items
+
+scripts/pgv13uds/test_client.py .............................            [ 11%]
+scripts/pgv13uds/test_vm.py .................                            [ 18%]
+scripts/pgv13cert/test_contracts.py ........................             [ 27%]
+scripts/pgv13cert/test_deployment.py ....                                [ 29%]
+tests/api/test_pgv13_passport_documents.py ............................. [ 41%]
+..........                                                               [ 45%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 53%]
+................                                                         [ 60%]
+tests/api/test_pgv09fix_write_path.py ....................               [ 68%]
+tests/unit/test_auth13_workers.py ........                               [ 71%]
+tests/unit/test_auth13_worker_bootstrap.py ......................        [ 80%]
+scripts/pgv13sandbox/test_activate.py ........................           [ 89%]
+scripts/pgv13sandbox/test_probe.py ..............                        [ 95%]
+scripts/pgv13sandbox/test_verify_service.py ............                 [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/api/test_pgv13_passport_documents.py: 103 warnings
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS-OVERLAY/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/api/test_pgv13_passport_documents.py::TestPassportDocumentsHTTP::test_post_compare_mixed_universes_409
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS-OVERLAY/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/scripts/pgv13uds/protocols/overlay-python.xml -
+====================== 251 passed, 105 warnings in 22.94s ======================

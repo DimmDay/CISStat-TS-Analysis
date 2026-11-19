@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 68 items
+
+scripts/pgv13sandbox/test_activate.py .......................F           [ 35%]
+scripts/pgv13uds/test_client.py ............................             [ 76%]
+scripts/pgv13uds/test_vm.py ................                             [100%]
+
+=================================== FAILURES ===================================
+_______________ test_legacy_activator_refuses_running_uds_volume _______________
+scripts/pgv13sandbox/test_activate.py:208: in test_legacy_activator_refuses_running_uds_volume
+    assert A.main(['--report',str(report),'--apply'])==2
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: main() takes 0 positional arguments but 1 was given
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-UDS/scripts/pgv13uds/protocols/controls.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_activate.py::test_legacy_activator_refuses_running_uds_volume
+=================== 1 failed, 67 passed, 1 warning in 8.02s ====================

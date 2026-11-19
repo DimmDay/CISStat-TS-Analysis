@@ -14,8 +14,8 @@
     "static_asset": 1,
     "storage": 18,
     "task_alias": 4,
-    "transport": 2,
-    "worker": 11
+    "transport": 3,
+    "worker": 13
   },
   "policies": {
     "public.metadata": {
@@ -185,7 +185,7 @@
       ]
     },
     "renderer.service": {
-      "observed": "No HTTP credential check; intended isolated sandbox, body/timeout/concurrency and output constraints.",
+      "observed": "Four unchanged HTTP routes. TCP compatibility remains unauthenticated; selected UDS deployment binds only filesystem socket, network:none/no ports. IPC admission and hardening are reviewed under renderer.ipc; API remains job/publication authority.",
       "target": "Private service boundary + authenticated authorized caller/operation context; revoke/budget before job start and output.",
       "follow_up": [
         "AUTH-03",
@@ -657,6 +657,20 @@
         "T12",
         "T14"
       ]
+    },
+    "renderer.ipc": {
+      "observed": "Opt-in HTTP over filesystem Unix socket. Dedicated external volume: renderer RW10001:10001, dir0750/socket0660, API RO+GID10001. No renderer HTTP credentials; mount/UID/GID are service admission, not end-user authority. Fixed targets, bounded IO/deadline/cancel, lifetime flock/stale checks; native VM acceptance remains required.",
+      "target": "Only approved API/renderer mounts; API retains ownership/grant/revoke/job/CAS/publication authority. No cookies/platform secrets forwarded. AUTH-13 remote_unknown is not changed into proof of remote stop.",
+      "follow_up": [
+        "AUTH-03",
+        "AUTH-11",
+        "AUTH-13",
+        "AUTH-14"
+      ],
+      "threats": [
+        "T08",
+        "T12"
+      ]
     }
   },
   "source_fingerprints": {
@@ -773,7 +787,7 @@
     "apps/api/doc_profiles.py": "a509c667b1ddc95990878a602ce1b86d50b25cd5b78f76c3cf05988bd7615cc3",
     "apps/api/document_jobs.py": "bbede848f7c336254a1cb4e23f775dd87308605533cf4f32e516cd6216576aa6",
     "apps/api/document_lifecycle.py": "fc45cbed2401500f669090eba6c01ddb2021ce7a973bbcaa4ab3194216b65cfa",
-    "apps/api/document_render_worker.py": "efd54d27574f2c6417be1ecac91fc319c6ed258e37f1191003dc53818ae7391e",
+    "apps/api/document_render_worker.py": "22d39326d10a95f924ddc8b181990ea2c4d86a68e0385fedf3c93973ceb9346d",
     "apps/api/document_renditions.py": "b61bac80c0141b931375b6438041bfbc2e9bb5d0b21fcaa0c60dae90a80d44ea",
     "apps/api/eda_correlation.py": "35d746def1aa07e022408cc351e83fe1c8206b53045ef834dd17c07b4b552bdb",
     "apps/api/eda_distribution.py": "3b1e856e183acf9f2fe84e282123bbbb37dbc0bacddbdaa86b80a6ba32d09946",
@@ -858,7 +872,7 @@
     "apps/api/passport_documents.py": "e918921707be841e33a344f0feeef00745fb2da4d8c97d4d60e5b7367aa09366",
     "apps/api/passport_history.py": "e0cbdc25b7d6a17986dd89c56b7c8837ee2e7e8583761211c208459c2bd4b071",
     "apps/api/plans.py": "ef91f6dbdbef412d4422432d5da85a24c22fa5086fdf4df26a0ec8cf1a23caea",
-    "apps/api/png_renderer_client.py": "347e757a6b8e02329de2e23187f7af28d5c274cfc5a0db62b25c1a4efeccc9c4",
+    "apps/api/png_renderer_client.py": "c0295c85b914707139a94a56aab6c90998882ced22643c20896bb6b2f2721247",
     "apps/api/preprocessing_decomposition.py": "1dfc0f30dc8c5949aa3dce7e64a14147b661fe3284ff9d68497479e6b3e43a37",
     "apps/api/preprocessing_feature_engineering.py": "f65918aa845b1e87b676cd5a9458dc9dc710a600aa4cb16dbf034c7efaee078b",
     "apps/api/preprocessing_scaling.py": "2f3051d505031e18a54fb2cc4a87ee390d14b6b3bb27604b48f8700a4d8887be",
@@ -929,7 +943,7 @@
     "apps/api/workers/execution.py": "2d58ae852411d3859675a5e82f7280e4b1b6f309a891f989c919ba64f6e3e026",
     "apps/api/workers/migrations.py": "abb02312820a48746f32cc5516e233d2e553516e5a3a7a634dbec077f007d98c",
     "apps/api/workers/process.py": "3d23b39fe8f09933c99bf066b9104ffecf3f3c13bac36578f000d5fb63b09bbc",
-    "apps/api/workers/render.py": "aedd6b7f2d8d19a2fcbd8bd9f97ef2e6d49039f52f54106d6bcedcd516800e28",
+    "apps/api/workers/render.py": "553d95f59df1df60a4f9c4a7aa30db3f132f52ce23acacb897dd51cdaf37a596",
     "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
     "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
     "apps/embedded/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
@@ -952,16 +966,23 @@
     "apps/embedded/app/upload/page.tsx": "67cdfab56028cdcd58b438a39931dc8b61fcd69af9888cd5daf73e11bcf36cd4",
     "apps/embedded/app/validation/page.tsx": "55114737ff0fd21317602cdf7aef921d6c32e2cce9d1fba0cbb0a8535c5ae856",
     "apps/embedded/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
-    "apps/print-renderer/build/deployment/README.md": "9f4a7977a6342cbf17e659b874552d3a93c30250197a07b6e5217695bdd868d7",
+    "apps/print-renderer/build/.gitattributes": "bde439918279d7dc34917715524cf5e5e63c4fcfddb243d2a4281f7bffa46536",
+    "apps/print-renderer/build/deployment/README.md": "3a7ba49d55d8cb72d8bd86eed190021ede9ed0b9a4e2cff0dcbe0961b2b72009",
     "apps/print-renderer/build/deployment/chromium.seccomp.json": "af7b80adbb7b078590e1697ddc8863a28cb221f005c2d6f65aac36715b7edc46",
     "apps/print-renderer/build/deployment/chromium.seccomp.source.json": "a5ce2549900fb6d3d3f29b874f518c18ce56f607adff15330b34d9758c1458a0",
     "apps/print-renderer/build/deployment/docker-compose.capacity.yml": "4b9a47da5ab0d667af9656e98d45ec1c774f8b9c886bb16e6065ed4bd9709ae6",
     "apps/print-renderer/build/deployment/docker-compose.sandbox.yml": "91c840e6b366edf5b96ffb80b89eac209298fa6640c821d9a18b2f499d7b981f",
+    "apps/print-renderer/build/deployment/docker-compose.uds.yml": "213c63fccc0955cb438721473d42b2220b9a3018b33cf2405e49f269bdefc192",
     "apps/print-renderer/build/deployment/docker-compose.validated-image.yml": "7da3beecc5e02f06d504fafe1d11c93e23930091f262c2963518cfd1301348ee",
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
-    "apps/print-renderer/src/renderWorker.ts": "7e49879e365c24cc8a5be61852cfa5fcc96fe5990414be04ea18cc1e4f204e85",
+    "apps/print-renderer/build/entrypoint.sh": "dc247f28bb164e7e9cfd076a8efb88a90b4c70a1132203912e0243785094237c",
+    "apps/print-renderer/src/healthcheck.ts": "64e719ff471fb9b423cf1474e8c99c8c1c87c953f51c2d9b6d08a69992a97b17",
+    "apps/print-renderer/src/renderWorker.ts": "33c7f02c6582c406b1e66b98c888c161339a3256537199e16786aedf59b25fbf",
     "apps/print-renderer/src/rendererCore.tsx": "87ef26f3a4f417d3277646e0465f0a7f875911b2fada9c633939fb96ef53979d",
-    "apps/print-renderer/src/server.ts": "88df929772d9aae24a15ef66d7e0bb3b5b6fece75840558f7fae040e957752e5",
+    "apps/print-renderer/src/server.ts": "852efae992e36dc69e79cb92e3fb9d7eca1301aabc2d785bb14824da024e887c",
+    "apps/print-renderer/src/socketTransport.test.ts": "f6b61a54b5f4d52fa3c34d86416a361a3f733e26589b01533e8857f93a1e46f3",
+    "apps/print-renderer/src/socketTransport.ts": "51a524136021fb04ded0c1b5ecc30e86e88987bb32f60802e1e1f8ddfc20b34e",
+    "apps/print-renderer/src/transportCancel.test.ts": "86908cae19ec4b4a49f93e5f79acaaf93b68e14c74a1d3232a63e0901a869ac5",
     "apps/standalone/Dockerfile": "d2b108ef99eab2bd70392fc5eaafcd4acdc0de92717d1728fd5f4ada496a8d46",
     "apps/standalone/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
     "apps/standalone/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
@@ -993,6 +1014,7 @@
     "apps/standalone/next.config.mjs": "a65fff4276e7b930dcdca55769c7b4cabb520793afe487991c354550757ede47",
     "apps/standalone/public/logo_TS.png": "0037aa5212b95c116e078ff9ec20ffa5857787e8c9b84dc768c9a96be0e4dd49",
     "deployment/cisstat-stack/.env.example": "2531c0eac8e827b1ff2ab45a0a3df5ded20b96a008ec7ff2488c9968b4fb3aea",
+    "deployment/cisstat-stack/docker-compose.renderer-uds.yml": "f8cedd2f4e8fade8a212f24fcacf984b64d57227761301ad607420b8b7f1b5ec",
     "deployment/cisstat-stack/docker-compose.yml": "6649c20ab87f7214c10b46cbf8edb5a7d7c2c5a1cf41f6e69384ca208f43da98",
     "docs/ROLES_AND_PLANS_SPEC.md": "f0e0291838f128b97d32520595b4b3f60229e71e35a293aab0231a6cec4c867e",
     "docs/auth00/operation_variants.md": "82743622e1cfac71938ede0c6e13178566fe9104678a10a7b2e42cd797d56632",
@@ -1019,7 +1041,9 @@
     "docs/auth21/design.md": "6f49b38288883e15ff7551c85e568f0b2f51a14b28dd314a159df00f456d2405",
     "docs/auth22/design.md": "65350063d4ea2ad0eb83883d840b6df7a80abb5367ea712d4f3e5f2ef3b9c14b",
     "docs/pgv13_fixes.md": "dcd6162975e857e862df727616fb3c6842d1a241b84f96e6ccecffe95bc834e5",
-    "docs/pgv13_sandbox_rollout.md": "7f518fe59892e648dd3451a651b5f784c0cc13af0ce9a679de2036d7802c5740",
+    "docs/pgv13_passport_documents.md": "dfecc321e53a264082388ac7cde9ea36bc1454954a3574dfcf09e3a0185eb561",
+    "docs/pgv13_sandbox_rollout.md": "94b3a2638bee535ed4cd059e5a25e2cdb6fe929f92d337453f1e9c59bd2e21cc",
+    "docs/pgv13_uds_transport.md": "7a8c8ecf7d67779e91f81b4826953b55e8f875ee5e7d4c554296684371bc33db",
     "packages/ui/components/AccountScreen.tsx": "fb22d5d37f612fab3419c30775ea23a26003a1c5b842522b53a1861d45651144",
     "packages/ui/components/BillingPanel.tsx": "61c9539ea06f76d20ad0f324fb9bc280f7519b184cd2e12dbfa5f943ef246adc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
@@ -1144,7 +1168,7 @@
     "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
     "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
     "scripts/email_upload_fix/demo_files.js": "68f93512bb115a3b6d9f874128f324f1120c8ebe8b9a3e5e51e24dfd53be82f7",
-    "scripts/local_gates.md": "c0c9718d2e3076294fcc95df18ac60be8a06a2f6ffdf71a363be725941928ae1",
+    "scripts/local_gates.md": "67c1d2ef796f661c2ecae15ca5ff71a7690768cc19caef636e6a2b806deef438",
     "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
@@ -1154,16 +1178,19 @@
     "scripts/pgv13cert/mutator.py": "e057b268ae8198b4133ecedd002aff92ff5efe83e67243bac923a03ac66337d7",
     "scripts/pgv13cert/requirements.txt": "9d85500d64bbbf0c4c497cd7cd0d8b2fc9e1a948d47e058d85fdb63f4d3a498a",
     "scripts/pgv13cert/test_contracts.py": "4a5bab4bdd7f8be381302376c0426d8d3e253fe11558f9223b05abc6844245d8",
-    "scripts/pgv13cert/test_deployment.py": "d29915b87b026c8d5d77bdbecb00bf4615bc9a2a47d40c5459d07c2334660d06",
+    "scripts/pgv13cert/test_deployment.py": "12614b3097a963369ef42f86debd3944d8cc11fed3da8763e8fb304e04cf9ed8",
     "scripts/pgv13cert/verify.py": "ae4f7d52b10d8dcf3acbcad7d95456ee648539da6ca095e4d81b73e84dd18c5c",
-    "scripts/pgv13sandbox/activate.py": "8f2e56db93b856a677fbeec6797e88816d34980ce8aa73be8f95a13b63f9db95",
+    "scripts/pgv13sandbox/activate.py": "73d41b355bf941315f190da2146b2efd131fa0503a0d2191cef275249898d9f8",
     "scripts/pgv13sandbox/probe.py": "71741706da2cf6e1b0e3dd5871f1487cb205cdddde304c6babc618a73693822c",
-    "scripts/pgv13sandbox/test_activate.py": "abac368470f946fe9166db5dc7040c9a7685c10820c5b8bd4d0f1ab569102f22",
+    "scripts/pgv13sandbox/test_activate.py": "ec0a6a2b28c0622575b149a33ced93b966d3154cf3dcd31bff8ee652ddb5965d",
     "scripts/pgv13sandbox/test_probe.py": "423ea1341f4bcc28042b16251404fc06e0c467ecdc323ffb12c1f9d0bc3fd16b",
     "scripts/pgv13sandbox/test_verify_service.py": "ab62764e98b2337ea1f900183a0fb462cc229bd09d8ca21f400314e243e0af4b",
     "scripts/pgv13sandbox/vendor/default.json": "3320527d4568265ac97a077609b1bfd4cfd0d789eeb9239b7e094b1526675406",
     "scripts/pgv13sandbox/vendor/source.json": "bcfadfd6a106b758259e6e9ceb18f0544209ede8ee43eba23c402c7ada570f84",
     "scripts/pgv13sandbox/verify_service.py": "8888b1f176ff32d13dfd581c16c855ce01643d1df69a8a39b19afef8e59a66ae",
+    "scripts/pgv13uds/test_client.py": "f54795f77e7b8651b3a5f037abc39df9f03f30eee6b87059339bab5a88986dc8",
+    "scripts/pgv13uds/test_vm.py": "bc497797e0da9f805be27c6ded777287bcd0203ab3d9dbf5be66aa7bdb3ceed7",
+    "scripts/pgv13uds/verify_vm.py": "1eaed248038c26796739ce3132d8ecf45b309d492ea0a81c46d88a0cbf6339cb",
     "scripts/pgv13vm/test_diagnose.py": "a076b9500e18e2813d81a56654431e2b7a112dfb056c6c828bd56313c739194f",
     "spec_auth.md": "d72c4ee23293d126aadbfd65ab410262af032ef8560f2fc9c14ee7b82fb8596a",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
@@ -20229,7 +20256,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 292,
+          "line": 305,
           "symbol": "createRendererServer"
         }
       ],
@@ -20253,7 +20280,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 296,
+          "line": 309,
           "symbol": "createRendererServer"
         }
       ],
@@ -20277,7 +20304,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 313,
+          "line": 326,
           "symbol": "createRendererServer"
         }
       ],
@@ -20302,7 +20329,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 317,
+          "line": 330,
           "symbol": "createRendererServer"
         }
       ],
@@ -20838,6 +20865,41 @@
       "stage_namespace": "service"
     },
     {
+      "id": "transport:renderer-unix-http",
+      "kind": "transport",
+      "method": "CALL",
+      "path": "private /run/cisstat-renderer/render.sock; existing GET/POST renderer allowlist",
+      "operation": "renderer.ipc",
+      "evidence": [
+        {
+          "source": "apps/api/png_renderer_client.py",
+          "line": 1,
+          "symbol": "PngRendererClient._unix_request"
+        },
+        {
+          "source": "apps/print-renderer/src/socketTransport.ts",
+          "line": 1,
+          "symbol": "listenOnSocket"
+        },
+        {
+          "source": "deployment/cisstat-stack/docker-compose.renderer-uds.yml",
+          "line": 1,
+          "symbol": "API read-only IPC mount"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "renderer.ipc",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "isolated PNG renderer socket",
+      "effects": [
+        "read_frozen_metadata",
+        "render_png"
+      ],
+      "canonical_operation": "renderer.ipc",
+      "admission": "operator-selected private socket; no TCP fallback/redirect/proxy; service filesystem capability only, end-user authorization remains API responsibility"
+    },
+    {
       "id": "transport:streamlit-runtime",
       "kind": "transport",
       "method": "CALL",
@@ -20938,7 +21000,32 @@
       "stage_namespace": "service"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:715",
+      "id": "worker:apps/api/document_render_worker.py:710",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "run",
+      "operation": "apps/api/document_render_worker.py:run",
+      "evidence": [
+        {
+          "source": "apps/api/document_render_worker.py",
+          "line": 710,
+          "symbol": "run"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "worker.authority",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "authorized frozen print input",
+      "effects": [
+        "thread_dispatch",
+        "private_renderer_request"
+      ],
+      "canonical_operation": "renderer.ipc.render",
+      "admission": "managed AUTH-13 path remains fenced; legacy print worker has cancellation/deadline monitoring, backend remains publisher"
+    },
+    {
+      "id": "worker:apps/api/document_render_worker.py:747",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "target",
@@ -20946,7 +21033,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 715,
+          "line": 747,
           "symbol": "target"
         }
       ],
@@ -20962,7 +21049,7 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:737",
+      "id": "worker:apps/api/document_render_worker.py:769",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "self._loop",
@@ -20970,7 +21057,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 737,
+          "line": 769,
           "symbol": "self._loop"
         }
       ],
@@ -20984,6 +21071,31 @@
       ],
       "canonical_operation": "apps/api/document_render_worker.py:self._loop",
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
+    },
+    {
+      "id": "worker:apps/api/png_renderer_client.py:387",
+      "kind": "worker",
+      "method": "DISPATCH",
+      "path": "watch",
+      "operation": "apps/api/png_renderer_client.py:watch",
+      "evidence": [
+        {
+          "source": "apps/api/png_renderer_client.py",
+          "line": 387,
+          "symbol": "watch"
+        }
+      ],
+      "discovery": "automatic",
+      "policy": "renderer.ipc",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "request-owned IPC connection",
+      "effects": [
+        "cancel_socket",
+        "deadline"
+      ],
+      "canonical_operation": "renderer.ipc.deadline",
+      "admission": "fixed configured endpoint only; helper cannot execute science or publish a rendition"
     },
     {
       "id": "worker:apps/api/workers/process.py:176",

@@ -1,0 +1,8 @@
+{
+  "af_unix_bind": "blocked",
+  "error_type": "PermissionError",
+  "errno": 1,
+  "docker_available": false,
+  "native_uds_acceptance": "NOT RUN",
+  "kernel_flock": "PASS (separate local process/exec probe, not Docker)"
+}

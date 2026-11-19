@@ -456,3 +456,40 @@ F-C13-04 даёт 3 FAIL, их не скрывают xfail/исключения.
 старый FAIL docstring PGV-05 «13 метрик» (воспроизведён отдельно на 2014fdf).
 Default local_gates.py и CI workflows не меняются. Новых роутов/миграций нет.
 Дизайн, протоколы, rebuild и границы rollout: docs/pgv13_fixes.md.
+
+## PGV-13-UDS (19.11.2026), база db10ada
+
+Новая transport boundary: opt-in HTTP/Unix socket, dedicated external volume,
+renderer10001:10001 RW, API RO+GID10001, dir0750/socket0660, lifetime kernel flock.
+API image остаётся root (прежнее состояние). Network:none/NNP/cap_drop ALL/
+read-only renderer/512pids/2g и reviewed seccomp сохранены. Base-only legacy
+compose сам по себе не замыкает transport; нужны оба новых UDS overlays.
+
+Explicit contract gate, без установки новых runtime dependencies:
+
+```bash
+npm run build --workspace=@cisstat/print-renderer
+python -m pytest scripts/pgv13uds scripts/pgv13cert tests/api/test_pgv13_passport_documents.py tests/api/test_pgv09_jobs_renderer_integration.py tests/api/test_pgv09fix_write_path.py tests/unit/test_auth13_workers.py tests/unit/test_auth13_worker_bootstrap.py scripts/pgv13sandbox -q
+node node_modules/jest/bin/jest.js --runInBand --runTestsByPath apps/print-renderer/src/socketTransport.test.ts apps/print-renderer/src/transportCancel.test.ts apps/print-renderer/src/rendererFix.test.ts apps/print-renderer/src/rendererCore.test.ts apps/print-renderer/src/launchGuard.test.ts packages/ui/print/printPassport.test.tsx packages/ui/print/printLayout.test.tsx packages/ui/print/printSchema.test.ts
+python scripts/auth06/check_routes.py
+```
+
+Python wire tests используют реальный HTTP по явному TCP adapter для AF_UNIX;
+FS/net doubles в Node запускаются и на Windows CI, без skips. Это не native UDS
+доказательство. Нативный Linux kernel flock отдельно проверен с exec Node и
+освобождением при SIGTERM. Docker отсутствует, AF_UNIX bind в среде агента
+запрещён (EPERM). New-image A/B, UID/GID/shared-RO-volume, TCP closed, actual
+Unix HTTP/PNG/cancel/deadline и SIGKILL-recreate требуют VM gate:
+
+```bash
+python3 scripts/pgv13uds/verify_vm.py --renderer-project cisstat-pgv13-uds-candidate --sandbox-report /tmp/pgv13-uds-ab.json --api-image cisstat-api:pgv13-uds --out /tmp/pgv13-uds-candidate.json
+```
+
+Сначала полный candidate/init/A-B порядок docs/pgv13_uds_transport.md; live-API
+mode без --api-image — после выбранного rollout. Nonzero не PASS; pg13_certified
+false всегда. Новые API/renderer images нужны, web включён в согласованный rollout
+из-за прежнего PGV13 BFF allowlist. Нет миграций/host policy changes. Legacy
+activate.py теперь отказывает при UDS mount; исторические ops helpers не
+переключают новый transport назад. HTTP paths/methods/BFF прежние; AUTH-00
+получает отдельный transport и два control threads, source/line review обновлён.
+Default local_gates.py не меняется. Полная PGV-13 пока NOT CERTIFIED.

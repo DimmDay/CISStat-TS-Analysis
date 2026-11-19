@@ -152,30 +152,26 @@ ZIP task-only в download/ (см. files.txt); чейн доставки: ZIP →
 - **web** — НЕ меняется (стендalone-оболочка печатных паспортов не касается);
 - **postgres** — схема НЕ меняется (нет миграций; kinds — реестр-каталог).
 
-VM-команды (после pull):
+VM-команды (актуальный UDS rollout поверх db10ada, из корня):
 
 ```bash
-# 1) api: научный контур/роуты/jobs-гейт изменены
-docker compose build api
-# 2) print-renderer: rendererCore.tsx получил секции passport_record/passport_comparison
-docker build -f apps/print-renderer/build/Dockerfile -t cisstat-print-renderer:pgv13 .
-# 3) перезапуск (паритет практикам AUTH-07-HOTFIX1/PGV-12; MFA-ключи из shell сняты)
-env -u CISSTAT_AUTH_MFA_KEYS -u CISSTAT_AUTH_MFA_ACTIVE_KEY docker compose up -d --no-deps api
-docker compose -f apps/print-renderer/build/deployment/docker-compose.yml up -d
-# 4) verify: только api.datasetup.ru/health (урок AUTH-23-DEPLOYFIX-01) + readyz рендера
-curl -fsS https://api.datasetup.ru/health
-curl -fsS http://127.0.0.1:8907/readyz
+docker compose --project-directory deployment/cisstat-stack -f deployment/cisstat-stack/docker-compose.yml -f deployment/cisstat-stack/docker-compose.renderer-uds.yml build api web
+docker build -f apps/print-renderer/build/Dockerfile -t cisstat-print-renderer:pgv13-uds .
+export CISSTAT_UDS_RENDERER_IMAGE="$(docker image inspect --format '{{.Id}}' cisstat-print-renderer:pgv13-uds)"
 ```
 
-web НЕ пересобирается (стендalone-оболочка не менялась; изменения
-packages/ui/lib/access-contract.generated.ts и proxy-routes.generated.json
-влияют на server-side proxy, но байты UI-бандла прежние -- если оператор
-предпочитает паритет PGV-12, допустим полный `docker compose build api web`,
-это не обязательно). Миграций БД нет. Смоук рендера после деплоя:
-`docker compose -f apps/print-renderer/build/deployment/docker-compose.yml
-exec -T print-renderer node apps/print-renderer/dist/apps/print-renderer/src/smoke.js --smoke`.
+Дальнейшие init volume → isolated candidate → новый image A/B → native API-image
+UDS/PNG gate → recreate/stale socket gate → production renderer/api/web —
+**docs/pgv13_uds_transport.md**, раздел «VM-команды». Выбранный renderer compose:
+base + `apps/print-renderer/build/deployment/docker-compose.uds.yml`; его image
+берётся из CISSTAT_UDS_RENDERER_IMAGE, pinned ID ровно построенного образа.
+API compose: base + `deployment/cisstat-stack/docker-compose.renderer-uds.yml`.
+Base compose без UDS overlay — прежняя topology, не заявленная работоспособной.
 
-Границы: browser E2E/контейнерный рендер в песочнице не исполнялись
-(fake/пустой renderer-контракт у job-тестов — унаследовано от PGV-09/12);
-полный local_gates/default suite и native PostgreSQL — за тимлидом;
-pagination/ZIP (PGV-14) и пикер UI (PGV-15) — следующие задачи.
+Web включён в обязательный согласованный rollout: исходный PGV-13 добавил
+compiled BFF proxy paths. Отсутствие новой правки frontend в текущей задаче
+не делает старый web совместимым. Локально проверяются сборки обеих оболочек.
+Не применять прежний activate.py к UDS-конфигурации: его запрет mounts защищает
+старую конфигурацию, это не image-upgrade инструмент. Старый A/B report не
+распространяется на новый image. Миграций/host policy changes нет.
+Полная PGV-13/PNG visual/job acceptance после транспорта остаётся отдельной.

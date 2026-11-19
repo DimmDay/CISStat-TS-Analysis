@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        4.498 s
+Ran all test suites within paths "apps/print-renderer/src/socketTransport.test.ts", "apps/print-renderer/src/transportCancel.test.ts".

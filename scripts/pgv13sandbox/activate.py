@@ -101,10 +101,12 @@ def main():
         cid=command(['docker','compose','-f',str(BASE),'ps','-q','print-renderer'])
         require(bool(cid) and '\n' not in cid,'Expected one running renderer')
         # Selected fields only; no Docker Env or platform credentials are read.
-        template='{"image":{{json .Image}},"apparmor":{{json .AppArmorProfile}}}'
+        template='{"image":{{json .Image}},"apparmor":{{json .AppArmorProfile}},"mounts":{{json .Mounts}}}'
         current=json.loads(command(['docker','inspect','--format',template,cid]))
         require(current.get('image')==image,'Running image differs from A/B; repeat A/B for this image')
         require(current.get('apparmor')=='docker-default','Running AppArmor differs from A/B')
+        require('mounts' in current,'Running mount metadata missing')
+        require(not any(m.get('Destination')=='/run/cisstat-renderer' for m in current.get('mounts') or []),'UDS active: legacy activator cannot remove IPC; use docs/pgv13_uds_transport.md')
         env={**os.environ,'CISSTAT_VALIDATED_RENDERER_IMAGE':image,'CISSTAT_RENDERER_SECCOMP_FILE':str(PROFILE)}
         compose=['docker','compose','-f',str(BASE),'-f',str(IMAGE_OVERRIDE)]
         if not args.rollback:compose+=['-f',str(SANDBOX_OVERRIDE)]

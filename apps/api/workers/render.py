@@ -13,10 +13,10 @@ def render_bytes(snapshot, fmt, profile):
     return _render_snapshot_by_format(snapshot, fmt, profile)
 
 
-def print_bytes(payload, url, timeout):
+def print_bytes(payload, url, timeout, ipc_socket=None, enabled=True):
     from apps.api.png_renderer_client import PngRendererClient
 
-    return PngRendererClient(base_url=url, timeout_s=timeout, enabled=True).render_page(
+    return PngRendererClient(base_url=url, ipc_socket=ipc_socket, timeout_s=timeout, enabled=enabled).render_page(
         payload
     )
 
@@ -50,7 +50,8 @@ def process(worker, job, snapshot=None):
             client = worker._png_renderer_client()
             # No session/service key is forwarded to the renderer container.
             content = work.run(
-                print_bytes, payload, client.base_url, client.timeout_s, remote=True
+                print_bytes, payload, client.base_url, client.timeout_s,
+                ipc_socket=getattr(client, "ipc_socket", ""), enabled=getattr(client, "enabled", True), remote=True
             )
             from apps.api.png_renderer_client import PNG_SIGNATURE
 

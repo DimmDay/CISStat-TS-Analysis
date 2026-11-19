@@ -73,9 +73,9 @@ export function readConfig(env: Record<string, string | undefined> = process.env
   return {
     port: intEnv("CISSTAT_PRINT_RENDERER_PORT", 8907),
     browserPath: env.CISSTAT_PRINT_RENDERER_BROWSER_PATH || null,
-    hardTimeoutS: intEnv("CISSTAT_PRINT_RENDERER_HARD_TIMEOUT_S", DEFAULT_HARD_TIMEOUT_S),
-    maxConcurrent: intEnv("CISSTAT_PRINT_RENDERER_MAX_CONCURRENT", 2),
-    maxBodyBytes: intEnv("CISSTAT_PRINT_RENDERER_MAX_BODY_BYTES", 8388608),
+    hardTimeoutS: Math.min(60,intEnv("CISSTAT_PRINT_RENDERER_HARD_TIMEOUT_S", DEFAULT_HARD_TIMEOUT_S)),
+    maxConcurrent: Math.min(2,intEnv("CISSTAT_PRINT_RENDERER_MAX_CONCURRENT", 2)),
+    maxBodyBytes: Math.min(8388608,intEnv("CISSTAT_PRINT_RENDERER_MAX_BODY_BYTES", 8388608)),
     fontFiles,
     tmpDir: env.CISSTAT_PRINT_RENDERER_TMP_DIR || tmpdir(),
     readyzCacheS: intEnv("CISSTAT_PRINT_RENDERER_READYZ_CACHE_S", 30),
@@ -100,6 +100,10 @@ export class RenderTimeoutError extends Error {
     this.name = "RenderTimeoutError";
     this.timeoutS = timeoutS;
   }
+}
+
+export class RenderCancelledError extends Error {
+  constructor() {super("render_cancelled");this.name="RenderCancelledError";}
 }
 
 export class RendererBusyError extends Error {
@@ -257,10 +261,12 @@ export class PrintRenderWorker {
     payload: RenderPagePayload,
     pageIndex: number,
     pageCount: number,
+    callerSignal?: AbortSignal,
   ): Promise<RenderOutcome> {
     if (validateRenderPayload(payload).payload === null) {
       throw new Error("invalid_payload: render input violates the shared contract");
     }
+    if (callerSignal?.aborted) throw new RenderCancelledError();
     if (this.stopping) throw new RenderDependencyError("renderer_stopping");
     if (this.active >= this.config.maxConcurrent) {
       throw new RendererBusyError(this.config.maxConcurrent);
@@ -274,7 +280,8 @@ export class PrintRenderWorker {
     let timedOut = false;
     const abort = new AbortController();
     let deadlineTimer: NodeJS.Timeout | null = null;
-    const cancelled = () => timedOut || Date.now() >= deadlineAt || this.stopping;
+    const cancelled = () => timedOut || Boolean(callerSignal?.aborted) || Date.now() >= deadlineAt || this.stopping;
+    let onCallerAbort: (()=>void) | null = null;
     const remainingMs = () => Math.max(1, deadlineAt - Date.now());
     try {
       const work = this.doRender(payload, pageIndex, pageCount, effectiveS, startedAt,
@@ -288,11 +295,20 @@ export class PrintRenderWorker {
           reject(new RenderTimeoutError(effectiveS));
         }, remainingMs());
       });
-      return await Promise.race([work, deadline]);
+      const callerCancelled = new Promise<never>((_,reject)=>{
+        onCallerAbort=()=>{
+          abort.abort();launch?.cancel();this.killBrowser(server);
+          reject(new RenderCancelledError());
+        };
+        callerSignal?.addEventListener("abort",onCallerAbort,{once:true});
+        if (callerSignal?.aborted) onCallerAbort();
+      });
+      return await Promise.race([work, deadline, callerCancelled]);
     } catch (error) {
       abort.abort();
       launch?.cancel();
       this.killBrowser(server);
+      if (callerSignal?.aborted) throw new RenderCancelledError();
       // Playwright's launch/connect timeout may win a few ms before our timer.
       if (timedOut || (error instanceof Error && error.name === "TimeoutError")) {
         timedOut = true;
@@ -301,6 +317,7 @@ export class PrintRenderWorker {
       throw error;
     } finally {
       if (deadlineTimer) clearTimeout(deadlineTimer);
+      if (onCallerAbort) callerSignal?.removeEventListener("abort",onCallerAbort);
       this.active -= 1;
     }
   }

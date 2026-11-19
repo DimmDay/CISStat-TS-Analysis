@@ -1,0 +1,24 @@
+FAIL apps/print-renderer/src/socketTransport.test.ts
+  ● directory mode 1512 fails closed
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /permission|mode/
+
+    Received function did not throw
+
+      30 | });
+      31 | test.each([0o777,0o770,0o755,0o2750])('directory mode %s fails closed',mode=>{
+    > 32 |   files.set(dir,node('dir',0o40000|mode));expect(()=>T.validateSocketDirectory(path)).toThrow(/permission|mode/);
+         |                                                                                       ^
+      33 | });
+      34 | test('symlink directory and noncanonical paths fail',()=>{
+      35 |   expect(()=>T.validateSocketDirectory(dir+'-link/render.sock')).toThrow(/symlink|canonical/);
+
+      at apps/print-renderer/src/socketTransport.test.ts:32:87
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 11 passed, 12 total
+Snapshots:   0 total
+Time:        2.768 s
+Ran all test suites within paths "apps/print-renderer/src/socketTransport.test.ts".
