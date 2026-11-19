@@ -1,0 +1,5 @@
+# Always combine with docker-compose.yml. The activation helper supplies an immutable image ID.
+services:
+  print-renderer:
+    image: ${CISSTAT_VALIDATED_RENDERER_IMAGE:?Run scripts/pgv13sandbox/activate.py with the successful report}
+    pull_policy: never

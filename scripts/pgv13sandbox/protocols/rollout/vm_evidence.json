@@ -1,0 +1,34 @@
+{
+  "source": "user-provided extraction of an existing VM A/B report; not a live agent probe",
+  "current_server_head_reported": "9cffdcd29522872e3aaa045861b7343dea9cb3c7",
+  "experiment_script_head": "not recorded in supplied extraction",
+  "conclusion": "CHROOT_RULE_CANDIDATE",
+  "rows": [
+    {
+      "arm": "builtin",
+      "exit": 1,
+      "isolation": true,
+      "verdict": "failed"
+    },
+    {
+      "arm": "reference",
+      "exit": 1,
+      "isolation": true,
+      "verdict": "failed"
+    },
+    {
+      "arm": "namespaces",
+      "exit": 1,
+      "isolation": true,
+      "verdict": "failed"
+    },
+    {
+      "arm": "namespaces-chroot",
+      "exit": 0,
+      "isolation": true,
+      "verdict": "passed"
+    }
+  ],
+  "persistent_renderer_activation": "not performed by agent",
+  "full_PGV13_certified": false
+}

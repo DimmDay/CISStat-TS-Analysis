@@ -401,3 +401,20 @@ Exit0 — только namespace-rule candidate (не PGV-13 PASS), 1 — blocke
 capabilities/изменения служб/host policy/образов. Exit0 CHROOT_RULE_CANDIDATE —
 диагностический кандидат, не сертификат. Default local_gates.py/HTTP routes прежние.
 Краткий smoke_error теперь есть в stdout; подробности docs/pgv13_sandbox_ab.md.
+
+
+## PGV-13-SANDBOX-ROLLOUT (19.11.2026), поверх9cffdcd
+
+Тимлид подтвердил на VM CHROOT_RULE_CANDIDATE: отрицательные первые3 и
+положительный namespaces-chroot, isolation true у всех. Это mini-PNG sandbox
+candidate; не вся PGV-13. Контроли: `python -m pytest scripts/pgv13sandbox -q`
+(34 теста:20 activation +14 probe). Default runner не меняется.
+Host-side activate.py без флагов только preflight полного сохранённого JSON,
+image ID и merged Compose config. --apply/--rollback пересоздают один renderer
+на том же immutable image, --no-build/--pull never/--no-deps. Docker default
+seccomp заменяется pinned Moby+4 syscall профильным кандидатом, а не unconfined;
+base Compose и hardening прежние. Нужен Docker CLI/daemon; pytest controls используют
+stubs, реальный Compose merge и working-service rollout агентом не исполнялись.
+Операторский порядок, post-checks и rollback — docs/pgv13_sandbox_rollout.md.
+Новых HTTP routes/DTO/BFF нет, inventory fingerprints обновлены для deployment
+assets/операторского инструмента. Миграций/пересборки образов не требуется.

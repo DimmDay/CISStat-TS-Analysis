@@ -56,3 +56,20 @@ R3: Cold startup is now per job (isolation over warm-browser latency). Benchmark
 CPU/memory at concurrency 2 before raising it; /tmp is ephemeral, no persisted HTML.
 R4: Do not publish user-controlled SVG directly. Frozen producer SVG still passes
 reference allowlist sanitation, JS-off/SW-block/CSP/request allowlist and network none.
+
+
+## Validated-image sandbox candidate rollout (19.11.2026)
+
+После положительного CHROOT_RULE_CANDIDATE используйте host-side
+`scripts/pgv13sandbox/activate.py --report /tmp/pgv13-chroot-ab.json` для preflight;
+`--apply` добавляет pinned profile к одному renderer, `--rollback` снимает его
+на том же immutable image. Docker image не строится/не скачивается. Базовый
+Compose остаётся legacy default, два отдельных overlay подключает helper.
+Не запускайте base-only `up` для сохранения активированного профиля: base-only
+recreate его снимет. Restart уже созданного контейнера и новый recreate —
+разные операции. Для последующих recreate используйте тот же helper/file set.
+
+Profile derived from Moby/profiles (Apache2); adjacent chromium.seccomp.source.json
+records modifications and chromium.seccomp.LICENSE supplies the license.
+Это opt-in применение sandbox candidate, не сертификат всей PGV-13. Полный порядок,
+проверки merged config, post-deploy smoke и rollback: docs/pgv13_sandbox_rollout.md.

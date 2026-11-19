@@ -1,0 +1,9 @@
+{
+  "derived_from": "moby/profiles f862455628f78f84c937e967e4a03902fb1dee11 seccomp/default.json",
+  "baseline_sha256": "3320527d4568265ac97a077609b1bfd4cfd0d789eeb9239b7e094b1526675406",
+  "modified": "19.11.2026: append unconditional ALLOW clone/setns/unshare and ALLOW chroot; other rules retained",
+  "license_file": "chromium.seccomp.LICENSE",
+  "canonical_profile_sha256": "62bfbe070ba957e5fdb37a96d9636e8e706dc7aec720bd34e82a28a9df8a2102",
+  "evidence": "user-reported CHROOT_RULE_CANDIDATE; full report validated on VM before activation",
+  "scope": "sandbox candidate profile, not full PGV-13 acceptance"
+}

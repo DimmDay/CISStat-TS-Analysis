@@ -1,0 +1,6 @@
+# Opt-in only; activation helper supplies the absolute profile path and checks the merged config.
+services:
+  print-renderer:
+    security_opt:
+      - apparmor=docker-default
+      - seccomp=${CISSTAT_RENDERER_SECCOMP_FILE:?Run scripts/pgv13sandbox/activate.py}

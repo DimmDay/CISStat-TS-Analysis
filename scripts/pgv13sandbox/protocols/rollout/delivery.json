@@ -1,0 +1,38 @@
+{
+  "base": "9cffdcd29522872e3aaa045861b7343dea9cb3c7",
+  "kind": "optional validated-image sandbox rollout/rollback; no whole-PGV13 certification",
+  "file_count": 24,
+  "tests": {
+    "initial_red_activation": 17,
+    "final_passed": 34,
+    "activation": 20,
+    "probe": 14,
+    "zip_overlay_passed": 34,
+    "Docker_stubbed": true
+  },
+  "renderer_build": "PASS",
+  "Node_syntax": "PASS",
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_INDEX": "PASS",
+    "overlay_actual": "PASS"
+  },
+  "user_VM_candidate": "CHROOT_RULE_CANDIDATE; three failed controls, one passed, all isolation true",
+  "persistent_service_apply": "PENDING operator execution; agent did not connect to VM",
+  "local_preflight": "synthetic input, no Docker, exit2/no mutation",
+  "images_rebuild_required": false,
+  "base_compose_changed": false,
+  "profile_scope": "full pinned Moby reference + four unconditional syscall ALLOW; not identical to Docker builtin",
+  "commit_push": false,
+  "pgv13_certified": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest",
+    "each payload byte",
+    "safe names",
+    "clean exact-base overlay tests/routes"
+  ]
+}

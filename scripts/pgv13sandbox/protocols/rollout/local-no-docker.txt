@@ -1,0 +1,3 @@
+SYNTHETIC contract report; not user VM evidence
+{"preflight_ok": false, "mutation_started": false, "readiness_checked": false, "error_type": "FileNotFoundError", "detail": "[Errno 2] No such file or directory: 'docker'", "pgv13_certified": false}
+exit=2

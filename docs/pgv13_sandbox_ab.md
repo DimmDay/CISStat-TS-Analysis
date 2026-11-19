@@ -203,3 +203,13 @@ Default gate/routes/runtime/profile bytes прежние; только fingerpri
 probe/test/local_gates обновлены. Node syntax/renderer build/ASGI/INDEX и ZIP
 проверены в protocols/nullfix/. Образы пересобирать не нужно. Агент реальный
 Docker/VM-эксперимент не исполнял; фактический итог берём из сохранённого JSON.
+
+
+## 19.11.2026: VM candidate подтверждён, сервер9cffdcd
+
+Тимлид прочитал сохранённый отчёт: CHROOT_RULE_CANDIDATE, первые3 failed/exit1,
+последний passed/exit0, isolation true у всех. Значит, chroot rule в данном
+контролируемом сравнении довёл mini-PNG до успеха. Рабочий renderer при этом
+ещё не был пересоздан с этим профилем; исследование P01/P02 не принято.
+Подготовлен опциональный отчёт-зависимый rollout/rollback без изменения image,
+базового Compose, host policy или сети: docs/pgv13_sandbox_rollout.md.

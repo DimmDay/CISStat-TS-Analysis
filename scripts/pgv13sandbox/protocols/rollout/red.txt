@@ -1,0 +1,106 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-SANDBOX-ROLLOUT
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.14.7, anyio-4.14.2
+collected 17 items
+
+scripts/pgv13sandbox/test_activate.py FFFFFFFFFFFFFFFFF                  [100%]
+
+=================================== FAILURES ===================================
+____________ test_committed_profile_is_exactly_the_tested_candidate ____________
+scripts/pgv13sandbox/test_activate.py:35: in test_committed_profile_is_exactly_the_tested_candidate
+    from scripts.pgv13sandbox.activate import PROFILE
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+___________ test_valid_report_accepted_and_invalid_candidates_denied ___________
+scripts/pgv13sandbox/test_activate.py:41: in test_valid_report_accepted_and_invalid_candidates_denied
+    from scripts.pgv13sandbox.activate import validate_report
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+______ test_compose_hardening_drift_blocks_activation[image-mutable:tag] _______
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+____________ test_compose_hardening_drift_blocks_activation[user-0] ____________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+______ test_compose_hardening_drift_blocks_activation[network_mode-host] _______
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+_______ test_compose_hardening_drift_blocks_activation[read_only-False] ________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+________ test_compose_hardening_drift_blocks_activation[cap_add-value4] ________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+_______ test_compose_hardening_drift_blocks_activation[privileged-True] ________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+_________ test_compose_hardening_drift_blocks_activation[ports-value6] _________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+________ test_compose_hardening_drift_blocks_activation[volumes-value7] ________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+_____ test_compose_hardening_drift_blocks_activation[security_opt-value8] ______
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+_________ test_compose_hardening_drift_blocks_activation[mem_limit-0] __________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+________ test_compose_hardening_drift_blocks_activation[pids_limit--1] _________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+________ test_compose_hardening_drift_blocks_activation[tmpfs-value11] _________
+scripts/pgv13sandbox/test_activate.py:63: in test_compose_hardening_drift_blocks_activation
+    from scripts.pgv13sandbox.activate import PROFILE,validate_config
+E   ModuleNotFoundError: No module named 'scripts.pgv13sandbox.activate'
+____ test_apply_pins_image_and_absolute_profile_and_recreates_only_renderer ____
+scripts/pgv13sandbox/test_activate.py:71: in test_apply_pins_image_and_absolute_profile_and_recreates_only_renderer
+    from scripts.pgv13sandbox import activate as A
+E   ImportError: cannot import name 'activate' from 'scripts.pgv13sandbox' (unknown location)
+______________ test_image_mismatch_and_default_check_never_run_up ______________
+scripts/pgv13sandbox/test_activate.py:96: in test_image_mismatch_and_default_check_never_run_up
+    from scripts.pgv13sandbox import activate as A
+E   ImportError: cannot import name 'activate' from 'scripts.pgv13sandbox' (unknown location)
+________ test_rollback_keeps_image_override_but_removes_sandbox_overlay ________
+scripts/pgv13sandbox/test_activate.py:110: in test_rollback_keeps_image_override_but_removes_sandbox_overlay
+    from scripts.pgv13sandbox import activate as A
+E   ImportError: cannot import name 'activate' from 'scripts.pgv13sandbox' (unknown location)
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_activate.py::test_committed_profile_is_exactly_the_tested_candidate
+FAILED scripts/pgv13sandbox/test_activate.py::test_valid_report_accepted_and_invalid_candidates_denied
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[image-mutable:tag]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[user-0]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[network_mode-host]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[read_only-False]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[cap_add-value4]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[privileged-True]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[ports-value6]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[volumes-value7]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[security_opt-value8]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[mem_limit-0]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[pids_limit--1]
+FAILED scripts/pgv13sandbox/test_activate.py::test_compose_hardening_drift_blocks_activation[tmpfs-value11]
+FAILED scripts/pgv13sandbox/test_activate.py::test_apply_pins_image_and_absolute_profile_and_recreates_only_renderer
+FAILED scripts/pgv13sandbox/test_activate.py::test_image_mismatch_and_default_check_never_run_up
+FAILED scripts/pgv13sandbox/test_activate.py::test_rollback_keeps_image_override_but_removes_sandbox_overlay
+======================== 17 failed, 1 warning in 0.15s =========================
