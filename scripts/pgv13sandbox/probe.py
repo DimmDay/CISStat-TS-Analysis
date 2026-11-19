@@ -1,4 +1,4 @@
-"""Three-arm, disposable-container seccomp diagnostic. Never deploys a policy.
+"""Three-arm (optional fourth chroot arm) disposable-container seccomp diagnostic. Never deploys a policy.
 
 Runs the immutable image of the existing renderer with unchanged AppArmor and
 hardening. Docker builtin != pinned reference; only reference->namespaces is a
@@ -69,6 +69,18 @@ def profiles():
     return base,changed
 
 
+def chroot_profile(namespace_profile):
+    changed=copy.deepcopy(namespace_profile)
+    changed['syscalls'].append({'names':['chroot'],'action':'SCMP_ACT_ALLOW','args':[]})
+    return changed
+
+
+def smoke_error_excerpt(error):
+    lines=error.splitlines()
+    fatal=[line for line in lines if 'Check failed:' in line or 'FATAL:' in line]
+    return '\n'.join((fatal or lines[:2])[:4])[:1600]
+
+
 def run_arm(arm,image,profile):
     name='cisstat-pgv13-probe-'+uuid4().hex
     args=['docker','run','--rm','--name',name,'--pull=never','--init',
@@ -96,7 +108,7 @@ def run_arm(arm,image,profile):
 
 
 def classify(rows):
-    if len(rows)!=3 or any(not isinstance(r.get('probe'),dict) for r in rows):
+    if len(rows) not in (3,4) or any(not isinstance(r.get('probe'),dict) for r in rows):
         return 'INCONCLUSIVE_SETUP'
     if any(r['probe'].get('isolation_ok') is not True for r in rows):
         return 'INCONCLUSIVE_ISOLATION'
@@ -104,6 +116,7 @@ def classify(rows):
     if passed[0]: return 'BASELINE_PASSED'
     if passed[1]: return 'REFERENCE_DIFF_UNATTRIBUTED'
     if passed[2]: return 'NAMESPACE_RULES_CANDIDATE'
+    if len(passed)==4 and passed[3]: return 'CHROOT_RULE_CANDIDATE'
     return 'STILL_BLOCKED'
 
 
@@ -117,6 +130,7 @@ def docker_value(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,help='Optional JSON report (no environment dump)')
+    parser.add_argument('--with-chroot',action='store_true',help='Add a fourth arm: namespace profile plus only chroot ALLOW')
     opts=parser.parse_args()
     try:
         if opts.out:
@@ -132,12 +146,16 @@ def main():
         with tempfile.TemporaryDirectory(prefix='cisstat-pgv13-seccomp-') as temp:
             reference=Path(temp)/'reference.json';reference.write_text(json.dumps(base))
             namespaces=Path(temp)/'namespaces.json';namespaces.write_text(json.dumps(changed))
+            arms=[('builtin',reference),('reference',reference),('namespaces',namespaces)]
+            if opts.with_chroot:
+                chroot=Path(temp)/'namespaces-chroot.json';chroot.write_text(json.dumps(chroot_profile(changed)))
+                arms.append(('namespaces-chroot',chroot))
             rows=[]
-            for arm,path in [('builtin',reference),('reference',reference),('namespaces',namespaces)]:
+            for arm,path in arms:
                 print('Running isolated arm: '+arm,flush=True)
                 rows.append(run_arm(arm,image,path))
         conclusion=classify(rows)
-        report={'kind':'three-arm disposable-container diagnostic; NOT production acceptance',
+        report={'kind':'disposable-container controlled diagnostic; NOT production acceptance',
                 'image_id':image,'apparmor':apparmor,'reference':json.loads((HERE/'vendor/source.json').read_text()),
                 'conclusion':conclusion,'pgv13_certified':False,'rows':rows}
         encoded=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
@@ -150,11 +168,12 @@ def main():
                 summary['arms'].append({'arm':row['arm'],'exit':row['exit'],'isolation_ok':p.get('isolation_ok'),
                     'namespace_status':p.get('namespace',{}).get('status'),'smoke_verdict':smoke.get('verdict'),
                     'no_usable_sandbox':'No usable sandbox' in smoke.get('error',''),
+                    'smoke_error':smoke_error_excerpt(smoke.get('error','')),
                     'setup_error':row.get('stderr','')[:400] if not p else None})
             print(json.dumps(summary,ensure_ascii=False,indent=2))
         else:
             print(encoded)
-        return 2 if conclusion.startswith('INCONCLUSIVE') else (0 if conclusion=='NAMESPACE_RULES_CANDIDATE' else 1)
+        return 2 if conclusion.startswith('INCONCLUSIVE') else (0 if conclusion in {'NAMESPACE_RULES_CANDIDATE','CHROOT_RULE_CANDIDATE'} else 1)
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as error:
         report={'conclusion':'INCONCLUSIVE_SETUP','pgv13_certified':False,'error_type':type(error).__name__,'detail':str(error)}
         if opts.out:

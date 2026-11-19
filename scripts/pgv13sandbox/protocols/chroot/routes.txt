@@ -1,0 +1,10 @@
+$ scripts/auth00/inventory.py --check
+{"status": "ok", "counts": {"api": 284, "framework": 8, "internal_operation": 37, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 2, "worker": 11}, "entries": 663}
+exit=0
+$ scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 663, "added": [], "missing": []}
+exit=0
+$ scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (600 discovery surfaces; full reviewed inventory/source parity)
+exit=0
+vs9ed09d7: no counts/entries/policies/runtime/vendor changes; only probe/test/local_gates fingerprints

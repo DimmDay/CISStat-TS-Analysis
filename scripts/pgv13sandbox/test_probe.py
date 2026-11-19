@@ -99,3 +99,45 @@ def test_setup_failure_replaces_a_stale_positive_report(monkeypatch,tmp_path):
     report=json.loads(out.read_text())
     assert report['conclusion']=='INCONCLUSIVE_SETUP'
     assert report['pgv13_certified'] is False
+
+
+def test_chroot_arm_changes_exactly_one_syscall_without_mutating_namespace_control():
+    from scripts.pgv13sandbox.probe import profiles, chroot_profile
+    _,namespace=profiles()
+    original=copy.deepcopy(namespace)
+    changed=chroot_profile(namespace)
+    assert namespace==original
+    assert changed['syscalls'][:-1]==namespace['syscalls']
+    assert {k:v for k,v in changed.items() if k!='syscalls'}=={k:v for k,v in namespace.items() if k!='syscalls'}
+    assert changed['syscalls'][-1]=={'names':['chroot'],'action':'SCMP_ACT_ALLOW','args':[]}
+
+
+@pytest.mark.parametrize('fourth_passed,expected',[
+    (True,'CHROOT_RULE_CANDIDATE'),(False,'STILL_BLOCKED'),
+])
+def test_fourth_arm_is_causal_chroot_control(fourth_passed,expected):
+    from scripts.pgv13sandbox.probe import classify
+    rows=[{'exit':1,'probe':{'isolation_ok':True,'smoke':{'verdict':'failed'}}} for _ in range(4)]
+    if fourth_passed: rows[-1]={'exit':0,'probe':{'isolation_ok':True,'smoke':{'verdict':'passed'}}}
+    assert classify(rows)==expected
+
+
+def test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container(monkeypatch,tmp_path):
+    from scripts.pgv13sandbox import probe
+    seen=[]
+    def metadata(args):
+        if args[0]=='compose':return 'test-container'
+        if '{{.Image}}' in args:return 'sha256:'+'a'*64
+        return 'docker-default'
+    def arm(name,image,path):
+        seen.append((name,json.loads(path.read_text())))
+        passed=name=='namespaces-chroot'
+        return {'arm':name,'exit':0 if passed else 1,'probe':{'isolation_ok':True,'smoke':{'verdict':'passed' if passed else 'failed'}}}
+    monkeypatch.setattr(probe,'docker_value',metadata)
+    monkeypatch.setattr(probe,'run_arm',arm)
+    monkeypatch.setattr('sys.argv',['probe.py','--with-chroot','--out',str(tmp_path/'report.json')])
+    assert probe.main()==0
+    assert [x[0] for x in seen]==['builtin','reference','namespaces','namespaces-chroot']
+    assert seen[0][1]==seen[1][1]
+    assert seen[3][1]['syscalls'][:-1]==seen[2][1]['syscalls']
+    assert json.loads((tmp_path/'report.json').read_text())['pgv13_certified'] is False

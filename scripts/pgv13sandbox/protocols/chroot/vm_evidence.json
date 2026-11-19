@@ -1,0 +1,26 @@
+{
+  "source": "user-provided VM three-arm matrix and extracted namespaces smoke JSON; not direct agent VM access",
+  "base": "9ed09d7151905001f4110cf093a0eff1de498d1a",
+  "matrix": {
+    "builtin": {
+      "namespace_status": 1,
+      "smoke": "failed",
+      "no_usable_sandbox": true
+    },
+    "reference": {
+      "namespace_status": 1,
+      "smoke": "failed",
+      "no_usable_sandbox": true
+    },
+    "namespaces": {
+      "namespace_status": 0,
+      "smoke": "failed",
+      "no_usable_sandbox": false
+    }
+  },
+  "namespaces_fatal": "Check failed: sys_chroot(\"/proc/self/fdinfo/\") == 0",
+  "browser_exit": "SIGABRT",
+  "parent_zygote_message": "No such file or directory (2)",
+  "interpretation": "chroot syscall rule is the next controlled hypothesis; actual child chroot errno not reported",
+  "fourth_arm_vm_result": "NOT RUN"
+}

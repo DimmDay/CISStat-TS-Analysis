@@ -1,0 +1,60 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CHROOT
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 13 items
+
+scripts/pgv13sandbox/test_probe.py .........FFFF                         [100%]
+
+=================================== FAILURES ===================================
+_ test_chroot_arm_changes_exactly_one_syscall_without_mutating_namespace_control _
+scripts/pgv13sandbox/test_probe.py:105: in test_chroot_arm_changes_exactly_one_syscall_without_mutating_namespace_control
+    from scripts.pgv13sandbox.probe import profiles, chroot_profile
+E   ImportError: cannot import name 'chroot_profile' from 'scripts.pgv13sandbox.probe' (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CHROOT/scripts/pgv13sandbox/probe.py)
+_____ test_fourth_arm_is_causal_chroot_control[True-CHROOT_RULE_CANDIDATE] _____
+scripts/pgv13sandbox/test_probe.py:122: in test_fourth_arm_is_causal_chroot_control
+    assert classify(rows)==expected
+E   AssertionError: assert 'INCONCLUSIVE_SETUP' == 'CHROOT_RULE_CANDIDATE'
+E     
+E     - CHROOT_RULE_CANDIDATE
+E     + INCONCLUSIVE_SETUP
+________ test_fourth_arm_is_causal_chroot_control[False-STILL_BLOCKED] _________
+scripts/pgv13sandbox/test_probe.py:122: in test_fourth_arm_is_causal_chroot_control
+    assert classify(rows)==expected
+E   AssertionError: assert 'INCONCLUSIVE_SETUP' == 'STILL_BLOCKED'
+E     
+E     - STILL_BLOCKED
+E     + INCONCLUSIVE_SETUP
+_ test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container _
+scripts/pgv13sandbox/test_probe.py:139: in test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container
+    assert probe.main()==0
+           ^^^^^^^^^^^^
+scripts/pgv13sandbox/probe.py:120: in main
+    opts=parser.parse_args()
+         ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/argparse.py:1908: in parse_args
+    self.error(msg)
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/argparse.py:2650: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/argparse.py:2637: in exit
+    _sys.exit(status)
+E   SystemExit: 2
+----------------------------- Captured stderr call -----------------------------
+usage: probe.py [-h] [--out OUT]
+probe.py: error: unrecognized arguments: --with-chroot
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_probe.py::test_chroot_arm_changes_exactly_one_syscall_without_mutating_namespace_control
+FAILED scripts/pgv13sandbox/test_probe.py::test_fourth_arm_is_causal_chroot_control[True-CHROOT_RULE_CANDIDATE]
+FAILED scripts/pgv13sandbox/test_probe.py::test_fourth_arm_is_causal_chroot_control[False-STILL_BLOCKED]
+FAILED scripts/pgv13sandbox/test_probe.py::test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container
+==================== 4 failed, 9 passed, 1 warning in 0.12s ====================

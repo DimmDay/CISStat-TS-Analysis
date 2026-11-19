@@ -1,0 +1,35 @@
+{
+  "base": "9ed09d7151905001f4110cf093a0eff1de498d1a",
+  "kind": "optional fourth controlled chroot diagnostic arm; not production fix",
+  "file_count": 16,
+  "tests": {
+    "red_new": 4,
+    "red_existing_pass": 9,
+    "green": 13,
+    "clean_zip_overlay_green": 13,
+    "Docker_stubbed": true
+  },
+  "actual_VM_fourth_arm": "NOT RUN",
+  "agent_Docker": "unavailable; local exit2 INCONCLUSIVE_SETUP",
+  "pgv13_certified": false,
+  "renderer_build": "PASS",
+  "Node_syntax": "PASS",
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_INDEX": "PASS",
+    "zip_overlay_actual": "PASS"
+  },
+  "vendor_runtime_delta": [],
+  "rebuild_images_required": false,
+  "commit_push": false,
+  "zip_checks": [
+    "CRC",
+    "manifest",
+    "every source byte",
+    "safe paths",
+    "clean exact-base overlay tests and actual routes"
+  ]
+}

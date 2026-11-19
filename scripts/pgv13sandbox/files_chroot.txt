@@ -1,0 +1,16 @@
+docs/auth00/inventory.json
+docs/pgv13_sandbox_ab.md
+scripts/local_gates.md
+scripts/pgv13sandbox/files_chroot.txt
+scripts/pgv13sandbox/probe.py
+scripts/pgv13sandbox/protocols/chroot/delivery.json
+scripts/pgv13sandbox/protocols/chroot/green.txt
+scripts/pgv13sandbox/protocols/chroot/green.xml
+scripts/pgv13sandbox/protocols/chroot/local-no-docker.txt
+scripts/pgv13sandbox/protocols/chroot/overlay.txt
+scripts/pgv13sandbox/protocols/chroot/red.txt
+scripts/pgv13sandbox/protocols/chroot/renderer-build.txt
+scripts/pgv13sandbox/protocols/chroot/routes.txt
+scripts/pgv13sandbox/protocols/chroot/vm_evidence.json
+scripts/pgv13sandbox/test_probe.py
+worklog/worklog12.md

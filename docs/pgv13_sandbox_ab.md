@@ -66,7 +66,7 @@ API, compose/env/host profiles не изменяются. Эксперимент
 | BASELINE_PASSED | Новая builtin среда уже печатает; исходный инцидент в ней не воспроизведён |
 | INCONCLUSIVE_SETUP / INCONCLUSIVE_ISOLATION | Неполный запуск/проверка, timeout, несовместимый профиль/зависимости или нарушение контроля; положительного вывода нет |
 
-Exit0 — только NAMESPACE_RULES_CANDIDATE, **не сертификат PGV-13**.
+Exit0 — NAMESPACE_RULES_CANDIDATE либо CHROOT_RULE_CANDIDATE в расширенном режиме, **не сертификат PGV-13**.
 Exit1 — прочие завершённые результаты, exit2 — inconclusive/setup.
 На stdout печатаются arm/exit/isolation/namespace/smoke и conclusion;
 полный JSON со stderr и source provenance — в --out. Передавать сначала достаточно
@@ -106,3 +106,59 @@ inventory/policy_review обновлены для fingerprints инструме�
 Финальные route/INDEX/build/ZIP проверки — protocols и manifest этой поставки.
 
 Дополнительный meaningful control: setup failure обязан заменить старый положительный JSON-отчёт. Получен целевой RED (1 FAIL/8 PASS) → исправлена запись RUNNING/error report → финальные 9 PASS. Stale-report-red.txt сохранён; при ошибке записи файла оператор видит report_write_error и exit2.
+
+
+## 19.11.2026: четвёртый контроль chroot, база9ed09d7
+
+Тимлид выполнил три ветви на VM: builtin/reference — namespace status1 и
+No usable sandbox; namespaces — status0, прежняя ошибка исчезла, но smoke
+failed. Из полного JSON получена следующая причина:
+`Check failed: sys_chroot("/proc/self/fdinfo/") == 0`, затем SIGABRT.
+Это фактический прогресс namespace-правил, не зелёный Chromium smoke.
+
+В закреплённом vendor/default.json правило chroot разрешается только при
+includes.caps=[CAP_SYS_CHROOT]. В тестовых контейнерах cap_drop ALL; условные
+правила профиля формируются с учётом capabilities контейнера. Дополнительные
+capabilities внутри созданного user namespace не переписывают уже установленный
+seccomp-фильтр. Поэтому следующий проверяемый кандидат — разрешение syscall
+chroot отдельно от выдачи CAP_SYS_CHROOT исходному процессу.
+Это локализация по профилю и симптомам, **не доказанный на VM результат исправления**.
+
+[Chromium credentials.cc](https://chromium.googlesource.com/chromium/src/+/lkgr/sandbox/linux/services/credentials.cc)
+действительно использует chroot в /proc/self/fdinfo как часть ограничения
+доступа к filesystem. Это первоисточник механизма, не заявление точного совпадения
+lkgr с установленным chromium-1200. Последующий errno2 из родительского fatal
+не доказывает, что на хосте отсутствует каталог; создавать/монтировать его
+или менять procfs на основании этого лога не требуется.
+
+Расширенный эксперимент:
+
+```bash
+python3 scripts/pgv13sandbox/probe.py --with-chroot --out /tmp/pgv13-chroot-ab.json
+```
+
+Первые три ветви сохранены. Четвёртая namespaces-chroot отличается от третьей
+ровно одним безусловным ALLOW chroot. Не добавляются host/container capability
+SYS_CHROOT или SYS_ADMIN, не меняются UID10001, NNP, cap_drop ALL, seccomp
+ERRNO default, clone3 ENOSYS, AppArmor docker-default, read-only/network:none,
+ресурсные лимиты. Генератор profiles() и pinned vendor bytes прежние.
+Все ограничения/границы основного эксперимента выше остаются в силе.
+
+CHROOT_RULE_CANDIDATE — первые три smoke failed, четвёртый passed при всех
+isolation_ok. Это связывает улучшение с добавленным syscall в рамках reference,
+но требует дальнейшей runtime/content приёмки и review production policy.
+STILL_BLOCKED — новая ошибка в краткой матрице smoke_error/полном JSON, без
+автоматического расширения прав. INCONCLUSIVE_* не является успехом.
+Без --with-chroot прежний трёхвариантный запуск работает как раньше.
+
+На stdout теперь дополнительно выводится компактный smoke_error: строки
+Check failed/FATAL, либо первые строки ошибки; полный текст остаётся в --out.
+Это устраняет необходимость отдельного извлечения уже сохранённой ошибки.
+В setup failure старый положительный JSON по-прежнему заменяется RUNNING/error.
+
+Контроли: целевой RED4 FAIL/9 PASS → GREEN13/13, включая прежние9, exact one-rule
+diff без мутации namespace control, оба исхода четвёртого arm и CLI wiring.
+Subprocess подменён, Docker в среде агента отсутствует: реальный четырёхвариантный
+результат ещё неизвестен. Node syntax/build/actual routes/INDEX/ZIP проверки —
+protocols/chroot/. Не требуются rebuild images/миграции/обновление compose.
+API transport и F-C13-00…03 этим диагностическим изменением не исправляются.
