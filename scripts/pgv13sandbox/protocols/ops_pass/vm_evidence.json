@@ -1,0 +1,118 @@
+{
+  "provenance": {
+    "source": "user-provided activate.py and verify_service.py stdout; not direct agent VM access",
+    "received_date": "2026-11-19",
+    "repository_baseline_for_record": "36f32ae549a3894e02e94f04581b558affe5572d",
+    "VM_git_head_in_this_output": null
+  },
+  "activation": {
+    "preflight_ok": true,
+    "action": "apply",
+    "image_id": "sha256:1837bee8994e42b97b548de5ecf4d3e026f8b3e6624d9ac42822a4ed290f81b3",
+    "profile": "/opt/cisstat/CISStat-TS-Analysis/apps/print-renderer/build/deployment/chromium.seccomp.json",
+    "service_recreated": true,
+    "pids_limit": 512,
+    "readiness_checked": false,
+    "pgv13_certified": false
+  },
+  "verification": {
+    "passed": true,
+    "pgv13_certified": false,
+    "checks": {
+      "full_smoke": true,
+      "readiness": true,
+      "finite_budgets": true,
+      "no_new_pids_failures": true,
+      "no_new_oom": true,
+      "parent_hardening": true
+    },
+    "before": {
+      "pids_current": 19,
+      "pids_max": 512,
+      "pids_peak": 148,
+      "pids_events": {
+        "max": 0
+      },
+      "memory_current": 70045696,
+      "memory_max": 2147483648,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0
+      }
+    },
+    "after": {
+      "pids_current": 19,
+      "pids_max": 512,
+      "pids_peak": 152,
+      "pids_events": {
+        "max": 0
+      },
+      "memory_current": 93175808,
+      "memory_max": 2147483648,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0
+      }
+    },
+    "deltas": {
+      "pids_max_events": 0,
+      "oom": 0,
+      "oom_kill": 0
+    },
+    "http": {
+      "smoke": 200,
+      "readyz": 200
+    },
+    "setup_error": null,
+    "scenarios": [
+      {
+        "scenario": "cyrillic",
+        "checks": {
+          "png_signature": true,
+          "dimensions": true,
+          "phys_300ppi": true,
+          "non_empty_idat": true,
+          "non_trivial_bytes": true
+        },
+        "error": ""
+      },
+      {
+        "scenario": "ih",
+        "checks": {
+          "png_signature": true,
+          "dimensions": true,
+          "phys_300ppi": true,
+          "non_empty_idat": true,
+          "non_trivial_bytes": true
+        },
+        "error": ""
+      },
+      {
+        "scenario": "a4",
+        "checks": {
+          "png_signature": true,
+          "dimensions": true,
+          "phys_300ppi": true,
+          "non_empty_idat": true,
+          "non_trivial_bytes": true
+        },
+        "error": ""
+      }
+    ],
+    "smoke_error": ""
+  },
+  "conclusion": {
+    "working_renderer_operational_gate": "PASS for the observed window/image/config",
+    "P01_P02_semantics_visual_OCR_concurrency_stress": "NOT CHECKED by this evidence",
+    "API_to_renderer_transport": "OPEN; last failure not rechecked",
+    "whole_PGV13": "NOT CERTIFIED"
+  }
+}

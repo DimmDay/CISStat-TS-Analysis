@@ -1,0 +1,33 @@
+{
+  "base": "36f32ae549a3894e02e94f04581b558affe5572d",
+  "kind": "documentation/evidence of user-observed working renderer operational PASS; no runtime changes",
+  "file_count": 9,
+  "VM_source": "user-provided activate and verify stdout",
+  "observed_gate": "PASS on image1837bee8…, PID512/memory2g",
+  "agent_direct_VM_execution": false,
+  "whole_PGV13": "NOT CERTIFIED",
+  "scope_limits": [
+    "no pixel/OCR",
+    "no concurrency stress",
+    "no P01/P02 semantics or job/download",
+    "API transport not rechecked"
+  ],
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_INDEX": "PASS"
+  },
+  "renderer_build": "PASS",
+  "tests_added_or_rerun": "none; prose/evidence only, runtime bytes unchanged",
+  "new_VM_deploy_required": false,
+  "commit_push": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest",
+    "each source byte",
+    "safe relative paths",
+    "clean-base overlay inventory/actual routes"
+  ]
+}

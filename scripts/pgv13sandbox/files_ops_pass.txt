@@ -1,0 +1,9 @@
+docs/auth00/inventory.json
+docs/pgv13_certification.md
+docs/pgv13_sandbox_rollout.md
+scripts/pgv13sandbox/files_ops_pass.txt
+scripts/pgv13sandbox/protocols/ops_pass/delivery.json
+scripts/pgv13sandbox/protocols/ops_pass/renderer-build.txt
+scripts/pgv13sandbox/protocols/ops_pass/routes.txt
+scripts/pgv13sandbox/protocols/ops_pass/vm_evidence.json
+worklog/worklog12.md

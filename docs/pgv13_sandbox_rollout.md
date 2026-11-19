@@ -1,5 +1,11 @@
 # PGV-13: опциональная активация sandbox candidate, 19.11.2026
 
+**Текущий статус на19.11.2026: operational renderer gate PASS по выводу VM
+тимлида.** На image1837bee8… с PID budget512 прошли полный структурный PNG smoke
+и readyz, без новых PID/OOM событий. Подробности/границы — в конце документа.
+Полная PGV-13 по-прежнему NOT CERTIFIED.
+
+
 База9cffdcd29522872e3aaa045861b7343dea9cb3c7. На VM тимлид подтвердил
 CHROOT_RULE_CANDIDATE: из4 сопоставимых arms только namespaces-chroot печатает,
 при isolation=true у всех. Это доказанный положительный **mini-PNG эксперимент**,
@@ -107,7 +113,9 @@ Default local_gates.py не меняется; opt-in contracts:
 `python -m pytest scripts/pgv13sandbox -q`. Карта AUTH-00 учитывает новые reviewed
 sources/deployment assets без изменения HTTP/DTO/BFF paths. Агент не делал
 commit/push и не имеет прямого подключения к VM. Реальный persistent-service
-результат этой поставки пока PENDING; mini-PNG candidate — CONFIRMED по данным тимлида.
+результат исходного rollout сначала был PENDING; после capacity512 оператор
+подтвердил PASS рабочего operational gate (см. итог ниже). Mini-PNG candidate
+также CONFIRMED по данным тимлида.
 
 Официальные форматы, проверены19.11.2026: [Compose merge](https://docs.docker.com/reference/compose-file/merge/), [Docker seccomp](https://docs.docker.com/engine/security/seccomp/). Реальный merge всё равно проверяется установленным Docker Compose до up, не эмулируется YAML-конкатенацией.
 
@@ -169,10 +177,51 @@ TDD targeted RED8 → final49 controls (23activate+14probe+12verification).
 PID growth, OOM, missing counters, старый budget, smoke/readiness/transport failure.
 Дополнительно CLI сохраняет/проверяет child exit/report и stale-report replacement;
 capacity-only rollback сохраняет sandbox. Docker/Chromium тут не исполнялись.
-Настоящие512/full smoke результаты PENDING VM. Renderer build/ASGI/INDEX/ZIP overlay —
+Настоящие512/full smoke результаты теперь получены от тимлида: PASS
+для наблюдаемого окна (см. итог ниже). Renderer build/ASGI/INDEX/ZIP overlay —
 protocols/capacity. Исторический sandbox candidate остаётся подтверждённым.
 
 Первичные справочники: [cgroup v2 PID controller](https://docs.kernel.org/admin-guide/cgroup-v2.html#pid),
 [pthread_create EAGAIN](https://man7.org/linux/man-pages/man3/pthread_create.3.html).
 Новый источник отказа не даёт оснований отключать sandbox или устанавливать DBus
 по сопутствующим предупреждениям. API transport и F-C13-00…03 всё ещё открыты.
+
+
+## Итог19.11.2026: рабочий renderer operational PASS
+
+Источник — stdout оператора после активации и HTTP verification, не прямой
+запуск агента. Нормализованный полный вывод сохранён в
+scripts/pgv13sandbox/protocols/ops_pass/vm_evidence.json. VM Git HEAD не был
+напечатан в этой конкретной реплике; база записи — main36f32ae.
+
+| Проверка | Результат |
+| --- | --- |
+| Immutable image | sha256:1837bee8994e42b97b548de5ecf4d3e026f8b3e6624d9ac42822a4ed290f81b3 |
+| Working full smoke / readyz | HTTP200 / HTTP200, passed=true |
+| Cyrillic / IH / A4 | все5 структурных PNG checks true у каждого: signature, dimensions, pHYs300ppi, non-empty IDAT, non-trivial bytes |
+| PID controller | max512; current19→19; peak148→152; events.max0→0 |
+| Memory controller | max2147483648; current70045696→93175808; max/oom/oom_kill0→0 |
+| Parent hardening check | true по verifier |
+| Whole PGV-13 certification | false |
+
+Таким образом, устранение sandbox launch blocker и PID ceiling подтверждено
+положительным операционным прогоном на **этом image/config и в этом окне**.
+Пик152 сам по себе превышает прежний128; возвращать working budget128 как
+исправление нельзя. Задачи вернулись к19 после проверки, но это не длительный
+leak/stress test; изменение memory current не интерпретируется как доказательство
+наличия/отсутствия утечки. Нулевая дельта pressure событий касается окна измерения.
+
+PASS относится к структурному V01/full-smoke runtime. Здесь нет самостоятельного
+pixel/OCR/семантического доказательства корректности кириллицы/всех графиков,
+реального P01/P02 job→PNG→авторизованный download или concurrency2 stress.
+API→renderer остаётся OPEN: последний ConnectionRefusedError не перепроверен
+этим выводом; topology/client исходники здесь не исправлены. F-C13-00…03 тоже
+не закрыты: passport_documents.py/print_render_payload.py/printLayout.tsx в
+main36f32ae побайтно прежние относительно5d83967. Исторические raw FAIL не
+превращены в PASS из-за инфраструктурного успеха.
+
+Для документальной поставки принятого результата не нужны новый recreate,
+образ, миграция или повтор smoke. Она обновляет evidence/акт/worklog и
+fingerprint этого runbook в AUTH-00, без изменения routes/config/runtime.
+Следующий предмет приёмки — оставшиеся контрактные исправления и сквозной
+API→renderer→реальные документы. Агент не commit/push и не выполнял VM-команд.

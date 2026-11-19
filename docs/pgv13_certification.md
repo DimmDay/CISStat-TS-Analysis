@@ -230,3 +230,18 @@ real-browser E2E, pixel/OCR acceptance, Windows/Docker/VM certification или
 ## Дополнение VM на 338b15a
 
 Тимлид предоставил реальный вывод VM: readyz503 с Chromium `No usable sandbox!`/SIGABRT и отдельный API URLError. Теперь VM sandbox blocker подтверждён; прежнее OPEN относится к точной политике отказа, а не существованию сбоя. AppArmor restriction=1 и host uid_map denial — ведущая гипотеза, но контейнерный audit/profile и вклад seccomp пока не установлены. Подробный разбор, границы и следующий read-only сбор: `docs/pgv13_vm_followup.md`. Известные контрактные блокеры/вердикт не изменились.
+
+
+## 19.11.2026: закрыт operational renderer blocker на проверенном image
+
+Тимлид предоставил положительный working-service HTTP verification после
+seccomp candidate + PID budget512: full smoke200/readyz200, Cyrillic/IH/A4
+структурные PNG checks true, peak152, current19→19, новых PID/OOM events0.
+Image1837bee8… не менялся, memory max2g. Источник/полный нормализованный stdout:
+`docs/pgv13_sandbox_rollout.md` и `scripts/pgv13sandbox/protocols/ops_pass/vm_evidence.json`.
+
+Operational V01 renderer gate — PASS для данного наблюдаемого окна. Это не
+pixel/OCR, P01/P02 семантика, stress или сквозная выдача. Прежний API transport
+failure не перепроверен и остаётся OPEN. Source builders/bridge/frame в36f32ae
+не менялись относительно5d83967; F-C13-00…03 не исправлены. Общий вердикт
+PGV-13 **NOT CERTIFIED** сохраняется. Нового deploy для записи результата нет.
