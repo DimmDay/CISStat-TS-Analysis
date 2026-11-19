@@ -1,0 +1,46 @@
+{
+  "base": "2014fdfcf4d9088e35c6b6c63ffc34b8dde5495d",
+  "builder_version": "pgv.passport_documents/2",
+  "full_pgv13_certified": false,
+  "target_memory": {
+    "tests": 63,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "independent_postgres": {
+    "tests": 24,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "extended_python": {
+    "tests": 227,
+    "failure": 1,
+    "error": 0,
+    "skipped": 0
+  },
+  "full_cert": {
+    "tests": 28,
+    "failure": 3,
+    "error": 0,
+    "skipped": 0
+  },
+  "ts_tests": 160,
+  "renderer_tsc": "passed",
+  "web_production_builds": [
+    "embedded",
+    "standalone"
+  ],
+  "native_chromium_png": "not_run_no_docker",
+  "routes": {
+    "status": "ok",
+    "actual_api": 284,
+    "inventory_api": 284,
+    "registry_bindings": 288,
+    "inventory_entries": 663,
+    "added": [],
+    "missing": []
+  },
+  "baseline_failure": "PGV05 smoke docstring:13 метрик; reproduced on pristine 2014fdf"
+}

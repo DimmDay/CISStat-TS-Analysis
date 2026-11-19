@@ -245,3 +245,23 @@ pixel/OCR, P01/P02 семантика, stress или сквозная выдач
 failure не перепроверен и остаётся OPEN. Source builders/bridge/frame в36f32ae
 не менялись относительно5d83967; F-C13-00…03 не исправлены. Общий вердикт
 PGV-13 **NOT CERTIFIED** сохраняется. Нового deploy для записи результата нет.
+
+## 19.11.2026 — F-C13-00…03 исправлены поверх 2014fdf, граница сертификата
+
+Предыдущие разделы сохраняют исторические RED findings. Текущая поставка
+меняет продуктовый код: полный frame envelope P01/P02, builder /2 identity
+с profile/run/frozen content/confirmation, единый lookup/freeze producer key,
+P01 unique physical refs и отдельное видимое подтверждение с точным source.
+Старые frozen artifacts/revisions/jobs не переписываются. Дизайн/команды:
+`docs/pgv13_fixes.md`; task protocols `scripts/pgv13fix/protocols/`.
+
+Независимые оракулы теперь **все** передают production payload без
+`diagnostic_envelope`; renderer выполняет свой validateRenderPayload и SSR.
+Target RED17/7 → GREEN24/24 Memory + 24/24 native PostgreSQL; author39/39,
+TS160/160. Оракулы прежнего raw P02 заголовка и author reused-source уточнены
+по фактическому контракту; условия полных групп/точного source не ослаблены.
+Это закрывает F-C13-00…03 на уровне проверенного кода и durable/SSR контрактов.
+Для нового image VM приёмка ещё не выполнена; прежний ops PASS относится к
+старому image ID. **Общий PGV-13 по-прежнему NOT CERTIFIED**: F-C13-04 и
+transport/final-image/end-to-end PNG/content/visual acceptance остаются OPEN.
+Расширенный PGV-05/06/09:163 PASS,1 старый docstring FAIL (также на чистой базе).

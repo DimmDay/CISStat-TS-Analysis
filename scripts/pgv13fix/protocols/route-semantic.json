@@ -1,0 +1,22 @@
+{
+  "base": "2014fdfcf4d9088e35c6b6c63ffc34b8dde5495d",
+  "entries_equal": true,
+  "counts_equal": true,
+  "policies_equal": true,
+  "entries": 663,
+  "counts": {
+    "api": 284,
+    "framework": 8,
+    "internal_operation": 37,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 2,
+    "worker": 11
+  }
+}

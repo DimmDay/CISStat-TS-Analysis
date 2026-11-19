@@ -86,6 +86,30 @@ export interface PrintPassportRecord {
   calculation_version_reason: string | null;
 }
 
+/** Frozen checkpoint metadata; a confirmation is not another passport. */
+export interface PrintPassportConfirmationMeta {
+  checkpoint_id: string | null;
+  stage: string | null;
+  confirmed_at: string | null;
+  confirmed_at_reason: string | null;
+  source_snapshot_ref: string | null;
+  source_snapshot_ref_reason?: string | null;
+  reused: boolean;
+}
+
+export function PrintPassportConfirmation({ checkpoint }: { checkpoint: PrintPassportConfirmationMeta }) {
+  return (
+    <section data-testid="passport-confirmation" style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: 8 }}>
+      <h2 style={{ fontSize: PRINT_TYPE_SCALE.section, margin: "0 0 4px" }}>Подтверждение паспорта</h2>
+      <ProvItem label="checkpoint" value={xorText(checkpoint.checkpoint_id, "legacy_unknown")} />
+      <ProvItem label="этап подтверждения" value={checkpoint.stage ?? "неизвестно (legacy_unknown)"} />
+      <ProvItem label="подтверждено" value={formatPrintTime(checkpoint.confirmed_at, checkpoint.confirmed_at_reason, "UTC")} />
+      <ProvItem label="исходный снимок" value={xorText(checkpoint.source_snapshot_ref, checkpoint.source_snapshot_ref_reason)} />
+      <ProvItem label="повторное использование" value={checkpoint.reused ? "Да — сохранён исходный паспорт" : "Нет"} />
+    </section>
+  );
+}
+
 // ── Универсальный рендер значений групп ──────────────────────────
 
 const TREND_DIRECTIONS: Record<string, string> = {

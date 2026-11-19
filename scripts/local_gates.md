@@ -431,3 +431,28 @@ smoke — `python3 scripts/pgv13sandbox/verify_service.py --out /tmp/pgv13-servi
 подменены (реальный Node client исполнен с doubles). Default runner не меняется.
 Без images rebuild/миграций; routes/methods прежние. Native512 acceptance только
 на VM, код0 verification всё равно не сертификат PGV-13. docs/pgv13_sandbox_rollout.md.
+
+## PGV-13-FC13-FIX (19.11.2026), база 2014fdf
+
+F-C13-00…03: raw durable Python → compiled TS validation/SSR (без тестового
+`diagnostic_envelope`), все single/set/compare профили, reused без четвёртой
+копии, source/confirmation, versioned cache/legacy immutable revision и jobs.
+Explicit gate (npm dependencies и Python requirements PGV13 должны быть установлены):
+
+```bash
+python scripts/pgv13cert/verify.py --contracts-only
+# Только disposable PostgreSQL, роль с CREATE DATABASE; DSN не production:
+# задайте CISSTAT_PGV13_CERT_DSN в окружении
+python scripts/pgv13cert/verify.py --contracts-only --postgres
+python -m pytest tests/api/test_pgv13_passport_documents.py -q
+```
+
+Contracts-only: 24 теста, без skips; отдельный author suite: 39 тестов.
+Без --contracts-only прежний полный certification gate сохранён: deployment
+F-C13-04 даёт 3 FAIL, их не скрывают xfail/исключения. Успешные contracts не
+означают финальный PGV-13 сертификат или native P01/P02 PNG acceptance.
+Дополнительно AUTH-00 `scripts/auth06/check_routes.py`, renderer build, print TS
+и обе web production builds. На базе расширенного PGV-05/06/09 прогона есть
+старый FAIL docstring PGV-05 «13 метрик» (воспроизведён отдельно на 2014fdf).
+Default local_gates.py и CI workflows не меняются. Новых роутов/миграций нет.
+Дизайн, протоколы, rebuild и границы rollout: docs/pgv13_fixes.md.

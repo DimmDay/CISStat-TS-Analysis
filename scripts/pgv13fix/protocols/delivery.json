@@ -1,0 +1,26 @@
+{
+  "base": "2014fdfcf4d9088e35c6b6c63ffc34b8dde5495d",
+  "overlay_target_tests": 63,
+  "overlay_target_passed": 63,
+  "overlay_renderer_build": "passed",
+  "overlay_routes": "passed",
+  "tested_source_bytes_equal": true,
+  "source_sha256": {
+    "apps/api/passport_documents.py": "e918921707be841e33a344f0feeef00745fb2da4d8c97d4d60e5b7367aa09366",
+    "apps/api/passport_history.py": "e0cbdc25b7d6a17986dd89c56b7c8837ee2e7e8583761211c208459c2bd4b071",
+    "apps/print-renderer/src/rendererCore.tsx": "87ef26f3a4f417d3277646e0465f0a7f875911b2fada9c633939fb96ef53979d",
+    "docs/auth00/inventory.json": "c89c4465f69409918ae07fcd903724eed01f34b8d4ef098fdf0950b22dfe0c63",
+    "docs/auth00/policy_review.json": "b6b87b654bda95480a34913c74c542b070143411aaa1f72aaaa2946f97c35217",
+    "docs/pgv13_certification.md": "a5e55450e4347588296f74301588510aec108b350f93b81176897b34a6b6bc99",
+    "docs/pgv13_fixes.md": "dcd6162975e857e862df727616fb3c6842d1a241b84f96e6ccecffe95bc834e5",
+    "packages/ui/print/printPassport.tsx": "22517be0bbe7f5d72d344c875a287f455a8b19c20fe9a69542117784346b49c1",
+    "scripts/local_gates.md": "c0c9718d2e3076294fcc95df18ac60be8a06a2f6ffdf71a363be725941928ae1",
+    "scripts/pgv13cert/test_contracts.py": "4a5bab4bdd7f8be381302376c0426d8d3e253fe11558f9223b05abc6844245d8",
+    "scripts/pgv13cert/verify.py": "ae4f7d52b10d8dcf3acbcad7d95456ee648539da6ca095e4d81b73e84dd18c5c",
+    "tests/api/test_pgv13_passport_documents.py": "1234981185f999bb156b78bb3cb2c5b2139d5137e9b42b7cb5fd3927e51e0d5f",
+    "worklog/worklog12.md": "f9547639d812c7c40866ab3ae0316e2a9a22ac965d52ab81d5dad46f5a575654"
+  },
+  "real_index_empty": true,
+  "docker_available": false,
+  "full_pgv13_certified": false
+}

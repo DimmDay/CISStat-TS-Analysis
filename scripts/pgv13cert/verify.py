@@ -18,7 +18,8 @@ def main():
         return build.returncode
     with tempfile.TemporaryDirectory(prefix="pgv13-cert-", dir=ROOT.parent) as temp:
         report = Path(temp) / "junit.xml"
-        result = subprocess.run([sys.executable, "-m", "pytest", "scripts/pgv13cert", "-q", "--basetemp=" + str(Path(temp) / "pytest"), "--junitxml=" + str(report)], cwd=ROOT)
+        selection = "scripts/pgv13cert/test_contracts.py" if "--contracts-only" in sys.argv else "scripts/pgv13cert"
+        result = subprocess.run([sys.executable, "-m", "pytest", selection, "-q", "--basetemp=" + str(Path(temp) / "pytest"), "--junitxml=" + str(report)], cwd=ROOT)
         if report.exists():
             cases = list(ET.parse(report).iter("testcase"))
             if not cases or any(case.find("skipped") is not None for case in cases):

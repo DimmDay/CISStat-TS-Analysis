@@ -816,15 +816,17 @@ class TestRequestPassportDocumentLifecycle:
         assert outcome["print_kind"] == "P01"
         payload = _snapshot_payload(run_id, outcome["snapshot_artifact_id"])
         sections = payload["display"]["sections"]
-        # Адрес этапа подтверждения существует (4 адреса пути), но
-        # modeling_entry -- alias ИСХОДНОГО снимка: snapshot_ref записи
-        # адреса modeling_entry == snapshot_ref исходного (exit/start).
-        assert len(sections) == 4
+        # AC11: confirmation has its own source ref, not a fourth full copy.
+        assert len(sections) == 3
         refs = [s["record"]["snapshot_ref"] for s in sections]
-        last = refs[-1]
-        assert last in refs[:-1], (
-            "reused modeling_entry обязан адресовать исходный снимок (AC11)"
-        )
+        assert len(set(refs)) == 3
+        from apps.api.visual_artifacts import get_passport_checkpoint
+        checkpoint_artifact = get_passport_checkpoint(run_id, checkpoint_id)
+        checkpoint_payload = _snapshot_payload(run_id, checkpoint_artifact.artifact_id)
+        assert payload["checkpoint"]["source_snapshot_ref"] == checkpoint_payload["snapshot_ref"]
+        assert payload["checkpoint"]["source_snapshot_ref"] in refs
+        assert payload["checkpoint"]["checkpoint_id"] == checkpoint_id
+        assert payload["checkpoint"]["reused"] is True
         # Физических паспортных артефактов -- 3 (start/validation/exit).
         from apps.api.artifact_store import get_artifact_registry
 

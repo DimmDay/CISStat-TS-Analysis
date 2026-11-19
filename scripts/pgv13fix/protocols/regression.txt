@@ -1,0 +1,54 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 164 items
+
+tests/api/test_pgv05_passport_history.py ..................              [ 10%]
+tests/api/test_pgv05_cert_findings.py F.                                 [ 12%]
+tests/api/test_pgv05_cert_oracles.py .......................             [ 26%]
+tests/api/test_pgv06_passport_comparison.py ............................ [ 43%]
+......                                                                   [ 46%]
+tests/api/test_pgv06_cert_findings.py .                                  [ 47%]
+tests/api/test_pgv06_cert_oracles.py ............................        [ 64%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 78%]
+................                                                         [ 87%]
+tests/api/test_pgv09fix_write_path.py ....................               [100%]
+
+=================================== FAILURES ===================================
+_ TestFP5C1SmokeDocstring.test_b1_smoke_docstring_does_not_understate_group_count _
+tests/api/test_pgv05_cert_findings.py:27: in test_b1_smoke_docstring_does_not_understate_group_count
+    assert "13 метрик" not in source, (
+E   AssertionError: F-P5C1: докстринг smoke-скрипта заявляет «13 метрик», фактический паспорт платформы несёт 15 групп (собственный вывод скрипта печатает groups=15) -- документная честность
+E   assert '13 метрик' not in '"""PGV-05 s...it(main())\n'
+E     
+E     '13 метрик' is contained here:
+E       паспорта (13 метрик),
+E       content_status=present, schema/calculation version = legacy_unknown.
+E       """
+E       from __future__ import annotations
+E       ...
+E     
+E     ...Full output truncated, use '-vv' to show
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/api/test_pgv05_passport_history.py: 42 warnings
+tests/api/test_pgv05_cert_oracles.py: 78 warnings
+tests/api/test_pgv06_passport_comparison.py: 86 warnings
+tests/api/test_pgv06_cert_findings.py: 8 warnings
+tests/api/test_pgv06_cert_oracles.py: 78 warnings
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/scripts/pgv13fix/protocols/regression.xml -
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+================= 1 failed, 163 passed, 293 warnings in 15.87s =================

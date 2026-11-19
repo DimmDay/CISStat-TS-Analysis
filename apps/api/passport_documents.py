@@ -32,7 +32,7 @@ AC09).
    expected_context). Целостность -- content-addressed ObjectStore +
    payload_sha256 (T8) и producer_key-конфликт (§11).
 3. ИДЕМПОТЕНТНОСТЬ (§11/§12.2): identity -- mode + упорядоченные refs +
-   digest (SHA-256 канонического JSON identity-ядер записей/сравнения);
+   digest (builder version/profile/run/полный frozen контент, без request time);
    существующий frozen input переиспользуется -> та же ревизия
    (basis_fingerprint) -> тот же активный/ready job. Дубли не создаются.
 4. ЧЕСТНЫЕ ГРАНИЦЫ: доступ через reader'ы PGV-05/06 (read) и
@@ -65,6 +65,8 @@ PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION = "pgv.passport_print_snapshot/1"
 PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION = (
     "pgv.passport_comparison_print_snapshot/1"
 )
+PASSPORT_DOCUMENTS_BUILDER_VERSION = "pgv.passport_documents/2"
+
 IDENTITY_DIGEST_ALGORITHM = "sha256(canonical_json)"
 
 # Идентификаторы печатного контракта документа (§10.2: аддитивные типы
@@ -132,19 +134,24 @@ def _canonical_digest(value: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 
 
-def _record_identity_core(record: dict[str, Any]) -> dict[str, Any]:
-    """Identity-ядро записи (§8): адрес + content-статус + доказуемые
-    XOR-поля. Не включает полное содержимое паспорта: тот же снимок под
-    той же целостностью -- тот же вход (идемпотентность §11)."""
+def _document_identity(
+    *, run_id: str, mode: str, profile_id: str, snapshot_refs: list[str],
+    content: Any,
+) -> dict[str, Any]:
+    """Versioned print identity; request time is deliberately not content.
+
+    Include the entire frozen input, not only refs: profile/confirmation/gaps
+    must never silently reuse another revision. No legacy key is rewritten.
+    """
     return {
-        "snapshot_ref": record.get("snapshot_ref"),
-        "content_status": record.get("content_status"),
-        "content_gap_reason": record.get("content_gap_reason"),
-        "source_hash": record.get("source_hash"),
-        "source_hash_reason": record.get("source_hash_reason"),
-        "fingerprint": record.get("fingerprint"),
-        "fingerprint_reason": record.get("fingerprint_reason"),
-        "stage": record.get("stage"),
+        "builder_version": PASSPORT_DOCUMENTS_BUILDER_VERSION,
+        "mode": mode,
+        "snapshot_refs": snapshot_refs,
+        "digest": _canonical_digest({
+            "builder_version": PASSPORT_DOCUMENTS_BUILDER_VERSION,
+            "run_id": str(run_id), "mode": mode, "profile_id": profile_id,
+            "snapshot_refs": snapshot_refs, "content": content,
+        }),
     }
 
 
@@ -215,10 +222,10 @@ def _snapshot_skeleton(
         "documents": {"print_kind": print_kind, "mode": mode},
         "identity": {**identity, "algorithm": IDENTITY_DIGEST_ALGORITHM},
         "refs": {"run_id": None, "target_column": None, "date_column": None},
-        "expected_context": {"context_id": None, "data_revision": None},
+        "expected_context": {"context_id": None, "data_revision": None, "expected_data_digest": None},
         "data_artifact": {
             "artifact_id": None,
-            "artifact_version": "",
+            "artifact_version": None,
             "source_hash": None,
             "hash_algorithm": None,
             "hash_reason": "not_applicable -- контент встроен в записи",
@@ -230,7 +237,27 @@ def _snapshot_skeleton(
             "entity_column": None,
             "entity_id": None,
         },
+        "result": {
+            "result_ref": None,
+            "result_schema_version": None,
+            "result_digest": identity["digest"],
+            "result_digest_reason": None,
+            "result_ref_reason": "not_applicable -- печатный вход, не VisualResult",
+        },
+        "sampling": {
+            "applicable": False, "mode": None, "point_cap": None,
+            "reason": "not_applicable -- полные сохранённые паспорта/сравнение",
+        },
+        "warnings": [],
+        "selection": {"allowlist": [], "values": {}},
+        "annotations": {"revision": 0, "author": "analyst", "text": None},
+        "data_flow": {"before_revision": None, "after_revision": None},
         "times": {
+            "computed_at": None,
+            "computed_at_reason": "not_applicable -- даты расчётов в записях",
+            "captured_at": None,
+            "captured_at_reason": "not_applicable -- даты фиксации в записях",
+            "checkpoint_confirmed_at": None,
             "render_requested_at": render_requested_at,
             "timezone": "UTC",
             "locale": "ru-RU",
@@ -295,7 +322,11 @@ def build_passport_print_snapshot(
         raise PassportDocumentSourceUnavailable(
             "source_unavailable: у записей отсутствуют доказуемые rs-refs"
         )
-    digest = _canonical_digest([_record_identity_core(record) for record in records])
+    identity = _document_identity(
+        run_id=run_id, mode=mode, profile_id=profile_id, snapshot_refs=identity_refs,
+        content={"records": records, "checkpoint": checkpoint_meta,
+                 "title": title or (P01_TITLE if mode == "single" else P01_SET_TITLE)},
+    )
     completeness = (
         "complete"
         if all(
@@ -321,7 +352,7 @@ def build_passport_print_snapshot(
         mode=mode,
         profile_id=profile_id,
         render_requested_at=render_requested_at,
-        identity={"mode": mode, "snapshot_refs": identity_refs, "digest": digest},
+        identity=identity,
     )
     payload.update({
         "refs": {
@@ -358,6 +389,8 @@ def build_passport_print_snapshot(
             "sections": sections,
         },
     })
+    if checkpoint_meta:
+        payload["times"]["checkpoint_confirmed_at"] = checkpoint_meta.get("confirmed_at")
     _assert_canonical(payload)
     return payload
 
@@ -380,15 +413,10 @@ def build_passport_comparison_print_snapshot(
             "invalid_selection: вход должен быть pgv.passport_comparison/1"
         )
     ordered_refs = [str(ref) for ref in comparison.get("ordered_refs") or []]
-    digest = _canonical_digest({
-        "mode": comparison.get("mode"),
-        "ordered_refs": ordered_refs,
-        "engine": (comparison.get("method_versions") or {}).get("engine"),
-        "confirmation": comparison.get("confirmation"),
-        "checkpoint_ref": (comparison.get("checkpoint") or {}).get(
-            "checkpoint_ref"
-        ),
-    })
+    identity = _document_identity(
+        run_id=run_id, mode="compare", profile_id=profile_id,
+        snapshot_refs=ordered_refs, content=comparison,
+    )
     sections = [{
         "section_id": "comparison:main",
         "renderer_kind": "passport_comparison",
@@ -402,7 +430,7 @@ def build_passport_comparison_print_snapshot(
         mode="compare",
         profile_id=profile_id,
         render_requested_at=render_requested_at,
-        identity={"mode": "compare", "snapshot_refs": ordered_refs, "digest": digest},
+        identity=identity,
     )
     payload.update({
         "refs": {"run_id": str(run_id), "target_column": None, "date_column": None},
@@ -483,6 +511,16 @@ def _resolve_set_records(
             ),
         ):
             records.append(trajectory["snapshots"][stage_key])
+        # Stage aliases point to the same physical passport; print it once.
+        # Keep first occurrence order and represent confirmation separately.
+        unique_records: list[dict[str, Any]] = []
+        seen_refs: set[str] = set()
+        for record in records:
+            ref = record["snapshot_ref"]
+            if ref not in seen_refs:
+                unique_records.append(record)
+                seen_refs.add(ref)
+        records = unique_records
         extra_gaps: list[dict[str, Any]] = []
         for raw_gap in trajectory.get("gaps") or []:
             gap = dict(raw_gap)
@@ -497,10 +535,17 @@ def _resolve_set_records(
             # Недостающая точка траектории -- gap-ЗАПИСЬ комплекта:
             # печатается баннером по адресу (AC12), не ноль.
             ref = str(gap.get("snapshot_ref") or "")
-            if ref:
+            if ref and ref not in seen_refs:
                 records.append(_missing_record(ref, stage=gap.get("at")))
+                seen_refs.add(ref)
+        # This is the source in the verified checkpoint payload. Stage keys
+        # can be aliases or incomplete, so they cannot prove this identity.
+        source_ref = trajectory.get("confirmed_snapshot_ref")
         checkpoint_meta = {
             "checkpoint_id": trajectory.get("checkpoint_ref"),
+            "source_snapshot_ref": source_ref,
+            "source_snapshot_ref_reason": None if source_ref else "legacy_unknown -- нет доказуемого source ref",
+            "reused": bool((trajectory.get("flags") or {}).get("reused")),
             "stage": trajectory.get("stage"),
             "confirmed_at": trajectory.get("confirmed_at"),
             "confirmed_at_reason": trajectory.get("confirmed_at_reason"),
@@ -669,16 +714,6 @@ def request_passport_document(
             session_id=session_id,
         )
         ordered_refs = [str(ref) for ref in comparison.get("ordered_refs") or []]
-        identity_refs = ordered_refs
-        digest = _canonical_digest({
-            "mode": comparison.get("mode"),
-            "ordered_refs": ordered_refs,
-            "engine": (comparison.get("method_versions") or {}).get("engine"),
-            "confirmation": comparison.get("confirmation"),
-            "checkpoint_ref": (comparison.get("checkpoint") or {}).get(
-                "checkpoint_ref"
-            ),
-        })
         pin_records = _records_for_refs(
             run_id, subject, ordered_refs, session_id=session_id
         )
@@ -701,18 +736,27 @@ def request_passport_document(
                 "source_unavailable: паспорт по ref не разрешается из "
                 "durable-слоя (пересчёт запрещён)"
             )
-        identity_refs = [str(r.get("snapshot_ref") or "") for r in records]
-        digest = _canonical_digest(
-            [_record_identity_core(record) for record in records]
-        )
         pin_records = records
 
-    producer_key = (
-        f"pgv.passport_comparison_print:compare:{','.join(identity_refs)}:"
-        f"{digest[:16]}"
-        if mode == "compare"
-        else f"pgv.passport_print:{mode}:{','.join(identity_refs)}:{digest[:16]}"
+    from apps.api.visual_artifacts import (
+        passport_print_producer_key, passport_comparison_producer_key,
     )
+
+    if mode == "compare":
+        assert comparison is not None
+        payload = build_passport_comparison_print_snapshot(
+            run_id, comparison, profile_id=profile_id,
+            render_requested_at=render_requested_at,
+        )
+        freeze = _freeze_comparison
+        producer_key = passport_comparison_producer_key(payload)
+    else:
+        payload = build_passport_print_snapshot(
+            run_id, records, mode=mode, profile_id=profile_id,
+            render_requested_at=render_requested_at, checkpoint_meta=checkpoint_meta,
+        )
+        freeze = _freeze_print
+        producer_key = passport_print_producer_key(payload)
 
     from apps.api.artifact_promotion import PromotionService
 
@@ -723,25 +767,6 @@ def request_passport_document(
         # фиксации не переписывается, §8) -> та же ревизия -> тот же job.
         snapshot_artifact = existing
     else:
-        if mode == "compare":
-            assert comparison is not None
-            payload = build_passport_comparison_print_snapshot(
-                run_id,
-                comparison,
-                profile_id=profile_id,
-                render_requested_at=render_requested_at,
-            )
-            freeze = _freeze_comparison
-        else:
-            payload = build_passport_print_snapshot(
-                run_id,
-                records,
-                mode=mode,
-                profile_id=profile_id,
-                render_requested_at=render_requested_at,
-                checkpoint_meta=checkpoint_meta,
-            )
-            freeze = _freeze_print
         snapshot_artifact = freeze(
             run_id,
             subject,

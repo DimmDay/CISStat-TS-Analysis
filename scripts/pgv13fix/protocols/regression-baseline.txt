@@ -1,0 +1,36 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 1 item
+
+tests/api/test_pgv05_cert_findings.py F                                  [100%]
+
+=================================== FAILURES ===================================
+_ TestFP5C1SmokeDocstring.test_b1_smoke_docstring_does_not_understate_group_count _
+tests/api/test_pgv05_cert_findings.py:27: in test_b1_smoke_docstring_does_not_understate_group_count
+    assert "13 метрик" not in source, (
+E   AssertionError: F-P5C1: докстринг smoke-скрипта заявляет «13 метрик», фактический паспорт платформы несёт 15 групп (собственный вывод скрипта печатает groups=15) -- документная честность
+E   assert '13 метрик' not in '"""PGV-05 s...it(main())\n'
+E     
+E     '13 метрик' is contained here:
+E       паспорта (13 метрик),
+E       content_status=present, schema/calculation version = legacy_unknown.
+E       """
+E       from __future__ import annotations
+E       ...
+E     
+E     ...Full output truncated, use '-vv' to show
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+========================= 1 failed, 1 warning in 0.06s =========================

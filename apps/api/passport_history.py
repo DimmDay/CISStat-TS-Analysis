@@ -443,6 +443,9 @@ def read_passport_trajectory(
         return trajectory
 
     trajectory.update({
+        # Exact verified checkpoint source: it may be resolved under its
+        # physical stage when stage_refs does not contain this passport.
+        "confirmed_snapshot_ref": payload.get("snapshot_ref"),
         "confirmed_at": payload.get("confirmed_at"),
         "confirmed_at_reason": payload.get("confirmed_at_reason"),
         "flags": payload.get("flags"),

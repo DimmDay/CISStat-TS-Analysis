@@ -1,0 +1,86 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 227 items
+
+scripts/pgv13cert/test_contracts.py ........................             [ 10%]
+tests/api/test_pgv13_passport_documents.py ............................. [ 23%]
+..........                                                               [ 27%]
+tests/api/test_pgv05_passport_history.py ..................              [ 35%]
+tests/api/test_pgv05_cert_findings.py F.                                 [ 36%]
+tests/api/test_pgv05_cert_oracles.py .......................             [ 46%]
+tests/api/test_pgv06_passport_comparison.py ............................ [ 59%]
+......                                                                   [ 61%]
+tests/api/test_pgv06_cert_findings.py .                                  [ 62%]
+tests/api/test_pgv06_cert_oracles.py ............................        [ 74%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 84%]
+................                                                         [ 91%]
+tests/api/test_pgv09fix_write_path.py ....................               [100%]
+
+=================================== FAILURES ===================================
+_ TestFP5C1SmokeDocstring.test_b1_smoke_docstring_does_not_understate_group_count _
+tests/api/test_pgv05_cert_findings.py:27: in test_b1_smoke_docstring_does_not_understate_group_count
+    assert "13 метрик" not in source, (
+E   AssertionError: F-P5C1: докстринг smoke-скрипта заявляет «13 метрик», фактический паспорт платформы несёт 15 групп (собственный вывод скрипта печатает groups=15) -- документная честность
+E   assert '13 метрик' not in '"""PGV-05 s...it(main())\n'
+E     
+E     '13 метрик' is contained here:
+E       паспорта (13 метрик),
+E       content_status=present, schema/calculation version = legacy_unknown.
+E       """
+E       from __future__ import annotations
+E       ...
+E     
+E     ...Full output truncated, use '-vv' to show
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/api/test_pgv13_passport_documents.py: 103 warnings
+tests/api/test_pgv05_passport_history.py: 42 warnings
+tests/api/test_pgv05_cert_oracles.py: 78 warnings
+tests/api/test_pgv06_passport_comparison.py: 86 warnings
+tests/api/test_pgv06_cert_findings.py: 8 warnings
+tests/api/test_pgv06_cert_oracles.py: 78 warnings
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/api/test_pgv13_passport_documents.py::TestPassportDocumentsHTTP::test_post_compare_mixed_universes_409
+  /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/scripts/pgv13fix/protocols/final-python.xml -
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv05_cert_findings.py::TestFP5C1SmokeDocstring::test_b1_smoke_docstring_does_not_understate_group_count
+================= 1 failed, 226 passed, 397 warnings in 21.56s =================

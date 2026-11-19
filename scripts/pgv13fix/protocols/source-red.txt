@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 1 item
+
+scripts/pgv13cert/test_contracts.py F                                    [100%]
+
+=================================== FAILURES ===================================
+______________ test_confirmed_source_survives_partial_stage_path _______________
+scripts/pgv13cert/test_contracts.py:365: in test_confirmed_source_survives_partial_stage_path
+    assert snap["checkpoint"]["source_snapshot_ref"] == facts.refs[0]
+E   AssertionError: assert None == 'rs-a471232ced9842b49068b497b3aad308'
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_contracts.py::test_confirmed_source_survives_partial_stage_path
+========================= 1 failed, 1 warning in 0.72s =========================

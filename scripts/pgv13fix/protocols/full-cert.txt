@@ -1,0 +1,56 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 28 items
+
+scripts/pgv13cert/test_contracts.py ........................             [ 85%]
+scripts/pgv13cert/test_deployment.py FFF.                                [100%]
+
+=================================== FAILURES ===================================
+____________ test_documented_build_tag_is_the_image_compose_starts _____________
+scripts/pgv13cert/test_deployment.py:25: in test_documented_build_tag_is_the_image_compose_starts
+    assert built == renderer["image"], "F-C13-04a: runbook builds pgv13 but compose starts pgv08-fix"
+E   AssertionError: F-C13-04a: runbook builds pgv13 but compose starts pgv08-fix
+E   assert 'cisstat-print-renderer:pgv13' == 'cisstat-prin...rer:pgv08-fix'
+E     
+E     - cisstat-print-renderer:pgv08-fix
+E     ?                           ^^^^^^
+E     + cisstat-print-renderer:pgv13
+E     ?                           ^^
+_________ test_new_proxy_paths_require_web_build_in_primary_procedure __________
+scripts/pgv13cert/test_deployment.py:34: in test_new_proxy_paths_require_web_build_in_primary_procedure
+    assert re.search(r"docker compose build[^\n]*\bweb\b", commands), "F-C13-04b: changed compiled BFF allowlist requires web rebuild"
+E   AssertionError: F-C13-04b: changed compiled BFF allowlist requires web rebuild
+E   assert None
+E    +  where None = <function search at 0x7f12ea475bc0>('docker compose build[^\\n]*\\bweb\\b', '\n# 1) api: научный контур/роуты/jobs-гейт изменены\ndocker compose build api\n# 2) print-renderer: rendererCore.tsx ...23-DEPLOYFIX-01) + readyz рендера\ncurl -fsS https://api.datasetup.ru/health\ncurl -fsS http://127.0.0.1:8907/readyz\n')
+E    +    where <function search at 0x7f12ea475bc0> = re.search
+________ test_shipped_topology_declares_a_usable_api_renderer_transport ________
+scripts/pgv13cert/test_deployment.py:43: in test_shipped_topology_declares_a_usable_api_renderer_transport
+    assert renderer.get("network_mode") != "none" or bool(renderer.get("ports")) or bool(env.get("CISSTAT_PNG_RENDERER_IPC")), (
+E   AssertionError: F-C13-04c: renderer network none, no published endpoint/IPC, API target=http://127.0.0.1:8907
+E   assert ('none' != 'none' or False or False)
+E    +  where 'none' = <built-in method get of dict object at 0x7f12b1128240>('network_mode')
+E    +    where <built-in method get of dict object at 0x7f12b1128240> = {'image': 'cisstat-print-renderer:pgv08-fix', 'build': {'context': '../../../..', 'dockerfile': 'apps/print-renderer/build/Dockerfile'}, 'network_mode': 'none', 'user': '10001:10001', ...}.get
+E    +  and   False = bool(None)
+E    +    where None = <built-in method get of dict object at 0x7f12b1128240>('ports')
+E    +      where <built-in method get of dict object at 0x7f12b1128240> = {'image': 'cisstat-print-renderer:pgv08-fix', 'build': {'context': '../../../..', 'dockerfile': 'apps/print-renderer/build/Dockerfile'}, 'network_mode': 'none', 'user': '10001:10001', ...}.get
+E    +  and   False = bool(None)
+E    +    where None = <built-in method get of dict object at 0x7f12b112b900>('CISSTAT_PNG_RENDERER_IPC')
+E    +      where <built-in method get of dict object at 0x7f12b112b900> = {'CISSTAT_YOOKASSA_ENABLED': '${CISSTAT_YOOKASSA_ENABLED:-off}', 'CISSTAT_YOOKASSA_SHOP_ID': '${CISSTAT_YOOKASSA_SHOP_..._KEY': '${CISSTAT_YOOKASSA_SECRET_KEY:-}', 'CISSTAT_PERSONAL_DEMO_ENABLED': '${CISSTAT_PERSONAL_DEMO_ENABLED:-1}', ...}.get
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-FIX/scripts/pgv13fix/protocols/full-cert.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_deployment.py::test_documented_build_tag_is_the_image_compose_starts
+FAILED scripts/pgv13cert/test_deployment.py::test_new_proxy_paths_require_web_build_in_primary_procedure
+FAILED scripts/pgv13cert/test_deployment.py::test_shipped_topology_declares_a_usable_api_renderer_transport
+=================== 3 failed, 25 passed, 1 warning in 3.35s ====================

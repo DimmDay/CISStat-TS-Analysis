@@ -1,0 +1,284 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY
+configfile: pytest.ini
+plugins: platformdirs-4.14.7, typeguard-4.6.0, anyio-4.14.2
+collected 24 items
+
+scripts/pgv13cert/test_contracts.py ..FFFFFF....FFFFFFFF.FFF             [100%]
+
+=================================== FAILURES ===================================
+______ test_requested_profile_matches_revision_and_render_payload[single] ______
+scripts/pgv13cert/test_contracts.py:150: in test_requested_profile_matches_revision_and_render_payload
+    assert payload["snapshot"]["print"]["profile_id"] == revision.profile_id, "F-C13-01: cached figure basis overrides requested A4"
+E   AssertionError: F-C13-01: cached figure basis overrides requested A4
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape
+_______ test_requested_profile_matches_revision_and_render_payload[set] ________
+scripts/pgv13cert/test_contracts.py:150: in test_requested_profile_matches_revision_and_render_payload
+    assert payload["snapshot"]["print"]["profile_id"] == revision.profile_id, "F-C13-01: cached figure basis overrides requested A4"
+E   AssertionError: F-C13-01: cached figure basis overrides requested A4
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape
+_____ test_requested_profile_matches_revision_and_render_payload[compare] ______
+scripts/pgv13cert/test_contracts.py:150: in test_requested_profile_matches_revision_and_render_payload
+    assert payload["snapshot"]["print"]["profile_id"] == revision.profile_id, "F-C13-01: cached figure basis overrides requested A4"
+E   AssertionError: F-C13-01: cached figure basis overrides requested A4
+E   assert 'figure-landscape' == 'a4-portrait'
+E     
+E     - a4-portrait
+E     + figure-landscape
+_______ test_p01_reused_checkpoint_prints_three_records_and_confirmation _______
+scripts/pgv13cert/test_contracts.py:157: in test_p01_reused_checkpoint_prints_three_records_and_confirmation
+    assert len(refs) == len(set(refs)) == 3, "F-C13-02: reused alias becomes a fourth full printed passport"
+E   AssertionError: F-C13-02: reused alias becomes a fourth full printed passport
+E   assert 4 == 3
+E    +  where 4 = len(['rs-12bca519e116459cbba55e620122fd10', 'rs-f4d28c3ba1384181bf321521529248d8', 'rs-9a44a2bc926147ef8f9d44f7bd339445', 'rs-9a44a2bc926147ef8f9d44f7bd339445'])
+E    +  and   3 = len({'rs-12bca519e116459cbba55e620122fd10', 'rs-9a44a2bc926147ef8f9d44f7bd339445', 'rs-f4d28c3ba1384181bf321521529248d8'})
+E    +    where {'rs-12bca519e116459cbba55e620122fd10', 'rs-9a44a2bc926147ef8f9d44f7bd339445', 'rs-f4d28c3ba1384181bf321521529248d8'} = set(['rs-12bca519e116459cbba55e620122fd10', 'rs-f4d28c3ba1384181bf321521529248d8', 'rs-9a44a2bc926147ef8f9d44f7bd339445', 'rs-9a44a2bc926147ef8f9d44f7bd339445'])
+____________ test_p01_confirmation_is_visible_in_compiled_renderer _____________
+scripts/pgv13cert/test_contracts.py:163: in test_p01_confirmation_is_visible_in_compiled_renderer
+    html = ssr(build_print_render_payload_from_basis(basis(out), request_id="cert-confirmation"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+__________ test_different_confirmation_keeps_its_own_frozen_metadata ___________
+scripts/pgv13cert/test_contracts.py:172: in test_different_confirmation_keeps_its_own_frozen_metadata
+    assert one[key] != two[key]
+E   AssertionError: assert 'art-fe013f2d26e04e199e57899501c6bf48' != 'art-fe013f2d26e04e199e57899501c6bf48'
+________________ test_valid_renderer_html_preserves_all_groups _________________
+scripts/pgv13cert/test_contracts.py:228: in test_valid_renderer_html_preserves_all_groups
+    html = ssr(build_print_render_payload_from_basis(basis(out), request_id="cert-content"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+_________ test_python_payload_passes_actual_compiled_renderer[single] __________
+scripts/pgv13cert/test_contracts.py:239: in test_python_payload_passes_actual_compiled_renderer
+    assert ("Сравнение паспортов" if mode == "compare" else "Паспорт") in ssr(payload), "F-C13-00: real Python P01/P02 input is not renderable"
+                                                                          ^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+___________ test_python_payload_passes_actual_compiled_renderer[set] ___________
+scripts/pgv13cert/test_contracts.py:239: in test_python_payload_passes_actual_compiled_renderer
+    assert ("Сравнение паспортов" if mode == "compare" else "Паспорт") in ssr(payload), "F-C13-00: real Python P01/P02 input is not renderable"
+                                                                          ^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+_________ test_python_payload_passes_actual_compiled_renderer[compare] _________
+scripts/pgv13cert/test_contracts.py:239: in test_python_payload_passes_actual_compiled_renderer
+    assert ("Сравнение паспортов" if mode == "compare" else "Паспорт") in ssr(payload), "F-C13-00: real Python P01/P02 input is not renderable"
+                                                                          ^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+_________ test_new_builder_does_not_reuse_legacy_frozen_basis[single] __________
+scripts/pgv13cert/test_contracts.py:288: in test_new_builder_does_not_reuse_legacy_frozen_basis
+    assert again["snapshot_artifact_id"] != legacy.artifact_id
+E   AssertionError: assert 'art-795d5e0b1883405d841df5189ffcc9ad' != 'art-795d5e0b1883405d841df5189ffcc9ad'
+E    +  where 'art-795d5e0b1883405d841df5189ffcc9ad' = ResultArtifact(artifact_id='art-795d5e0b1883405d841df5189ffcc9ad', run_id='RUN-C13A0001', kind='passport_print_snapsho... 'figure-landscape'}, created_by='8b884b74-89b0-41ed-96b9-49775db964c9', created_at='2026-11-19T16:56:05.624036+00:00').artifact_id
+___________ test_new_builder_does_not_reuse_legacy_frozen_basis[set] ___________
+scripts/pgv13cert/test_contracts.py:288: in test_new_builder_does_not_reuse_legacy_frozen_basis
+    assert again["snapshot_artifact_id"] != legacy.artifact_id
+E   AssertionError: assert 'art-28e4c07f0e0d41f0be5a81fffac4e078' != 'art-28e4c07f0e0d41f0be5a81fffac4e078'
+E    +  where 'art-28e4c07f0e0d41f0be5a81fffac4e078' = ResultArtifact(artifact_id='art-28e4c07f0e0d41f0be5a81fffac4e078', run_id='RUN-C13A0001', kind='passport_print_snapsho... 'figure-landscape'}, created_by='c1bff463-518d-4350-8f14-db8f2180feab', created_at='2026-11-19T16:56:05.639553+00:00').artifact_id
+_________ test_new_builder_does_not_reuse_legacy_frozen_basis[compare] _________
+scripts/pgv13cert/test_contracts.py:288: in test_new_builder_does_not_reuse_legacy_frozen_basis
+    assert again["snapshot_artifact_id"] != legacy.artifact_id
+E   AssertionError: assert 'art-1c4fe2b5bf44436fb228e80d31bcbba1' != 'art-1c4fe2b5bf44436fb228e80d31bcbba1'
+E    +  where 'art-1c4fe2b5bf44436fb228e80d31bcbba1' = ResultArtifact(artifact_id='art-1c4fe2b5bf44436fb228e80d31bcbba1', run_id='RUN-C13A0001', kind='passport_comparison_sn... 'figure-landscape'}, created_by='54865277-3397-4c3c-9136-551b10a49112', created_at='2026-11-19T16:56:05.655694+00:00').artifact_id
+_______________ test_confirmed_source_is_exact_alias_not_latest ________________
+scripts/pgv13cert/test_contracts.py:301: in test_confirmed_source_is_exact_alias_not_latest
+    assert snap["checkpoint"]["source_snapshot_ref"] == facts.refs[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'source_snapshot_ref'
+______________ test_envelope_does_not_fabricate_scientific_times _______________
+scripts/pgv13cert/test_contracts.py:321: in test_envelope_does_not_fabricate_scientific_times
+    assert snap["sampling"]["applicable"] is False
+           ^^^^^^^^^^^^^^^^
+E   KeyError: 'sampling'
+________ test_confirmation_missing_time_and_source_are_visible_reasons _________
+scripts/pgv13cert/test_contracts.py:342: in test_confirmation_missing_time_and_source_are_visible_reasons
+    html = ssr(build_print_render_payload_from_basis({"snapshot": snap, "basis_kind": "passport_print_snapshot"}, request_id="legacy-confirmation"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13cert/test_contracts.py:120: in ssr
+    return subprocess.check_output(["node", "-e", code], input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf-8", cwd=ROOT)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['node', '-e', "const fs=require('node:fs');const r=require('./apps/print-renderer/dist/apps/print-renderer/src/rendererCore.js');const p=JSON.parse(fs.readFileSync(0,'utf8'));const v=r.validateRenderPayload(p);if(v.violations.length)throw new Error(JSON.stringify(v.violations));process.stdout.write(r.buildPrintHtml(p,1,1));"]' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6995
+    throw fatalError;
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'applicable')
+    at PrintPageFrame (/workspace/scratch/d4153a1cfd25/PGV13-FIX-OVERLAY/apps/print-renderer/dist/packages/ui/print/printLayout.js:220:202)
+    at renderWithHooks (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16)
+    at renderIndeterminateComponent (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15)
+    at renderElement (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7)
+    at renderNodeDestructiveImpl (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+    at renderNodeDestructive (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+    at retryTask (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6543:5)
+    at performWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6591:7)
+    at /workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6915:12
+    at scheduleWork (/workspace/scratch/d4153a1cfd25/CISStat-PGV13-CERT/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:78:3)
+
+Node.js v24.22.3
+______________ test_confirmed_source_survives_partial_stage_path _______________
+scripts/pgv13cert/test_contracts.py:365: in test_confirmed_source_survives_partial_stage_path
+    assert snap["checkpoint"]["source_snapshot_ref"] == facts.refs[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'source_snapshot_ref'
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_contracts.py::test_requested_profile_matches_revision_and_render_payload[single]
+FAILED scripts/pgv13cert/test_contracts.py::test_requested_profile_matches_revision_and_render_payload[set]
+FAILED scripts/pgv13cert/test_contracts.py::test_requested_profile_matches_revision_and_render_payload[compare]
+FAILED scripts/pgv13cert/test_contracts.py::test_p01_reused_checkpoint_prints_three_records_and_confirmation
+FAILED scripts/pgv13cert/test_contracts.py::test_p01_confirmation_is_visible_in_compiled_renderer
+FAILED scripts/pgv13cert/test_contracts.py::test_different_confirmation_keeps_its_own_frozen_metadata
+FAILED scripts/pgv13cert/test_contracts.py::test_valid_renderer_html_preserves_all_groups
+FAILED scripts/pgv13cert/test_contracts.py::test_python_payload_passes_actual_compiled_renderer[single]
+FAILED scripts/pgv13cert/test_contracts.py::test_python_payload_passes_actual_compiled_renderer[set]
+FAILED scripts/pgv13cert/test_contracts.py::test_python_payload_passes_actual_compiled_renderer[compare]
+FAILED scripts/pgv13cert/test_contracts.py::test_new_builder_does_not_reuse_legacy_frozen_basis[single]
+FAILED scripts/pgv13cert/test_contracts.py::test_new_builder_does_not_reuse_legacy_frozen_basis[set]
+FAILED scripts/pgv13cert/test_contracts.py::test_new_builder_does_not_reuse_legacy_frozen_basis[compare]
+FAILED scripts/pgv13cert/test_contracts.py::test_confirmed_source_is_exact_alias_not_latest
+FAILED scripts/pgv13cert/test_contracts.py::test_envelope_does_not_fabricate_scientific_times
+FAILED scripts/pgv13cert/test_contracts.py::test_confirmation_missing_time_and_source_are_visible_reasons
+FAILED scripts/pgv13cert/test_contracts.py::test_confirmed_source_survives_partial_stage_path
+=================== 17 failed, 7 passed, 1 warning in 2.62s ====================

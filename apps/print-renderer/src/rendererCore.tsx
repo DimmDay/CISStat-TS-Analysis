@@ -48,8 +48,8 @@ import type { PrintIhConditionalInput } from "../../../packages/ui/print/printIh
 // PGV-13: печатные виды паспортов маршрутизируются на компоненты PGV-07 --
 // единственная реализация печатной композиции паспорта/сравнения (§4.1),
 // без второй реализации на Python (AC09/AC12/AC13).
-import { PrintPassportPage } from "../../../packages/ui/print/printPassport";
-import type { PrintPassportRecord } from "../../../packages/ui/print/printPassport";
+import { PrintPassportPage, PrintPassportConfirmation } from "../../../packages/ui/print/printPassport";
+import type { PrintPassportRecord, PrintPassportConfirmationMeta } from "../../../packages/ui/print/printPassport";
 import { PrintPassportComparisonPage } from "../../../packages/ui/print/printComparison";
 import type { PrintComparisonSnapshot } from "../../../packages/ui/print/printComparison";
 
@@ -714,6 +714,12 @@ export function buildPrintHtml(
   pageCount: number,
 ): string {
   const snapshot = payload.snapshot;
+  const passportSnapshot = snapshot as unknown as {
+    documents?: { print_kind?: string };
+    checkpoint?: PrintPassportConfirmationMeta | null;
+  };
+  const confirmation = passportSnapshot.documents?.print_kind === "P01"
+    ? passportSnapshot.checkpoint : null;
   const profileId = snapshot.print.profile_id;
   const profile = resolvePrintProfile(profileId) ?? PRINT_PROFILE_CATALOG[0];
   // scale — только для быстрого probe/readiness (мини-рендер); продовые
@@ -723,6 +729,7 @@ export function buildPrintHtml(
     React.createElement(
       PrintPageFrame,
       { snapshot, pageIndex, pageCount, profileId: profile.id, scale },
+      confirmation ? React.createElement(PrintPassportConfirmation, { checkpoint: confirmation }) : null,
       payload.sections.map((section) =>
         renderSectionElement(section, pageIndex, pageCount),
       ),
