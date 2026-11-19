@@ -1,0 +1,35 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/d4153a1cfd25/CISStat-PGV13-NULLFIX
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.14.7, anyio-4.14.2
+collected 14 items
+
+scripts/pgv13sandbox/test_probe.py ............F.                        [100%]
+
+=================================== FAILURES ===================================
+_ test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container[True-None] _
+scripts/pgv13sandbox/test_probe.py:140: in test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container
+    assert probe.main()==(0 if fourth_passed else 1)
+           ^^^^^^^^^^^^
+scripts/pgv13sandbox/probe.py:170: in main
+    'no_usable_sandbox':'No usable sandbox' in smoke.get('error',''),
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: argument of type 'NoneType' is not iterable
+----------------------------- Captured stdout call -----------------------------
+Running isolated arm: builtin
+Running isolated arm: reference
+Running isolated arm: namespaces
+Running isolated arm: namespaces-chroot
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13sandbox/test_probe.py::test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container[True-None]
+=================== 1 failed, 13 passed, 1 warning in 0.10s ====================

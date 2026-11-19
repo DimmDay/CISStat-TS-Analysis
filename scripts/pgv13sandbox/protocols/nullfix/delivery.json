@@ -1,0 +1,35 @@
+{
+  "base": "4f7198ec90cdec99a9fd2f1e34ddf80e4e6ee946",
+  "kind": "diagnostic CLI nullable error presentation fix; no smoke/profile/runtime change",
+  "file_count": 14,
+  "tests": {
+    "red_failed": 1,
+    "red_passed": 13,
+    "green": 14,
+    "zip_overlay_green": 14,
+    "Docker_stubbed": true
+  },
+  "saved_raw_error_null": "preserved",
+  "stdout_error_null": "empty string",
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 663,
+    "semantic_delta": 0,
+    "strict_INDEX": "PASS",
+    "overlay_actual": "PASS"
+  },
+  "renderer_build": "PASS",
+  "Node_syntax": "PASS",
+  "real_VM_result": "not supplied; original file was written before traceback",
+  "real_Docker_execution_by_agent": false,
+  "rebuild_images_required": false,
+  "commit_push": false,
+  "zip_checks": [
+    "CRC",
+    "exact manifest",
+    "each source byte",
+    "safe paths",
+    "clean base overlay controls/routes"
+  ]
+}

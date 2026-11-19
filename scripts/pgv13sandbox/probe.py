@@ -165,10 +165,11 @@ def main():
             for row in rows:
                 p=row.get('probe') or {}
                 smoke=p.get('smoke') or {}
+                error=smoke.get('error') or ''
                 summary['arms'].append({'arm':row['arm'],'exit':row['exit'],'isolation_ok':p.get('isolation_ok'),
                     'namespace_status':p.get('namespace',{}).get('status'),'smoke_verdict':smoke.get('verdict'),
-                    'no_usable_sandbox':'No usable sandbox' in smoke.get('error',''),
-                    'smoke_error':smoke_error_excerpt(smoke.get('error','')),
+                    'no_usable_sandbox':'No usable sandbox' in error,
+                    'smoke_error':smoke_error_excerpt(error),
                     'setup_error':row.get('stderr','')[:400] if not p else None})
             print(json.dumps(summary,ensure_ascii=False,indent=2))
         else:

@@ -396,7 +396,7 @@ Exit0 — только namespace-rule candidate (не PGV-13 PASS), 1 — blocke
 ## PGV-13-SANDBOX-CHROOT (19.11.2026), поверх9ed09d7
 
 Контроли того же инструмента: `python -m pytest scripts/pgv13sandbox/test_probe.py -q`
-(13 тестов; старые9 сохранены). VM: `python3 scripts/pgv13sandbox/probe.py --with-chroot --out /tmp/pgv13-chroot-ab.json`.
+(14 тестов; включая реальный nullable smoke error). VM: `python3 scripts/pgv13sandbox/probe.py --with-chroot --out /tmp/pgv13-chroot-ab.json`.
 Добавляется только четвёртая временная ветвь namespaces+ALLOW chroot, без выдачи
 capabilities/изменения служб/host policy/образов. Exit0 CHROOT_RULE_CANDIDATE —
 диагностический кандидат, не сертификат. Default local_gates.py/HTTP routes прежние.

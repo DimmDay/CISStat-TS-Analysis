@@ -162,3 +162,44 @@ Subprocess подменён, Docker в среде агента отсутств�
 результат ещё неизвестен. Node syntax/build/actual routes/INDEX/ZIP проверки —
 protocols/chroot/. Не требуются rebuild images/миграции/обновление compose.
 API transport и F-C13-00…03 этим диагностическим изменением не исправляются.
+
+
+## 19.11.2026: исправление nullable error в выводе CLI, база4f7198e
+
+В диагностическом скрипте был дефект представления результата: smoke-контракт
+apps/print-renderer/src/smokeScenarios.ts возвращает error:string|null,
+а Python membership/excerpt обращались к нему как к всегда строке. Прежняя
+happy-case fixture не содержала error:null и пропустила этот дефект.
+При реальном nullable значении CLI упал с TypeError после выполнения четырёх
+ветвей. Это ошибка инструмента, не доказательство отказа/успеха PNG само по себе.
+
+Исправление: для summary используется error = smoke.get('error') or ''.
+Исходный report/error:null не мутируется. Полный JSON был записан ДО summary,
+поэтому полученный на VM результат не потерян. Не добавлен широкий catch,
+который мог бы заменить результаты эксперимента синтетическим setup failure.
+Правила seccomp, classifying verdict/exit/isolation, запуск/cleanup не менялись.
+
+Уже сохранённый итог можно прочитать на текущей VM без нового push/rebuild/run:
+
+```bash
+python3 - <<'PYREPORT'
+import json
+with open('/tmp/pgv13-chroot-ab.json', encoding='utf-8') as f:
+    report = json.load(f)
+print('conclusion:', report.get('conclusion'))
+for row in report.get('rows', []):
+    probe = row.get('probe') or {}
+    smoke = probe.get('smoke') or {}
+    print(row['arm'], 'exit=', row['exit'], 'isolation=', probe.get('isolation_ok'), 'verdict=', smoke.get('verdict'))
+    if row['arm'] == 'namespaces-chroot':
+        print(json.dumps(smoke, ensure_ascii=False, indent=2))
+PYREPORT
+```
+
+Тест реалистичной successful error:null формы дал RED1 FAIL/13 PASS; исправление
+GREEN14/14, включая failed с текстовой ошибкой. Проверяются CLI exit/conclusion,
+валидная stdout-матрица и отсутствие мутации исходного null в сохранённом JSON.
+Default gate/routes/runtime/profile bytes прежние; только fingerprints
+probe/test/local_gates обновлены. Node syntax/renderer build/ASGI/INDEX и ZIP
+проверены в protocols/nullfix/. Образы пересобирать не нужно. Агент реальный
+Docker/VM-эксперимент не исполнял; фактический итог берём из сохранённого JSON.

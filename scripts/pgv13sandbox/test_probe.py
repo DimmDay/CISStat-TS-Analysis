@@ -122,7 +122,8 @@ def test_fourth_arm_is_causal_chroot_control(fourth_passed,expected):
     assert classify(rows)==expected
 
 
-def test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container(monkeypatch,tmp_path):
+@pytest.mark.parametrize('fourth_passed,error',[(True,None),(False,'Check failed: sys_chroot failed')])
+def test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container(monkeypatch,tmp_path,capsys,fourth_passed,error):
     from scripts.pgv13sandbox import probe
     seen=[]
     def metadata(args):
@@ -131,12 +132,20 @@ def test_with_chroot_cli_runs_original_controls_and_a_fourth_temporary_container
         return 'docker-default'
     def arm(name,image,path):
         seen.append((name,json.loads(path.read_text())))
-        passed=name=='namespaces-chroot'
-        return {'arm':name,'exit':0 if passed else 1,'probe':{'isolation_ok':True,'smoke':{'verdict':'passed' if passed else 'failed'}}}
+        passed=name=='namespaces-chroot' and fourth_passed
+        return {'arm':name,'exit':0 if passed else 1,'probe':{'isolation_ok':True,'smoke':{'verdict':'passed' if passed else 'failed','error':None if passed else (error or 'earlier arm blocked')}}}
     monkeypatch.setattr(probe,'docker_value',metadata)
     monkeypatch.setattr(probe,'run_arm',arm)
     monkeypatch.setattr('sys.argv',['probe.py','--with-chroot','--out',str(tmp_path/'report.json')])
-    assert probe.main()==0
+    assert probe.main()==(0 if fourth_passed else 1)
+    stdout=capsys.readouterr().out
+    summary=json.loads(stdout[stdout.index('{'):])
+    assert summary['conclusion']==('CHROOT_RULE_CANDIDATE' if fourth_passed else 'STILL_BLOCKED')
+    assert summary['arms'][-1]['no_usable_sandbox'] is False
+    assert summary['arms'][-1]['smoke_error']==('' if fourth_passed else error)
+    saved=json.loads((tmp_path/'report.json').read_text())
+    assert saved['rows'][-1]['probe']['smoke']['error']==error
+    assert saved['conclusion']==summary['conclusion']
     assert [x[0] for x in seen]==['builtin','reference','namespaces','namespaces-chroot']
     assert seen[0][1]==seen[1][1]
     assert seen[3][1]['syscalls'][:-1]==seen[2][1]['syscalls']
