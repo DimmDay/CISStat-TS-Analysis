@@ -575,3 +575,13 @@ AUTH-00: новая manual operator boundary, HTTP/worker methods/paths/DTO пр
 Новых runtime images/миграций production из-за этой поставки нет. Для staging
 только task files используйте `scripts/pgv13accept/files.txt`, затем обычный
 `python scripts/local_gates.py --only auth00 --skip-install`.
+
+PGV-13-IMAGE-ASSETS: дополнительный deployment gate
+`python -m unittest discover -s tests/unit -p test_pgv13_image_assets.py -v`
+воспроизводит отсутствующий `/app/config/print_schema.json` в проекции прежнего
+API recipe. Исправленный COPY двух twins и build guard, а также image-asset
+preflight проверяются без обращения к production. Не выдавать projection за
+Docker build. После этого исправления нужен НОВЫЙ согласованный image bundle
+и новый A/B/candidate/recreate/live; порядок — `docs/pgv13_api_image_assets.md`.
+Прежнее утверждение «новые images не нужны» относится к initial host-only
+поставке, не к этому подтверждённому packaging исправлению. Default runner прежний.

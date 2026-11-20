@@ -28,6 +28,24 @@ from scripts.pgv13release import release as R
 from scripts.pgv13uds import verify_vm as V
 
 LABEL = 'io.cisstat.pgv13.accept'
+PRINT_ASSETS = ('config/print_schema.json','config/visual_registry.json')
+API_PRINT_ASSETS = r'''
+import hashlib,json,pathlib
+result={'files':{},'catalogs_valid':False}
+for name in ('config/print_schema.json','config/visual_registry.json'):
+    p=pathlib.Path(name)
+    result['files'][name]={'present':p.is_file()}
+    if p.is_file():result['files'][name]['sha256']=hashlib.sha256(p.read_bytes().replace(b'\r\n',b'\n')).hexdigest()
+try:
+    from apps.api.print_schema import load_print_schema,load_visual_registry,profile_pixel_consistency
+    s=load_print_schema();r=load_visual_registry()
+    result['catalogs_valid']=(s['schema_version']=='pgv.print_schema/1' and r['schema_version']=='pgv.visual_registry/1'
+        and {p['id'] for p in s['profiles']}=={'figure-landscape','a4-landscape','a4-portrait'}
+        and all(profile_pixel_consistency(p) for p in s['profiles']))
+except Exception as e:
+    result['error_type']=type(e).__name__
+print(json.dumps(result))
+'''
 BOOTSTRAP = r'''
 import json,sys
 envelope=json.load(sys.stdin)
@@ -86,6 +104,18 @@ def image_marker(image, manifest, role):
     O.require(marker=={'revision':manifest['revision'],'tree':manifest['tree']},'Inside-image revision marker differs')
 
 
+def verify_api_print_assets(image):
+    result=json.loads(command(['docker','run','--rm','--pull=never','--network=none','--read-only',
+        '--cap-drop=ALL','--security-opt=no-new-privileges:true','--entrypoint','python',image,'-c',API_PRINT_ASSETS]))
+    O.require(set(result.get('files',{}))==set(PRINT_ASSETS),'API print assets missing from image')
+    for name in PRINT_ASSETS:
+        expected=O.sha((ROOT/name).read_bytes().replace(b'\r\n',b'\n'))
+        row=result['files'][name]
+        O.require(row.get('present') is True and row.get('sha256')==expected,'API print asset missing or differs: '+name)
+    O.require(result.get('catalogs_valid') is True,'API print asset catalog validation failed')
+    return result
+
+
 def product_sources(revision):
     """A docs/cert commit may follow the image commit; product bytes must match."""
     paths = sorted(set(
@@ -95,7 +125,8 @@ def product_sources(revision):
         list((ROOT/'packages/ui/print').rglob('*.ts')) + list((ROOT/'packages/ui/print').rglob('*.tsx')) +
         list((ROOT/'packages/ui/lib').rglob('*.ts')) + list((ROOT/'packages/ui/lib').rglob('*.tsx')) +
         [ROOT/'package-lock.json',ROOT/'apps/print-renderer/tsconfig.build.json',
-         ROOT/'apps/api/access_registry.v1.json',ROOT/'apps/api/requirements.txt']))
+         ROOT/'apps/api/access_registry.v1.json',ROOT/'apps/api/requirements.txt',
+         *(ROOT/name for name in PRINT_ASSETS)]))
     api = {}
     for path in paths:
         if path.name.startswith('test_') or '.test.' in path.name:
@@ -104,7 +135,7 @@ def product_sources(revision):
         old = subprocess.run(['git','show',revision+':'+name],cwd=ROOT,capture_output=True,timeout=15)
         data = path.read_bytes().replace(b'\r\n',b'\n')
         O.require(old.returncode==0 and old.stdout.replace(b'\r\n',b'\n')==data,'Runtime source changed since pinned image: '+name)
-        if name.startswith(('apps/api/','app/core/','rules/')):
+        if name.startswith(('apps/api/','app/core/','rules/','config/')):
             api[name] = O.sha(data)
     return api
 
@@ -179,6 +210,8 @@ def run(args):
             image_marker(m['images'][role],m,role)
         api_sources = product_sources(m['revision'])
         report['api_source_fingerprints']=api_sources
+        phase('api_print_assets')
+        report['api_print_assets']=verify_api_print_assets(m['images']['api'])
         O.require(re.fullmatch(r'sha256:[a-f0-9]{64}',args.postgres_image),'Explicit immutable local PostgreSQL image ID required')
         O.require(command(['docker','image','inspect','--format','{{.Id}}',args.postgres_image])==args.postgres_image,'PostgreSQL image is unavailable locally')
         report['postgres_image_id']=args.postgres_image
@@ -282,7 +315,7 @@ def run(args):
     if report['automated_passed']:
         write(out/'review.template.json',{'schema_version':'pgv13.visual_review/1','report_sha256':O.sha((out/'report.json').read_bytes()),
             'reviewer':'','reviewed_at':'','cases':{c['id']:dict.fromkeys(O.REVIEW_CHECKS,False) for c in report['cases']}})
-    print(json.dumps({k:report.get(k) for k in ('automated_passed','p01_p02_accepted','pgv13_certified','phase','detail','failed_cases','temporary_cleanup')},ensure_ascii=False))
+    print(json.dumps({k:report.get(k) for k in ('automated_passed','p01_p02_accepted','pgv13_certified','phase','detail','client_failure','failed_cases','temporary_cleanup')},ensure_ascii=False))
     return 0 if report['automated_passed'] else 2
 
 
@@ -294,6 +327,11 @@ def finalize(args):
     tools={name:O.sha((ROOT/'scripts/pgv13accept'/name).read_bytes().replace(b'\r\n',b'\n'))
         for name in ('client.py','oracles.py','verify_vm.py','requirements.txt')}
     O.require(report.get('tool_sources_sha256')==tools,'Acceptance tool changed; rerun automated evidence')
+    assets=report.get('api_print_assets',{})
+    O.require(assets.get('catalogs_valid') is True and set(assets.get('files',{}))==set(PRINT_ASSETS), 'API print assets evidence missing')
+    for name in PRINT_ASSETS:
+        row=assets['files'][name]
+        O.require(row.get('present') is True and row.get('sha256')==report.get('api_source_fingerprints',{}).get(name), 'API print assets source/evidence differs')
     O.require(report.get('case_manifest_sha256')==O.sha(json.dumps(C.CASES,sort_keys=True).encode()),'Case manifest changed')
     O.require(set(report.get('ocr_environment',{}).get('traineddata_sha256',{}))=={'rus','eng'},'OCR language provenance missing')
     check_client_result({'passed':report.get('automated_passed'),'backend':'postgres',

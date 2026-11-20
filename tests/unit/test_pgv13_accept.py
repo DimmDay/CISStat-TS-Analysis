@@ -253,11 +253,21 @@ class RunnerTests(unittest.TestCase):
     def test_finalize_requires_human_review_and_binds_payload_ocr(self):
         self.run_pipeline(finalize=True)
 
-    def run_pipeline(self,project='candidate',finalize=False):
+    def test_missing_image_assets_stop_before_test_postgres_is_created(self):
+        report=self.run_pipeline(assets_valid=False)
+        self.assertFalse(report['automated_passed'])
+        self.assertEqual(report['phase'],'api_print_assets')
+        self.assertIn('config/print_schema.json',report['detail'])
+
+    def run_pipeline(self,project='candidate',finalize=False,assets_valid=True):
         from contextlib import ExitStack
         m={'images':{'api':'sha256:'+'a'*64,'web':'sha256:'+'9'*64,'print-renderer':'sha256:'+'b'*64},
            'revision':'c'*40,'tree':'d'*40,'candidate_project':'candidate','candidate_volume':'candidate-volume','volume':'production-volume'}
         calls=[]
+        def verify_assets(*args):
+            if not assets_valid:
+                raise ValueError('API print asset missing: config/print_schema.json')
+            return {'catalogs_valid':True,'files':{name:{'present':True,'sha256':self.v.O.sha((ROOT/name).read_bytes().replace(b'\r\n',b'\n'))} for name in self.v.PRINT_ASSETS}}
         def command(cmd,**kwargs):
             calls.append((cmd,kwargs))
             if cmd[:3]==['docker','image','inspect']:
@@ -283,7 +293,9 @@ class RunnerTests(unittest.TestCase):
                 (bundle/name).write_text(json.dumps(value))
             args=argparse.Namespace(out=root/'out',bundle=bundle,renderer_project=project,postgres_image='sha256:'+'f'*64,tesseract='tesseract')
             for obj,name,value in [(self.v,'command',command),(self.v,'image_marker',lambda *a:None),
-                (self.v,'product_sources',lambda *a:{'real':'hash'}),(self.v.R,'bundle_load',lambda *a:(bundle,m)),
+                (self.v,'product_sources',lambda *a:{name:self.v.O.sha((ROOT/name).read_bytes().replace(b'\r\n',b'\n')) for name in self.v.PRINT_ASSETS}),
+                (self.v,'verify_api_print_assets',verify_assets),
+                (self.v.R,'bundle_load',lambda *a:(bundle,m)),
                 (self.v.R,'validate_evidence',lambda *a:None),(self.v.V,'validate_renderer_meta',lambda *a:m['candidate_volume']),
                 (self.v.V,'metrics_ok',lambda *a:None),(self.v,'cleanup_owned',lambda *a:None),
                 (self.v.O,'ocr_environment',lambda *a:{'unit_double':True,'traineddata_sha256':{'rus':'1'*64,'eng':'2'*64}}),
@@ -291,7 +303,7 @@ class RunnerTests(unittest.TestCase):
                 patches.enter_context(patch.object(obj,name,value))
             code=self.v.run(args)
             result=json.loads((args.out/'report.json').read_text())
-            if project=='candidate':
+            if project=='candidate' and assets_valid:
                 self.assertEqual(code,0,result)
                 client_cmd=next(cmd for cmd,_ in calls if self.v.BOOTSTRAP in cmd)
                 self.assertIn('--read-only',client_cmd)

@@ -1,6 +1,8 @@
+apps/api/Dockerfile
 docs/auth00/inventory.json
 docs/auth00/inventory.md
 docs/auth00/policy_review.json
+docs/pgv13_api_image_assets.md
 docs/pgv13_document_acceptance.md
 scripts/local_gates.md
 scripts/pgv13accept/client.py
@@ -10,6 +12,21 @@ scripts/pgv13accept/protocols/README.md
 scripts/pgv13accept/protocols/delivery.json
 scripts/pgv13accept/protocols/environment.json
 scripts/pgv13accept/protocols/first-green.txt
+scripts/pgv13accept/protocols/image-assets/README.md
+scripts/pgv13accept/protocols/image-assets/accept-regression.txt
+scripts/pgv13accept/protocols/image-assets/delivery.json
+scripts/pgv13accept/protocols/image-assets/green.txt
+scripts/pgv13accept/protocols/image-assets/local-gates.txt
+scripts/pgv13accept/protocols/image-assets/map-write.txt
+scripts/pgv13accept/protocols/image-assets/native.txt
+scripts/pgv13accept/protocols/image-assets/overlay.txt
+scripts/pgv13accept/protocols/image-assets/postgres-cleanup.json
+scripts/pgv13accept/protocols/image-assets/postgres-environment.json
+scripts/pgv13accept/protocols/image-assets/red.txt
+scripts/pgv13accept/protocols/image-assets/release-regression.txt
+scripts/pgv13accept/protocols/image-assets/route-semantic.json
+scripts/pgv13accept/protocols/image-assets/routes.txt
+scripts/pgv13accept/protocols/image-assets/vm-failure.json
 scripts/pgv13accept/protocols/local-gates.txt
 scripts/pgv13accept/protocols/map-write.txt
 scripts/pgv13accept/protocols/native-diagnose.txt
@@ -40,4 +57,5 @@ scripts/pgv13accept/test_native.py
 scripts/pgv13accept/test_ocr.py
 scripts/pgv13accept/verify_vm.py
 tests/unit/test_pgv13_accept.py
+tests/unit/test_pgv13_image_assets.py
 worklog/worklog12.md

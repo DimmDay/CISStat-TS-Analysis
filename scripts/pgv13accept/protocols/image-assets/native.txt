@@ -1,0 +1,7 @@
+test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 25.999s
+
+OK
+{"native_test": "PASS", "cases": 11, "backend": "PostgreSQL", "transport": "controlled PNG double, NOT Chromium/OCR acceptance"}

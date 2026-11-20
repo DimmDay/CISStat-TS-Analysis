@@ -1,0 +1,31 @@
+{
+  "provenance": "operator-provided console output in this conversation; no direct VM access by agent",
+  "phase": "native_auth_jobs_download",
+  "client_failure": {
+    "case": "setup",
+    "error_type": "AcceptanceFailure",
+    "detail": "Foreign/missing document creation must be uniform 404",
+    "foreign_body": {
+      "code": "passport_document_unavailable",
+      "message": "Экспорт временно недоступен"
+    },
+    "missing_body": {
+      "code": "passport_document_unavailable",
+      "message": "Экспорт временно недоступен"
+    }
+  },
+  "temporary_cleanup": {
+    "passed": true,
+    "unremoved_resources": []
+  },
+  "status_interpretation": "Router maps this code to HTTP503; old console did not print status numbers",
+  "full_pgv13_certified": false,
+  "historical_recipe_verification": {
+    "source": "GitHub plugin, exact committed file",
+    "revision": "3b13214466a31fb9ceeebe583abd64812e3bd042",
+    "path": "apps/api/Dockerfile",
+    "print_schema_path_in_recipe": false,
+    "visual_registry_path_in_recipe": false,
+    "whole_root_COPY": false
+  }
+}

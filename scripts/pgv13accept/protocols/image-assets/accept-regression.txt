@@ -1,0 +1,80 @@
+test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison) ... ok
+test_foreign_runtime_source_rejected (test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected) ... ok
+test_production_dsn_rejected_before_any_connection (test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection) ... ok
+test_uniform_denial_ignores_only_correlation_not_message_or_code (test_pgv13_accept.NativeClientContractTests.test_uniform_denial_ignores_only_correlation_not_message_or_code) ... ok
+test_blank_png_is_not_visual_success (test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success) ... ok
+test_corrupt_png (test_pgv13_accept.OracleTests.test_corrupt_png) ... ok
+test_low_confidence_text_not_counted (test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted) ... ok
+test_missing_group_fails_ocr (test_pgv13_accept.OracleTests.test_missing_group_fails_ocr) ... ok
+test_missing_russian_language_is_not_skip_or_fallback (test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback) ... ok
+test_ocr_cyrillic_and_numbers_from_pixels (test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels) ... ok
+test_ocr_empty_or_malformed (test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed) ... ok
+test_ocr_outside_image (test_pgv13_accept.OracleTests.test_ocr_outside_image) ... ok
+test_profile_catalog_dimensions_are_exact (test_pgv13_accept.OracleTests.test_profile_catalog_dimensions_are_exact) ... ok
+test_reused_set_requires_three_visible_passport_tail_markers (test_pgv13_accept.OracleTests.test_reused_set_requires_three_visible_passport_tail_markers) ... ok
+test_review_rejects_pending_and_missing_case (test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case) ... ok
+test_review_requires_exact_report_and_images (test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images) ... ok
+test_transparent_png (test_pgv13_accept.OracleTests.test_transparent_png) ... ok
+test_valid_png (test_pgv13_accept.OracleTests.test_valid_png) ... ok
+test_wrong_profile (test_pgv13_accept.OracleTests.test_wrong_profile) ... ok
+test_bootstrap_does_not_expose_unknown_exception_detail (test_pgv13_accept.RunnerTests.test_bootstrap_does_not_expose_unknown_exception_detail) ... ok
+test_cleanup_refuses_foreign_label (test_pgv13_accept.RunnerTests.test_cleanup_refuses_foreign_label) ... ok
+test_cleanup_removes_only_owned_container_and_its_anonymous_volumes (test_pgv13_accept.RunnerTests.test_cleanup_removes_only_owned_container_and_its_anonymous_volumes) ... ok
+test_existing_evidence_directory_is_not_overwritten (test_pgv13_accept.RunnerTests.test_existing_evidence_directory_is_not_overwritten) ... ok
+test_finalize_requires_human_review_and_binds_payload_ocr (test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr) ... PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_missing_case_duplicate_and_missing_control_are_rejected (test_pgv13_accept.RunnerTests.test_missing_case_duplicate_and_missing_control_are_rejected) ... ok
+test_missing_image_assets_stop_before_test_postgres_is_created (test_pgv13_accept.RunnerTests.test_missing_image_assets_stop_before_test_postgres_is_created) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"p01_p02_accepted": true, "pgv13_certified": false, "reviewer": "unit double operator", "report_sha256": "0cd97b03f2b4e81564d72fdbea3f1a2b86e1614f2c14bed06896f8b9488b64ee", "scope": "P01/P02 document content, jobs/download, OCR and human visual review", "review_sha256": "51791e368c4afd1470e5cd26aece686a94577490b94488a16908ef4fa35e4ffc", "images": {"api": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "web": "sha256:9999999999999999999999999999999999999999999999999999999999999999", "print-renderer": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "image_revision": "cccccccccccccccccccccccccccccccccccccccc"}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+ok
+test_native_pipeline_writes_bound_images_and_pending_visual_review (test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review) ... {"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "api_print_assets", "detail": "API print asset missing: config/print_schema.json", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_no_docker_writes_failure_not_success (test_pgv13_accept.RunnerTests.test_no_docker_writes_failure_not_success) ... ok
+test_production_renderer_is_refused_before_temporary_resources (test_pgv13_accept.RunnerTests.test_production_renderer_is_refused_before_temporary_resources) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "environment", "detail": "Docker CLI required; no native acceptance ran", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 17.302s
+
+OK
+{"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "api_print_assets", "detail": "Document workload requires the dedicated release candidate, not the production renderer", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}

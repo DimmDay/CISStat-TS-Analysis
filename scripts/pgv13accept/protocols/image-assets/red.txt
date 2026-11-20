@@ -1,0 +1,69 @@
+test_actual_api_recipe_ships_readable_profile_and_registry_twins (test_pgv13_image_assets.ImageAssetTests.test_actual_api_recipe_ships_readable_profile_and_registry_twins) ... ERROR
+test_asset_preflight_accepts_only_actual_matching_bytes (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_accepts_only_actual_matching_bytes) ... ERROR
+test_asset_preflight_rejects_missing_image_file (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_missing_image_file) ... ERROR
+test_asset_preflight_rejects_modified_image_data (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_modified_image_data) ... ERROR
+test_both_assets_are_bound_to_native_client_source_check (test_pgv13_image_assets.ImageAssetTests.test_both_assets_are_bound_to_native_client_source_check) ... FAIL
+test_corrupt_catalog_never_becomes_an_empty_fallback (test_pgv13_image_assets.ImageAssetTests.test_corrupt_catalog_never_becomes_an_empty_fallback) ... ok
+test_final_image_build_guard_reads_data_before_revision_stamp (test_pgv13_image_assets.ImageAssetTests.test_final_image_build_guard_reads_data_before_revision_stamp) ... ERROR
+
+======================================================================
+ERROR: test_actual_api_recipe_ships_readable_profile_and_registry_twins (test_pgv13_image_assets.ImageAssetTests.test_actual_api_recipe_ships_readable_profile_and_registry_twins)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 50, in test_actual_api_recipe_ships_readable_profile_and_registry_twins
+    profiles=schema.load_print_schema()['profiles']
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/tmptak7w4oz/apps/api/print_schema.py", line 106, in load_print_schema
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/scratch/1ab9947d7132/tmptak7w4oz/config/print_schema.json'
+
+======================================================================
+ERROR: test_asset_preflight_accepts_only_actual_matching_bytes (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_accepts_only_actual_matching_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 84, in test_asset_preflight_accepts_only_actual_matching_bytes
+    self.assertEqual(V.verify_api_print_assets('sha256:'+'a'*64),result)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.verify_vm' has no attribute 'verify_api_print_assets'
+
+======================================================================
+ERROR: test_asset_preflight_rejects_missing_image_file (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_missing_image_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 71, in test_asset_preflight_rejects_missing_image_file
+    V.verify_api_print_assets('sha256:'+'a'*64)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.verify_vm' has no attribute 'verify_api_print_assets'
+
+======================================================================
+ERROR: test_asset_preflight_rejects_modified_image_data (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_modified_image_data)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 78, in test_asset_preflight_rejects_modified_image_data
+    V.verify_api_print_assets('sha256:'+'a'*64)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.verify_vm' has no attribute 'verify_api_print_assets'
+
+======================================================================
+ERROR: test_final_image_build_guard_reads_data_before_revision_stamp (test_pgv13_image_assets.ImageAssetTests.test_final_image_build_guard_reads_data_before_revision_stamp)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 59, in test_final_image_build_guard_reads_data_before_revision_stamp
+    copy=recipe.index('COPY config/print_schema.json config/visual_registry.json ./config/')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: substring not found
+
+======================================================================
+FAIL: test_both_assets_are_bound_to_native_client_source_check (test_pgv13_image_assets.ImageAssetTests.test_both_assets_are_bound_to_native_client_source_check)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ASSETS/tests/unit/test_pgv13_image_assets.py", line 93, in test_both_assets_are_bound_to_native_client_source_check
+    self.assertTrue(set(ASSETS)<=set(sources))
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.139s
+
+FAILED (failures=1, errors=5)

@@ -1,8 +1,12 @@
 # PGV-13 — P01/P02 content, jobs/download, pixel/OCR и visual review
 
 Этап 5, база `dd6ce317083733eec15a33b464ea9bb8f50be93f`, 20.11.2026.
-Release image revision — `3b13214466a31fb9ceeebe583abd64812e3bd042`.
+Первоначальная release image revision — `3b13214466a31fb9ceeebe583abd64812e3bd042`.
 Предыдущий live UDS PASS сохранён в `worklog/pgv13_release_vm_2026-11-20.md`.
+
+**PGV-13-IMAGE-ASSETS:** эта API revision не содержала config print twins.
+Нужен новый согласованный bundle по `docs/pgv13_api_image_assets.md`. Ниже
+используется уже установленный путь нового bundle, не исторический3b13214.
 
 ## Архитектура и границы
 
@@ -95,7 +99,7 @@ CRC, profile dimensions, pHYs300ppi, непрозрачность/ink coverage. 
 
 ```bash
 git pull --ff-only
-export PGV13_BUNDLE='/opt/cisstat/releases/pgv13-3b13214-20261120T101532604464185Z'
+: "${PGV13_BUNDLE:?Set the new bundle path from docs/pgv13_api_image_assets.md}"
 source "$PGV13_BUNDLE/pins.env"
 
 # Отдельный host Python, вне checkout. Системный Python/API image не меняются.
@@ -184,3 +188,8 @@ reviewed. Default local_gates.py не расширяется; explicit кома�
 P01 OCR требует три видимых кириллических tail markers: одна сохранившаяся
 первая карточка не выдаётся за полный комплект. После завершения требуется
 0 analysis_session rows,11 completed workers и0 held reservations в test DB.
+
+Run выполняет `api_print_assets` preflight до temporary PostgreSQL: оба JSON
+должны быть в самом API image, проходить catalog validation и совпадать по hash
+с reviewed Git inputs. Finalize требует этот результат. В финальной CLI сводке
+теперь сразу есть client_failure, а uniform404 diagnostic содержит HTTP status.

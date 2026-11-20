@@ -302,6 +302,16 @@ RUN python -c "from apps.api.report_snapshot import ReportSnapshot; \
                assert data[:5] == b'%PDF-' and len(data) > 500, 'PDF render produced invalid output'; \
                print('pdf render executable OK (DOCLOG-PDF-RENDER-DEPLOY-2):', len(data), 'bytes')"
 
+# PGV-13-IMAGE-ASSETS: Python print readers load these JSON twins at runtime.
+# Validate data before the revision stamp; no request-time fallback is allowed.
+COPY config/print_schema.json config/visual_registry.json ./config/
+RUN python -c "from apps.api.print_schema import load_print_schema, load_visual_registry, profile_pixel_consistency; \
+               schema = load_print_schema(); registry = load_visual_registry(); \
+               assert schema['schema_version'] == 'pgv.print_schema/1'; \
+               assert registry['schema_version'] == 'pgv.visual_registry/1'; \
+               assert {p['id'] for p in schema['profiles']} == {'figure-landscape', 'a4-landscape', 'a4-portrait'}; \
+               assert all(profile_pixel_consistency(p) for p in schema['profiles']); \
+               print('PGV print schema + visual registry runtime assets OK')"
 ARG CISSTAT_SOURCE_REVISION=unverified
 ARG CISSTAT_SOURCE_TREE=unverified
 LABEL org.opencontainers.image.revision=$CISSTAT_SOURCE_REVISION \

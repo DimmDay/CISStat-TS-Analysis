@@ -214,7 +214,9 @@ def exercise(config):
     foreign_create=post(foreign,path,selected)
     missing_create=post(foreign,'/v1/documentation/runs/RUN-00000000/passport-documents',selected)
     require(foreign_create.status_code==missing_create.status_code==404 and public_error(foreign_create)==public_error(missing_create),
-        'Foreign/missing document creation must be uniform 404: '+json.dumps({'foreign':public_error(foreign_create),'missing':public_error(missing_create)},ensure_ascii=False))
+        'Foreign/missing document creation must be uniform 404: '+json.dumps({
+            'foreign':{'status':foreign_create.status_code,'body':public_error(foreign_create)},
+            'missing':{'status':missing_create.status_code,'body':public_error(missing_create)}},ensure_ascii=False))
     unavailable=post(owner,path,{'mode':'single','snapshot_refs':['rs-'+'d'*32]})
     require(unavailable.status_code==409 and unavailable.json().get('code')=='source_unavailable','Missing single source must be unavailable')
     incompatible=post(owner,path,{'mode':'compare','snapshot_refs':[refs[0],panel_ref]})

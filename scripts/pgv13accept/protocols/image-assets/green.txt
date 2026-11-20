@@ -1,0 +1,15 @@
+test_actual_api_recipe_ships_readable_profile_and_registry_twins (test_pgv13_image_assets.ImageAssetTests.test_actual_api_recipe_ships_readable_profile_and_registry_twins) ... ok
+test_actual_build_guard_and_image_probe_execute_in_projected_runtime (test_pgv13_image_assets.ImageAssetTests.test_actual_build_guard_and_image_probe_execute_in_projected_runtime) ... ok
+test_asset_preflight_accepts_only_actual_matching_bytes (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_accepts_only_actual_matching_bytes) ... ok
+test_asset_preflight_rejects_missing_image_file (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_missing_image_file) ... ok
+test_asset_preflight_rejects_modified_image_data (test_pgv13_image_assets.ImageAssetTests.test_asset_preflight_rejects_modified_image_data) ... ok
+test_both_assets_are_bound_to_native_client_source_check (test_pgv13_image_assets.ImageAssetTests.test_both_assets_are_bound_to_native_client_source_check) ... ok
+test_corrupt_catalog_never_becomes_an_empty_fallback (test_pgv13_image_assets.ImageAssetTests.test_corrupt_catalog_never_becomes_an_empty_fallback) ... ok
+test_final_image_build_guard_reads_data_before_revision_stamp (test_pgv13_image_assets.ImageAssetTests.test_final_image_build_guard_reads_data_before_revision_stamp) ... ok
+test_invalid_catalog_flag_is_not_accepted_with_matching_hashes (test_pgv13_image_assets.ImageAssetTests.test_invalid_catalog_flag_is_not_accepted_with_matching_hashes) ... ok
+test_previous_recipe_reproduces_exact_missing_schema_path (test_pgv13_image_assets.ImageAssetTests.test_previous_recipe_reproduces_exact_missing_schema_path) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.415s
+
+OK
