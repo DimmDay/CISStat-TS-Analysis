@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
-def facts(tmp_path, monkeypatch):
+def facts(tmp_path, monkeypatch, record_property):
     from apps.api import artifact_store as A, document_jobs as D
     from apps.api import report_snapshot as S, research_runs as R
     from apps.api.artifact_promotion import PromotionService
@@ -47,6 +47,15 @@ def facts(tmp_path, monkeypatch):
         monkeypatch.setenv("DATABASE_URL", make_conninfo(native, dbname=db))
     for reset in resetters:
         reset()
+    registries = (R.get_research_run_store(), A.get_artifact_registry(),
+                  S.get_snapshot_registry(), D.get_document_registry())
+    expected = ((R.PostgresResearchRunStore, A.PostgresArtifactRegistry,
+                 S.PostgresSnapshotRegistry, D.PostgresDocumentRegistry) if native else
+                (R.MemoryResearchRunStore, A.MemoryArtifactRegistry,
+                 S.MemorySnapshotRegistry, D.MemoryDocumentRegistry))
+    assert all(isinstance(store, kind) for store, kind in zip(registries, expected))
+    record_property('backend', 'postgres' if native else 'memory')
+    record_property('registry_types', ','.join(type(store).__name__ for store in registries))
     run = "RUN-C13A0001"
     account, subject = str(uuid4()), str(uuid4())
     owner = SubjectRef(subject_id=subject, account_id=account, tenant_id="tenant-cert",

@@ -1,0 +1,23 @@
+Actual ZIP + clean fe9d131c643baf8840ae9079237fbed409893b25; CRLF INDEX/LF WORKTREE: scripts/pgv13local/verify.py, scripts/pgv13local/cases.json, scripts/pgv13cert/test_contracts.py, scripts/pgv13cert/test_local_acceptance.py, tests/unit/test_pgv13_local_gate.py
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 666, "added": [], "missing": []}
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python -m unittest discover -s tests/unit -p test_pgv13_local_gate.py -v
+test_exact_success_with_real_backend_evidence (test_pgv13_local_gate.LocalGateTests.test_exact_success_with_real_backend_evidence) ... ok
+test_failures_errors_and_skips_are_rejected (test_pgv13_local_gate.LocalGateTests.test_failures_errors_and_skips_are_rejected) ... ok
+test_memory_cannot_silently_inherit_native_dsn_or_pytest_filter (test_pgv13_local_gate.LocalGateTests.test_memory_cannot_silently_inherit_native_dsn_or_pytest_filter) ... ok
+test_missing_dsn_invalidates_old_success_before_build (test_pgv13_local_gate.LocalGateTests.test_missing_dsn_invalidates_old_success_before_build) ... ok
+test_missing_empty_and_invalid_junit_are_not_pass (test_pgv13_local_gate.LocalGateTests.test_missing_empty_and_invalid_junit_are_not_pass) ... ok
+test_missing_or_wrong_backend_is_not_native_proof (test_pgv13_local_gate.LocalGateTests.test_missing_or_wrong_backend_is_not_native_proof) ... ok
+test_native_requires_dsn_without_memory_fallback (test_pgv13_local_gate.LocalGateTests.test_native_requires_dsn_without_memory_fallback) ... ok
+test_substitution_duplicate_and_deselection_are_rejected (test_pgv13_local_gate.LocalGateTests.test_substitution_duplicate_and_deselection_are_rejected) ... ok
+test_utf8_environment_starts_actual_python (test_pgv13_local_gate.LocalGateTests.test_utf8_environment_starts_actual_python) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.025s
+
+OK
+Set CISSTAT_PGV13_CERT_DSN to disposable PostgreSQL with CREATE DATABASE
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python /workspace/scratch/1ab9947d7132/run_pgv13_native.py /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python /workspace/scratch/1ab9947d7132/PGV13-local-overlay/scripts/pgv13local/verify.py --both --out /workspace/scratch/1ab9947d7132/PGV13-local-overlay/delivery-native-results
+{"state": "PASS", "passed": true, "results": {"memory": {"tests": 47, "failures": 0, "errors": 0, "skipped": 0, "backend": "memory", "exact_manifest": true}, "postgres": {"tests": 47, "failures": 0, "errors": 0, "skipped": 0, "backend": "postgres", "exact_manifest": true}}, "full_pgv13_certified": false}

@@ -1,0 +1,21 @@
+{
+  "base": "fe9d131c643baf8840ae9079237fbed409893b25",
+  "actual_zip_overlay": "PASS",
+  "CRC_manifest_payload_bytes": "PASS",
+  "strict_index": "PASS 602",
+  "CRLF_INDEX_LF_WORKTREE": [
+    "scripts/pgv13local/verify.py",
+    "scripts/pgv13local/cases.json",
+    "scripts/pgv13cert/test_contracts.py",
+    "scripts/pgv13cert/test_local_acceptance.py",
+    "tests/unit/test_pgv13_local_gate.py"
+  ],
+  "routes": "PASS 284 API / 288 bindings / 666 entries",
+  "checker_units": "PASS 9/9",
+  "fresh_build_and_memory": "PASS 47/47",
+  "fresh_build_and_native_postgres": "PASS 47/47",
+  "source_index_sha256_before_after": "c2665d8a4161415b869c57c99c59eb3ef22ae155e48ebc203f5b42bdf2348ecd",
+  "source_index": "EMPTY staged diff",
+  "commits_push_vm": "NONE",
+  "full_pgv13_certified": false
+}

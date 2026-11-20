@@ -1,0 +1,42 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.7, anyio-4.14.2
+collected 24 items / 21 deselected / 3 selected
+
+scripts/pgv13cert/test_contracts.py .F.                                  [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_exact_request_is_idempotent _______________________
+scripts/pgv13cert/test_contracts.py:146: in test_exact_request_is_idempotent
+    assert one["job"]["job_id"] == two["job"]["job_id"]
+E   AssertionError: assert 'job-587a94a2...13fc36c0f5254' == 'job-45e306f1...444e7667523e1'
+E     
+E     - job-45e306f188254ee4b8b444e7667523e1
+E     + job-587a94a27e0e4dc78e713fc36c0f5254
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+scripts/pgv13cert/test_contracts.py::test_all_groups_survive_without_session_or_scientific_calls
+  scripts/pgv13cert/test_contracts.py:132: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_all_groups_survive_without_session_or_scientific_calls(facts, monkeypatch):
+
+scripts/pgv13cert/test_contracts.py::test_exact_request_is_idempotent
+  scripts/pgv13cert/test_contracts.py:141: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_exact_request_is_idempotent(facts):
+
+scripts/pgv13cert/test_contracts.py::test_valid_renderer_html_preserves_all_groups
+  scripts/pgv13cert/test_contracts.py:234: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_valid_renderer_html_preserves_all_groups(facts):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL/scripts/pgv13local/protocols/mutations/wrong_job_id-oracle.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_contracts.py::test_exact_request_is_idempotent
+============ 1 failed, 2 passed, 21 deselected, 4 warnings in 0.93s ============

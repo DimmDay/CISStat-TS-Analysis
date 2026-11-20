@@ -295,3 +295,27 @@ VM gate требует actual UID/GID/modes/RO/lock/cgroups/no-TCP, нового
 visual/OCR/job-download приёмка не выполнены. Протоколы текущей работы:
 `scripts/pgv13uds/protocols/`. HTTP endpoint sets прежние, AUTH-00 transport review
 расширен; миграций и разрешения новых host privileges нет.
+
+## 20.11.2026 — этап 3, независимый локальный прогон на fe9d131
+
+Локальные durable/SSR контракты приняты:47/47 Memory и47/47 native
+PostgreSQL16.2 TCP/UTF8, без failures/errors/skips/xfail. В каждом прогоне
+43 backend-зависимых оракула подтверждают реальные классы четырёх хранилищ,
+ещё4 проверяют deployment sources. Python payload передаётся в заново
+скомпилированный TypeScript validation/SSR без diagnostic envelope.
+
+Прежние24 независимых оракула заново выполнены и на историческом2014fdf:
+17 FAIL/7 PASS, ноль errors/skips. Новые19 проверяют physical missing/corrupt
+bytes, foreign refs, target/schema/universe incompatibility, historical cutoff,
+registry reload/idempotency и самодостаточность frozen basis после утраты
+источников. При ошибках данные не фабрикуются и print artifacts не создаются.
+
+Два канала мутаций3/3 dual-killed, positive controls GREEN; source bytes
+не менялись. TS137/137, свежая renderer build PASS. Checker имеет unit9/9,
+exact case manifest, обязательный JUnit/backend evidence и закрытый отказ
+при missing native DSN. Детали/ограничения/команды:
+`docs/pgv13_local_acceptance.md`, protocols `scripts/pgv13local/protocols/`.
+
+Это принятие этапа3. **Общий PGV-13 остаётся NOT CERTIFIED** до отдельной
+native UDS/final-image/P01-P02 PNG/content/visual/OCR/job-download приёмки.
+Runtime/API/Compose/DDL этой поставкой не меняются, образы не пересобираются.

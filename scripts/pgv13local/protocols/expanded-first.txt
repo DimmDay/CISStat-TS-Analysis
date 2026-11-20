@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.7, anyio-4.14.2
+collected 47 items
+
+scripts/pgv13cert/test_contracts.py ........................             [ 51%]
+scripts/pgv13cert/test_local_acceptance.py ..............F....           [ 91%]
+scripts/pgv13cert/test_deployment.py ....                                [100%]
+
+=================================== FAILURES ===================================
+_ test_incompatible_passports_refuse_before_print_persistence[change2-universe_mixing] _
+scripts/pgv13cert/test_local_acceptance.py:125: in test_incompatible_passports_refuse_before_print_persistence
+    with pytest.raises(PassportDocumentIncompatible) as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE PassportDocumentIncompatible
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL/scripts/pgv13local/protocols/expanded-first.xml -
+=========================== short test summary info ============================
+FAILED scripts/pgv13cert/test_local_acceptance.py::test_incompatible_passports_refuse_before_print_persistence[change2-universe_mixing]
+=================== 1 failed, 46 passed, 1 warning in 6.49s ====================

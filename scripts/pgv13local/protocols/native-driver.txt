@@ -1,0 +1,1 @@
+{"state": "PASS", "passed": true, "results": {"memory": {"tests": 47, "failures": 0, "errors": 0, "skipped": 0, "backend": "memory", "exact_manifest": true}, "postgres": {"tests": 47, "failures": 0, "errors": 0, "skipped": 0, "backend": "postgres", "exact_manifest": true}}, "full_pgv13_certified": false}

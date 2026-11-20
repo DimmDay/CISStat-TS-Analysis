@@ -1,0 +1,8 @@
+{
+  "version": "PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit",
+  "encoding": "UTF8",
+  "uid": 1000,
+  "transport": "loopback TCP; Unix sockets disabled",
+  "is_disposable": true,
+  "vm_access": false
+}

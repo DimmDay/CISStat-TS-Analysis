@@ -1,0 +1,6 @@
+
+Test Suites: 4 passed, 4 total
+Tests:       137 passed, 137 total
+Snapshots:   0 total
+Time:        7.067 s
+Ran all test suites within paths "apps/print-renderer/src/rendererCore.test.ts", "packages/ui/print/printLayout.test.tsx", "packages/ui/print/printPassport.test.tsx", "packages/ui/print/printSchema.test.ts".

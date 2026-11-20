@@ -9409,6 +9409,7 @@
   "docs/auth21/design.md",
   "docs/auth22/design.md",
   "docs/pgv13_fixes.md",
+  "docs/pgv13_local_acceptance.md",
   "docs/pgv13_passport_documents.md",
   "docs/pgv13_sandbox_rollout.md",
   "docs/pgv13_uds_hotfix1.md",
@@ -9547,7 +9548,10 @@
   "scripts/pgv13cert/requirements.txt",
   "scripts/pgv13cert/test_contracts.py",
   "scripts/pgv13cert/test_deployment.py",
+  "scripts/pgv13cert/test_local_acceptance.py",
   "scripts/pgv13cert/verify.py",
+  "scripts/pgv13local/cases.json",
+  "scripts/pgv13local/verify.py",
   "scripts/pgv13sandbox/activate.py",
   "scripts/pgv13sandbox/probe.py",
   "scripts/pgv13sandbox/test_activate.py",
@@ -9596,6 +9600,7 @@
   "tests/unit/test_personal_demo.py",
   "tests/unit/test_personal_demo_admin.py",
   "tests/unit/test_personal_demo_entry_pointer.py",
+  "tests/unit/test_pgv13_local_gate.py",
   "validation/engine.py"
  ]
 }

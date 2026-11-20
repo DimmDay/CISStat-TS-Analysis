@@ -1,0 +1,17 @@
+test_utf8_environment_starts_actual_python (test_pgv13_local_gate.LocalGateTests.test_utf8_environment_starts_actual_python) ... FAIL
+
+======================================================================
+FAIL: test_utf8_environment_starts_actual_python (test_pgv13_local_gate.LocalGateTests.test_utf8_environment_starts_actual_python)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL/tests/unit/test_pgv13_local_gate.py", line 80, in test_utf8_environment_starts_actual_python
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : Fatal Python error: preconfig_init_utf8_mode: invalid PYTHONUTF8 environment variable value
+Python runtime state: preinitializing
+
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (failures=1)

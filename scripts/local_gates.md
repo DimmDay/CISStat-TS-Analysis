@@ -513,3 +513,25 @@ python scripts/pgv13uds/hotfix1/verify_contract.py
 fingerprints, semantic HTTP/non-HTTP entries прежние. Runtime/образы/миграции
 hotfix не меняет; обычный VM pull без дополнительного build/recreate.
 Порядок применения и границы: `docs/pgv13_uds_hotfix1.md`.
+
+## PGV-13-LOCAL-CERT (20.11.2026), база fe9d131 — этап 3
+
+Явный независимый local gate, без нового default/неявного native PostgreSQL:
+
+```bash
+python -m unittest discover -s tests/unit -p test_pgv13_local_gate.py -v
+python scripts/pgv13local/verify.py --memory --out ../pgv13local-memory
+# Только disposable PostgreSQL, CISSTAT_PGV13_CERT_DSN задан отдельно:
+python scripts/pgv13local/verify.py --both --out ../pgv13local-both
+```
+
+Раннер собирает свежий renderer, требует exact manifest47 и actual backend
+в JUnit43 contracts; ещё4 source deployment checks. Missing DSN для native
+даёт2 до build. Отсутствующий/неполный отчёт, nonzero, skips/xfail — FAIL,
+старый PASS не сохраняется. Memory не наследует native DSN; исходный Python
+payload проходит compiled validation/SSR без дописывания полей. Документ:
+`docs/pgv13_local_acceptance.md`. Полный PGV-13 сертификат не выдаётся.
+
+Runtime/маршруты/образы/DDL не меняются, source fingerprints карты обновлены.
+После применения ZIP: `git add --pathspec-from-file=scripts/pgv13local/files.txt`,
+затем штатный `python scripts/local_gates.py --only auth00 --skip-install`.

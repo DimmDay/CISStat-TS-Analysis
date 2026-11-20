@@ -1,0 +1,21 @@
+test_pgv13_local_gate (unittest.loader._FailedTest.test_pgv13_local_gate) ... ERROR
+
+======================================================================
+ERROR: test_pgv13_local_gate (unittest.loader._FailedTest.test_pgv13_local_gate)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_pgv13_local_gate
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-LOCAL/tests/unit/test_pgv13_local_gate.py", line 8, in <module>
+    from scripts.pgv13local import verify as gate
+ImportError: cannot import name 'verify' from 'scripts.pgv13local' (unknown location)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
