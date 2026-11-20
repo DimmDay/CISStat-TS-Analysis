@@ -1,0 +1,27 @@
+{
+  "schema_version": "pgv13.documents.delivery/1",
+  "base": "dd6ce317083733eec15a33b464ea9bb8f50be93f",
+  "files": 43,
+  "tests": {
+    "unit": 28,
+    "native_managed_jobs": 11,
+    "native_transport": "controlled TCP PNG double; NOT Chromium/UDS",
+    "real_russian_ocr_control": "PASS; known synthetic pixels, NOT product PNG",
+    "release_regression": 16,
+    "auth00_unit": 61,
+    "auth00_local_gate": "PASS88.2s",
+    "strict_crlf_overlay": "PASS6 Python files; INDEX602",
+    "routes": "284 API / 288 bindings / 668 entries"
+  },
+  "actual_zip_overlay_checked": true,
+  "checked_source_bytes_unchanged": true,
+  "original_index_unchanged": true,
+  "runtime_changed": false,
+  "image_rebuild_required": false,
+  "full_pgv13_certified": false,
+  "pending": [
+    "VM isolated native P01/P02 Chromium PNG corpus",
+    "hash-bound human visual review",
+    "aggregate whole PGV13 certificate"
+  ]
+}

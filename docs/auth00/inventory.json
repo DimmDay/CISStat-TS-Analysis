@@ -5,7 +5,7 @@
   "counts": {
     "api": 284,
     "framework": 8,
-    "internal_operation": 38,
+    "internal_operation": 39,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 41,
@@ -686,6 +686,21 @@
         "T13",
         "T15"
       ]
+    },
+    "ops.document_acceptance": {
+      "observed": "Explicit OS/Docker operator-only document acceptance. Clean committed tool/HEAD review and pinned image/source/evidence checks; isolated labelled temporary PostgreSQL/internal network/API client on a dedicated renderer candidate. Real ASGI AuthSession/CSRF and managed jobs/downloads; pixel OCR and hash-bound human review. No production DB, service recreate, credential forwarding or image pull/build.",
+      "target": "Preserve all production authority/data/IPC/hardening. Refuse unknown cleanup ownership, existing test databases, missing case/OCR/language evidence and stale review. A local transport double or automated image check is not visual acceptance or whole PGV13 certification.",
+      "follow_up": [
+        "AUTH-00",
+        "AUTH-13",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T08",
+        "T12",
+        "T13",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -1055,6 +1070,7 @@
     "docs/auth19/design.md": "0b1e9b72bb3d2fad46a956414d5dbe8d767b785811c21338b495e8538ae655df",
     "docs/auth21/design.md": "6f49b38288883e15ff7551c85e568f0b2f51a14b28dd314a159df00f456d2405",
     "docs/auth22/design.md": "65350063d4ea2ad0eb83883d840b6df7a80abb5367ea712d4f3e5f2ef3b9c14b",
+    "docs/pgv13_document_acceptance.md": "8fd64759a3a0464b3e2e7ea1b60ac860c1852b48cd6cf7d1aa7d21dbb57ddbd7",
     "docs/pgv13_fixes.md": "dcd6162975e857e862df727616fb3c6842d1a241b84f96e6ccecffe95bc834e5",
     "docs/pgv13_local_acceptance.md": "56a8bd2d6b9e11ce4bbf683452c26c61ac3d40bc6acd231e42bf5284da20377d",
     "docs/pgv13_passport_documents.md": "dfecc321e53a264082388ac7cde9ea36bc1454954a3574dfcf09e3a0185eb561",
@@ -1186,12 +1202,18 @@
     "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
     "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
     "scripts/email_upload_fix/demo_files.js": "68f93512bb115a3b6d9f874128f324f1120c8ebe8b9a3e5e51e24dfd53be82f7",
-    "scripts/local_gates.md": "748b9c245486b76b74776b50e4980630c1a74e73046305116c0409dbfb2a69bc",
+    "scripts/local_gates.md": "369d28b0be0e4986e7d3a3fcf0d5392f93552ab5a5618641de07e452efb80ed8",
     "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
     "scripts/personal_demo/requirements.txt": "308192db4c425a3dd616a762632f3e01d4ca97efa7973b63b4fb99cb4e0a1d40",
     "scripts/personal_demo/verify_postgres.py": "acc181498fd881668f5b1d56329035e2b17387c98ad3c771aa18c9e60aa9e621",
+    "scripts/pgv13accept/client.py": "d9e4a2438aa993ff7979448190d5f3aa63eab67d74f11f67996784e6eb440b2d",
+    "scripts/pgv13accept/oracles.py": "a755557a672788c7848bc167734dd99da80111f7281e9834cd562738adaa795b",
+    "scripts/pgv13accept/requirements.txt": "b7b2d7b683b966b4201920861e04f3626903a8c10e3b1fa2789a50f72a9e4eef",
+    "scripts/pgv13accept/test_native.py": "eb4c936c03c316aa5932d3b4b295552d7e5ef5478216a8cd524155440c7f6abb",
+    "scripts/pgv13accept/test_ocr.py": "6d579ba2fac31428366988bf4f4931c3baaaca8c46c56623d016818b1e58e05e",
+    "scripts/pgv13accept/verify_vm.py": "0c29a08b24245b057264f996ef3394fea39e19a3c049b2547432e98f0e86cb32",
     "scripts/pgv13cert/mutations.py": "9e362b25ce6b9b3f7e0540a950928d71de1db907461b5fa7de08af5b4d9b85e0",
     "scripts/pgv13cert/mutator.py": "e057b268ae8198b4133ecedd002aff92ff5efe83e67243bac923a03ac66337d7",
     "scripts/pgv13cert/requirements.txt": "9d85500d64bbbf0c4c497cd7cd0d8b2fc9e1a948d47e058d85fdb63f4d3a498a",
@@ -1250,6 +1272,7 @@
     "tests/unit/test_personal_demo.py": "87b3639df4b8fe516404223f1625b1f4b4051e4e3571f68912fb75094cb334ec",
     "tests/unit/test_personal_demo_admin.py": "26db032d88c09cf264043cc7b2f4f7b74d315a4c30b1ad72696d2d0910b03de9",
     "tests/unit/test_personal_demo_entry_pointer.py": "6ae17f273d6d4e523ba2d0049018112e3beb1684b880b65d8bf001a52bb5bd41",
+    "tests/unit/test_pgv13_accept.py": "6552097540af93ee4fbb5085642ca9f1138879f39370af27e0c4b4ec2f9503ac",
     "tests/unit/test_pgv13_local_gate.py": "4168cf57746f1bda567e933b6108db85a267fa25bac27982d3b68e3b7b83c9cb",
     "tests/unit/test_pgv13_release.py": "400828a4f2d7176b2f6bd683c14a54019e423af52b76813bbbec80bf04b72ce4",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
@@ -12899,6 +12922,34 @@
       ],
       "canonical_operation": "pgv13.release.operator",
       "admission": "privileged host operator; immutable source/image/evidence/config checks; quiesced publisher assertion on apply/rollback; no DB/credential/financial writer"
+    },
+    {
+      "id": "internal_operation:pgv13.document_acceptance",
+      "kind": "internal_operation",
+      "method": "CLI",
+      "path": "run/finalize with OS Docker access; dedicated disposable document acceptance",
+      "operation": "pgv13.documents",
+      "evidence": [
+        {
+          "source": "scripts/pgv13accept/verify_vm.py",
+          "line": 324,
+          "symbol": "main"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "ops.document_acceptance",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "isolated document test database, dedicated renderer candidate and image/OCR evidence",
+      "effects": [
+        "temporary_database_write",
+        "temporary_container_lifecycle",
+        "private_renderer_request",
+        "evidence_write",
+        "manual_visual_review"
+      ],
+      "canonical_operation": "pgv13.documents.operator",
+      "admission": "privileged host operator; fresh labelled disposable resources only; no production DSN or public port; exact case/source/image/evidence fences; explicit hash-bound visual review"
     },
     {
       "id": "legacy:app.py:10025:button",

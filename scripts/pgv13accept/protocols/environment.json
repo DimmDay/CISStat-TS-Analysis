@@ -1,0 +1,10 @@
+{
+  "python": "3.12.14",
+  "python_executable": "/workspace/scratch/1ab9947d7132/venv-hotfix/bin/python",
+  "docker_cli": null,
+  "native_image_acceptance": false,
+  "vm_access": false,
+  "full_pgv13_certified": false,
+  "image_revision": "3b13214466a31fb9ceeebe583abd64812e3bd042",
+  "matching_api_runtime_inputs": 294
+}

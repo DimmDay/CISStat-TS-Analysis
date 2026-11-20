@@ -1,0 +1,11 @@
+{
+  "base": "dd6ce317083733eec15a33b464ea9bb8f50be93f",
+  "all_previous_entries_unchanged": true,
+  "old_entries": 667,
+  "new_entries": 668,
+  "new_ids": [
+    "internal_operation:pgv13.document_acceptance"
+  ],
+  "http_routes_changed": false,
+  "old_policies_unchanged": true
+}

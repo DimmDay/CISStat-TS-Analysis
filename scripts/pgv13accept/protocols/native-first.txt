@@ -1,0 +1,20 @@
+test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download) ... ERROR
+
+======================================================================
+ERROR: test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/test_native.py", line 56, in test_real_postgres_auth_managed_jobs_and_download
+    with socketserver.UnixStreamServer(socket_path,Handler) as server:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/socketserver.py", line 453, in __init__
+    self.socket = socket.socket(self.address_family,
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/socket.py", line 233, in __init__
+    _socket.socket.__init__(self, family, type, proto, fileno)
+PermissionError: [Errno 1] Operation not permitted
+
+----------------------------------------------------------------------
+Ran 1 test in 0.894s
+
+FAILED (errors=1)

@@ -1,0 +1,19 @@
+test_real_russian_pixels_and_missing_content_control (scripts.pgv13accept.test_ocr.OCRTests.test_real_russian_pixels_and_missing_content_control) ... ERROR
+
+======================================================================
+ERROR: test_real_russian_pixels_and_missing_content_control (scripts.pgv13accept.test_ocr.OCRTests.test_real_russian_pixels_and_missing_content_control)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/test_ocr.py", line 22, in test_real_russian_pixels_and_missing_content_control
+    self.assertTrue(O.check_ocr(raw,['Паспорт свойств ряда','берёза','кириллица'],['37'],image.size)['passed'])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/oracles.py", line 58, in check_ocr
+    require(reader.fieldnames and {'left','top','width','height','conf','text'} <= set(reader.fieldnames), 'OCR TSV is malformed')
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/oracles.py", line 22, in require
+    raise ValueError(message)
+ValueError: OCR TSV is malformed
+
+----------------------------------------------------------------------
+Ran 1 test in 1.812s
+
+FAILED (errors=1)

@@ -1,0 +1,75 @@
+test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison) ... ok
+test_foreign_runtime_source_rejected (test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected) ... ok
+test_production_dsn_rejected_before_any_connection (test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection) ... ok
+test_blank_png_is_not_visual_success (test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success) ... ok
+test_corrupt_png (test_pgv13_accept.OracleTests.test_corrupt_png) ... ok
+test_low_confidence_text_not_counted (test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted) ... ok
+test_missing_group_fails_ocr (test_pgv13_accept.OracleTests.test_missing_group_fails_ocr) ... ok
+test_missing_russian_language_is_not_skip_or_fallback (test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback) ... ok
+test_ocr_cyrillic_and_numbers_from_pixels (test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels) ... ok
+test_ocr_empty_or_malformed (test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed) ... ok
+test_ocr_outside_image (test_pgv13_accept.OracleTests.test_ocr_outside_image) ... ok
+test_profile_catalog_dimensions_are_exact (test_pgv13_accept.OracleTests.test_profile_catalog_dimensions_are_exact) ... ok
+test_review_rejects_pending_and_missing_case (test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case) ... ok
+test_review_requires_exact_report_and_images (test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images) ... ok
+test_transparent_png (test_pgv13_accept.OracleTests.test_transparent_png) ... ok
+test_valid_png (test_pgv13_accept.OracleTests.test_valid_png) ... ok
+test_wrong_profile (test_pgv13_accept.OracleTests.test_wrong_profile) ... ok
+test_bootstrap_does_not_expose_unknown_exception_detail (test_pgv13_accept.RunnerTests.test_bootstrap_does_not_expose_unknown_exception_detail) ... ok
+test_cleanup_refuses_foreign_label (test_pgv13_accept.RunnerTests.test_cleanup_refuses_foreign_label) ... ok
+test_cleanup_removes_only_owned_container_and_its_anonymous_volumes (test_pgv13_accept.RunnerTests.test_cleanup_removes_only_owned_container_and_its_anonymous_volumes) ... ok
+test_existing_evidence_directory_is_not_overwritten (test_pgv13_accept.RunnerTests.test_existing_evidence_directory_is_not_overwritten) ... ok
+test_missing_case_duplicate_and_missing_control_are_rejected (test_pgv13_accept.RunnerTests.test_missing_case_duplicate_and_missing_control_are_rejected) ... ok
+test_native_pipeline_writes_bound_images_and_pending_visual_review (test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review) ... ERROR
+test_no_docker_writes_failure_not_success (test_pgv13_accept.RunnerTests.test_no_docker_writes_failure_not_success) ... ERROR
+test_production_renderer_is_refused_before_temporary_resources (test_pgv13_accept.RunnerTests.test_production_renderer_is_refused_before_temporary_resources) ... ERROR
+
+======================================================================
+ERROR: test_native_pipeline_writes_bound_images_and_pending_visual_review (test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 224, in test_native_pipeline_writes_bound_images_and_pending_visual_review
+    report=self.run_pipeline()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 270, in run_pipeline
+    code=self.v.run(args)
+         ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/verify_vm.py", line 133, in run
+    O.require(not out.exists() and out!=ROOT and ROOT not in out.parents,'Use a new evidence directory outside the checkout')
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/oracles.py", line 22, in require
+    raise ValueError(message)
+ValueError: Use a new evidence directory outside the checkout
+
+======================================================================
+ERROR: test_no_docker_writes_failure_not_success (test_pgv13_accept.RunnerTests.test_no_docker_writes_failure_not_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 209, in test_no_docker_writes_failure_not_success
+    self.assertEqual(self.v.run(args),2)
+                     ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/verify_vm.py", line 133, in run
+    O.require(not out.exists() and out!=ROOT and ROOT not in out.parents,'Use a new evidence directory outside the checkout')
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/oracles.py", line 22, in require
+    raise ValueError(message)
+ValueError: Use a new evidence directory outside the checkout
+
+======================================================================
+ERROR: test_production_renderer_is_refused_before_temporary_resources (test_pgv13_accept.RunnerTests.test_production_renderer_is_refused_before_temporary_resources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 232, in test_production_renderer_is_refused_before_temporary_resources
+    report=self.run_pipeline(project='deployment')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 270, in run_pipeline
+    code=self.v.run(args)
+         ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/verify_vm.py", line 133, in run
+    O.require(not out.exists() and out!=ROOT and ROOT not in out.parents,'Use a new evidence directory outside the checkout')
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/oracles.py", line 22, in require
+    raise ValueError(message)
+ValueError: Use a new evidence directory outside the checkout
+
+----------------------------------------------------------------------
+Ran 25 tests in 9.481s
+
+FAILED (errors=3)

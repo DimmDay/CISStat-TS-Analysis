@@ -1,0 +1,149 @@
+test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison) ... ERROR
+test_foreign_runtime_source_rejected (test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected) ... ERROR
+test_production_dsn_rejected_before_any_connection (test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection) ... ERROR
+test_blank_png_is_not_visual_success (test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success) ... ERROR
+test_corrupt_png (test_pgv13_accept.OracleTests.test_corrupt_png) ... ERROR
+test_low_confidence_text_not_counted (test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted) ... ERROR
+test_missing_group_fails_ocr (test_pgv13_accept.OracleTests.test_missing_group_fails_ocr) ... ERROR
+test_missing_russian_language_is_not_skip_or_fallback (test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback) ... ERROR
+test_ocr_cyrillic_and_numbers_from_pixels (test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels) ... ERROR
+test_ocr_empty_or_malformed (test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed) ... ERROR
+test_ocr_outside_image (test_pgv13_accept.OracleTests.test_ocr_outside_image) ... ERROR
+test_review_rejects_pending_and_missing_case (test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case) ... ERROR
+test_review_requires_exact_report_and_images (test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images) ... ERROR
+test_transparent_png (test_pgv13_accept.OracleTests.test_transparent_png) ... ERROR
+test_valid_png (test_pgv13_accept.OracleTests.test_valid_png) ... ERROR
+test_wrong_profile (test_pgv13_accept.OracleTests.test_wrong_profile) ... ERROR
+
+======================================================================
+ERROR: test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 118, in test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison
+    from scripts.pgv13accept.client import CASES
+ModuleNotFoundError: No module named 'scripts.pgv13accept.client'
+
+======================================================================
+ERROR: test_foreign_runtime_source_rejected (test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 133, in test_foreign_runtime_source_rejected
+    from scripts.pgv13accept.client import check_sources
+ModuleNotFoundError: No module named 'scripts.pgv13accept.client'
+
+======================================================================
+ERROR: test_production_dsn_rejected_before_any_connection (test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 125, in test_production_dsn_rejected_before_any_connection
+    from scripts.pgv13accept.client import check_disposable_database
+ModuleNotFoundError: No module named 'scripts.pgv13accept.client'
+
+======================================================================
+ERROR: test_blank_png_is_not_visual_success (test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_corrupt_png (test_pgv13_accept.OracleTests.test_corrupt_png)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_low_confidence_text_not_counted (test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_missing_group_fails_ocr (test_pgv13_accept.OracleTests.test_missing_group_fails_ocr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_missing_russian_language_is_not_skip_or_fallback (test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_ocr_cyrillic_and_numbers_from_pixels (test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_ocr_empty_or_malformed (test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_ocr_outside_image (test_pgv13_accept.OracleTests.test_ocr_outside_image)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_review_rejects_pending_and_missing_case (test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_review_requires_exact_report_and_images (test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_transparent_png (test_pgv13_accept.OracleTests.test_transparent_png)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_valid_png (test_pgv13_accept.OracleTests.test_valid_png)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+======================================================================
+ERROR: test_wrong_profile (test_pgv13_accept.OracleTests.test_wrong_profile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/tests/unit/test_pgv13_accept.py", line 38, in setUp
+    from scripts.pgv13accept import oracles
+ImportError: cannot import name 'oracles' from 'scripts.pgv13accept' (unknown location)
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.006s
+
+FAILED (errors=16)

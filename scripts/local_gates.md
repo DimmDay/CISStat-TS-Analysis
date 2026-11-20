@@ -552,3 +552,26 @@ Production/rollback не запускаются без quiesced assertion; DB/vo
 Docker-backed проверки выполняет оператор VM по `docs/pgv13_release.md`;
 локальные doubles не сертификат образов. Новая operator boundary reviewed в
 AUTH-00, HTTP/DTO/OpenAPI/proxy неизменны. Полный manifest `scripts/pgv13release/files.txt`.
+
+## PGV-13-DOCUMENTS (20.11.2026), база dd6ce31 — P01/P02/jobs/OCR
+
+```bash
+python -m unittest discover -s tests/unit -p test_pgv13_accept.py -v
+# Real Tesseract + rus/eng data, отдельный opt-in control:
+python -m unittest scripts.pgv13accept.test_ocr -v
+# Только disposable PostgreSQL, CISSTAT_PGV13_CERT_DSN уже задан:
+python -m unittest scripts.pgv13accept.test_native -v
+```
+
+Default runner прежний. Host/Pillow/Tesseract dependencies и точные VM команды:
+`docs/pgv13_document_acceptance.md`. `verify_vm.py run` использует существующие
+pinned API/renderer images и dedicated candidate, создаёт только собственный
+internal network/PostgreSQL tmpfs/API-client. Real ASGI/AuthSession/CSRF/
+managed-worker/jobs/download проверяются на11 сценариях без production DB.
+OCR только из скачанных PNG, visual review — отдельное hash-bound подтверждение
+всех11 случаев; до него `p01_p02_accepted:false`. Whole `pgv13_certified:false`
+сохраняется; TCP PNG double в local native control не выдаётся за Chromium/UDS.
+AUTH-00: новая manual operator boundary, HTTP/worker methods/paths/DTO прежние.
+Новых runtime images/миграций production из-за этой поставки нет. Для staging
+только task files используйте `scripts/pgv13accept/files.txt`, затем обычный
+`python scripts/local_gates.py --only auth00 --skip-install`.

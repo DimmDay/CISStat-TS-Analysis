@@ -1,0 +1,39 @@
+test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download) ... FAIL
+
+======================================================================
+FAIL: test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/test_native.py", line 66, in test_real_postgres_auth_managed_jobs_and_download
+    self.assertEqual(result.returncode,0,result.stderr[-7000:]+result.stdout[-3000:])
+AssertionError: 1 != 0 : INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (118 утверждений)
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.identity:Run access: ALLOW run=RUN-A235DF69 action=write subject=ae30f818-2aeb-4f86-887c-4d16434bf1cb via=auth_session reason=account_member
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://pgv13-accept.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.identity:Run access: DENY run=RUN-A235DF69 action=write subject=31b2c294-8035-45eb-8c27-6bf8edbe2b3a via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: POST https://pgv13-accept.example/v1/documentation/runs/RUN-A235DF69/passport-documents "HTTP/1.1 404 Not Found"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET https://pgv13-accept.example/v1/auth/csrf "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST https://pgv13-accept.example/v1/documentation/runs/RUN-00000000/passport-documents "HTTP/1.1 404 Not Found"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/client.py", line 98, in run
+    return exercise(config)
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/client.py", line 206, in exercise
+    require(foreign_create.status_code==missing_create.status_code==404 and foreign_create.json()==missing_create.json(), 'Foreign/missing document creation must be uniform 404')
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/client.py", line 36, in require
+    raise AcceptanceFailure(message)
+scripts.pgv13accept.client.AcceptanceFailure: Foreign/missing document creation must be uniform 404
+
+
+----------------------------------------------------------------------
+Ran 1 test in 8.433s
+
+FAILED (failures=1)

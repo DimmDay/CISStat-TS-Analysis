@@ -1,0 +1,2 @@
+# Host-only image inspection; scientific/API dependencies stay in the pinned API image.
+Pillow>=10,<14

@@ -1,0 +1,21 @@
+test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison) ... ok
+test_foreign_runtime_source_rejected (test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected) ... ok
+test_production_dsn_rejected_before_any_connection (test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection) ... ok
+test_blank_png_is_not_visual_success (test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success) ... ok
+test_corrupt_png (test_pgv13_accept.OracleTests.test_corrupt_png) ... ok
+test_low_confidence_text_not_counted (test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted) ... ok
+test_missing_group_fails_ocr (test_pgv13_accept.OracleTests.test_missing_group_fails_ocr) ... ok
+test_missing_russian_language_is_not_skip_or_fallback (test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback) ... ok
+test_ocr_cyrillic_and_numbers_from_pixels (test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels) ... ok
+test_ocr_empty_or_malformed (test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed) ... ok
+test_ocr_outside_image (test_pgv13_accept.OracleTests.test_ocr_outside_image) ... ok
+test_review_rejects_pending_and_missing_case (test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case) ... ok
+test_review_requires_exact_report_and_images (test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images) ... ok
+test_transparent_png (test_pgv13_accept.OracleTests.test_transparent_png) ... ok
+test_valid_png (test_pgv13_accept.OracleTests.test_valid_png) ... ok
+test_wrong_profile (test_pgv13_accept.OracleTests.test_wrong_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 2.309s
+
+OK

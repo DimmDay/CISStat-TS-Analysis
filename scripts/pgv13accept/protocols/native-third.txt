@@ -1,0 +1,24 @@
+test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download) ... FAIL
+
+======================================================================
+FAIL: test_real_postgres_auth_managed_jobs_and_download (scripts.pgv13accept.test_native.NativeTests.test_real_postgres_auth_managed_jobs_and_download)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/test_native.py", line 66, in test_real_postgres_auth_managed_jobs_and_download
+    self.assertEqual(result.returncode,0,result.stderr[-7000:]+result.stdout[-3000:])
+AssertionError: 1 != 0 : Run access: DENY run=RUN-9AD450F0 action=write subject=512e373e-57d1-4882-aa5a-a15f20d432a2 via=auth_session reason=account_boundary
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/client.py", line 98, in run
+    return exercise(config)
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-ACCEPT/scripts/pgv13accept/client.py", line 214, in exercise
+    require(unavailable.status_code==409 and unavailable.json()['detail']['code']=='source_unavailable','Missing single source must be unavailable')
+                                             ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+KeyError: 'detail'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 6.983s
+
+FAILED (failures=1)

@@ -1,0 +1,24 @@
+test_all_dockerfiles_stamp_final_runtime_revision_and_tree (test_pgv13_release.ReleaseTests.test_all_dockerfiles_stamp_final_runtime_revision_and_tree) ... ok
+test_apply_and_rollback_require_explicit_quiesced_assertion (test_pgv13_release.ReleaseTests.test_apply_and_rollback_require_explicit_quiesced_assertion) ... {"passed": false, "error_type": "ValueError", "detail": "Drain jobs and assert --quiesced before publisher/service interruption", "pgv13_certified": false}
+{"passed": false, "error_type": "ValueError", "detail": "Drain jobs and assert --quiesced before publisher/service interruption", "pgv13_certified": false}
+ok
+test_baseline_snapshot_removes_platform_secrets_and_preserves_uds (test_pgv13_release.ReleaseTests.test_baseline_snapshot_removes_platform_secrets_and_preserves_uds) ... ok
+test_candidate_and_production_use_distinct_private_volumes (test_pgv13_release.ReleaseTests.test_candidate_and_production_use_distinct_private_volumes) ... ok
+test_descriptor_requires_three_immutable_images_one_source (test_pgv13_release.ReleaseTests.test_descriptor_requires_three_immutable_images_one_source) ... ok
+test_dirty_build_stops_before_docker_without_claiming_built (test_pgv13_release.ReleaseTests.test_dirty_build_stops_before_docker_without_claiming_built) ... ok
+test_explicit_ab_uses_new_image_without_querying_running_renderer (test_pgv13_release.ReleaseTests.test_explicit_ab_uses_new_image_without_querying_running_renderer) ... ok
+test_explicit_ab_wrong_labels_invalidate_stale_report_before_arms (test_pgv13_release.ReleaseTests.test_explicit_ab_wrong_labels_invalidate_stale_report_before_arms) ... ok
+test_generated_configs_keep_ipc_hardening_and_all_three_ids (test_pgv13_release.ReleaseTests.test_generated_configs_keep_ipc_hardening_and_all_three_ids) ... ok
+test_labels_and_inside_image_marker_must_match_descriptor (test_pgv13_release.ReleaseTests.test_labels_and_inside_image_marker_must_match_descriptor) ... ok
+test_new_ab_is_pinned_to_new_image_revision_tree_and_capacity (test_pgv13_release.ReleaseTests.test_new_ab_is_pinned_to_new_image_revision_tree_and_capacity) ... ok
+test_partial_switch_missing_service_requires_own_operation_journal (test_pgv13_release.ReleaseTests.test_partial_switch_missing_service_requires_own_operation_journal) ... ok
+test_readonly_check_never_recreates_or_stops_services (test_pgv13_release.ReleaseTests.test_readonly_check_never_recreates_or_stops_services) ... ok
+test_rollback_preserves_legacy_baseline_instead_of_inventing_ipc (test_pgv13_release.ReleaseTests.test_rollback_preserves_legacy_baseline_instead_of_inventing_ipc) ... ok
+test_stale_baseline_never_overwrites_an_unrelated_deployment (test_pgv13_release.ReleaseTests.test_stale_baseline_never_overwrites_an_unrelated_deployment) ... ok
+test_switch_order_and_failure_keep_an_explicit_partial_operation (test_pgv13_release.ReleaseTests.test_switch_order_and_failure_keep_an_explicit_partial_operation) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.019s
+
+OK
+{"passed": true}
