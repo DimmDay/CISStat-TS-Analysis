@@ -655,6 +655,21 @@
     "T08",
     "T12"
    ]
+  },
+  "ops.renderer_release": {
+   "observed": "OS/Docker operator CLI only: clean committed HEAD fence, matching image ID/revision/tree/inside-image markers, explicit new-image A/B and native candidate/recreate, private IPC layouts. Capture/check do not recreate services; apply/rollback require quiesced publishers, pinned baseline and record partial operations without DB or volume reset. Native Docker acceptance remains operator work.",
+   "target": "No HTTP/user authority granted. Preserve renderer hardening, prior IPC topology/images and durable AUTH-13/identity/financial state across service changes. Never reuse old-image sandbox evidence for a new image or treat up as readiness.",
+   "follow_up": [
+    "AUTH-00",
+    "AUTH-13",
+    "AUTH-CERT"
+   ],
+   "threats": [
+    "T08",
+    "T12",
+    "T13",
+    "T15"
+   ]
   }
  },
  "entries": {
@@ -8344,6 +8359,20 @@
    ],
    "canonical_operation": "renderer.ipc.deadline",
    "admission": "fixed configured endpoint only; helper cannot execute science or publish a rendition"
+  },
+  "internal_operation:pgv13.coordinated_release": {
+   "policy": "ops.renderer_release",
+   "stage": "platform",
+   "stage_namespace": "service",
+   "resource": "api/web/renderer images and dedicated IPC volumes",
+   "effects": [
+    "image_build",
+    "service_recreate",
+    "ipc_lifecycle",
+    "baseline_restore"
+   ],
+   "canonical_operation": "pgv13.release.operator",
+   "admission": "privileged host operator; immutable source/image/evidence/config checks; quiesced publisher assertion on apply/rollback; no DB/credential/financial writer"
   }
  },
  "extra_surfaces": [
@@ -9267,6 +9296,20 @@
      "symbol": "API read-only IPC mount"
     }
    ]
+  },
+  {
+   "id": "internal_operation:pgv13.coordinated_release",
+   "kind": "internal_operation",
+   "method": "CLI",
+   "path": "build/capture/prepare-ipc/check/apply/rollback, OS Docker access",
+   "operation": "pgv13.release",
+   "evidence": [
+    {
+     "source": "scripts/pgv13release/release.py",
+     "line": 415,
+     "symbol": "main"
+    }
+   ]
   }
  ],
  "reviewed_sources": [
@@ -9411,6 +9454,7 @@
   "docs/pgv13_fixes.md",
   "docs/pgv13_local_acceptance.md",
   "docs/pgv13_passport_documents.md",
+  "docs/pgv13_release.md",
   "docs/pgv13_sandbox_rollout.md",
   "docs/pgv13_uds_hotfix1.md",
   "docs/pgv13_uds_transport.md",
@@ -9552,6 +9596,7 @@
   "scripts/pgv13cert/verify.py",
   "scripts/pgv13local/cases.json",
   "scripts/pgv13local/verify.py",
+  "scripts/pgv13release/release.py",
   "scripts/pgv13sandbox/activate.py",
   "scripts/pgv13sandbox/probe.py",
   "scripts/pgv13sandbox/test_activate.py",
@@ -9601,6 +9646,7 @@
   "tests/unit/test_personal_demo_admin.py",
   "tests/unit/test_personal_demo_entry_pointer.py",
   "tests/unit/test_pgv13_local_gate.py",
+  "tests/unit/test_pgv13_release.py",
   "validation/engine.py"
  ]
 }

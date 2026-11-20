@@ -19,6 +19,7 @@
 
 FROM python:3.12-slim
 
+
 WORKDIR /app
 
 # UPLOAD-DB-7 (фаза C, S2/RP2): системный ODBC-стек для драйвера mssql+pyodbc.
@@ -300,6 +301,13 @@ RUN python -c "from apps.api.report_snapshot import ReportSnapshot; \
                data = render_snapshot_pdf(ReportSnapshot(snapshot_id='build-guard', research_run_id='build-guard')); \
                assert data[:5] == b'%PDF-' and len(data) > 500, 'PDF render produced invalid output'; \
                print('pdf render executable OK (DOCLOG-PDF-RENDER-DEPLOY-2):', len(data), 'bytes')"
+
+ARG CISSTAT_SOURCE_REVISION=unverified
+ARG CISSTAT_SOURCE_TREE=unverified
+LABEL org.opencontainers.image.revision=$CISSTAT_SOURCE_REVISION \
+      io.cisstat.source-tree=$CISSTAT_SOURCE_TREE
+RUN mkdir -p /usr/local/share/cisstat \
+    && printf '{"revision":"%s","tree":"%s"}\n' "$CISSTAT_SOURCE_REVISION" "$CISSTAT_SOURCE_TREE" > /usr/local/share/cisstat/build.json
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

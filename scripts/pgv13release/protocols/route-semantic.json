@@ -1,0 +1,10 @@
+{
+  "unchanged_existing_entries": 666,
+  "new_manual_operator_boundary": [
+    "internal_operation:pgv13.coordinated_release"
+  ],
+  "api": 284,
+  "renderer": 4,
+  "entries": 667,
+  "http_changes": []
+}

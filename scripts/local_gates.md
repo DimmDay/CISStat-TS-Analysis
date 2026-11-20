@@ -535,3 +535,20 @@ payload проходит compiled validation/SSR без дописывания �
 Runtime/маршруты/образы/DDL не меняются, source fingerprints карты обновлены.
 После применения ZIP: `git add --pathspec-from-file=scripts/pgv13local/files.txt`,
 затем штатный `python scripts/local_gates.py --only auth00 --skip-install`.
+
+## PGV-13-RELEASE (20.11.2026), база b27b62f — согласованный релиз
+
+```bash
+python -m unittest discover -s tests/unit -p test_pgv13_release.py -v
+python -m pytest scripts/pgv13sandbox scripts/pgv13uds/test_vm.py scripts/pgv13cert/test_deployment.py -q
+```
+
+Новый explicit host-operator tool `scripts/pgv13release/release.py` собирает три
+образа с revision/tree markers и immutable IDs, готовит pinned IPC overlays,
+сохраняет baseline и разделяет check/apply/rollback. Default runner не меняется.
+Новый A/B: explicit image/revision/tree/512 PID, старый1837bee8 report не подходит.
+Candidate/recreate native evidence привязано и к фактическому API image ID.
+Production/rollback не запускаются без quiesced assertion; DB/volumes не удаляются.
+Docker-backed проверки выполняет оператор VM по `docs/pgv13_release.md`;
+локальные doubles не сертификат образов. Новая operator boundary reviewed в
+AUTH-00, HTTP/DTO/OpenAPI/proxy неизменны. Полный manifest `scripts/pgv13release/files.txt`.

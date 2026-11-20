@@ -51,7 +51,8 @@ const {runProbeSmoke}=require('./apps/print-renderer/dist/apps/print-renderer/sr
  let smoke;
  try{smoke=await runProbeSmoke(worker)}catch(e){smoke={verdict:'failed',error:e.message}}
  finally{await worker.shutdown()}
- const report={isolation_ok:isolation_ok&&launch_verified,launch_verified,launch_flags,security:{uid:process.getuid(),NoNewPrivs:field('NoNewPrivs'),Seccomp:field('Seccomp'),CapEff:field('CapEff'),apparmor:fs.readFileSync('/proc/self/attr/current','utf8').trim(),root_write_blocked,mountns_blocked:!mountns.error&&mountns.status!==0},namespace:{status:namespace.status,error_code:namespace.error?.code??null,stderr:namespace.stderr?.slice(0,2000)},smoke};
+ const number=p=>{try{return Number(fs.readFileSync('/sys/fs/cgroup/'+p,'utf8').trim())}catch{return null}};
+ const report={limits:{pids_max:number('pids.max'),memory_max:number('memory.max')},isolation_ok:isolation_ok&&launch_verified,launch_verified,launch_flags,security:{uid:process.getuid(),NoNewPrivs:field('NoNewPrivs'),Seccomp:field('Seccomp'),CapEff:field('CapEff'),apparmor:fs.readFileSync('/proc/self/attr/current','utf8').trim(),root_write_blocked,mountns_blocked:!mountns.error&&mountns.status!==0},namespace:{status:namespace.status,error_code:namespace.error?.code??null,stderr:namespace.stderr?.slice(0,2000)},smoke};
  console.log('PGV13_SANDBOX_RESULT '+JSON.stringify(report));
  process.exitCode=report.isolation_ok&&smoke.verdict==='passed'?0:1;
 })().catch(e=>{console.error(e.message);process.exitCode=2});
@@ -81,13 +82,14 @@ def smoke_error_excerpt(error):
     return '\n'.join((fatal or lines[:2])[:4])[:1600]
 
 
-def run_arm(arm,image,profile):
+def run_arm(arm,image,profile,pids_limit=128):
+    if pids_limit not in (128,512):raise ValueError('Only reviewed finite PID budgets 128/512')
     name='cisstat-pgv13-probe-'+uuid4().hex
     args=['docker','run','--rm','--name',name,'--pull=never','--init',
           '--network=none','--user=10001:10001','--read-only','--cap-drop=ALL',
           '--security-opt=no-new-privileges:true','--security-opt=apparmor=docker-default',
           '--tmpfs=/tmp:rw,noexec,nosuid,size=512m,mode=1777','--shm-size=256m',
-          '--memory=2g','--pids-limit=128','--label=cisstat.pgv13sandbox.probe=true',
+          '--memory=2g','--pids-limit='+str(pids_limit),'--label=cisstat.pgv13sandbox.probe=true',
           '--env=HOME=/tmp','--env=CISSTAT_PRINT_RENDERER_HARD_TIMEOUT_S=60',
           '--env=CISSTAT_PRINT_RENDERER_MAX_CONCURRENT=2','--env=CISSTAT_PRINT_RENDERER_TMP_DIR=/tmp']
     if arm!='builtin': args.append('--security-opt=seccomp='+str(profile))
@@ -127,21 +129,36 @@ def docker_value(args):
     return result.stdout.strip()
 
 
-def main():
+def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,help='Optional JSON report (no environment dump)')
     parser.add_argument('--with-chroot',action='store_true',help='Add a fourth arm: namespace profile plus only chroot ALLOW')
-    opts=parser.parse_args()
+    parser.add_argument('--image',help='Explicit immutable new image; no running service required')
+    parser.add_argument('--expected-revision',help='Required with --image, exact OCI source revision')
+    parser.add_argument('--expected-tree',help='Required with --image, exact Git tree')
+    parser.add_argument('--pids-limit',type=int,choices=(128,512),default=128)
+    opts=parser.parse_args(argv)
     try:
         if opts.out:
             opts.out.write_text(json.dumps({'conclusion':'RUNNING','pgv13_certified':False})+'\n',encoding='utf-8')
         compose='apps/print-renderer/build/deployment/docker-compose.yml'
-        cid=docker_value(['compose','-f',compose,'ps','-q','print-renderer'])
-        if not cid or '\n' in cid: raise ValueError('Expected one running renderer container')
-        image=docker_value(['inspect','--format','{{.Image}}',cid])
-        if not re.fullmatch(r'sha256:[0-9a-f]{64}',image): raise ValueError('Expected immutable local image ID')
-        apparmor=docker_value(['inspect','--format','{{.AppArmorProfile}}',cid])
-        if apparmor!='docker-default': raise ValueError('Source AppArmor differs; no controlled comparison possible')
+        source_revision=None;source_tree=None
+        if opts.image:
+            if not re.fullmatch(r'sha256:[0-9a-f]{64}',opts.image):raise ValueError('Explicit image must be immutable')
+            if not all(re.fullmatch('[a-f0-9]{40}',v or '') for v in [opts.expected_revision,opts.expected_tree]):raise ValueError('Explicit image requires exact revision/tree')
+            template='{"id":{{json .Id}},"revision":{{json (index .Config.Labels "org.opencontainers.image.revision")}},"tree":{{json (index .Config.Labels "io.cisstat.source-tree")}}}'
+            meta=json.loads(docker_value(['image','inspect','--format',template,opts.image]))
+            if meta!={'id':opts.image,'revision':opts.expected_revision,'tree':opts.expected_tree}:raise ValueError('New-image revision/tree differs')
+            image=opts.image;source_revision=opts.expected_revision;source_tree=opts.expected_tree
+            apparmor='docker-default'
+        else:
+            if opts.expected_revision or opts.expected_tree:raise ValueError('Source identity requires explicit --image')
+            cid=docker_value(['compose','-f',compose,'ps','-q','print-renderer'])
+            if not cid or '\n' in cid: raise ValueError('Expected one running renderer container')
+            image=docker_value(['inspect','--format','{{.Image}}',cid])
+            if not re.fullmatch(r'sha256:[0-9a-f]{64}',image): raise ValueError('Expected immutable local image ID')
+            apparmor=docker_value(['inspect','--format','{{.AppArmorProfile}}',cid])
+            if apparmor!='docker-default': raise ValueError('Source AppArmor differs; no controlled comparison possible')
         base,changed=profiles()
         with tempfile.TemporaryDirectory(prefix='cisstat-pgv13-seccomp-') as temp:
             reference=Path(temp)/'reference.json';reference.write_text(json.dumps(base))
@@ -153,11 +170,12 @@ def main():
             rows=[]
             for arm,path in arms:
                 print('Running isolated arm: '+arm,flush=True)
-                rows.append(run_arm(arm,image,path))
+                rows.append(run_arm(arm,image,path,pids_limit=opts.pids_limit) if opts.pids_limit!=128 else run_arm(arm,image,path))
         conclusion=classify(rows)
         report={'kind':'disposable-container controlled diagnostic; NOT production acceptance',
                 'image_id':image,'apparmor':apparmor,'reference':json.loads((HERE/'vendor/source.json').read_text()),
-                'conclusion':conclusion,'pgv13_certified':False,'rows':rows}
+                'conclusion':conclusion,'pgv13_certified':False,'rows':rows,
+                'source_revision':source_revision,'source_tree':source_tree,'pids_limit':opts.pids_limit}
         encoded=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
         if opts.out:
             opts.out.write_text(encoded,encoding='utf-8')

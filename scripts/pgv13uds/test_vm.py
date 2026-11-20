@@ -97,6 +97,7 @@ def test_cli_candidate_checks_and_cleanup(tmp_path,monkeypatch):
     calls=[]
     def command(args,**kwargs):
         calls.append(args)
+        if args[:3]==['docker','image','inspect']:return 'sha256:'+'b'*64
         if 'inspect' in args:return json.dumps(meta())
         if 'logs' in args:return '\n'.join(json.dumps({'event':'render_cancelled','request_id':i}) for i in client_result()['cancel_request_ids'])
         if 'ps' in args:return 'candidate-cid'
@@ -111,6 +112,7 @@ def test_cli_candidate_checks_and_cleanup(tmp_path,monkeypatch):
     monkeypatch.setattr(V,'command',command);monkeypatch.setattr(V.subprocess,'run',run)
     assert V.main(['--renderer-project','candidate','--sandbox-report',str(evidence),'--api-image','api:candidate','--out',str(out)])==0
     result=json.loads(out.read_text())
+    assert result['api_image_id']=='sha256:'+'b'*64
     assert result['passed'] is True and result['pgv13_certified'] is False and result['lifetime_lock'] is True
     assert any(c[:3]==['docker','rm','-f'] and c[3].startswith('cisstat-uds-api-') for c in calls)
     client=next(c for c in calls if V.CLIENT in c)
@@ -121,3 +123,9 @@ def test_cli_candidate_checks_and_cleanup(tmp_path,monkeypatch):
 def test_inspect_template_uses_actual_docker_field_names():
     assert '.HostConfig.ReadonlyRootfs' in implementation().META
     assert '.HostConfig.ReadOnlyRootfs' not in implementation().META
+
+
+def test_release_profile_copy_is_compared_by_content(tmp_path):
+    V=implementation();copy=tmp_path/'release-seccomp.json';copy.write_bytes(V.PROFILE.read_bytes())
+    data=meta();data['SecurityOpt']=[s for s in data['SecurityOpt'] if not s.startswith('seccomp=')]+['seccomp='+str(copy)]
+    assert V.validate_renderer_meta(data)=='cisstat_renderer_ipc_candidate'

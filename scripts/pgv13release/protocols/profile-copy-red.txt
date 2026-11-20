@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1ab9947d7132/CISStat-PGV13-RELEASE
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.7, anyio-4.14.2
+collected 18 items / 17 deselected / 1 selected
+
+scripts/pgv13uds/test_vm.py F                                            [100%]
+
+=================================== FAILURES ===================================
+_______________ test_release_profile_copy_is_compared_by_content _______________
+scripts/pgv13uds/test_vm.py:131: in test_release_profile_copy_is_compared_by_content
+    assert V.validate_renderer_meta(data)=='cisstat_renderer_ipc_candidate'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13uds/verify_vm.py:47: in validate_renderer_meta
+    else:require(Path(sec[0]).resolve()==PROFILE.resolve(),'seccomp profile path differs')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/pgv13uds/verify_vm.py:31: in require
+    if not ok:raise ValueError(message)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: seccomp profile path differs
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED scripts/pgv13uds/test_vm.py::test_release_profile_copy_is_compared_by_content
+================= 1 failed, 17 deselected, 1 warning in 0.09s ==================

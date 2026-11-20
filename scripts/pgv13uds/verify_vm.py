@@ -44,7 +44,10 @@ def validate_renderer_meta(meta):
     require(len(sec)==1,'reviewed seccomp profile missing')
     if sec[0].lstrip().startswith('{'):
         require(json.loads(sec[0])==json.loads(PROFILE.read_text()),'seccomp content differs')
-    else:require(Path(sec[0]).resolve()==PROFILE.resolve(),'seccomp profile path differs')
+    else:
+        try:matches=json.loads(Path(sec[0]).read_text(encoding='utf-8'))==json.loads(PROFILE.read_text(encoding='utf-8'))
+        except (OSError,ValueError):matches=False
+        require(matches,'seccomp profile content differs')
     mounts=meta['Mounts']
     require(len(mounts)==1,'renderer extra mounts are forbidden')
     m=mounts[0]
@@ -184,6 +187,7 @@ def metrics_ok(before,after):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--renderer-project',required=True)
+    parser.add_argument('--api-project',default='cisstat-stack')
     parser.add_argument('--sandbox-report',type=Path,required=True)
     parser.add_argument('--api-image',help='Candidate mode: disposable API-image client; otherwise live cisstat-stack api')
     parser.add_argument('--previous-report',type=Path,help='Require successful acceptance across a deliberate renderer recreate')
@@ -220,13 +224,15 @@ def main(argv=None):
         report.update(before=before,phase='api_png_roundtrip')
         payloads=command(compose+['exec','-T','print-renderer','node','-e',EXPORT_SCENARIOS])
         if args.api_image:
+            report['api_image_id']=command(['docker','image','inspect','--format','{{.Id}}',args.api_image])
+            require(re.fullmatch('sha256:[a-f0-9]{64}',report['api_image_id']),'candidate API image ID malformed')
             disposable_name='cisstat-uds-api-'+uuid.uuid4().hex
             api=['docker','run','--rm','--name',disposable_name,'-i','--pull=never','--network=none','--read-only','--cap-drop=ALL','--security-opt=no-new-privileges:true',
                  '--group-add=10001','--memory=512m','--pids-limit=32',
                  '--mount','type=volume,source='+volume+',target=/run/cisstat-renderer,readonly,volume-nocopy',
                  '--env','CISSTAT_PNG_RENDERER_IPC='+SOCKET,'--env','CISSTAT_PNG_RENDERER_ENABLED=1',args.api_image,'python','-c',CLIENT]
         else:
-            api_compose=['docker','compose','-p','cisstat-stack','--project-directory','deployment/cisstat-stack','-f','deployment/cisstat-stack/docker-compose.yml','-f','deployment/cisstat-stack/docker-compose.renderer-uds.yml']
+            api_compose=['docker','compose','-p',args.api_project,'--project-directory','deployment/cisstat-stack','-f','deployment/cisstat-stack/docker-compose.yml','-f','deployment/cisstat-stack/docker-compose.renderer-uds.yml']
             api_cid=command(api_compose+['ps','-q','api'])
             require(bool(api_cid) and '\n' not in api_cid,'expected one live API')
             api_meta=json.loads(command(['docker','inspect','--format',META,api_cid]))

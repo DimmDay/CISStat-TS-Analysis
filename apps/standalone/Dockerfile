@@ -57,6 +57,7 @@ RUN npm run build --workspace=@cisstat/ts-analysis-standalone
 # --------------------------------------------------------------- runtime ---
 FROM node:22-bookworm-slim
 
+
 WORKDIR /repo
 ENV NODE_ENV=production
 
@@ -94,6 +95,13 @@ RUN node -e "console.log('next', require('./node_modules/next/package.json').ver
 
 # AUTH-06-OPS hotfix (2026-11-04): npm run --workspace читает КОРНЕВОЙ package.json
 RUN node -e 'const m=require("/repo/package.json"); if(!Array.isArray(m.workspaces)||!m.workspaces.includes("apps/standalone")) throw new Error("workspace apps/standalone not declared"); console.log("root manifest OK (npm --workspace runnable)")'
+
+ARG CISSTAT_SOURCE_REVISION=unverified
+ARG CISSTAT_SOURCE_TREE=unverified
+LABEL org.opencontainers.image.revision=$CISSTAT_SOURCE_REVISION \
+      io.cisstat.source-tree=$CISSTAT_SOURCE_TREE
+RUN mkdir -p /usr/local/share/cisstat \
+    && printf '{"revision":"%s","tree":"%s"}\n' "$CISSTAT_SOURCE_REVISION" "$CISSTAT_SOURCE_TREE" > /usr/local/share/cisstat/build.json
 
 EXPOSE 3000
 

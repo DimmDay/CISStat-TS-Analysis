@@ -42,6 +42,13 @@ RUN mkdir -p /run/cisstat-renderer \
 COPY --chmod=0555 apps/print-renderer/build/entrypoint.sh /usr/local/bin/cisstat-print-renderer
 COPY --from=production-deps /app/node_modules/ /app/node_modules/
 COPY --from=compiler /app/apps/print-renderer/dist/ /app/apps/print-renderer/dist/
+ARG CISSTAT_SOURCE_REVISION=unverified
+ARG CISSTAT_SOURCE_TREE=unverified
+LABEL org.opencontainers.image.revision=$CISSTAT_SOURCE_REVISION \
+      io.cisstat.source-tree=$CISSTAT_SOURCE_TREE
+RUN mkdir -p /usr/local/share/cisstat \
+    && printf '{"revision":"%s","tree":"%s"}\n' "$CISSTAT_SOURCE_REVISION" "$CISSTAT_SOURCE_TREE" > /usr/local/share/cisstat/build.json
+
 USER 10001:10001
 EXPOSE 8907
 HEALTHCHECK --interval=30s --timeout=15s --start-period=20s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:8907/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

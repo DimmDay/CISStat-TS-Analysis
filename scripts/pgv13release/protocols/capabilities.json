@@ -1,0 +1,8 @@
+{
+  "docker_cli": null,
+  "podman_cli": null,
+  "native_docker_builds": "NOT RUN",
+  "new_image_ab": "NOT RUN",
+  "vm_actions": "NONE",
+  "git_base": "b27b62fed02e89c505b88b2cc749520e8e7e115e"
+}

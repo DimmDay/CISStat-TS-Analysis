@@ -1,0 +1,53 @@
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 667, "added": [], "missing": []}
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python -m unittest discover -s tests/unit -p test_pgv13_release.py -v
+test_all_dockerfiles_stamp_final_runtime_revision_and_tree (test_pgv13_release.ReleaseTests.test_all_dockerfiles_stamp_final_runtime_revision_and_tree) ... ok
+test_apply_and_rollback_require_explicit_quiesced_assertion (test_pgv13_release.ReleaseTests.test_apply_and_rollback_require_explicit_quiesced_assertion) ... {"passed": false, "error_type": "ValueError", "detail": "Drain jobs and assert --quiesced before publisher/service interruption", "pgv13_certified": false}
+{"passed": false, "error_type": "ValueError", "detail": "Drain jobs and assert --quiesced before publisher/service interruption", "pgv13_certified": false}
+ok
+test_baseline_snapshot_removes_platform_secrets_and_preserves_uds (test_pgv13_release.ReleaseTests.test_baseline_snapshot_removes_platform_secrets_and_preserves_uds) ... ok
+test_candidate_and_production_use_distinct_private_volumes (test_pgv13_release.ReleaseTests.test_candidate_and_production_use_distinct_private_volumes) ... ok
+test_descriptor_requires_three_immutable_images_one_source (test_pgv13_release.ReleaseTests.test_descriptor_requires_three_immutable_images_one_source) ... ok
+test_dirty_build_stops_before_docker_without_claiming_built (test_pgv13_release.ReleaseTests.test_dirty_build_stops_before_docker_without_claiming_built) ... ok
+test_explicit_ab_uses_new_image_without_querying_running_renderer (test_pgv13_release.ReleaseTests.test_explicit_ab_uses_new_image_without_querying_running_renderer) ... ok
+test_explicit_ab_wrong_labels_invalidate_stale_report_before_arms (test_pgv13_release.ReleaseTests.test_explicit_ab_wrong_labels_invalidate_stale_report_before_arms) ... ok
+test_generated_configs_keep_ipc_hardening_and_all_three_ids (test_pgv13_release.ReleaseTests.test_generated_configs_keep_ipc_hardening_and_all_three_ids) ... ok
+test_labels_and_inside_image_marker_must_match_descriptor (test_pgv13_release.ReleaseTests.test_labels_and_inside_image_marker_must_match_descriptor) ... ok
+test_new_ab_is_pinned_to_new_image_revision_tree_and_capacity (test_pgv13_release.ReleaseTests.test_new_ab_is_pinned_to_new_image_revision_tree_and_capacity) ... ok
+test_partial_switch_missing_service_requires_own_operation_journal (test_pgv13_release.ReleaseTests.test_partial_switch_missing_service_requires_own_operation_journal) ... ok
+test_readonly_check_never_recreates_or_stops_services (test_pgv13_release.ReleaseTests.test_readonly_check_never_recreates_or_stops_services) ... ok
+test_rollback_preserves_legacy_baseline_instead_of_inventing_ipc (test_pgv13_release.ReleaseTests.test_rollback_preserves_legacy_baseline_instead_of_inventing_ipc) ... ok
+test_stale_baseline_never_overwrites_an_unrelated_deployment (test_pgv13_release.ReleaseTests.test_stale_baseline_never_overwrites_an_unrelated_deployment) ... ok
+test_switch_order_and_failure_keep_an_explicit_partial_operation (test_pgv13_release.ReleaseTests.test_switch_order_and_failure_keep_an_explicit_partial_operation) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.014s
+
+OK
+{"passed": true}
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python -m pytest scripts/pgv13sandbox scripts/pgv13uds/test_vm.py scripts/pgv13cert/test_deployment.py -q --basetemp=/workspace/scratch/1ab9947d7132/pgv13release-overlay-tests
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1ab9947d7132/PGV13-release-overlay
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.7, anyio-4.14.2
+collected 72 items
+
+scripts/pgv13sandbox/test_activate.py ........................           [ 33%]
+scripts/pgv13sandbox/test_probe.py ..............                        [ 52%]
+scripts/pgv13sandbox/test_verify_service.py ............                 [ 69%]
+scripts/pgv13uds/test_vm.py ..................                           [ 94%]
+scripts/pgv13cert/test_deployment.py ....                                [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 72 passed, 1 warning in 1.12s =========================

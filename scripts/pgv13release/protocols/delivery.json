@@ -1,0 +1,23 @@
+{
+  "base": "b27b62fed02e89c505b88b2cc749520e8e7e115e",
+  "actual_zip_clean_overlay": "PASS",
+  "CRC_manifest_each_byte": "PASS",
+  "strict_index": "PASS 602",
+  "CRLF_INDEX_LF_WORKTREE": [
+    "apps/api/Dockerfile",
+    "apps/standalone/Dockerfile",
+    "apps/print-renderer/build/Dockerfile",
+    "scripts/pgv13release/release.py",
+    "scripts/pgv13sandbox/probe.py",
+    "scripts/pgv13uds/verify_vm.py"
+  ],
+  "actual_routes": "PASS 284 API / 288 bindings / 667 entries",
+  "release_units": "PASS 16",
+  "regression": "PASS 72",
+  "source_index_sha256_before_after": "480714e8623706fe61479801204bd036e7fcea65f095d35ef7359892d52e4985",
+  "staged_diff": "EMPTY",
+  "native_Docker_builds": "NOT RUN - no Docker",
+  "new_image_AB": "PENDING VM",
+  "production_switch_rollback": "PENDING VM",
+  "commits_push_VM_actions": "NONE"
+}

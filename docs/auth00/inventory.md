@@ -13,7 +13,7 @@
 |---|---:|
 | api | 284 |
 | framework | 8 |
-| internal_operation | 37 |
+| internal_operation | 38 |
 | legacy_authority | 1 |
 | legacy_widget | 250 |
 | page | 41 |
@@ -60,6 +60,7 @@
 | legacy.token | Legacy shared-token entry + session_state.authenticated gate; pre-auth form отдельно отмечена в resource/effects. Не личная Account authority. | Explicit isolation/decommission or migrate to common AuthN/object/capability/budget controls; no paid/demo bypass. | AUTH-03, AUTH-11, AUTH-20 |
 | logs.scoped | Manual compatibility adapter now passes the real Request into AUTH-03 coordinator; same invalid-key/ambiguity/authority semantics; scopes/SupportGrant exact-pair policy retained. | Unified AuthN without losing exact tenant/run/action pairs; admin MFA and support scope policy; secret-safe exports. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | ops.diagnostics | /health/ops без AuthN; безопасная проекция технического состояния. | Private ops/service или platform permission; не раскрывать конфигурацию/секреты. | AUTH-03, AUTH-20 |
+| ops.renderer_release | OS/Docker operator CLI only: clean committed HEAD fence, matching image ID/revision/tree/inside-image markers, explicit new-image A/B and native candidate/recreate, private IPC layouts. Capture/check do not recreate services; apply/rollback require quiesced publishers, pinned baseline and record partial operations without DB or volume reset. Native Docker acceptance remains operator work. | No HTTP/user authority granted. Preserve renderer hardening, prior IPC topology/images and durable AUTH-13/identity/financial state across service changes. Never reuse old-image sandbox evidence for a new image or treat up as readiness. | AUTH-00, AUTH-13, AUTH-CERT |
 | profile.policy | AUTH-03 shared context subject + existing OrgProfileService policy.admin/mandatory audit. Named MFA policy remains AUTH-05/07. | Unified context + explicit policy admin permission/MFA; preserve tenant and mandatory transaction semantics. | AUTH-03, AUTH-05, AUTH-07, AUTH-20 |
 | progress.session | AUTH-11 common scientific/research guard in required/scoped profile; current named Account/object admission, safe preparse refusal, existing CSRF; surrogate only dev compatibility. Service metadata remain object/history protected; actual scientific operations use the functional registry and engine fences. | Unified account context; сохранить object/mirror проверки, ограничить admission/observations. | AUTH-03, AUTH-09 |
 | proxy.transport | AUTH-06 shared force-dynamic Node proxy: fixed TLS target, exact configured Origin/Fetch Metadata/CSRF before forwarding, generated method/path allowlist, identity/forwarded headers stripped, explicit cookie/header forwarding, no redirect/no-store. Backend remains authority. GET restore blocked. | Scientific ownership/enforcement remains AUTH-09/11; maintain reviewed allowlist. | AUTH-09, AUTH-11 |
@@ -415,6 +416,7 @@
 | execution:worker.publication | execution:worker.publication / service:platform | worker.authority / atomic current-access result projection, settlement and audit | apps/api/workers/authority.py:585 |
 | execution:worker.reconciliation | execution:worker.reconciliation / service:platform | worker.authority / unknown worker outcomes and retained reservation holds | apps/api/workers/authority.py:744 |
 | execution:worker.service | execution:worker.service / service:platform | worker.authority / opaque worker service credential and allowed worker kind | apps/api/workers/services.py:23 |
+| internal_operation:pgv13.coordinated_release | pgv13.release / service:platform | ops.renderer_release / api/web/renderer images and dedicated IPC volumes | scripts/pgv13release/release.py:415 |
 | personal_demo.enroll | personal_demo.enroll / service:platform | auth.personal_trial / verified identity own MONO starter account | apps/api/authentication/personal_demo.py:77 |
 | scientific.admission | scientific.admission / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:186 |
 | scientific.execution | scientific.execution / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:379 |

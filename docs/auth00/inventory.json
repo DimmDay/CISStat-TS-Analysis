@@ -5,7 +5,7 @@
   "counts": {
     "api": 284,
     "framework": 8,
-    "internal_operation": 37,
+    "internal_operation": 38,
     "legacy_authority": 1,
     "legacy_widget": 250,
     "page": 41,
@@ -671,6 +671,21 @@
         "T08",
         "T12"
       ]
+    },
+    "ops.renderer_release": {
+      "observed": "OS/Docker operator CLI only: clean committed HEAD fence, matching image ID/revision/tree/inside-image markers, explicit new-image A/B and native candidate/recreate, private IPC layouts. Capture/check do not recreate services; apply/rollback require quiesced publishers, pinned baseline and record partial operations without DB or volume reset. Native Docker acceptance remains operator work.",
+      "target": "No HTTP/user authority granted. Preserve renderer hardening, prior IPC topology/images and durable AUTH-13/identity/financial state across service changes. Never reuse old-image sandbox evidence for a new image or treat up as readiness.",
+      "follow_up": [
+        "AUTH-00",
+        "AUTH-13",
+        "AUTH-CERT"
+      ],
+      "threats": [
+        "T08",
+        "T12",
+        "T13",
+        "T15"
+      ]
     }
   },
   "source_fingerprints": {
@@ -689,7 +704,7 @@
     "app/data/db_guard.py": "25bf65a2a7144aa625e903753d558bd6cbe673f944a852a296adaa41ce115e55",
     "app/data/file_loader.py": "9745171a39c7b4382f2331cd42031ed86161ff0d94058ba24086928ae6270b2d",
     "app/eda/structural_breaks.py": "285093ac3c96e1cf317db399fb2287658faae4d9c5546090d05877cfd357e76a",
-    "apps/api/Dockerfile": "eb5e15481b174e296bfc0513d9b72de1feeb7eac83d5e302064f73a34f7a4429",
+    "apps/api/Dockerfile": "dfb389007453de65743d40c414ceae2fc3dd898f918b5b50bb302c86513484cd",
     "apps/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "apps/api/access_registry.py": "85310db1dbce5734414f0550ab84dd9a7d9e647b4b25c2e6ea1fbed9c45d1cbe",
     "apps/api/access_registry.v1.json": "86151f6bb2a3cf608a1adffd999d9eba929c55ab79a16762703839414f663eb0",
@@ -983,7 +998,7 @@
     "apps/print-renderer/src/socketTransport.test.ts": "f6b61a54b5f4d52fa3c34d86416a361a3f733e26589b01533e8857f93a1e46f3",
     "apps/print-renderer/src/socketTransport.ts": "51a524136021fb04ded0c1b5ecc30e86e88987bb32f60802e1e1f8ddfc20b34e",
     "apps/print-renderer/src/transportCancel.test.ts": "86908cae19ec4b4a49f93e5f79acaaf93b68e14c74a1d3232a63e0901a869ac5",
-    "apps/standalone/Dockerfile": "d2b108ef99eab2bd70392fc5eaafcd4acdc0de92717d1728fd5f4ada496a8d46",
+    "apps/standalone/Dockerfile": "466553f39d98e77bdf9bf78da95f061cd33e087e8184aa5f1cea4558268baded",
     "apps/standalone/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
     "apps/standalone/app/admin/demo-campaigns/page.tsx": "0e12399e1d1e2435922e79792a1d1a970cb2cadcc1a5a79080f86b351b7ae031",
     "apps/standalone/app/admin/logs/page.tsx": "f2fd61c5f02449ed54c606f56dce77f5fda5c5f22bf945fdcc4278802e98a0fc",
@@ -1043,6 +1058,7 @@
     "docs/pgv13_fixes.md": "dcd6162975e857e862df727616fb3c6842d1a241b84f96e6ccecffe95bc834e5",
     "docs/pgv13_local_acceptance.md": "56a8bd2d6b9e11ce4bbf683452c26c61ac3d40bc6acd231e42bf5284da20377d",
     "docs/pgv13_passport_documents.md": "dfecc321e53a264082388ac7cde9ea36bc1454954a3574dfcf09e3a0185eb561",
+    "docs/pgv13_release.md": "d4dd50e9587fcb61d8f10982ad306d57f42117da608c88d02f50fd83ff1129bd",
     "docs/pgv13_sandbox_rollout.md": "94b3a2638bee535ed4cd059e5a25e2cdb6fe929f92d337453f1e9c59bd2e21cc",
     "docs/pgv13_uds_hotfix1.md": "0459a0213c0e5cc5473974e8e3dbc11426d4127d7600d816aea8ec913558fb3f",
     "docs/pgv13_uds_transport.md": "7a8c8ecf7d67779e91f81b4826953b55e8f875ee5e7d4c554296684371bc33db",
@@ -1170,7 +1186,7 @@
     "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
     "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
     "scripts/email_upload_fix/demo_files.js": "68f93512bb115a3b6d9f874128f324f1120c8ebe8b9a3e5e51e24dfd53be82f7",
-    "scripts/local_gates.md": "aa072b05734eb6cac0506187b645379449f2cf6df838e658e87cb423bd84b13e",
+    "scripts/local_gates.md": "748b9c245486b76b74776b50e4980630c1a74e73046305116c0409dbfb2a69bc",
     "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
@@ -1185,8 +1201,9 @@
     "scripts/pgv13cert/verify.py": "ae4f7d52b10d8dcf3acbcad7d95456ee648539da6ca095e4d81b73e84dd18c5c",
     "scripts/pgv13local/cases.json": "a6315249307364219c2ab4ea906739d5c0810f63f2a05f76d901393c3b403098",
     "scripts/pgv13local/verify.py": "adea9c348cbb6be0d022c338361d6c9fed89c8b6e0b3f1149c396b4bdbe01be3",
+    "scripts/pgv13release/release.py": "47db073c693e7468c3a5ee12edbae4a79c14accf1a13acd62f78ade5062f99f1",
     "scripts/pgv13sandbox/activate.py": "73d41b355bf941315f190da2146b2efd131fa0503a0d2191cef275249898d9f8",
-    "scripts/pgv13sandbox/probe.py": "71741706da2cf6e1b0e3dd5871f1487cb205cdddde304c6babc618a73693822c",
+    "scripts/pgv13sandbox/probe.py": "d36e07013ed3a0856355093a5252d421784ef956993cef95b0f99e97a8ee5eb5",
     "scripts/pgv13sandbox/test_activate.py": "ec0a6a2b28c0622575b149a33ced93b966d3154cf3dcd31bff8ee652ddb5965d",
     "scripts/pgv13sandbox/test_probe.py": "423ea1341f4bcc28042b16251404fc06e0c467ecdc323ffb12c1f9d0bc3fd16b",
     "scripts/pgv13sandbox/test_verify_service.py": "ab62764e98b2337ea1f900183a0fb462cc229bd09d8ca21f400314e243e0af4b",
@@ -1195,8 +1212,8 @@
     "scripts/pgv13sandbox/verify_service.py": "8888b1f176ff32d13dfd581c16c855ce01643d1df69a8a39b19afef8e59a66ae",
     "scripts/pgv13uds/hotfix1/verify_contract.py": "cde5baf2b22a2562b1a453824b7bd70c292167518ea529ad1879ced72c2d39e2",
     "scripts/pgv13uds/test_client.py": "f54795f77e7b8651b3a5f037abc39df9f03f30eee6b87059339bab5a88986dc8",
-    "scripts/pgv13uds/test_vm.py": "bc497797e0da9f805be27c6ded777287bcd0203ab3d9dbf5be66aa7bdb3ceed7",
-    "scripts/pgv13uds/verify_vm.py": "1eaed248038c26796739ce3132d8ecf45b309d492ea0a81c46d88a0cbf6339cb",
+    "scripts/pgv13uds/test_vm.py": "fcf118a04767ae15d758ee48327c0ceb9de77f5f1bba14a507fb9364dbd3d4eb",
+    "scripts/pgv13uds/verify_vm.py": "c5ca6ce6ffe9a18965a533b422b69c7981c7526710ab2e1cc14b4611666f7d7e",
     "scripts/pgv13vm/test_diagnose.py": "a076b9500e18e2813d81a56654431e2b7a112dfb056c6c828bd56313c739194f",
     "spec_auth.md": "d72c4ee23293d126aadbfd65ab410262af032ef8560f2fc9c14ee7b82fb8596a",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
@@ -1234,6 +1251,7 @@
     "tests/unit/test_personal_demo_admin.py": "26db032d88c09cf264043cc7b2f4f7b74d315a4c30b1ad72696d2d0910b03de9",
     "tests/unit/test_personal_demo_entry_pointer.py": "6ae17f273d6d4e523ba2d0049018112e3beb1684b880b65d8bf001a52bb5bd41",
     "tests/unit/test_pgv13_local_gate.py": "4168cf57746f1bda567e933b6108db85a267fa25bac27982d3b68e3b7b83c9cb",
+    "tests/unit/test_pgv13_release.py": "400828a4f2d7176b2f6bd683c14a54019e423af52b76813bbbec80bf04b72ce4",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -12854,6 +12872,33 @@
       ],
       "canonical_operation": "execution:worker.subprocess",
       "admission": "AUTH-13 service kind/current delegation/object/fence; unknown outcomes hold; no public writer"
+    },
+    {
+      "id": "internal_operation:pgv13.coordinated_release",
+      "kind": "internal_operation",
+      "method": "CLI",
+      "path": "build/capture/prepare-ipc/check/apply/rollback, OS Docker access",
+      "operation": "pgv13.release",
+      "evidence": [
+        {
+          "source": "scripts/pgv13release/release.py",
+          "line": 415,
+          "symbol": "main"
+        }
+      ],
+      "discovery": "manual-reviewed",
+      "policy": "ops.renderer_release",
+      "stage": "platform",
+      "stage_namespace": "service",
+      "resource": "api/web/renderer images and dedicated IPC volumes",
+      "effects": [
+        "image_build",
+        "service_recreate",
+        "ipc_lifecycle",
+        "baseline_restore"
+      ],
+      "canonical_operation": "pgv13.release.operator",
+      "admission": "privileged host operator; immutable source/image/evidence/config checks; quiesced publisher assertion on apply/rollback; no DB/credential/financial writer"
     },
     {
       "id": "legacy:app.py:10025:button",
