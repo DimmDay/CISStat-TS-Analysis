@@ -4,9 +4,11 @@ from datetime import datetime
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unicodedata
 
 from PIL import Image
@@ -15,6 +17,8 @@ from scripts.pgv13uds.verify_vm import png_checks
 GEOMETRY = {'figure-landscape': (2400, 1500), 'a4-portrait': (2480, 3508),
             'a4-landscape': (3508, 2480)}
 REVIEW_CHECKS = ('legible', 'cyrillic_correct', 'no_overlap', 'no_clipping', 'values_and_reasons_correct')
+OCR_PIPELINE = 'pgv13.pixel_bands_bilingual/1'
+OCR_MAX_PIXELS = 24_000_000
 
 
 def require(ok, message):
@@ -51,6 +55,86 @@ def check_png(data, profile):
 def normalized(text):
     text = unicodedata.normalize('NFKC', text).casefold().replace('ё', 'е').replace('_',' ')
     return ' '.join(re.findall(r'[\w]+', text, flags=re.UNICODE))
+
+
+def recognize_png(path, executable='tesseract'):
+    """Recognize every ink band once, with no payload/expected-text input.
+
+    Split only on >=64 entirely ink-free rows, retaining the distant footer.
+    Disjoint crops prevent duplicate words/counts. Upscaling helps segmentation
+    of small source glyphs; it is not evidence of human print legibility.
+    """
+    raw = Path(path).read_bytes()
+    with Image.open(io.BytesIO(raw)) as opened:
+        source = opened.convert('RGB')
+    ink = source.convert('L').point(lambda p: 255 if p < 200 else 0)
+    _, rows = ink.getprojection()
+    occupied = [y for y, value in enumerate(rows) if value]
+    require(occupied, 'OCR source contains no ink')
+    bands = []
+    start = last = occupied[0]
+    for y in occupied[1:]:
+        if y-last > 64:
+            bands.append((start,last+1))
+            start = y
+        last = y
+    bands.append((start,last+1))
+    fields = ['left','top','width','height','conf','text']
+    outputs = {language:io.StringIO() for language in ('rus+eng','eng')}
+    writers = {language:csv.DictWriter(output,fields,delimiter='\t',lineterminator='\n')
+               for language,output in outputs.items()}
+    for writer in writers.values():
+        writer.writeheader()
+    regions = []
+    with tempfile.TemporaryDirectory(prefix='pgv13-pixel-ocr-') as temp:
+        for index,(top,bottom) in enumerate(bands):
+            left,_,right,_ = ink.crop((0,top,source.width,bottom)).getbbox()
+            box = (max(0,left-8), max(0,top-8), min(source.width,right+8), min(source.height,bottom+8))
+            crop = source.crop(box)
+            scale = next(n for n in (3,2,1) if crop.width*crop.height*n*n <= OCR_MAX_PIXELS)
+            crop = crop.resize((crop.width*scale,crop.height*scale),Image.Resampling.LANCZOS)
+            target = Path(temp)/(str(index)+'.png')
+            crop.save(target,format='PNG',dpi=(300*scale,300*scale))
+            raw_hashes = {}
+            for language,writer in writers.items():
+                text = capture([executable,str(target),'stdout','-l',language,'--psm','6',
+                                '-c','tessedit_create_tsv=1'])
+                raw_hashes[language] = sha(text.encode())
+                reader = csv.DictReader(io.StringIO(text),delimiter='\t')
+                require(reader.fieldnames and set(fields) <= set(reader.fieldnames),'OCR TSV is malformed')
+                for row in reader:
+                    if not (row.get('text') or '').strip():
+                        continue
+                    try:
+                        x,y,w,h = (int(row[k]) for k in fields[:4])
+                        conf = float(row['conf'])
+                    except (ValueError,TypeError,KeyError):
+                        raise ValueError('OCR TSV contains malformed word geometry') from None
+                    require(math.isfinite(conf) and x>=0 and y>=0 and w>0 and h>0 and
+                            x+w<=crop.width and y+h<=crop.height,'OCR crop word bounds failure')
+                    # Enclose the recognized pixels in original PNG coordinates.
+                    ox,oy = box[0]+x//scale, box[1]+y//scale
+                    ex,ey = box[0]+math.ceil((x+w)/scale), box[1]+math.ceil((y+h)/scale)
+                    writer.writerow(dict(zip(fields,[ox,oy,ex-ox,ey-oy,row['conf'],row['text']])))
+            regions.append({'box':list(box),'scale':scale,'input_sha256':sha(target.read_bytes()),
+                            'raw_tsv_sha256':raw_hashes})
+    return {'pipeline':OCR_PIPELINE,'source_sha256':sha(raw),'regions':regions,
+            'tsv':outputs['rus+eng'].getvalue(),'latin_tsv':outputs['eng'].getvalue()}
+
+
+def check_document_ocr(tsv, latin_tsv, needles, numbers, size, counts=None):
+    """Fixed script routing, never combine words to complete a missing phrase.
+
+    Tesseract's Russian model reads Latin FFT as Cyrillic ЕЕТ with confidence.
+    ASCII labels are therefore checked in the independent English pixel pass;
+    Russian/mixed phrases, numbers and occurrence counts use rus+eng only.
+    """
+    latin = lambda text: bool(re.search('[A-Za-z]',text)) and not re.search('[А-Яа-яЁё]',text)
+    result = check_ocr(tsv,[s for s in needles if not latin(s)],numbers,size,
+                       {s:n for s,n in (counts or {}).items() if not latin(s)})
+    result['latin'] = check_ocr(latin_tsv,[s for s in needles if latin(s)],[],size,
+                               {s:n for s,n in (counts or {}).items() if latin(s)})
+    return result
 
 
 def check_ocr(tsv, needles, numbers, size, counts=None):

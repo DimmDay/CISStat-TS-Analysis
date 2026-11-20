@@ -1,0 +1,9 @@
+test_real_russian_pixels_and_missing_content_control (scripts.pgv13accept.test_ocr.OCRTests.test_real_russian_pixels_and_missing_content_control) ... ok
+test_small_bilingual_source_pixels_sparse_page_and_exact_counts (scripts.pgv13accept.test_ocr.OCRTests.test_small_bilingual_source_pixels_sparse_page_and_exact_counts) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.707s
+
+OK
+{"oracle_control": "PASS", "tesseract": {"version": "tesseract 5.5.0", "languages": ["rus", "eng"], "traineddata_sha256": {"rus": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225", "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"}, "input": "downloaded PNG pixels; no HTML text layer"}, "product_chromium_acceptance": false}
+{"small_bilingual_pixel_control": "PASS", "product_chromium_acceptance": false}

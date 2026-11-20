@@ -9350,7 +9350,7 @@
    "evidence": [
     {
      "source": "scripts/pgv13accept/verify_vm.py",
-     "line": 362,
+     "line": 374,
      "symbol": "main"
     }
    ]
@@ -9501,6 +9501,7 @@
   "docs/pgv13_document_acceptance.md",
   "docs/pgv13_fixes.md",
   "docs/pgv13_local_acceptance.md",
+  "docs/pgv13_ocr_fix.md",
   "docs/pgv13_passport_documents.md",
   "docs/pgv13_release.md",
   "docs/pgv13_sandbox_rollout.md",
@@ -9702,6 +9703,7 @@
   "tests/unit/test_pgv13_accept.py",
   "tests/unit/test_pgv13_image_assets.py",
   "tests/unit/test_pgv13_local_gate.py",
+  "tests/unit/test_pgv13_ocr_pipeline.py",
   "tests/unit/test_pgv13_release.py",
   "validation/engine.py"
  ]

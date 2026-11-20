@@ -22,7 +22,7 @@ CASES = [
     {'id':'p02-missing','kind':'compare-missing','profile':'a4-portrait'},
 ]
 GROUPS = ['Базовые статистики','Частота ряда','Стационарность','Детерминированность',
-          'Автокорреляция','Тренд','Сезонность','Сезонные периоды','FFT','Вейвлет']
+          'Автокорреляция','Тренд','Сезонность','seasonal_periods','FFT','Вейвлет']
 ORIGIN = 'https://pgv13-accept.example'
 CURRENT_CASE = 'setup'
 

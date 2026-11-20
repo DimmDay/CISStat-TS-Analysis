@@ -418,7 +418,7 @@
 | execution:worker.reconciliation | execution:worker.reconciliation / service:platform | worker.authority / unknown worker outcomes and retained reservation holds | apps/api/workers/authority.py:744 |
 | execution:worker.service | execution:worker.service / service:platform | worker.authority / opaque worker service credential and allowed worker kind | apps/api/workers/services.py:23 |
 | internal_operation:pgv13.coordinated_release | pgv13.release / service:platform | ops.renderer_release / api/web/renderer images and dedicated IPC volumes | scripts/pgv13release/release.py:415 |
-| internal_operation:pgv13.document_acceptance | pgv13.documents / service:platform | ops.document_acceptance / isolated document test database, dedicated renderer candidate and image/OCR evidence | scripts/pgv13accept/verify_vm.py:362 |
+| internal_operation:pgv13.document_acceptance | pgv13.documents / service:platform | ops.document_acceptance / isolated document test database, dedicated renderer candidate and image/OCR evidence | scripts/pgv13accept/verify_vm.py:374 |
 | personal_demo.enroll | personal_demo.enroll / service:platform | auth.personal_trial / verified identity own MONO starter account | apps/api/authentication/personal_demo.py:77 |
 | scientific.admission | scientific.admission / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:186 |
 | scientific.execution | scientific.execution / service:platform | scientific.operation / current Account / owned scientific resource / normalized execution inputs | apps/api/scientific.py:379 |

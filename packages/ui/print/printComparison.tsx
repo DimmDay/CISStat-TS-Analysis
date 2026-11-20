@@ -19,6 +19,9 @@ import React from "react";
 import { formatNumberRu, formatPrintTime, shortRef } from "./printLayout";
 import { PRINT_PALETTE, PRINT_TYPE_SCALE } from "./printTheme";
 
+// P02 headings must survive the fixed 300ppi raster; no font shrink-to-fit.
+const DOCUMENT_HEADING_STYLE = { fontSize: 22, fontWeight: 700, lineHeight: 1.4, margin: 0 } as const;
+
 /** Версия frozen-контракта сравнения (паритет PGV-06). */
 export const PASSPORT_COMPARISON_SCHEMA_VERSION = "pgv.passport_comparison/1";
 
@@ -220,7 +223,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
 
       {metricNames.length > 0 && (
         <section style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h3 style={{ fontSize: PRINT_TYPE_SCALE.section, fontWeight: 600, margin: 0 }}>Числовые метрики по этапам</h3>
+          <h3 style={DOCUMENT_HEADING_STYLE}>Числовые метрики по этапам</h3>
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
             <thead>
               <tr style={{ backgroundColor: PRINT_PALETTE.band_fill }}>
@@ -280,7 +283,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       )}
 
       <section style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <h3 style={{ fontSize: PRINT_TYPE_SCALE.section, fontWeight: 600, margin: 0 }}>Качественные и категориальные изменения</h3>
+        <h3 style={DOCUMENT_HEADING_STYLE}>Качественные и категориальные изменения</h3>
         {snapshot.comparisons.map((pair) => (
           <p key={`${pair.from_stage}-${pair.to_stage}`} style={{ margin: 0, fontSize: PRINT_TYPE_SCALE.body }}>
             <strong>
@@ -357,7 +360,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
         data-testid="print-comparison-definitions"
         style={{ borderTop: `1px solid ${PRINT_PALETTE.border}`, paddingTop: 8, fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_muted }}
       >
-        <strong style={{ color: PRINT_PALETTE.ink }}>Определения:</strong>
+        <h3 style={{ ...DOCUMENT_HEADING_STYLE, color: PRINT_PALETTE.ink }}>Определения:</h3>
         <ul style={{ margin: "4px 0 0 0", paddingLeft: 16 }}>
           {Object.entries(snapshot.definitions).map(([key, text]) => (
             <li key={key}>

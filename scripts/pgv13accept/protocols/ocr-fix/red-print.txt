@@ -1,0 +1,25 @@
+FAIL packages/ui/print/printPassport.test.tsx
+  ● PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) › P02 section headings remain readable in the 300ppi raster
+
+    expect(element).toHaveStyle()
+
+    - Expected
+
+    - fontSize: 20px;
+    - lineHeight: 1.4;
+
+      227 |     for (const name of ["Числовые метрики по этапам", "Качественные и категориальные изменения", "Определения:"]) {
+      228 |       const heading = getByRole("heading", { name });
+    > 229 |       expect(heading).toHaveStyle({ fontSize: "20px", lineHeight: "1.4" });
+          |                       ^
+      230 |     }
+      231 |   });
+      232 |
+
+      at Object.<anonymous> (packages/ui/print/printPassport.test.tsx:229:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 17 passed, 18 total
+Snapshots:   0 total
+Time:        4.116 s
+Ran all test suites matching packages/ui/print/printPassport.test.tsx.

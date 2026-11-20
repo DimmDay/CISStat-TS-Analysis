@@ -1,0 +1,29 @@
+{
+  "base": "dd6ce317083733eec15a33b464ea9bb8f50be93f",
+  "full_package_files": 86,
+  "actual_zip_clean_overlay": "PASS",
+  "crc_and_every_payload_byte": "PASS",
+  "crlf_index_lf_worktree": [
+    "apps/api/Dockerfile",
+    "scripts/pgv13accept/client.py",
+    "scripts/pgv13accept/oracles.py",
+    "scripts/pgv13accept/verify_vm.py",
+    "scripts/pgv13accept/test_ocr.py",
+    "tests/unit/test_pgv13_accept.py",
+    "tests/unit/test_pgv13_image_assets.py",
+    "tests/unit/test_pgv13_ocr_pipeline.py",
+    "packages/ui/print/printComparison.tsx",
+    "packages/ui/print/printPassport.tsx",
+    "packages/ui/print/printPassport.test.tsx"
+  ],
+  "strict_index": "PASS 602",
+  "actual_routes": "PASS 284 API / 288 bindings / 668 entries",
+  "overlay_unit_tests": "PASS 46",
+  "source_index_sha256_before_after": "a43ebb095457c80dbf2a57ed049a8bd2a0eebd77adbc4fd02009f07d7cd41f11",
+  "source_index_unchanged": true,
+  "commits_push_vm": "NONE",
+  "real_tesseract_synthetic_controls": "PASS 2",
+  "native_postgres_jobs_with_png_transport_double": "PASS 11 cases",
+  "product_chromium_ocr_and_visual_acceptance": "PENDING VM",
+  "pgv13_certified": false
+}

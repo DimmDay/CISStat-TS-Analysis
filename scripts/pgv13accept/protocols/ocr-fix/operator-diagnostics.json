@@ -1,0 +1,38 @@
+{
+  "source": "operator console evidence, 20.11.2026",
+  "product_acceptance": false,
+  "whole_page_failed_cases": 10,
+  "whole_page_passed_case": "p02-reused",
+  "cropped_headers": [
+    {
+      "case": "p02-a4-portrait",
+      "words": [
+        {
+          "text": "Качественные",
+          "confidence": 95.597137
+        },
+        {
+          "text": "и",
+          "confidence": 96.840546
+        },
+        {
+          "text": "Keteropnensniie",
+          "confidence": 0.0
+        },
+        {
+          "text": "изменения",
+          "confidence": 96.491989
+        }
+      ]
+    },
+    {
+      "case": "p02-missing",
+      "words": [
+        {
+          "text": "Определения:",
+          "confidence": 96.354469
+        }
+      ]
+    }
+  ]
+}

@@ -287,10 +287,15 @@ def run(args):
             case['payload_sha256']=O.sha((out/(name+'.payload.json')).read_bytes())
             try:
                 case['pixels']=O.check_png(raw,case['profile'])
-                text=O.capture([args.tesseract,str(png),'stdout','-l','rus+eng','--psm','3','-c','tessedit_create_tsv=1'])
+                recognition=O.recognize_png(png,args.tesseract)
+                text=recognition.pop('tsv')
+                latin=recognition.pop('latin_tsv')
+                case['ocr_input']=recognition
+                (out/(name+'.latin.ocr.tsv')).write_text(latin,encoding='utf-8')
+                case['latin_ocr_tsv_sha256']=O.sha((out/(name+'.latin.ocr.tsv')).read_bytes())
                 (out/(name+'.ocr.tsv')).write_text(text,encoding='utf-8')
                 case['ocr_tsv_sha256']=O.sha((out/(name+'.ocr.tsv')).read_bytes())
-                case['ocr']=O.check_ocr(text,case['expected_text'],case['expected_numbers'],O.GEOMETRY[case['profile']],case.get('expected_counts',{}))
+                case['ocr']=O.check_document_ocr(text,latin,case['expected_text'],case['expected_numbers'],O.GEOMETRY[case['profile']],case.get('expected_counts',{}))
             except ValueError as error:
                 case['pixel_ocr_failure']=str(error);failures.append(name)
             report['cases'].append(case)
@@ -322,6 +327,8 @@ def run(args):
 def finalize(args):
     report_path=args.report.resolve()
     report=json.loads(report_path.read_text())
+    O.require(report.get('automated_passed') is True,
+        'Automated pixel/OCR or native acceptance failed; inspect report detail/failed_cases before finalize')
     O.require([c['id'] for c in report.get('cases',[])]==[c['id'] for c in C.CASES],'Exact fixed case coverage required')
     O.require(report.get('temporary_cleanup',{}).get('passed') is True,'Temporary resource cleanup must pass')
     tools={name:O.sha((ROOT/'scripts/pgv13accept'/name).read_bytes().replace(b'\r\n',b'\n'))
@@ -342,13 +349,18 @@ def finalize(args):
         all(re.fullmatch('[a-f0-9]{64}',v) for v in report['compiled_renderer_sha256'].values()),'Native source/compiled provenance missing')
     V.metrics_ok(report['before'],report['after'])
     for case in report['cases']:
-        for suffix,key in [('.payload.json','payload_sha256'),('.ocr.tsv','ocr_tsv_sha256')]:
+        for suffix,key in [('.payload.json','payload_sha256'),('.ocr.tsv','ocr_tsv_sha256'),('.latin.ocr.tsv','latin_ocr_tsv_sha256')]:
             path=report_path.parent/(case['id']+suffix)
             O.require(O.sha(path.read_bytes())==case[key],'Reviewed payload/OCR evidence hash changed')
         payload=json.loads((report_path.parent/(case['id']+'.payload.json')).read_text())
         O.require(payload.get('schema_version')=='pgv.render_payload/1' and payload.get('snapshot',{}).get('print',{}).get('profile_id')==case['profile']
             and payload.get('sections'),'Raw frozen render payload evidence missing')
         O.require(case.get('pixels',{}).get('passed') is True and case.get('ocr',{}).get('passed') is True,'Pixel/OCR evidence must pass')
+        O.require(case.get('ocr_input',{}).get('pipeline')==O.OCR_PIPELINE and
+            case['ocr_input'].get('source_sha256')==case['png_sha256'],'OCR input/pipeline source differs')
+        O.check_document_ocr((report_path.parent/(case['id']+'.ocr.tsv')).read_text(encoding='utf-8'),
+            (report_path.parent/(case['id']+'.latin.ocr.tsv')).read_text(encoding='utf-8'),
+            case['expected_text'],case['expected_numbers'],O.GEOMETRY[case['profile']],case.get('expected_counts',{}))
     result=O.validate_review(report_path,json.loads(args.review.read_text()))
     target=report_path.parent/'accepted.json'
     O.require(not target.exists(),'Acceptance receipt already exists; preserve immutable evidence')

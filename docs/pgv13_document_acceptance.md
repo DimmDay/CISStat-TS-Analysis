@@ -50,7 +50,7 @@ datasetup.ru и не запись тестовых исследований в p
 
 | Сценарии | Число PNG | Проверяемые факты |
 | --- | --- | --- |
-| P01 single | 3 | figure-landscape, A4 landscape/portrait; все 10 известных групп + неизвестная группа с кириллицей |
+| P01 single | 3 | figure-landscape, A4 landscape/portrait; все 11 групп fixture: 9 известных и 2 неизвестные; кириллица |
 | P01 reused set | 1 | три физических refs, подтверждение checkpoint, без четвёртой копии |
 | P02 explicit comparison | 3 | три профиля; mean0→7, delta7/delta_pct100 и явное определение нулевого базиса, category/list/qualitative |
 | P02 reused checkpoint | 1 | выбранные исторические refs и отдельное подтверждение |
@@ -71,6 +71,11 @@ private,no-store, anonymous/foreign denials и durable audit-тройка
 download_requested/response_stream_started/response_stream_finished.
 
 ## Pixel/OCR и визуальная приёмка
+
+PGV-13-OCR-FIX: текущий порядок и новая обязательная сборка —
+`docs/pgv13_ocr_fix.md`. Новый OCR использует неперекрывающиеся pixel bands,
+ограниченное увеличение и отдельный eng pass для ASCII labels; порог20 и
+обязательные фразы/числа/counts сохранены. Старые отчёты не финализировать.
 
 OCR читает **скачанные PNG pixels**, не HTML/DOM/SSR text. Проверяются подпись,
 CRC, profile dimensions, pHYs300ppi, непрозрачность/ink coverage. Tesseract
@@ -93,7 +98,7 @@ CRC, profile dimensions, pHYs300ppi, непрозрачность/ink coverage. 
 `p01_p02_accepted:true`. **`pgv13_certified:false` остаётся в обоих режимах**:
 этот scope не заменяет общий акт PGV-13, публичный UI/BFF/login или VM rollback.
 
-## VM: установка без новых образов
+## VM: установка и актуальная ревизия образов
 
 После ZIP → локальный review/gates → commit/push тимлида → VM pull:
 

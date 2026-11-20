@@ -1,0 +1,6 @@
+
+Test Suites: 9 passed, 9 total
+Tests:       238 passed, 238 total
+Snapshots:   0 total
+Time:        7.408 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src/rendererCore.test.ts|scripts/pgv07cert.

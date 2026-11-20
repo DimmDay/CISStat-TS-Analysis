@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       54 passed, 54 total
+Snapshots:   0 total
+Time:        4.215 s
+Ran all test suites matching packages/ui/print/printPassport.test.tsx|packages/ui/print/printLayout.test.tsx.

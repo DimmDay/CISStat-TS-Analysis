@@ -50,7 +50,7 @@ export const KNOWN_PASSPORT_GROUPS: readonly { key: string; label: string }[] = 
   { key: "seasonality", label: "Сезонность" },
   { key: "hurst", label: "Показатель Хёрста" },
   { key: "correlations", label: "Автокорреляции (топ)" },
-  { key: "fft", label: "FFT-периоды" },
+  { key: "fft", label: "FFT — периоды" },
   { key: "wavelet", label: "Вейвлет-анализ" },
 ];
 

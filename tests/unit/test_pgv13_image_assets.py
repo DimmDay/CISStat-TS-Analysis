@@ -124,7 +124,15 @@ class ImageAssetTests(unittest.TestCase):
 
     def test_both_assets_are_bound_to_native_client_source_check(self):
         from scripts.pgv13accept import verify_vm as V
-        sources=V.product_sources('3b13214466a31fb9ceeebe583abd64812e3bd042')
+        # A temporary tree models the reviewed source; never stage the user's
+        # INDEX or mistake an old renderer revision for the changed P02 layout.
+        with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp:
+            env=dict(os.environ,GIT_INDEX_FILE=str(Path(temp)/'index'))
+            subprocess.run(['git','read-tree','HEAD'],cwd=ROOT,env=env,check=True)
+            subprocess.run(['git','add','--','packages/ui/print/printComparison.tsx',
+                            'packages/ui/print/printPassport.tsx'],cwd=ROOT,env=env,check=True)
+            tree=subprocess.check_output(['git','write-tree'],cwd=ROOT,env=env,text=True).strip()
+            sources=V.product_sources(tree)
         self.assertTrue(set(ASSETS)<=set(sources))
 
     def test_corrupt_catalog_never_becomes_an_empty_fallback(self):

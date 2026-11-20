@@ -585,3 +585,19 @@ Docker build. После этого исправления нужен НОВЫЙ
 и новый A/B/candidate/recreate/live; порядок — `docs/pgv13_api_image_assets.md`.
 Прежнее утверждение «новые images не нужны» относится к initial host-only
 поставке, не к этому подтверждённому packaging исправлению. Default runner прежний.
+
+
+## PGV-13-OCR-FIX (20.11.2026)
+
+```bash
+python -m unittest tests.unit.test_pgv13_ocr_pipeline tests.unit.test_pgv13_accept tests.unit.test_pgv13_image_assets tests.unit.test_pgv13_release -v
+python -m unittest scripts.pgv13accept.test_ocr -v
+npm run build --workspace=@cisstat/print-renderer
+npx jest packages/ui/print/printPassport.test.tsx packages/ui/print/printLayout.test.tsx --runInBand
+```
+
+Tesseract rus/eng обязателен для explicit pixel controls; synthetic pixels не
+являются VM acceptance. Default runner не меняется. Native disposable PG test
+остаётся прежним. Меняется compiled P01/P02 layout: новый согласованный bundle,
+A/B/candidate/recreate/live и 11 новых PNG необходимы; прежний report не чинить.
+Полный порядок: `docs/pgv13_ocr_fix.md`. Routes/guards/DTO/IPC прежние.

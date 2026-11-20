@@ -93,6 +93,7 @@ describe("PGV-07 PrintPassportPage: полный паспорт без сокр�
     expect(page.textContent).toContain("стационарен");
     expect(page.textContent).toContain("восходящий");
     expect(page.textContent).toContain("не применимо: короткий ряд");
+    expect(page.textContent).toContain("FFT — периоды");
   });
 
   test("неизвестная print'у группа не выбрасывается — печатается по ключу", () => {
@@ -222,6 +223,14 @@ function comparisonSnapshot(overrides: Partial<PrintComparisonSnapshot> = {}): P
 }
 
 describe("PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13)", () => {
+  test("P02 section headings remain readable in the 300ppi raster", () => {
+    const { getByRole } = render(<PrintPassportComparisonPage snapshot={comparisonSnapshot()} />);
+    for (const name of ["Числовые метрики по этапам", "Качественные и категориальные изменения", "Определения:"]) {
+      const heading = getByRole("heading", { name });
+      expect(heading).toHaveStyle({ fontSize: "22px", lineHeight: "1.4" });
+    }
+  });
+
   test("этапы-колонки, значения, absolute/relative дельты", () => {
     const { getByTestId } = render(<PrintPassportComparisonPage snapshot={comparisonSnapshot()} />);
     const page = getByTestId("print-comparison-page");

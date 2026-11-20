@@ -1,0 +1,69 @@
+test_bad_crop_coordinates_are_rejected_before_projection (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_bad_crop_coordinates_are_rejected_before_projection) ... ERROR
+test_finalize_reports_ocr_failure_without_calling_it_postgres_failure (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_finalize_reports_ocr_failure_without_calling_it_postgres_failure) ... FAIL
+test_regions_include_footer_and_project_words_to_original_pixels (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_regions_include_footer_and_project_words_to_original_pixels) ... ERROR
+test_small_font_wrong_word_and_low_confidence_still_fail (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_small_font_wrong_word_and_low_confidence_still_fail) ... 
+  test_small_font_wrong_word_and_low_confidence_still_fail (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_small_font_wrong_word_and_low_confidence_still_fail) (text='Keteropnensniie', conf=95) ... ERROR
+  test_small_font_wrong_word_and_low_confidence_still_fail (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_small_font_wrong_word_and_low_confidence_still_fail) (text='категориальные', conf=0) ... ERROR
+test_source_contract_preserves_unknown_group_key (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_source_contract_preserves_unknown_group_key) ... FAIL
+
+======================================================================
+ERROR: test_bad_crop_coordinates_are_rejected_before_projection (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_bad_crop_coordinates_are_rejected_before_projection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 63, in test_bad_crop_coordinates_are_rejected_before_projection
+    O.recognize_png(self.image(folder))
+    ^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.oracles' has no attribute 'recognize_png'
+
+======================================================================
+ERROR: test_regions_include_footer_and_project_words_to_original_pixels (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_regions_include_footer_and_project_words_to_original_pixels)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 39, in test_regions_include_footer_and_project_words_to_original_pixels
+    result = O.recognize_png(path)
+             ^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.oracles' has no attribute 'recognize_png'
+
+======================================================================
+ERROR: test_small_font_wrong_word_and_low_confidence_still_fail (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_small_font_wrong_word_and_low_confidence_still_fail) (text='Keteropnensniie', conf=95)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 55, in test_small_font_wrong_word_and_low_confidence_still_fail
+    result = O.recognize_png(self.image(folder))
+             ^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.oracles' has no attribute 'recognize_png'
+
+======================================================================
+ERROR: test_small_font_wrong_word_and_low_confidence_still_fail (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_small_font_wrong_word_and_low_confidence_still_fail) (text='категориальные', conf=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 55, in test_small_font_wrong_word_and_low_confidence_still_fail
+    result = O.recognize_png(self.image(folder))
+             ^^^^^^^^^^^^^^^
+AttributeError: module 'scripts.pgv13accept.oracles' has no attribute 'recognize_png'
+
+======================================================================
+FAIL: test_finalize_reports_ocr_failure_without_calling_it_postgres_failure (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_finalize_reports_ocr_failure_without_calling_it_postgres_failure)
+----------------------------------------------------------------------
+ValueError: Exact fixed case coverage required
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 76, in test_finalize_reports_ocr_failure_without_calling_it_postgres_failure
+    with self.assertRaisesRegex(ValueError, 'pixel/OCR'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "pixel/OCR" does not match "Exact fixed case coverage required"
+
+======================================================================
+FAIL: test_source_contract_preserves_unknown_group_key (tests.unit.test_pgv13_ocr_pipeline.PixelOCRTests.test_source_contract_preserves_unknown_group_key)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-PGV13-OCR/tests/unit/test_pgv13_ocr_pipeline.py", line 66, in test_source_contract_preserves_unknown_group_key
+    self.assertIn('seasonal_periods', C.GROUPS)
+AssertionError: 'seasonal_periods' not found in ['Базовые статистики', 'Частота ряда', 'Стационарность', 'Детерминированность', 'Автокорреляция', 'Тренд', 'Сезонность', 'Сезонные периоды', 'FFT', 'Вейвлет']
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.222s
+
+FAILED (failures=2, errors=4)
