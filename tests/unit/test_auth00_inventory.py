@@ -356,15 +356,39 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(export['policy'], 'document.object')
         self.assertEqual(export['effects'], ['command', 'possible_compute_or_persistence'])
         self.assertEqual(export['canonical_operation'], 'apps.api.routers.documentation:request_visual_export_route')
-        # Реальные daemon-потоки document_render_worker.py: два старта
-        # (render-deadline и фоновый loop) классифицированы как
-        # worker.authority, а не списаны на generic allow.
-        workers = {e['id']: e for e in report['entries'] if e['kind'] == 'worker' and 'document_render_worker' in e['id']}
-        self.assertEqual(len(workers), 2, sorted(workers))
-        for wid, w in sorted(workers.items()):
-            self.assertEqual(w['policy'], 'worker.authority', wid)
-            self.assertEqual(w['effects'], ['thread_dispatch'], wid)
-            self.assertTrue(w['canonical_operation'], wid)
+        # PGV-13-UDS добавил cancellable IPC-поток к legacy deadline
+        # и фоновому loop. Проверяем точные операции/эффекты, независимо
+        # от номеров строк; лишний, потерянный или дублированный поток — FAIL.
+        source = 'apps/api/document_render_worker.py'
+        workers = [e for e in report['entries'] if e['kind'] == 'worker'
+                   and e['discovery'] == 'automatic'
+                   and any(ev['source'] == source for ev in e['evidence'])]
+        expected = {
+            'renderer.ipc.render': ('run', ['thread_dispatch', 'private_renderer_request']),
+            source + ':_target via _run_with_deadline': ('target', ['thread_dispatch']),
+            source + ':self._loop': ('self._loop', ['thread_dispatch']),
+        }
+        self.assertEqual(len(workers), len(expected), sorted(e['id'] for e in workers))
+        self.assertEqual({e['canonical_operation'] for e in workers}, set(expected))
+        for w in workers:
+            with self.subTest(worker=w['id']):
+                target, effects = expected[w['canonical_operation']]
+                self.assertEqual(w['policy'], 'worker.authority')
+                self.assertEqual(w['path'], target)
+                self.assertEqual(w['effects'], effects)
+
+    def test_pgv13_uds_watchdog_is_control_not_render_authority(self):
+        report = self.mod.build(ROOT)
+        source = 'apps/api/png_renderer_client.py'
+        workers = [e for e in report['entries'] if e['kind'] == 'worker'
+                   and e['discovery'] == 'automatic'
+                   and any(ev['source'] == source for ev in e['evidence'])]
+        self.assertEqual(len(workers), 1)
+        watchdog = workers[0]
+        self.assertEqual(watchdog['path'], 'watch')
+        self.assertEqual(watchdog['policy'], 'renderer.ipc')
+        self.assertEqual(watchdog['canonical_operation'], 'renderer.ipc.deadline')
+        self.assertEqual(watchdog['effects'], ['cancel_socket', 'deadline'])
 
     def test_generic_model_jobs_are_classified_as_tuning(self):
         report = self.mod.build(ROOT)

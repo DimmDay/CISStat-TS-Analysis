@@ -1,0 +1,28 @@
+Clean HEAD c305bd926fecdfa3cd97e307c064dc26360fc4f9 + actual ZIP; CRLF INDEX/LF WORKTREE: tests/unit/test_auth00_inventory.py, scripts/pgv13uds/hotfix1/verify_contract.py
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 666, "added": [], "missing": []}
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python -m unittest discover -s tests/unit -p test_auth00_inventory.py -k pgv -v
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_pgv13_uds_watchdog_is_control_not_render_authority (test_auth00_inventory.InventoryTests.test_pgv13_uds_watchdog_is_control_not_render_authority) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.648s
+
+OK
+$ /workspace/scratch/1ab9947d7132/venv-hotfix/bin/python scripts/pgv13uds/hotfix1/verify_contract.py
+{
+  "positive_controls": 2,
+  "mutations_rejected": {
+    "missing_ipc": true,
+    "extra_thread": true,
+    "duplicate_operation": true,
+    "missing_ipc_effect": true,
+    "extra_effect": true,
+    "wrong_authority": true,
+    "wrong_target": true,
+    "watchdog_authority": true,
+    "watchdog_effect": true
+  }
+}

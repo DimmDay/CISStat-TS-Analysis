@@ -1,0 +1,14 @@
+{
+  "entries_identical": true,
+  "policies_identical": true,
+  "entries": 666,
+  "api": 284,
+  "renderer": 4,
+  "fingerprints_changed_or_added": [
+    "docs/pgv13_uds_hotfix1.md",
+    "scripts/local_gates.md",
+    "scripts/pgv13uds/hotfix1/verify_contract.py",
+    "tests/unit/test_auth00_inventory.py"
+  ],
+  "fingerprints_removed": []
+}

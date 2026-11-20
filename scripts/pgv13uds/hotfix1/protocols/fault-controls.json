@@ -1,0 +1,14 @@
+{
+  "positive_controls": 2,
+  "mutations_rejected": {
+    "missing_ipc": true,
+    "extra_thread": true,
+    "duplicate_operation": true,
+    "missing_ipc_effect": true,
+    "extra_effect": true,
+    "wrong_authority": true,
+    "wrong_target": true,
+    "watchdog_authority": true,
+    "watchdog_effect": true
+  }
+}

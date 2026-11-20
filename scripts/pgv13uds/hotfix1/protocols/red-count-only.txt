@@ -1,0 +1,21 @@
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (inv_tests.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... FAIL
+
+======================================================================
+FAIL: test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (inv_tests.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/unit/test_auth00_inventory.py", line 366, in test_pgv09_pgv10_documentation_surfaces_are_honestly_classified
+    self.assertEqual(w['effects'], ['thread_dispatch'], wid)
+AssertionError: Lists differ: ['thread_dispatch', 'private_renderer_request'] != ['thread_dispatch']
+
+First list contains 1 additional elements.
+First extra element 1:
+'private_renderer_request'
+
+- ['thread_dispatch', 'private_renderer_request']
++ ['thread_dispatch'] : worker:apps/api/document_render_worker.py:710
+
+----------------------------------------------------------------------
+Ran 1 test in 3.596s
+
+FAILED (failures=1)

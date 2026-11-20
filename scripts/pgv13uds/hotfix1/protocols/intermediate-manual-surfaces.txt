@@ -1,0 +1,15 @@
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... FAIL
+test_pgv13_uds_watchdog_is_control_not_render_authority (test_auth00_inventory.InventoryTests.test_pgv13_uds_watchdog_is_control_not_render_authority) ... ok
+
+======================================================================
+FAIL: test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1ab9947d7132/CISStat-TS-Analysis/tests/unit/test_auth00_inventory.py", line 370, in test_pgv09_pgv10_documentation_surfaces_are_honestly_classified
+    self.assertEqual(len(workers), len(expected), sorted(e['id'] for e in workers))
+AssertionError: 5 != 3 : ['worker:apps/api/document_render_worker.py:710', 'worker:apps/api/document_render_worker.py:747', 'worker:apps/api/document_render_worker.py:769', 'worker:document.process', 'worker:document.system_snapshot']
+
+----------------------------------------------------------------------
+Ran 2 tests in 7.216s
+
+FAILED (failures=1)

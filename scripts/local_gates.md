@@ -493,3 +493,23 @@ activate.py теперь отказывает при UDS mount; историче
 переключают новый transport назад. HTTP paths/methods/BFF прежние; AUTH-00
 получает отдельный transport и два control threads, source/line review обновлён.
 Default local_gates.py не меняется. Полная PGV-13 пока NOT CERTIFIED.
+
+## PGV-13-UDS HOTFIX1 (20.11.2026), база c305bd9
+
+`auth00(5).log` и GitHub Linux/Windows: INDEX принят, но старый PGV09/10
+unit требует два thread starts вместо трёх после UDS и не допускает новый
+`private_renderer_request`. Исправлен точный контракт canonical operations,
+targets, policies и effects; новый test закрепляет отдельные полномочия
+client watchdog. Missing/extra/duplicate и неверные classifications остаются FAIL.
+
+```bash
+git add --pathspec-from-file=scripts/pgv13uds/hotfix1/files.txt
+python scripts/local_gates.py --only auth00 --skip-install
+python scripts/pgv13uds/hotfix1/verify_contract.py
+```
+
+Новый gate/изменение runner или workflow не требуется: оба tests выполняются
+существующим `test_auth00*.py`. Карта обновляется для reviewed test/tool/docs
+fingerprints, semantic HTTP/non-HTTP entries прежние. Runtime/образы/миграции
+hotfix не меняет; обычный VM pull без дополнительного build/recreate.
+Порядок применения и границы: `docs/pgv13_uds_hotfix1.md`.

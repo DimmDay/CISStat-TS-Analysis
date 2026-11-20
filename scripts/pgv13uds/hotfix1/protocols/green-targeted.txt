@@ -1,0 +1,7 @@
+test_pgv09_pgv10_documentation_surfaces_are_honestly_classified (test_auth00_inventory.InventoryTests.test_pgv09_pgv10_documentation_surfaces_are_honestly_classified) ... ok
+test_pgv13_uds_watchdog_is_control_not_render_authority (test_auth00_inventory.InventoryTests.test_pgv13_uds_watchdog_is_control_not_render_authority) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 7.145s
+
+OK

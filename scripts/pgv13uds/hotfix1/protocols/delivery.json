@@ -1,0 +1,17 @@
+{
+  "base": "c305bd926fecdfa3cd97e307c064dc26360fc4f9",
+  "clean_base_actual_zip_overlay": "PASS",
+  "crc_manifest_payload_bytes": "PASS",
+  "crlf_index_lf_worktree": [
+    "tests/unit/test_auth00_inventory.py",
+    "scripts/pgv13uds/hotfix1/verify_contract.py"
+  ],
+  "strict_index": "PASS",
+  "actual_routes": "PASS 284 API / 288 bindings / 666 entries",
+  "targeted_contracts": "PASS 2",
+  "fault_controls": "PASS 2 positive / 9 negative",
+  "source_index_sha256_before_after": "d29118e50bfef82b6f7130c6ac2c22ade0d460721ec082332ed1e7011c906a90",
+  "source_staged_diff": "EMPTY",
+  "source_head": "c305bd926fecdfa3cd97e307c064dc26360fc4f9",
+  "commits_push_vm": "NONE"
+}

@@ -1,0 +1,24 @@
+{
+  "commit": "c305bd926fecdfa3cd97e307c064dc26360fc4f9",
+  "user_log": "auth00(5).log",
+  "user_index_parity": "PASS 602 discovery surfaces",
+  "auth00_run": "https://github.com/DimmDay/CISStat-TS-Analysis/actions/runs/44598659941",
+  "jobs": [
+    {
+      "id": 135823767543,
+      "os": "ubuntu-24.04",
+      "conclusion": "failure"
+    },
+    {
+      "id": 135823768053,
+      "os": "windows-2025",
+      "conclusion": "failure"
+    }
+  ],
+  "confirmed_failure": "test_pgv09_pgv10_documentation_surfaces_are_honestly_classified: AssertionError 3 != 2",
+  "test_count": 60,
+  "failures": 1,
+  "jest_run": "https://github.com/DimmDay/CISStat-TS-Analysis/actions/runs/44598660279",
+  "jest_conclusion": "success",
+  "scope": "Observed AUTH-00 failures; no new remote runs triggered by agent."
+}
