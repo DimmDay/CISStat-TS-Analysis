@@ -1,0 +1,240 @@
+{
+  "schema_version": "pgv13.independent_visual_assessment/1",
+  "reviewed_at": "2026-11-21T13:54:49+03:00",
+  "reviewer": "Codex — AI inspection; no operator signature",
+  "archive_sha256": "595522df40313dfe534d51688f5a7fa1c0fdbb86634aa16820ddc0ac5ac460b4",
+  "report_sha256": "410b201af782dd389b1c8bd87da33bced0b8f0aba78dccc07f396ccb8d01a8df",
+  "image_revision": "0c78766a000f4e828a4f503708d5dc5ca6fd4016",
+  "images": {
+    "api": "sha256:cb1635c695dab6878a5c0a98b0b62b3e93f2b029b10b9ceffaf8fac2a7fadccc",
+    "web": "sha256:0c74b32bb600a4f9e13e81778941d7793b4f0d5acf8fb471744cb7f682ba5c67",
+    "print-renderer": "sha256:55278b45e6168bba78cd7229f549ce4414d056ad4e280c38df60409bbd8f7afc"
+  },
+  "source_automated_passed": true,
+  "source_files_modified": false,
+  "visual_passed": false,
+  "operator_signoff": false,
+  "pgv13_certified": false,
+  "independently_rechecked": {
+    "zip_crc": true,
+    "png_and_payload_sha256": 22,
+    "png_structure_geometry_density_opaque_ink": 11,
+    "native_report_structure": true,
+    "native_VM_execution_repeated": false,
+    "ocr_repeated": false,
+    "api_rules_catalog_source_fingerprints": 296,
+    "acceptance_tool_fingerprints": 4,
+    "compiled_renderer_fingerprints": 6
+  },
+  "findings": [
+    {
+      "id": "PGV13-VIS-01",
+      "severity": "blocking",
+      "scope": "all 11 print cases",
+      "summary": "Physical print typography is too small despite successful enlarged-input OCR",
+      "nominal_font_points_at_300ppi": {
+        "body_12px": 2.88,
+        "definitions_10px": 2.4,
+        "micro_9px": 2.16,
+        "P02_heading_22px": 5.28
+      },
+      "basis": "Physical A4/profile density and source raster; no physical printer test performed",
+      "spec": "spec_passport_graphics_visual.md §3.4/§7/AC23"
+    },
+    {
+      "id": "PGV13-VIS-02",
+      "severity": "blocking",
+      "scope": "p02-reused",
+      "summary": "Explicit checkpoint unchanged=false conflicts with comparison confirmation unchanged=true",
+      "checkpoint_ref": "pck-b4940bbe8e0f4b88bca8a1079b1cf2fe",
+      "checkpoint_unchanged": false,
+      "confirmation_unchanged": true,
+      "previous_ref": null,
+      "rendered_claim": "Состояние совпало с предыдущим снимком",
+      "source": "apps/api/passport_comparison.py:356",
+      "source_sha256": "eeaad8c295300370b6808d811dfff1937f6cda4cd8aadf75e1618ea257a8c425",
+      "basis": "Contradiction is present inside the same frozen payload; rendering follows confirmation field",
+      "spec": "spec_passport_graphics_visual.md §8/§9/AC11"
+    }
+  ],
+  "cases": [
+    {
+      "id": "p01-figure-landscape",
+      "profile": "figure-landscape",
+      "png_sha256": "01eb647763220c60775b5997822f0b4ef95e87a43fa854019b790dcc4ea0d298",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p01-a4-landscape",
+      "profile": "a4-landscape",
+      "png_sha256": "a47efef2112ea55fae16d596120e049d73bdd885d958b46af33c7ede6cde0261",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p01-a4-portrait",
+      "profile": "a4-portrait",
+      "png_sha256": "9b7d5854fbd95881877d87cb9ec7cbe3f581ed3bd21cd92320468481ec840d00",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p01-reused",
+      "profile": "a4-portrait",
+      "png_sha256": "344f0add68da60dc97fcf5e27e5b609bb349b1d7c91b04cfb7bab49030f94ee2",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 10,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p02-figure-landscape",
+      "profile": "figure-landscape",
+      "png_sha256": "01616caa726ea5679a8ba14021cc0c28d422f93a994379e7ffa3ccd68a9e664c",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p02-a4-landscape",
+      "profile": "a4-landscape",
+      "png_sha256": "bfa5b2d60d27e6bd254bc4651f1ea5aa998160f628aec38b438a226cb5b96a2a",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p02-a4-portrait",
+      "profile": "a4-portrait",
+      "png_sha256": "bcb9841d5fb2063339f411093ed05b9a7fd30d98d25b775815955f3cb2df5a44",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p02-reused",
+      "profile": "a4-portrait",
+      "png_sha256": "d192c78c8ae2acb88f5ff0b4cbc2ab62260112e173bfa29ea302485691d85200",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": false
+      },
+      "median_ocr_word_height_source_px": 10.0,
+      "blocking_findings": [
+        "PGV13-VIS-01",
+        "PGV13-VIS-02"
+      ]
+    },
+    {
+      "id": "p01-missing",
+      "profile": "a4-portrait",
+      "png_sha256": "03c2500b36110071341ec02338047aa9e7166b523af3190440e820e8a4d1c40d",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p01-corrupt",
+      "profile": "a4-portrait",
+      "png_sha256": "4b61094bc349f915763f6f7bd692ed720d27e44d89ef9241afa4df0199e5c213",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 9.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    },
+    {
+      "id": "p02-missing",
+      "profile": "a4-portrait",
+      "png_sha256": "68c0c143d082976649fdb9dbb5be3a9a97a1e88977fe43f6c5b73834972111c0",
+      "criteria": {
+        "legible": false,
+        "cyrillic_correct": true,
+        "no_overlap": true,
+        "no_clipping": true,
+        "values_and_reasons_correct": true
+      },
+      "median_ocr_word_height_source_px": 8.0,
+      "blocking_findings": [
+        "PGV13-VIS-01"
+      ]
+    }
+  ],
+  "scope_limit": "AI review of attached artifacts, not physical printing or human operator sign-off; raw OCR TSV and release A/B bundle absent from attachment"
+}

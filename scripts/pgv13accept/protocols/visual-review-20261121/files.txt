@@ -1,0 +1,6 @@
+docs/pgv13_visual_review_2026-11-21.json
+docs/pgv13_visual_review_2026-11-21.md
+scripts/pgv13accept/protocols/visual-review-20261121/checks.txt
+scripts/pgv13accept/protocols/visual-review-20261121/files.txt
+scripts/pgv13accept/protocols/visual-review-20261121/routes.txt
+worklog/worklog12.md

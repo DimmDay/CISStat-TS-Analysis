@@ -1,0 +1,19 @@
+Archive SHA/CRC and native report structure: PASS
+p01-figure-landscape PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p01-a4-landscape PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p01-a4-portrait PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p01-reused PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p02-figure-landscape PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p02-a4-landscape PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p02-a4-portrait PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p02-reused PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p01-missing PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p01-corrupt PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+p02-missing PNG structure/geometry/300ppi/opaque/ink + PNG/payload hashes: PASS
+All API/rules/catalog source fingerprints match: 296
+Acceptance tool fingerprints: PASS 4
+Compiled renderer fingerprints: PASS 6
+Review/report SHA binding: PASS
+Semantic consistency check: FAIL — explicit checkpoint unchanged=false, comparison unchanged=true
+Visual print legibility: FAIL — 12px/300ppi=2.88pt; 10px/300ppi=2.40pt
+Original report/review unchanged. No acceptance signature or new VM action.
