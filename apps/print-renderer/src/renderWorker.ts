@@ -23,6 +23,8 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { Worker } from "node:worker_threads";
 import { join } from "node:path";
+import { resolvePrintProfile } from "../../../packages/ui/print/printSchema";
+import { paginatePassportDocument, buildPageArchive, PageSetError } from "./pageSet";
 import { createLaunchGuard, type LaunchGuard } from "./launchGuard";
 
 import type { Browser, BrowserContext, BrowserServer } from "playwright-core";
@@ -141,6 +143,8 @@ export class ReadyzCache {
 // ── Worker ────────────────────────────────────────────────────────
 
 interface RenderOutcome {
+  archive?: Buffer;
+  pageCount?: number;
   png: Buffer;
   width: number;
   height: number;
@@ -385,6 +389,32 @@ export class PrintRenderWorker {
     // context.close() в finally; /tmp контейнера — tmpfs (ephemeral).
     await page.setContent(html, { waitUntil: "load", timeout: remainingMs() });
 
+    if (payload.options?.page_set) {
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      let plan;
+      try { plan = await page.evaluate(paginatePassportDocument, {maxPages:20}); }
+      catch (error) {
+        const code = String(error).includes("export_too_large") ? "export_too_large" : "render_content_overflow";
+        throw new PageSetError(code, "pagination refused a row/block or page budget");
+      }
+      const pages: {name:string; data:Buffer}[]=[];
+      let bytes=0;
+      for (const descriptor of plan.pages) {
+        if(cancelled()) throw new RenderTimeoutError(effectiveS);
+        const raw=await page.locator('#'+descriptor.surface_id).screenshot({type:"png",timeout:remainingMs()});
+        const data=injectPngPhys(raw,profilePpi(geometry.profile_id));bytes+=data.length;
+        if(bytes>50*1024*1024)throw new PageSetError('export_too_large','PNG bytes');
+        pages.push({name:`page-${String(pages.length+1).padStart(3,'0')}.png`,data});
+      }
+      const metadata=Buffer.from(JSON.stringify({schema_version:'pgv.page_metadata/1',source_payload:payload,
+        renderer_version:RENDERER_VERSION,font_profile:RENDERER_FONT_PROFILE,page_count:pages.length,
+        pages:pages.map((p,i)=>({...plan.pages[i],index:i+1,filename:p.name,size_bytes:p.data.length,width,height,ppi:300,sha256:createHash('sha256').update(p.data).digest('hex')}))}));
+      const archive=buildPageArchive(pages,metadata,{schema_version:'pgv.print_manifest/1',page_set_version:'pgv.page_set/1',set_id:payload.request_id,render_version:RENDERER_VERSION,metadata_filename:'metadata.json',data_included:false,profile_id:geometry.profile_id,
+        width,height,ppi:profilePpi(geometry.profile_id),intended_size_mm:{width:resolvePrintProfile(geometry.profile_id)!.width_mm,height:resolvePrintProfile(geometry.profile_id)!.height_mm},unit_count:plan.unit_count,pages:plan.pages});
+      if(cancelled())throw new RenderTimeoutError(effectiveS);
+      return {png:pages[0].data,archive,pageCount:pages.length,width,height,ppi:profilePpi(geometry.profile_id),
+        durationMs:Date.now()-startedAt,sha256:createHash('sha256').update(archive).digest('hex'),sanitizerWarnings:collectSanitizerWarnings(payload)};
+    }
     const surface = page.locator('[data-testid="print-page-surface"]');
     // PGV13-VIS-01: overflow-guard — контент, не умещающийся в поверхность
     // при обязательной физической типографике, это явный отказ 413
@@ -397,9 +427,9 @@ export class PrintRenderWorker {
       const target =
         element.querySelector('[data-testid="print-probe-content"]') ?? element;
       return {
-        scrollWidth: target.scrollWidth,
+        scrollWidth: Math.max(target.scrollWidth, target.clientWidth + Math.max(0, ((target.querySelector<HTMLElement>('[data-testid="print-page-content"]')?.scrollWidth ?? 0) - (target.querySelector<HTMLElement>('[data-testid="print-page-content"]')?.clientWidth ?? 0)))) ,
         clientWidth: target.clientWidth,
-        scrollHeight: target.scrollHeight,
+        scrollHeight: Math.max(target.scrollHeight, target.clientHeight + Math.max(0, ((target.querySelector<HTMLElement>('[data-testid="print-page-content"]')?.scrollHeight ?? 0) - (target.querySelector<HTMLElement>('[data-testid="print-page-content"]')?.clientHeight ?? 0)))),
         clientHeight: target.clientHeight,
       };
     });

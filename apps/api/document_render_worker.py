@@ -525,6 +525,7 @@ class DocumentRenderWorker:
             RendererDependencyUnavailable,
             RendererPayloadInvalid,
             RendererPayloadTooLarge,
+            RendererPageSetRefused,
             RendererTimeout,
             RendererUnavailable,
         )
@@ -551,6 +552,8 @@ class DocumentRenderWorker:
             return "renderer_unavailable"
         if isinstance(exc, RendererPayloadInvalid):
             return "invalid_payload"
+        if isinstance(exc, RendererPageSetRefused):
+            return exc.code
         if isinstance(exc, RendererPayloadTooLarge):
             return "payload_too_large"
         if isinstance(exc, RendererBadOutput):
@@ -669,6 +672,14 @@ class DocumentRenderWorker:
             if current is not None and current.state == "cancelled":
                 return "cancelled"
             return self._fail_or_requeue(claimed, self._error_code(exc))
+        if payload.get("options", {}).get("page_set") is True:
+            from apps.api.print_page_sets import validate_page_set, publish_page_set
+            try:
+                result = validate_page_set(content, payload)
+                done, _ = publish_page_set(service, claimed, result, str(basis.get("basis_sha256") or ""))
+                return done.state
+            except Exception as exc:
+                return self._fail_or_requeue(claimed, self._error_code(exc))
         # 3.5. PNG-гейт ДО staging (§11: битые байты не выдаются за
         #    валидные; защита в глубину -- клиент гейтит тоже, но worker
         #    не доверяет транспорту: broken ready невозможен по

@@ -55,7 +55,7 @@ def process(worker, job, snapshot=None):
             )
             from apps.api.png_renderer_client import PNG_SIGNATURE
 
-            if not content.startswith(PNG_SIGNATURE):
+            if not (payload.get("options", {}).get("page_set") is True or content.startswith(PNG_SIGNATURE)):
                 auth_error(409, "worker_stopped")
             source = str(basis.get("basis_sha256") or "")
         else:
@@ -81,12 +81,20 @@ def process(worker, job, snapshot=None):
         spec = RENDITION_FORMATS.get(claimed.format)
         if spec is None:
             auth_error(409, "worker_stopped")
+        page_set = None
+        if job.print_revision_id and payload.get("options", {}).get("page_set") is True:
+            from apps.api.print_page_sets import validate_page_set
+            page_set = validate_page_set(content, payload)
         output = {}
 
         def publish(c):
-            output["value"] = service.complete_render(
-                claimed, spec, content, snapshot, source_sha256=source
-            )
+            if page_set is not None:
+                from apps.api.print_page_sets import publish_page_set
+                output["value"]=publish_page_set(service,claimed,page_set,source)
+            else:
+                output["value"] = service.complete_render(
+                    claimed, spec, content, snapshot, source_sha256=source
+                )
             if output["value"][0].state != JOB_READY:
                 auth_error(409, "worker_stopped")
 
@@ -96,7 +104,7 @@ def process(worker, job, snapshot=None):
             publish,
             descriptor={
                 "job_id": job.job_id,
-                "sha256": hashlib.sha256(content).hexdigest(),
+                "sha256": hashlib.sha256(page_set.content if page_set is not None else content).hexdigest(),
             },
             final=True,
         )

@@ -65,7 +65,7 @@ PASSPORT_PRINT_SNAPSHOT_SCHEMA_VERSION = "pgv.passport_print_snapshot/1"
 PASSPORT_COMPARISON_SNAPSHOT_SCHEMA_VERSION = (
     "pgv.passport_comparison_print_snapshot/1"
 )
-PASSPORT_DOCUMENTS_BUILDER_VERSION = "pgv.passport_documents/2"
+PASSPORT_DOCUMENTS_BUILDER_VERSION = "pgv.passport_documents/3"
 
 IDENTITY_DIGEST_ALGORITHM = "sha256(canonical_json)"
 

@@ -1,0 +1,15 @@
+{
+  "base": "5be3e29b32d954f9abe009236c4546d876ec2b9b",
+  "archive": "cisstat-pgv14-5be3e29.zip",
+  "scope": "only new/modified task files; no dependencies/build dirs/secrets",
+  "verification": "CRC + exact manifest/member bytes; clean base overlay + strict INDEX/build/test protocols",
+  "main_commit_push": false,
+  "pgv13_certified": false,
+  "native_chromium": "BLOCKED cases0; VM acceptance pending",
+  "file_count": 89,
+  "crc_and_all_bytes_verified": true,
+  "clean_overlay": "PASS: strict INDEX602 incl. CRLF TS, renderer build, Jest357, Python17, ASGI284/288/668, whitespace",
+  "overlay_product_sources_equal": true,
+  "auth00": "PASS61 tests/74.5s; true INDEX unchanged",
+  "vm_acceptance": "PENDING; no production action"
+}

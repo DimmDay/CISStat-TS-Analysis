@@ -1,0 +1,26 @@
+✔ p01 figure-landscape: physical fonts, page geometry, table padding and footer (120.464653ms)
+✔ p02 figure-landscape: physical fonts, page geometry, table padding and footer (33.958364ms)
+✔ p01 a4-landscape: physical fonts, page geometry, table padding and footer (24.863964ms)
+✔ p02 a4-landscape: physical fonts, page geometry, table padding and footer (25.158961ms)
+✔ p01 a4-portrait: physical fonts, page geometry, table padding and footer (18.95488ms)
+✔ p02 a4-portrait: physical fonts, page geometry, table padding and footer (16.417969ms)
+✔ physical conversion is independent of screen CSS 96 dpi (0.228197ms)
+✔ P01 long refs and long table labels request wrapping (15.620551ms)
+✔ outer overflow and 1 px rounding controls retain terminal 413 semantics (0.271301ms)
+✔ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (73.266014ms)
+✔ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (7.884445ms)
+✔ F-TYPO-03: sample runner must reject a wrong 413 code/retryable response (58.922201ms)
+✔ control: a fitting 300 ppi page passes (0.855695ms)
+✔ negative control: inner content hits footer while outer size fits (0.141499ms)
+✔ negative control: internal horizontal truncation while outer size fits (0.144143ms)
+✔ negative control: old 12px text at 300 ppi is unreadable (0.127398ms)
+✔ control: explicit outer overflow is a refusal, not a clipped success (0.14878ms)
+✔ negative control: missing DOM measurements cannot pass (0.095621ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1080.70408

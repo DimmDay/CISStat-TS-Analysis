@@ -1,0 +1,113 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> build:all
+> npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @cisstat/ts-analysis-embedded@0.1.0 build
+> next build
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/20) ...
+   Generating static pages (5/20) 
+   Generating static pages (10/20) 
+   Generating static pages (15/20) 
+ ✓ Generating static pages (20/20)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    642 B           593 kB
+├ ○ /_not-found                          874 B          88.4 kB
+├ ƒ /account                             10.2 kB         101 kB
+├ ƒ /admin                               2.03 kB        92.5 kB
+├ ƒ /admin/demo-campaigns                6.25 kB        96.7 kB
+├ ƒ /admin/logs                          630 B           593 kB
+├ ƒ /admin/progress                      630 B           593 kB
+├ ○ /analytics/ts-analysis               138 B          87.7 kB
+├ ƒ /api/v1/[...path]                    0 B                0 B
+├ ƒ /demo                                5.14 kB        92.7 kB
+├ ○ /eda                                 642 B           593 kB
+├ ○ /forecasting                         642 B           593 kB
+├ ƒ /login                               6.79 kB        97.2 kB
+├ ○ /modeling                            642 B           593 kB
+├ ○ /navigator                           642 B           593 kB
+├ ○ /preprocessing                       642 B           593 kB
+├ ○ /tasks                               642 B           593 kB
+├ ○ /upload                              642 B           593 kB
+└ ○ /validation                          642 B           593 kB
++ First Load JS shared by all            87.6 kB
+  ├ chunks/290-9d9381025d0240fa.js       31.9 kB
+  ├ chunks/2c8e403e-03b3ab353606df0c.js  53.6 kB
+  └ other shared chunks (total)          2.02 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @cisstat/ts-analysis-standalone@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/27) ...
+   Generating static pages (6/27) 
+   Generating static pages (13/27) 
+   Generating static pages (20/27) 
+ ✓ Generating static pages (27/27)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    650 B           593 kB
+├ ○ /_not-found                          874 B          88.4 kB
+├ ƒ /account                             10.2 kB         101 kB
+├ ƒ /admin                               2.03 kB        92.7 kB
+├ ƒ /admin/demo-campaigns                6.25 kB        96.9 kB
+├ ƒ /admin/logs                          628 B           593 kB
+├ ƒ /admin/progress                      628 B           593 kB
+├ ƒ /api/v1/[...path]                    0 B                0 B
+├ ƒ /dashboard                           3.59 kB        94.2 kB
+├ ○ /dashboard/ts-analysis               138 B          87.7 kB
+├ ƒ /demo                                5.14 kB        92.7 kB
+├ ƒ /documentation                       1.13 kB         595 kB
+├ ○ /eda                                 650 B           593 kB
+├ ○ /education                           650 B           593 kB
+├ ○ /forecasting                         650 B           593 kB
+├ ƒ /login                               6.79 kB        97.4 kB
+├ ○ /modeling                            650 B           593 kB
+├ ○ /navigator                           650 B           593 kB
+├ ○ /preprocessing                       650 B           593 kB
+├ ○ /tasks                               650 B           593 kB
+├ ○ /tasks/causes                        651 B           593 kB
+├ ○ /tasks/decisions                     650 B           593 kB
+├ ○ /tasks/monitoring                    650 B           593 kB
+├ ○ /tasks/scenarios                     650 B           593 kB
+├ ○ /upload                              650 B           593 kB
+└ ○ /validation                          650 B           593 kB
++ First Load JS shared by all            87.6 kB
+  ├ chunks/290-94ba29c88c76c352.js       31.9 kB
+  ├ chunks/2c8e403e-03b3ab353606df0c.js  53.6 kB
+  └ other shared chunks (total)          2.02 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -1,0 +1,3 @@
+PASS actual compiled Node ZIP STORE -> Python ZIP/PGV01 manifest/every-PNG validation: figure-landscape 3 pages
+PASS actual compiled Node ZIP STORE -> Python ZIP/PGV01 manifest/every-PNG validation: a4-landscape 3 pages
+PASS actual compiled Node ZIP STORE -> Python ZIP/PGV01 manifest/every-PNG validation: a4-portrait 3 pages

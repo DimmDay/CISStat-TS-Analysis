@@ -259,7 +259,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(report['phase'],'api_print_assets')
         self.assertIn('config/print_schema.json',report['detail'])
 
-    def run_pipeline(self,project='candidate',finalize=False,assets_valid=True):
+    def run_pipeline(self,project='candidate',finalize=False,assets_valid=True,page_sets=False):
         from contextlib import ExitStack
         m={'images':{'api':'sha256:'+'a'*64,'web':'sha256:'+'9'*64,'print-renderer':'sha256:'+'b'*64},
            'revision':'c'*40,'tree':'d'*40,'candidate_project':'candidate','candidate_volume':'candidate-volume','volume':'production-volume'}
@@ -279,13 +279,13 @@ class RunnerTests(unittest.TestCase):
             if cmd[:2]==['docker','inspect']:
                 return json.dumps({'Image':m['images']['print-renderer']})
             if cmd[:3]==['docker','exec','renderer-id']:
-                if cmd[-1]==self.v.COMPILED_HASHES:
-                    return json.dumps({str(i):'1'*64 for i in range(6)})
+                if cmd[-1]==self.v.COMPILED_HASHES or (page_sets and 'pageSet.js' in cmd[-1]):
+                    return json.dumps({str(i):'1'*64 for i in range(7 if page_sets else 6)})
                 return '{}'
             if 'pg_isready' in cmd:
                 return SimpleNamespace(returncode=0)
             if cmd[:3]==['docker','run','--rm'] and self.v.BOOTSTRAP in cmd:
-                return SimpleNamespace(returncode=0,stdout=json.dumps(native_double()))
+                return SimpleNamespace(returncode=0,stdout=json.dumps(__import__('tests.unit.test_pgv14_accept',fromlist=['page_native_double']).page_native_double() if page_sets else native_double()))
             return ''
         with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp, ExitStack() as patches:
             root=Path(temp);bundle=root/'bundle';bundle.mkdir()
@@ -299,9 +299,9 @@ class RunnerTests(unittest.TestCase):
                 (self.v.R,'validate_evidence',lambda *a:None),(self.v.V,'validate_renderer_meta',lambda *a:m['candidate_volume']),
                 (self.v.V,'metrics_ok',lambda *a:None),(self.v,'cleanup_owned',lambda *a:None),
                 (self.v.O,'ocr_environment',lambda *a:{'unit_double':True,'traineddata_sha256':{'rus':'1'*64,'eng':'2'*64}}),
-                (self.v.O,'capture',lambda *a,**k:tsv(['Паспорт','37'])),(self.v.shutil,'which',lambda *a:'/docker')]:
+                (self.v.O,'capture',lambda *a,**k:tsv(['Паспорт','Источник','Стр','1','2','37'] if page_sets else ['Паспорт','37'])),(self.v.shutil,'which',lambda *a:'/docker')]:
                 patches.enter_context(patch.object(obj,name,value))
-            code=self.v.run(args)
+            code=self.v.run(args,page_sets=True) if page_sets else self.v.run(args)
             result=json.loads((args.out/'report.json').read_text())
             if project=='candidate' and assets_valid:
                 self.assertEqual(code,0,result)
@@ -312,24 +312,24 @@ class RunnerTests(unittest.TestCase):
                 self.assertFalse(any(item.startswith('--publish') for item in client_cmd))
                 self.assertTrue((args.out/'review.template.json').is_file())
                 template=json.loads((args.out/'review.template.json').read_text())
-                self.assertTrue(all(not flag for value in template['cases'].values() for flag in value.values()))
+                self.assertTrue(all(not flag for value in template['cases'].values() for flags in (value['pages'].values() if page_sets else [value]) for flag in flags.values()))
                 if finalize:
                     review_path=args.out/'review.json'
                     review_path.write_text(json.dumps(template))
                     with self.assertRaises(ValueError):
-                        self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path))
+                        self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets)
                     template.update(reviewer='unit double operator',reviewed_at='2026-11-20T15:00:00+03:00')
-                    for flags in template['cases'].values():
-                        flags.update(dict.fromkeys(flags,True))
+                    for case in template['cases'].values():
+                        for flags in (case['pages'].values() if page_sets else [case]):flags.update(dict.fromkeys(flags,True))
                     review_path.write_text(json.dumps(template))
-                    self.assertEqual(self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path)),0)
+                    self.assertEqual(self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets),0)
                     accepted=json.loads((args.out/'accepted.json').read_text())
                     self.assertTrue(accepted['p01_p02_accepted'])
                     self.assertFalse(accepted['pgv13_certified'])
                     (args.out/'accepted.json').unlink()
                     (args.out/(self.v.C.CASES[0]['id']+'.payload.json')).write_text('{}')
-                    with self.assertRaisesRegex(ValueError,'hash'):
-                        self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path))
+                    with self.assertRaisesRegex(ValueError,'hash|changed'):
+                        self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets)
             else:
                 self.assertFalse(any(cmd[:3]==['docker','network','create'] for cmd,_ in calls))
             return result

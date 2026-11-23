@@ -1,0 +1,17 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+src/renderWorker.ts(410,33): error TS2353: Object literal may only specify known properties, and 'archive' does not exist in type 'RenderOutcome'.
+src/server.ts(247,16): error TS2339: Property 'archive' does not exist on type 'RenderOutcome'.
+src/server.ts(248,84): error TS2339: Property 'archive' does not exist on type 'RenderOutcome'.
+src/server.ts(249,103): error TS2339: Property 'pageCount' does not exist on type 'RenderOutcome'.
+src/server.ts(251,23): error TS2339: Property 'archive' does not exist on type 'RenderOutcome'.
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path /workspace/scratch/1c5610407fa7/CISStat-PGV14/apps/print-renderer
+npm error workspace @cisstat/print-renderer@0.1.0
+npm error location /workspace/scratch/1c5610407fa7/CISStat-PGV14/apps/print-renderer
+npm error command failed
+npm error command sh -c tsc -p tsconfig.build.json

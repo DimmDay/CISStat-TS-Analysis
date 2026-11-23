@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,11 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("pgv14", "pgv14.yml contracts", "Page-set validation/publication and every-page review (no VM claim)", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv14/requirements.txt"],
+        [sys.executable, "-m", "pytest", "scripts/pgv14/test_page_sets.py", "-v"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv14_accept", "tests.unit.test_pgv13_accept", "-v"],
+    ]),
     ("personal-demo", "personal_demo.yml contracts", "Personal MONO trial, SMTP and two-column entry contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/personal_demo/requirements.txt"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_personal_demo*.py", "-v"],

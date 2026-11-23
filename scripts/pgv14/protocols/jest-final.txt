@@ -1,0 +1,27 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+FAIL apps/print-renderer/src/pageSet.test.ts
+  ● PGV14 page set: complete coverage, repeated labels, bounded output › comparison identity, table headings, numbered folios and confirmation repeat on every page
+
+    render_content_overflow: indivisible row/block or header
+
+      22 |   const pages:PlannedPage[]=[],made:HTMLElement[]=[];
+      23 |   let total=0;
+    > 24 |   const fail=(code:string):never=>{throw new Error(code);};
+         |                                          ^
+      25 |   const makePage=():HTMLElement=>{
+      26 |     if(made.length>=maxPages)fail('export_too_large: page limit');
+      27 |     const page=template.cloneNode(true) as HTMLElement;
+
+      at fail (apps/print-renderer/src/pageSet.ts:24:42)
+      at apps/print-renderer/src/pageSet.ts:88:31
+          at Array.forEach (<anonymous>)
+      at paginatePassportDocument (apps/print-renderer/src/pageSet.ts:44:14)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:35:40)
+
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 1 failed, 17 passed, 18 total
+Tests:       1 failed, 351 passed, 352 total
+Snapshots:   0 total
+Time:        10.3 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src|scripts/pgv07cert|scripts/pgv08cert.

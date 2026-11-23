@@ -1,0 +1,14 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+FAIL apps/print-renderer/src/pageSet.test.ts
+  ● Test suite failed to run
+
+    [96mapps/print-renderer/src/pageSet.test.ts[0m:[93m1[0m:[93m60[0m - [91merror[0m[90m TS2307: [0mCannot find module './pageSet' or its corresponding type declarations.
+
+    [7m1[0m import { paginatePassportDocument, buildPageArchive } from './pageSet';
+    [7m [0m [91m                                                           ~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        3.241 s
+Ran all test suites within paths "apps/print-renderer/src/pageSet.test.ts".

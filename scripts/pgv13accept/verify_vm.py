@@ -178,11 +178,11 @@ def cleanup_owned(kind,name,run_id):
     command(prefix+(['rm',name] if kind=='network' else ['rm','-f','-v',name]))
 
 
-def run(args):
+def run(args, *, page_sets=False):
     out = args.out.resolve()
     O.require(not out.exists() and out!=ROOT and ROOT not in out.parents,'Use a new evidence directory outside the checkout')
     out.mkdir(mode=0o700,parents=True)
-    report = {'schema_version':'pgv13.documents/1','automated_passed':False,
+    report = {'schema_version':'pgv13.documents/2' if page_sets else 'pgv13.documents/1','automated_passed':False,
         'p01_p02_accepted':False,'pgv13_certified':False,'phase':'environment','cases':[]}
     write(out/'report.json',report)
     owned = []
@@ -198,6 +198,8 @@ def run(args):
         report['auth00_head']=command([sys.executable,'scripts/auth00/check_committed.py','--target','head'])
         report['tool_sources_sha256']={name:O.sha((ROOT/'scripts/pgv13accept'/name).read_bytes().replace(b'\r\n',b'\n'))
             for name in ('client.py','oracles.py','verify_vm.py','requirements.txt')}
+        if page_sets:
+            report['pgv14_tool_sources_sha256']={name:O.sha((ROOT/'scripts/pgv14'/name).read_bytes().replace(b'\r\n',b'\n')) for name in ('client.py','pages.py','verify_vm.py')}
         bundle,m = R.bundle_load(args.bundle)
         report.update(image_revision=m['revision'],image_tree=m['tree'],images=m['images'],
             tool_revision=command(['git','rev-parse','HEAD']),case_manifest_sha256=O.sha(json.dumps(C.CASES,sort_keys=True).encode()))
@@ -224,7 +226,8 @@ def run(args):
         O.require(args.renderer_project==m['candidate_project'] and volume==m['candidate_volume'],
             'Document workload requires the dedicated release candidate, not the production renderer')
         report.update(renderer_container_id=cid,volume=volume,renderer_project=args.renderer_project)
-        report['compiled_renderer_sha256']=json.loads(command(['docker','exec',cid,'node','-e',COMPILED_HASHES]))
+        compiled_probe=COMPILED_HASHES.replace("'packages/ui/print/printSchema.js']","'packages/ui/print/printSchema.js','apps/print-renderer/src/pageSet.js']") if page_sets else COMPILED_HASHES
+        report['compiled_renderer_sha256']=json.loads(command(['docker','exec',cid,'node','-e',compiled_probe]))
         before = json.loads(command(['docker','exec',cid,'node','-e',V.NODE_STATE]))
         report['before']=before
         phase('isolated_postgres')
@@ -252,7 +255,7 @@ def run(args):
             time.sleep(.5)
         phase('native_auth_jobs_download')
         config = {'socket':V.SOCKET,'api_sources':api_sources}
-        payload = json.dumps({'source':(ROOT/'scripts/pgv13accept/client.py').read_text(encoding='utf-8'),'config':config})
+        payload = json.dumps({'source':(ROOT/('scripts/pgv14/client.py' if page_sets else 'scripts/pgv13accept/client.py')).read_text(encoding='utf-8'),'config':config})
         owned.append(('container',api_container))
         result = command(['docker','run','--rm','--name',api_container,'--label',LABEL+'='+run_id,
             '-i','--pull=never','--network',network,'--read-only','--cap-drop=ALL','--security-opt=no-new-privileges:true',
@@ -279,6 +282,13 @@ def run(args):
         for case in client_result['cases']:
             name=case['id']
             print('PGV13 documents OCR: '+name,flush=True)
+            if page_sets:
+                from scripts.pgv14.pages import process_case
+                try:cards.append(process_case(case,out,args.tesseract))
+                except ValueError as error:
+                    case['pixel_ocr_failure']=str(error);failures.append(name)
+                report['cases'].append(case)
+                continue
             raw=base64.b64decode(case.pop('png_base64'),validate=True)
             png=out/(name+'.png');png.write_bytes(raw)
             case.update(png=png.name,png_sha256=O.sha(raw))
@@ -301,6 +311,8 @@ def run(args):
             report['cases'].append(case)
             cards.append('<section><h2>'+html.escape(name)+'</h2><p>Expected: '+html.escape('; '.join(case['expected_text']))+'</p><a href="'+name+'.png"><img src="'+name+'.png" style="max-width:100%;height:auto"></a></section>')
         (out/'review.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\'; style-src \'unsafe-inline\'"><title>PGV13 visual review</title><h1>Review all 11 PNGs at full size</h1>'+''.join(cards),encoding='utf-8')
+        if page_sets:
+            (out/'review.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\'; style-src \'unsafe-inline\'"><title>PGV14 page review</title><h1>Review EVERY page of all 11 cases</h1>'+''.join(cards),encoding='utf-8')
         report.update(automated_passed=not failures,visual_review='PENDING',phase='complete',failed_cases=failures)
         O.require(not failures,'PNG pixel/OCR checks failed for: '+', '.join(failures))
     except Exception as error:
@@ -320,13 +332,20 @@ def run(args):
     if report['automated_passed']:
         write(out/'review.template.json',{'schema_version':'pgv13.visual_review/1','report_sha256':O.sha((out/'report.json').read_bytes()),
             'reviewer':'','reviewed_at':'','cases':{c['id']:dict.fromkeys(O.REVIEW_CHECKS,False) for c in report['cases']}})
+    if report['automated_passed'] and page_sets:
+        from scripts.pgv14.pages import review_template
+        template=review_template(report);template['report_sha256']=O.sha((out/'report.json').read_bytes());write(out/'review.template.json',template)
     print(json.dumps({k:report.get(k) for k in ('automated_passed','p01_p02_accepted','pgv13_certified','phase','detail','client_failure','failed_cases','temporary_cleanup')},ensure_ascii=False))
     return 0 if report['automated_passed'] else 2
 
 
-def finalize(args):
+def finalize(args, *, page_sets=False):
     report_path=args.report.resolve()
     report=json.loads(report_path.read_text())
+    if page_sets:
+        O.require(report.get('schema_version')=='pgv13.documents/2','PGV14 page-set report required')
+        tools14={name:O.sha((ROOT/'scripts/pgv14'/name).read_bytes().replace(b'\r\n',b'\n')) for name in ('client.py','pages.py','verify_vm.py')}
+        O.require(report.get('pgv14_tool_sources_sha256')==tools14,'PGV14 tools changed; rerun all pages')
     O.require(report.get('automated_passed') is True,
         'Automated pixel/OCR or native acceptance failed; inspect report detail/failed_cases before finalize')
     O.require([c['id'] for c in report.get('cases',[])]==[c['id'] for c in C.CASES],'Exact fixed case coverage required')
@@ -345,10 +364,14 @@ def finalize(args):
         'cases':report['cases'],'negative_controls':report.get('negative_controls',{}),'backend_proof':report.get('backend_proof',{})})
     O.require(set(report.get('images',{}))=={'api','web','print-renderer'} and
         all(re.fullmatch('sha256:[a-f0-9]{64}',v) for v in report['images'].values()),'Exact release image IDs required')
-    O.require(report.get('api_source_fingerprints') and len(report.get('compiled_renderer_sha256',{}))==6 and
+    O.require(report.get('api_source_fingerprints') and len(report.get('compiled_renderer_sha256',{}))==(7 if page_sets else 6) and
         all(re.fullmatch('[a-f0-9]{64}',v) for v in report['compiled_renderer_sha256'].values()),'Native source/compiled provenance missing')
     V.metrics_ok(report['before'],report['after'])
     for case in report['cases']:
+        if page_sets:
+            from scripts.pgv14.pages import validate_saved_case
+            validate_saved_case(case,report_path.parent)
+            continue
         for suffix,key in [('.payload.json','payload_sha256'),('.ocr.tsv','ocr_tsv_sha256'),('.latin.ocr.tsv','latin_ocr_tsv_sha256')]:
             path=report_path.parent/(case['id']+suffix)
             O.require(O.sha(path.read_bytes())==case[key],'Reviewed payload/OCR evidence hash changed')
@@ -371,7 +394,7 @@ def finalize(args):
     return 0
 
 
-def main(argv=None):
+def main(argv=None, *, page_sets=False):
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest='action',required=True)
     runp=sub.add_parser('run')
@@ -385,7 +408,7 @@ def main(argv=None):
     review.add_argument('--review',type=Path,required=True)
     args=p.parse_args(argv)
     try:
-        return run(args) if args.action=='run' else finalize(args)
+        return run(args,page_sets=True) if page_sets and args.action=='run' else finalize(args,page_sets=True) if page_sets else run(args) if args.action=='run' else finalize(args)
     except (ValueError,OSError,KeyError,subprocess.SubprocessError) as error:
         print(json.dumps({'passed':False,'pgv13_certified':False,'error_type':type(error).__name__,
             'detail':str(error) if isinstance(error,ValueError) else 'Inspect local acceptance files/dependencies'}))

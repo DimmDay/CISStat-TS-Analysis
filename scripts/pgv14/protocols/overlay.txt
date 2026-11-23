@@ -1,0 +1,43 @@
+Preparing worktree (detached HEAD 5be3e29)
+HEAD is now at 5be3e29 Task ID: PGV13-VIS-01-CERT (11/23/2026) - independent verification of physical typography a6429e3
+ZIP CRC/manifest bytes: PASS; extracted 89 task files onto clean 5be3e29
+CRLF INDEX new TS sources; LF worktree; strict official checker:
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+OVERLAY CHECK: ['npm', 'run', 'build', '--workspace=@cisstat/print-renderer']
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+OVERLAY CHECK: ['node', 'node_modules/jest/bin/jest.js', 'packages/ui/print', 'apps/print-renderer/src', 'scripts/pgv07cert', 'scripts/pgv08cert', '--runInBand']
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 19 passed, 19 total
+Tests:       357 passed, 357 total
+Snapshots:   0 total
+Time:        10.07 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src|scripts/pgv07cert|scripts/pgv08cert.
+OVERLAY CHECK: ['/workspace/scratch/1c5610407fa7/venv/bin/python', '-m', 'pytest', 'scripts/pgv14/test_page_sets.py', '-q']
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1c5610407fa7/CISStat-PGV14-overlay
+configfile: pytest.ini
+plugins: platformdirs-4.14.8, typeguard-4.6.1, anyio-4.14.2
+collected 17 items
+
+scripts/pgv14/test_page_sets.py .................                        [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 17 passed, 1 warning in 4.72s =========================
+OVERLAY CHECK: ['/workspace/scratch/1c5610407fa7/venv/bin/python', 'scripts/auth06/check_routes.py']
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 668, "added": [], "missing": []}
+OVERLAY CHECK: ['git', 'diff', '--check']
+CLEAN ZIP OVERLAY CHECKS: PASS

@@ -1,0 +1,128 @@
+Локальные гейты (база 5be3e29, AUTH-00 target=INDEX): pgv14
+
+=== ГЕЙТ pgv14 (pgv14.yml contracts) — Page-set validation/publication and every-page review (no VM claim)
+    (установка зависимостей пропущена: --skip-install)
+    $ /workspace/scratch/1c5610407fa7/venv/bin/python -m pytest scripts/pgv14/test_page_sets.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /workspace/scratch/1c5610407fa7/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/scratch/1c5610407fa7/CISStat-PGV14
+configfile: pytest.ini
+plugins: platformdirs-4.14.8, typeguard-4.6.1, anyio-4.14.2
+collecting ... collected 14 items
+
+scripts/pgv14/test_page_sets.py::test_single_png_and_metadata_are_bound_to_exact_frozen_input PASSED [  7%]
+scripts/pgv14/test_page_sets.py::test_many_pages_deliver_zip_with_every_hash_checked PASSED [ 14%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>0] PASSED [ 21%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>1] PASSED [ 28%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>2] PASSED [ 35%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>3] PASSED [ 42%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>4] PASSED [ 50%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>5] PASSED [ 57%]
+scripts/pgv14/test_page_sets.py::test_bad_packages_never_reach_ready[<lambda>6] PASSED [ 64%]
+scripts/pgv14/test_page_sets.py::test_source_payload_cannot_be_replaced PASSED [ 71%]
+scripts/pgv14/test_page_sets.py::test_real_worker_publishes_zip_and_json_sidecar_and_replays_same_job PASSED [ 78%]
+scripts/pgv14/test_page_sets.py::test_every_single_and_multi_case_is_retained PASSED [ 85%]
+scripts/pgv14/test_page_sets.py::test_metadata_failure_cannot_publish_half_a_page_set PASSED [ 92%]
+scripts/pgv14/test_page_sets.py::test_cancel_before_publication_does_not_leave_ready_pages_or_metadata PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 14 passed, 1 warning in 3.60s =========================
+    $ /workspace/scratch/1c5610407fa7/venv/bin/python -m unittest tests.unit.test_pgv14_accept tests.unit.test_pgv13_accept -v
+test_new_vm_runner_cannot_use_legacy_single_page_mode (tests.unit.test_pgv14_accept.EveryPageTests.test_new_vm_runner_cannot_use_legacy_single_page_mode) ... ok
+test_renderer_limit_codes_remain_terminal_after_transport (tests.unit.test_pgv14_accept.EveryPageTests.test_renderer_limit_codes_remain_terminal_after_transport) ... ok
+test_review_requires_all_pages_and_hashes_including_last_page (tests.unit.test_pgv14_accept.EveryPageTests.test_review_requires_all_pages_and_hashes_including_last_page) ... ok
+test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison (tests.unit.test_pgv13_accept.NativeClientContractTests.test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison) ... ok
+test_foreign_runtime_source_rejected (tests.unit.test_pgv13_accept.NativeClientContractTests.test_foreign_runtime_source_rejected) ... ok
+test_production_dsn_rejected_before_any_connection (tests.unit.test_pgv13_accept.NativeClientContractTests.test_production_dsn_rejected_before_any_connection) ... ok
+test_uniform_denial_ignores_only_correlation_not_message_or_code (tests.unit.test_pgv13_accept.NativeClientContractTests.test_uniform_denial_ignores_only_correlation_not_message_or_code) ... ok
+test_blank_png_is_not_visual_success (tests.unit.test_pgv13_accept.OracleTests.test_blank_png_is_not_visual_success) ... ok
+test_corrupt_png (tests.unit.test_pgv13_accept.OracleTests.test_corrupt_png) ... ok
+test_low_confidence_text_not_counted (tests.unit.test_pgv13_accept.OracleTests.test_low_confidence_text_not_counted) ... ok
+test_missing_group_fails_ocr (tests.unit.test_pgv13_accept.OracleTests.test_missing_group_fails_ocr) ... ok
+test_missing_russian_language_is_not_skip_or_fallback (tests.unit.test_pgv13_accept.OracleTests.test_missing_russian_language_is_not_skip_or_fallback) ... ok
+test_ocr_cyrillic_and_numbers_from_pixels (tests.unit.test_pgv13_accept.OracleTests.test_ocr_cyrillic_and_numbers_from_pixels) ... ok
+test_ocr_empty_or_malformed (tests.unit.test_pgv13_accept.OracleTests.test_ocr_empty_or_malformed) ... ok
+test_ocr_outside_image (tests.unit.test_pgv13_accept.OracleTests.test_ocr_outside_image) ... ok
+test_profile_catalog_dimensions_are_exact (tests.unit.test_pgv13_accept.OracleTests.test_profile_catalog_dimensions_are_exact) ... ok
+test_reused_set_requires_three_visible_passport_tail_markers (tests.unit.test_pgv13_accept.OracleTests.test_reused_set_requires_three_visible_passport_tail_markers) ... ok
+test_review_rejects_pending_and_missing_case (tests.unit.test_pgv13_accept.OracleTests.test_review_rejects_pending_and_missing_case) ... ok
+test_review_requires_exact_report_and_images (tests.unit.test_pgv13_accept.OracleTests.test_review_requires_exact_report_and_images) ... ok
+test_transparent_png (tests.unit.test_pgv13_accept.OracleTests.test_transparent_png) ... ok
+test_valid_png (tests.unit.test_pgv13_accept.OracleTests.test_valid_png) ... ok
+test_wrong_profile (tests.unit.test_pgv13_accept.OracleTests.test_wrong_profile) ... ok
+test_bootstrap_does_not_expose_unknown_exception_detail (tests.unit.test_pgv13_accept.RunnerTests.test_bootstrap_does_not_expose_unknown_exception_detail) ... ok
+test_cleanup_refuses_foreign_label (tests.unit.test_pgv13_accept.RunnerTests.test_cleanup_refuses_foreign_label) ... ok
+test_cleanup_removes_only_owned_container_and_its_anonymous_volumes (tests.unit.test_pgv13_accept.RunnerTests.test_cleanup_removes_only_owned_container_and_its_anonymous_volumes) ... ok
+test_existing_evidence_directory_is_not_overwritten (tests.unit.test_pgv13_accept.RunnerTests.test_existing_evidence_directory_is_not_overwritten) ... ok
+test_finalize_requires_human_review_and_binds_payload_ocr (tests.unit.test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr) ... PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_missing_case_duplicate_and_missing_control_are_rejected (tests.unit.test_pgv13_accept.RunnerTests.test_missing_case_duplicate_and_missing_control_are_rejected) ... ok
+test_missing_image_assets_stop_before_test_postgres_is_created (tests.unit.test_pgv13_accept.RunnerTests.test_missing_image_assets_stop_before_test_postgres_is_created) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"p01_p02_accepted": true, "pgv13_certified": false, "reviewer": "unit double operator", "report_sha256": "1affd642eef5e8e509f150c26dd6672ac3ea8e399d406a53bc6da09b0dbc3081", "scope": "P01/P02 document content, jobs/download, OCR and human visual review", "review_sha256": "3a0923231d5b3c865005149f4236c6d5ba5d1c78b3da1a0323c1da481208adaf", "images": {"api": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "web": "sha256:9999999999999999999999999999999999999999999999999999999999999999", "print-renderer": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "image_revision": "cccccccccccccccccccccccccccccccccccccccc"}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+ok
+test_native_pipeline_writes_bound_images_and_pending_visual_review (tests.unit.test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review) ... {"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "api_print_assets", "detail": "API print asset missing: config/print_schema.json", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_no_docker_writes_failure_not_success (tests.unit.test_pgv13_accept.RunnerTests.test_no_docker_writes_failure_not_success) ... ok
+test_production_renderer_is_refused_before_temporary_resources (tests.unit.test_pgv13_accept.RunnerTests.test_production_renderer_is_refused_before_temporary_resources) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "environment", "detail": "Docker CLI required; no native acceptance ran", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 15.384s
+
+OK
+{"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "api_print_assets", "detail": "Document workload requires the dedicated release candidate, not the production renderer", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+--- pgv14: PASS (19.9 c)
+
+=== СВОДКА ===
+  PASS  pgv14      19.9 c
+
+ИТОГ: выбранные гейты зелёные

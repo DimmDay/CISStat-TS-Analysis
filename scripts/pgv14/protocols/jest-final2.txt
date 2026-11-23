@@ -1,0 +1,13 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 18 passed, 18 total
+Tests:       353 passed, 353 total
+Snapshots:   0 total
+Time:        10.032 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src|scripts/pgv07cert|scripts/pgv08cert.
+npm notice
+npm notice New major version of npm available! 11.19.1 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

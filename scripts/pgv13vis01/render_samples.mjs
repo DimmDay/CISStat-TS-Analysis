@@ -80,6 +80,16 @@ function postRender(payloadBytes) {
   });
 }
 
+// Historical single-surface typography probe. For actual PGV14 page sets use
+// scripts/pgv14/verify_vm.py: it preserves all 11 cases and verifies EVERY page.
+function terminalOverflow(response) {
+  try {
+    const error = JSON.parse(response.body.toString("utf8")).error;
+    return error.code === "render_content_overflow" && error.retryable === false &&
+      response.headers["x-render-retryable"] === "false";
+  } catch { return false; }
+}
+
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const fonts = fontPaths();
@@ -104,7 +114,7 @@ async function main() {
 
     const names = [
       "p01-figure-landscape", "p01-a4-landscape", "p01-a4-portrait",
-      "p01-reused", "p01-missing",
+      "p01-reused", "p01-missing", "p01-corrupt",
       "p02-figure-landscape", "p02-a4-landscape", "p02-a4-portrait",
       "p02-reused", "p02-missing",
     ];
@@ -117,6 +127,7 @@ async function main() {
       "p01-a4-portrait": 200,
       "p01-reused": 413,           // траектория 3 паспортов = page-set (PGV-14)
       "p01-missing": 200,
+      "p01-corrupt": 200,
       "p02-figure-landscape": 413, // P02 с определениями на 8×5" — другой профиль
       "p02-a4-landscape": 200,
       "p02-a4-portrait": 200,
@@ -133,7 +144,7 @@ async function main() {
         name,
         status: res.status,
         expected: expect[name],
-        match: res.status === expect[name],
+        match: res.status === expect[name] && (res.status !== 413 || terminalOverflow(res)),
         retryable: res.headers["x-render-retryable"] ?? null,
         width: res.headers["x-render-width"] ?? null,
         height: res.headers["x-render-height"] ?? null,
@@ -198,7 +209,7 @@ async function main() {
     const ok =
       report.renders.every((r) => r.match && (r.status !== 200 || r.png_signature_ok)) &&
       report.adapted.every((r) => r.status === 200 && r.png_signature_ok) &&
-      report.overflow_probe.status === 413;
+      report.overflow_probe.status === 413 && terminalOverflow(overflow);
     console.log(ok ? "VIS01_LOCAL_RENDER_OK" : "VIS01_LOCAL_RENDER_FAILED");
     process.exitCode = ok ? 0 : 1;
   } finally {

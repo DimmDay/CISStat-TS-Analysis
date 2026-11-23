@@ -1,0 +1,2 @@
+-r ../pgv13cert/requirements.txt
+-r ../pgv13accept/requirements.txt

@@ -98,7 +98,7 @@ export interface RenderPagePayload {
   snapshot: VisualPrintSnapshotV1;
   sections: readonly RenderSectionContent[];
   /** Опции рендера: timeout_s (зажим hard cap'ом, AC20); scale — только probe. */
-  options?: { timeout_s?: number | null; scale?: number | null };
+  options?: { timeout_s?: number | null; scale?: number | null; page_set?: boolean };
 }
 
 /** Нарушение валидации (паритет кодов PGV-01 для PGV-09-интеграции). */
@@ -171,6 +171,12 @@ export function validateRenderPayload(raw: unknown): {
     out.push(violation("page_too_large", "options.scale", "страница превышает pixel budget PGV-01"));
   }
 
+  if ((options as RenderPagePayload["options"])?.page_set != null) {
+    if (typeof (options as RenderPagePayload["options"]).page_set !== "boolean" ||
+      ((options as RenderPagePayload["options"]).page_set && (scale !== 1 || !Array.isArray(value.sections) ||
+       value.sections.some((s: any) => !["passport_record", "passport_comparison"].includes(s?.kind)))))
+      out.push(violation("invalid_selection", "options.page_set", "page-set requires full-size P01/P02"));
+  }
   const sections = value.sections;
   if (!Array.isArray(sections) || sections.length === 0) {
     out.push(violation("empty_sections", "sections", "список секций не может быть пустым"));
@@ -436,6 +442,7 @@ export const ERROR_BODY_RETRYABILITY: Record<string, boolean> = {
   // PGV13-VIS-01: контент не умещается в страницу при обязательной
   // типографике — явный отказ (§7 «без скрытого усечения»), не повтор.
   render_content_overflow: false,
+  export_too_large: false,
   internal_render_error: false,
 };
 

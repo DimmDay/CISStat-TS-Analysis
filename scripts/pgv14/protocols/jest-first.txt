@@ -1,0 +1,40 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+FAIL scripts/pgv08cert/test_p8cert_oracles.test.ts
+  ● p8cert A5: таймаут и retryability (AC20) › матрица retryability полная; неизвестный код — честный false
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+    @@ -1,6 +1,7 @@
+      Object {
+    +   "export_too_large": false,
+        "internal_render_error": false,
+        "invalid_payload": false,
+        "payload_too_large": false,
+        "render_content_overflow": false,
+        "render_dependency_unavailable": false,
+
+      404 |
+      405 |   it("матрица retryability полная; неизвестный код — честный false", () => {
+    > 406 |     expect(ERROR_BODY_RETRYABILITY).toEqual({
+          |                                     ^
+      407 |       render_dependency_unavailable: false,
+      408 |       render_timeout: true,
+      409 |       renderer_busy: true,
+
+      at Object.<anonymous> (scripts/pgv08cert/test_p8cert_oracles.test.ts:406:37)
+
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 1 failed, 17 passed, 18 total
+Tests:       1 failed, 349 passed, 350 total
+Snapshots:   0 total
+Time:        10.537 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src|scripts/pgv07cert|scripts/pgv08cert.
+npm notice
+npm notice New major version of npm available! 11.19.1 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

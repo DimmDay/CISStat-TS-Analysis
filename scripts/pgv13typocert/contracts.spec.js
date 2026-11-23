@@ -112,7 +112,7 @@ test('F-TYPO-03: sample runner must reject a wrong 413 code/retryable response',
  for(let i=0;i<25&&proc.exitCode===undefined;i++)await new Promise(resolve=>setImmediate(resolve));
  assert.notEqual(proc.exitCode,undefined,'runner must complete, not time out');
  assert.ok(logs.some(s=>s==='VIS01_LOCAL_RENDER_OK'||s==='VIS01_LOCAL_RENDER_FAILED'),'runner must complete all renders: '+logs.join('\n'));
- assert.equal(logs.filter(s=>s.startsWith('RENDER ')).length,10,'all ten original cases must run');
- assert.ok(logs.filter(s=>s.startsWith('RENDER ')).every(s=>JSON.parse(s.slice(7)).match),'HTTP mock must match every declared status');
+ assert.equal(logs.filter(s=>s.startsWith('RENDER ')).length,11,'all eleven acceptance cases must run');
+ assert.ok(logs.filter(s=>s.startsWith('RENDER ')).some(s=>!JSON.parse(s.slice(7)).match),'wrong terminal error must fail the affected case');
  assert.equal(proc.exitCode,1,'runner accepted wrong 413 body and retryable=true: '+logs.at(-1));
 });

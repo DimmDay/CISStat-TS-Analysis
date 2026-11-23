@@ -631,6 +631,7 @@ def build_print_render_payload_from_basis(
         content = section_content_from_visual_result(
             snapshot_payload, visual_result_payload
         )
-    return build_render_payload(
-        snapshot_payload, content, request_id=request_id
-    )
+    payload = build_render_payload(snapshot_payload, content, request_id=request_id)
+    if basis.get("basis_kind") in _PASSPORT_BASIS_KINDS:
+        payload["options"] = {"page_set": True}
+    return payload

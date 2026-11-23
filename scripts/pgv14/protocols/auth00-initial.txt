@@ -1,0 +1,7 @@
+fatal: could not open 'scripts/pgv14/files.txt' for reading: No such file or directory
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/run_pgv14_auth00.py", line 7, in <module>
+    subprocess.run(['git','add','--pathspec-from-file=scripts/pgv14/files.txt'],env=env,check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['git', 'add', '--pathspec-from-file=scripts/pgv14/files.txt']' returned non-zero exit status 128.

@@ -1,0 +1,43 @@
+test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review) ... PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ERROR
+test_new_vm_runner_cannot_use_legacy_single_page_mode (tests.unit.test_pgv14_accept.EveryPageTests.test_new_vm_runner_cannot_use_legacy_single_page_mode) ... ok
+test_renderer_limit_codes_remain_terminal_after_transport (tests.unit.test_pgv14_accept.EveryPageTests.test_renderer_limit_codes_remain_terminal_after_transport) ... ok
+test_review_requires_all_pages_and_hashes_including_last_page (tests.unit.test_pgv14_accept.EveryPageTests.test_review_requires_all_pages_and_hashes_including_last_page) ... ok
+
+======================================================================
+ERROR: test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/tests/unit/test_pgv14_accept.py", line 31, in test_all_eleven_page_sets_run_and_finalize_with_exact_page_review
+    result=runner.run_pipeline(page_sets=True,finalize=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/tests/unit/test_pgv13_accept.py", line 325, in run_pipeline
+    self.assertEqual(self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets),0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/scripts/pgv13accept/verify_vm.py", line 367, in finalize
+    O.require(report.get('api_source_fingerprints') and len(report.get('compiled_renderer_sha256',{}))==(7 if page_sets else 6) and
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/scripts/pgv13accept/oracles.py", line 26, in require
+    raise ValueError(message)
+ValueError: Native source/compiled provenance missing
+
+----------------------------------------------------------------------
+Ran 4 tests in 11.783s
+
+FAILED (errors=1)
+{"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}

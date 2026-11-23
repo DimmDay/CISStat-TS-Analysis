@@ -1,0 +1,58 @@
+{
+  "base": "5be3e29b32d954f9abe009236c4546d876ec2b9b",
+  "old_counts": {
+    "api": 284,
+    "framework": 8,
+    "internal_operation": 39,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 3,
+    "worker": 13
+  },
+  "new_counts": {
+    "api": 284,
+    "framework": 8,
+    "internal_operation": 39,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 3,
+    "worker": 13
+  },
+  "http_semantics_unchanged": true,
+  "http_added": [],
+  "http_removed": [],
+  "renumbered_workers": {
+    "document_render_worker.py": "+11 at starts 710/747/769",
+    "png_renderer_client.py": "+11 at start387"
+  },
+  "manual_operator": "existing document_acceptance extended with PGV14 page-set mode; same OS/Docker authority",
+  "new_source_fingerprints": [
+    ".github/workflows/pgv14.yml",
+    "apps/api/print_page_sets.py",
+    "apps/print-renderer/src/pageSet.test.ts",
+    "apps/print-renderer/src/pageSet.ts",
+    "apps/print-renderer/src/pageSetWorker.test.ts",
+    "docs/pgv14_deploy.md",
+    "docs/pgv14_pagination.md",
+    "scripts/pgv13vis01/render_samples.mjs",
+    "scripts/pgv14/client.py",
+    "scripts/pgv14/pages.py",
+    "scripts/pgv14/requirements.txt",
+    "scripts/pgv14/test_native.py",
+    "scripts/pgv14/test_page_sets.py",
+    "scripts/pgv14/verify_vm.py",
+    "tests/unit/test_pgv14_accept.py"
+  ]
+}

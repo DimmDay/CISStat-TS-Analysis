@@ -402,6 +402,13 @@ def _document_json(
 def _job_json(job: Any, rendition: Any) -> dict[str, Any]:
     payload = job.to_dict()
     payload["rendition"] = rendition.to_dict() if rendition is not None else None
+    if rendition is not None:
+        payload["output_format"] = rendition.format
+        if job.print_revision_id:
+            metadata = _delivery_service().registry.find_print_rendition(job.print_revision_id, "json", job.redaction_profile)
+            if metadata is not None and metadata.state == "ready" and metadata.job_id == job.job_id and job.state == "ready":
+                payload["metadata_url"] = f"/v1/documentation/renditions/{metadata.rendition_id}/content"
+
     return payload
 
 

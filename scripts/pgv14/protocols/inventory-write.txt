@@ -1,0 +1,1 @@
+{"status": "ok", "counts": {"api": 284, "framework": 8, "internal_operation": 39, "legacy_authority": 1, "legacy_widget": 250, "page": 41, "proxy": 2, "renderer": 4, "static_asset": 1, "storage": 18, "task_alias": 4, "transport": 3, "worker": 13}, "entries": 668}

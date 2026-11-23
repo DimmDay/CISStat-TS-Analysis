@@ -108,6 +108,15 @@ class RendererPayloadTooLarge(RendererClientError):
     """413 payload_too_large (terminal)."""
 
 
+class RendererPageSetRefused(RendererPayloadTooLarge):
+    """Terminal layout/page budget refusal; retain renderer machine code."""
+    code = "render_content_overflow"
+
+
+class RendererExportTooLarge(RendererPageSetRefused):
+    code = "export_too_large"
+
+
 class RendererBusy(RendererClientError):
     """429 renderer_busy (transient)."""
 
@@ -309,7 +318,7 @@ class PngRendererClient:
                     data=body,
                     headers={
                         "Content-Type": "application/json",
-                        "Accept": "image/png, application/json",
+                        "Accept": "image/png, application/zip, application/json",
                     },
                     method="POST",
                 )
@@ -328,6 +337,8 @@ class PngRendererClient:
                 raise RendererPayloadInvalid(
                     f"invalid_payload: контейнер отклонил payload ({code or exc.code})"
                 ) from None
+            if exc.code == 413 and code in ("export_too_large", "render_content_overflow"):
+                raise (RendererExportTooLarge if code == "export_too_large" else RendererPageSetRefused)(code + ": page set refused") from None
             if exc.code == 413 or code == "payload_too_large":
                 raise RendererPayloadTooLarge(
                     "payload_too_large: payload превышает лимит контейнера (§7)"
@@ -360,7 +371,7 @@ class PngRendererClient:
                 f"renderer_unavailable: контейнер недоступен ({type(reason).__name__})"
             ) from None
         # §11: битые байты не выдаются за валидные -- гейт до staging.
-        if not data.startswith(PNG_SIGNATURE):
+        if not (data.startswith(PNG_SIGNATURE) or (payload.get("options", {}).get("page_set") is True and data.startswith(b"PK\x03\x04"))):
             raise RendererBadOutput(
                 "renderer_bad_output: ответ контейнера не PNG (протокольное "
                 "нарушение; байты не stage'ятся)"
@@ -390,7 +401,7 @@ class PngRendererClient:
         try:
             connection.request(method, target, body=body, headers={
                 "Host": "renderer.local", "Content-Type": "application/json",
-                "Accept": "image/png, application/json", "Connection": "close",
+                "Accept": "image/png, application/zip, application/json", "Connection": "close",
             })
             response = connection.getresponse()
             cap = limit if response.status == 200 else MAX_CONTROL_BYTES

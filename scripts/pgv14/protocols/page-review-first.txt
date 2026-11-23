@@ -1,0 +1,17 @@
+test_new_vm_runner_cannot_use_legacy_single_page_mode (tests.unit.test_pgv14_accept.EveryPageTests.test_new_vm_runner_cannot_use_legacy_single_page_mode) ... ok
+test_renderer_limit_codes_remain_terminal_after_transport (tests.unit.test_pgv14_accept.EveryPageTests.test_renderer_limit_codes_remain_terminal_after_transport) ... ERROR
+test_review_requires_all_pages_and_hashes_including_last_page (tests.unit.test_pgv14_accept.EveryPageTests.test_review_requires_all_pages_and_hashes_including_last_page) ... ok
+
+======================================================================
+ERROR: test_renderer_limit_codes_remain_terminal_after_transport (tests.unit.test_pgv14_accept.EveryPageTests.test_renderer_limit_codes_remain_terminal_after_transport)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/tests/unit/test_pgv14_accept.py", line 36, in test_renderer_limit_codes_remain_terminal_after_transport
+    self.assertEqual(DocumentRenderWorker()._classify_error(caught.exception),code)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DocumentRenderWorker' object has no attribute '_classify_error'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.050s
+
+FAILED (errors=1)

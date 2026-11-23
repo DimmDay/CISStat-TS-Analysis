@@ -713,6 +713,7 @@
     ".github/workflows/auth18.yml": "283abc400fd1164854a5d003805be32d233fde7f4a3d7a8dbc20dc097123d20e",
     ".github/workflows/kabinet_demo_cert.yml": "7befc1073a4a46ebd69de5c5ddd81b245d6017afcb91a79bc3dcb5fda0fa8a79",
     ".github/workflows/personal_demo.yml": "5761498e4db379ca3448349540541d47021a59014d656a17b2dd565bf44f513d",
+    ".github/workflows/pgv14.yml": "3cff84f3159b8660ce4744e5827f23350de81799cb70e86ec8f2a8cc40fca4ac",
     "app.py": "5c8fd3d483efea1b51f4c1d24e3cfc2aa45d6e8415b880b7397682e20d74a57d",
     "app/core/auth.py": "485c28c6ed572e08ab66d2c2337114651f29e21d06561f475de4ade0fd53f57f",
     "app/data/db_connectors.py": "56951d412097de71f8b424bed619358155c79c5a040bcb38ba538285a1b36bbb",
@@ -815,9 +816,9 @@
     "apps/api/delivery_outbox.py": "2d72a3b44b62e4648af50d6376a7abe076a0c0a06d9f736216478f07c804d554",
     "apps/api/delivery_worker.py": "050a0f2d7c40bf735c3d267f04ec0615f3632886c625a6efed9cddd3a16bea88",
     "apps/api/doc_profiles.py": "a509c667b1ddc95990878a602ce1b86d50b25cd5b78f76c3cf05988bd7615cc3",
-    "apps/api/document_jobs.py": "bbede848f7c336254a1cb4e23f775dd87308605533cf4f32e516cd6216576aa6",
+    "apps/api/document_jobs.py": "2d179c49757e9744d99ca9b8f2e1075e624063b6222d58998bb06392237ef3dc",
     "apps/api/document_lifecycle.py": "fc45cbed2401500f669090eba6c01ddb2021ce7a973bbcaa4ab3194216b65cfa",
-    "apps/api/document_render_worker.py": "22d39326d10a95f924ddc8b181990ea2c4d86a68e0385fedf3c93973ceb9346d",
+    "apps/api/document_render_worker.py": "07704e5c79b820463df8cf33fb1bf802edf904d7f9952299cbb0767908745ad8",
     "apps/api/document_renditions.py": "b61bac80c0141b931375b6438041bfbc2e9bb5d0b21fcaa0c60dae90a80d44ea",
     "apps/api/eda_correlation.py": "35d746def1aa07e022408cc351e83fe1c8206b53045ef834dd17c07b4b552bdb",
     "apps/api/eda_distribution.py": "3b1e856e183acf9f2fe84e282123bbbb37dbc0bacddbdaa86b80a6ba32d09946",
@@ -899,10 +900,10 @@
     "apps/api/ownership.py": "96b0d9c5d361534c889682c9ecb834dc3bde7db7eb756cac2ca786711c75dfba",
     "apps/api/passport_checkpoints.py": "7933453b8cb714a73ef663907957ccba0d1e535821a30f56ea8b67091122f281",
     "apps/api/passport_comparison.py": "848e480d96a97874685fd000c91f5cb888fa19f8f9f9366f37a0992f5eb60815",
-    "apps/api/passport_documents.py": "e918921707be841e33a344f0feeef00745fb2da4d8c97d4d60e5b7367aa09366",
+    "apps/api/passport_documents.py": "4fb636d16dda6c1aa9f6056ca158559b039ce598efdc25f261c5b79bac322360",
     "apps/api/passport_history.py": "e0cbdc25b7d6a17986dd89c56b7c8837ee2e7e8583761211c208459c2bd4b071",
     "apps/api/plans.py": "ef91f6dbdbef412d4422432d5da85a24c22fa5086fdf4df26a0ec8cf1a23caea",
-    "apps/api/png_renderer_client.py": "c0295c85b914707139a94a56aab6c90998882ced22643c20896bb6b2f2721247",
+    "apps/api/png_renderer_client.py": "2793ae6c74bdc46acf34d182b10efb30b36f8cd4f18b7ca93aae79acd8d46d46",
     "apps/api/preprocessing_decomposition.py": "1dfc0f30dc8c5949aa3dce7e64a14147b661fe3284ff9d68497479e6b3e43a37",
     "apps/api/preprocessing_feature_engineering.py": "f65918aa845b1e87b676cd5a9458dc9dc710a600aa4cb16dbf034c7efaee078b",
     "apps/api/preprocessing_scaling.py": "2f3051d505031e18a54fb2cc4a87ee390d14b6b3bb27604b48f8700a4d8887be",
@@ -910,7 +911,8 @@
     "apps/api/preprocessing_spectral.py": "0dddef127076f67f97938122dae1678548fb309340e0ee4847afdfbbd01d830f",
     "apps/api/preprocessing_stationarity.py": "24c72dd6dc5661e087f3a909bf463224caa54972d3a5f9910057cfede572b9aa",
     "apps/api/preprocessing_variance.py": "a29660000c8b8e5f630802bae300095dcdb9c2cb53aa73e2475f47529b5b3b56",
-    "apps/api/print_render_payload.py": "1c9be376aba6df297b5d4c1e2eaea08a2df68920c29e316afe8b89df17f70d18",
+    "apps/api/print_page_sets.py": "00f51d6eaea78e970c8f7332585ed790bd718541c584867037532c7ce07d57e1",
+    "apps/api/print_render_payload.py": "b625c8e35f507d19428272ecdf70baa88b54c79cf2def9c25e9194fa338334bd",
     "apps/api/print_schema.py": "b4404a51e88aedf99fe0fecf53b83b4376841a04ff6615d5e3e44f43ddd1800e",
     "apps/api/progress_maps.py": "a9ef3cc4d5822f757650b1fe9f7ab2fc1bcc2e2977a0a6032935978c245c0a54",
     "apps/api/progress_projection.py": "fb167dbba8f6c13c9954c03404a3a8a84cd65440003b23caab8bfcd9b023a357",
@@ -930,7 +932,7 @@
     "apps/api/routers/diagnostics.py": "3e6651928f468d07b2bc9d9534ed2690ec8e574f8036fed860f1e1eb775de456",
     "apps/api/routers/diagnostics_internal.py": "92ffb31b5911aa0c056aafb9fbc896839ff0b6307ef0a1a25e04409c965a95df",
     "apps/api/routers/doc_profiles.py": "20f51dc82fdf1029696d62cf2005d435a63603b90d512f49149726108bfe27b0",
-    "apps/api/routers/documentation.py": "27455774a7e828048c8205cf3a1d62bbe4fec278fd861ee6b5c7f86f9583a517",
+    "apps/api/routers/documentation.py": "3e20f4b08a4c63ad42cf09941600a1e860ba593f4dac046047a838e0653f4548",
     "apps/api/routers/forecasting_session.py": "ceba05d7cadd3b5d8fd3dd1b211b1cd66a112b461a40b7b84bf3fb07cc36f020",
     "apps/api/routers/internal.py": "2b305db5940c65c75f2190341b33d7a6d0df6aa81586ea7e38b7661d22234b2c",
     "apps/api/routers/logs.py": "4c26e67de3ab50bef59c38bcf7543e9e129eea204d3c58e6dac25a10821dd391",
@@ -973,7 +975,7 @@
     "apps/api/workers/execution.py": "2d58ae852411d3859675a5e82f7280e4b1b6f309a891f989c919ba64f6e3e026",
     "apps/api/workers/migrations.py": "abb02312820a48746f32cc5516e233d2e553516e5a3a7a634dbec077f007d98c",
     "apps/api/workers/process.py": "3d23b39fe8f09933c99bf066b9104ffecf3f3c13bac36578f000d5fb63b09bbc",
-    "apps/api/workers/render.py": "553d95f59df1df60a4f9c4a7aa30db3f132f52ce23acacb897dd51cdaf37a596",
+    "apps/api/workers/render.py": "f9636195c149e2c216e81b534011eb30ad2e9f2327905806e4c2c2f322c82e6f",
     "apps/api/workers/services.py": "e28f69d699c02cbfa88e1a27350cb7370fdadf56c6b3097c2803511251047701",
     "apps/api/workers/spool.py": "4427cff745c3ab1bdb117a769ae3142a53484b0de9f4fbbd5130863f52690c4a",
     "apps/embedded/app/account/page.tsx": "29f18a6f3f8097214cfb73a9dca933dad614e3eaa018004458eb64eb4db19df5",
@@ -1007,9 +1009,12 @@
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
     "apps/print-renderer/build/entrypoint.sh": "dc247f28bb164e7e9cfd076a8efb88a90b4c70a1132203912e0243785094237c",
     "apps/print-renderer/src/healthcheck.ts": "64e719ff471fb9b423cf1474e8c99c8c1c87c953f51c2d9b6d08a69992a97b17",
-    "apps/print-renderer/src/renderWorker.ts": "b747812c67dbb952a4560d35720c7d9a2a65e55c5be28a660739ae321aec335d",
-    "apps/print-renderer/src/rendererCore.tsx": "33966f05008128589b48e7b3018963a26645ed1b763098054f63e8197c7149fb",
-    "apps/print-renderer/src/server.ts": "496cd4d1423edb4cd1fddfa7a0d76821b4d271f62925a7dc3697043942748af4",
+    "apps/print-renderer/src/pageSet.test.ts": "33a24c2fd4f448fc66818027dbf1c6edf523fbc78e44da5d77a8310ee98fae08",
+    "apps/print-renderer/src/pageSet.ts": "cb3a8a6e954dbee7a4cf9204637b84da89ef7446f74d16afe0a782d03612eb34",
+    "apps/print-renderer/src/pageSetWorker.test.ts": "fd318a6e92bf0b519fc92853e34b5db1b1d5e9ab044ccc98f1c8047c2fef1716",
+    "apps/print-renderer/src/renderWorker.ts": "ac7a6fb0527fc2c8507ff74509dffb0e40c2211442000b7e00bcd790a984bee2",
+    "apps/print-renderer/src/rendererCore.tsx": "4242bc3afdb2bc80960636d1a31478f01275a50fd23b6106381003b5be96539b",
+    "apps/print-renderer/src/server.ts": "6f9405b9a634945292f73e5934d4da7ea8783b561e8343f89c7a7ba9e82841e2",
     "apps/print-renderer/src/socketTransport.test.ts": "f6b61a54b5f4d52fa3c34d86416a361a3f733e26589b01533e8857f93a1e46f3",
     "apps/print-renderer/src/socketTransport.ts": "51a524136021fb04ded0c1b5ecc30e86e88987bb32f60802e1e1f8ddfc20b34e",
     "apps/print-renderer/src/transportCancel.test.ts": "86908cae19ec4b4a49f93e5f79acaaf93b68e14c74a1d3232a63e0901a869ac5",
@@ -1083,6 +1088,8 @@
     "docs/pgv13_typography_cert_2026-11-23.md": "4c1871b477fae092a872a0d2a68aff290f38b75d4b110f15d9231b2857b51359",
     "docs/pgv13_uds_hotfix1.md": "0459a0213c0e5cc5473974e8e3dbc11426d4127d7600d816aea8ec913558fb3f",
     "docs/pgv13_uds_transport.md": "7a8c8ecf7d67779e91f81b4826953b55e8f875ee5e7d4c554296684371bc33db",
+    "docs/pgv14_deploy.md": "a162a941d6ef08031dc5c8e99fa39663bb9606c337b7b7ada4c20670b200573b",
+    "docs/pgv14_pagination.md": "5a2098b762bc91f8d29d0b02648142e189a107d7be3609ae94e71b7307d71d55",
     "packages/ui/components/AccountScreen.tsx": "fb22d5d37f612fab3419c30775ea23a26003a1c5b842522b53a1861d45651144",
     "packages/ui/components/BillingPanel.tsx": "61c9539ea06f76d20ad0f324fb9bc280f7519b184cd2e12dbfa5f943ef246adc",
     "packages/ui/components/DatasetPassportPanel.tsx": "dac3dd6ed35c1d08eaf85c93af90fbc06609bcbfb158f52320c0ca9562aa0e6f",
@@ -1172,7 +1179,7 @@
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
-    "packages/ui/print/printPassport.tsx": "d353f0e13ff7962d33caa49c595041e195c14e023f03ef08ced3fda23887196f",
+    "packages/ui/print/printPassport.tsx": "1066b23c0e2f5e914d37f8ac73e5de9467517d4c73177385286bb05f07245c52",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
     "packages/ui/server/proxy-routes.generated.json": "5633719ebf659ff02a4b4e8e6dd6f2c560f34cbab0a5c39772438838f312c97b",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
@@ -1207,18 +1214,18 @@
     "scripts/demo_admin/manage.py": "4fb2d26ddd77c7fb019b106401843c0e83700ad847c5ad20cea8b229f2054646",
     "scripts/demo_admin/migrate.py": "7671f7ede3147e3017fde152cf0eb27cf6bd3d71025cd255568a32f570e734cc",
     "scripts/email_upload_fix/demo_files.js": "68f93512bb115a3b6d9f874128f324f1120c8ebe8b9a3e5e51e24dfd53be82f7",
-    "scripts/local_gates.md": "b3e2a200859ddf63abd88f73890f70eed2d2115a8e393d073868b6f48836bb93",
-    "scripts/local_gates.py": "5238e1385832245c5b15362d148ef9599d7b38a0b40b3a2eb4494c661d7a943c",
+    "scripts/local_gates.md": "a9b8205ed2bb64f6076b0b016f7346487b710af508401b0c180ca0b45937b18d",
+    "scripts/local_gates.py": "7eee651d6338471330445700560fcf3c9d63c8f1f63f44ab7e4f4a629c42e347",
     "scripts/personal_demo/manage.py": "959b0b0eff2709835c4790fc1960ef8c544d81555a1e8c13530428b6eabcddba",
     "scripts/personal_demo/migrate.py": "43dc907ac5cf03629891a9f28d99271181e30ae9c1e54fea67e40692a31544f2",
     "scripts/personal_demo/requirements.txt": "308192db4c425a3dd616a762632f3e01d4ca97efa7973b63b4fb99cb4e0a1d40",
     "scripts/personal_demo/verify_postgres.py": "acc181498fd881668f5b1d56329035e2b17387c98ad3c771aa18c9e60aa9e621",
     "scripts/pgv13accept/client.py": "4e7074aff9cb6f17cb50bf9369d2d303dc47f284424264fd6f047ab9f648108f",
-    "scripts/pgv13accept/oracles.py": "9fb4e2faf6022b75fba7598562731fb0ff41110025039e8663d60c25874485d6",
+    "scripts/pgv13accept/oracles.py": "ff115a152c92893006e9914ab316e715ac276a964e21cb2142a0b185ac131c2a",
     "scripts/pgv13accept/requirements.txt": "b7b2d7b683b966b4201920861e04f3626903a8c10e3b1fa2789a50f72a9e4eef",
     "scripts/pgv13accept/test_native.py": "eb4c936c03c316aa5932d3b4b295552d7e5ef5478216a8cd524155440c7f6abb",
     "scripts/pgv13accept/test_ocr.py": "0169d014c1c95cc28ddf5d80f5840aa0fa47bf0b0435dcfe3bf5f8698915ce01",
-    "scripts/pgv13accept/verify_vm.py": "928685e18d6173f3a797cc21b80d77661b0363a52b9c3692a86949083db4e526",
+    "scripts/pgv13accept/verify_vm.py": "24c472d962d388aff20ac046289bea0a98484ff948302fac033055e14332bf28",
     "scripts/pgv13cert/mutations.py": "9e362b25ce6b9b3f7e0540a950928d71de1db907461b5fa7de08af5b4d9b85e0",
     "scripts/pgv13cert/mutator.py": "e057b268ae8198b4133ecedd002aff92ff5efe83e67243bac923a03ac66337d7",
     "scripts/pgv13cert/requirements.txt": "9d85500d64bbbf0c4c497cd7cd0d8b2fc9e1a948d47e058d85fdb63f4d3a498a",
@@ -1237,7 +1244,7 @@
     "scripts/pgv13sandbox/vendor/default.json": "3320527d4568265ac97a077609b1bfd4cfd0d789eeb9239b7e094b1526675406",
     "scripts/pgv13sandbox/vendor/source.json": "bcfadfd6a106b758259e6e9ceb18f0544209ede8ee43eba23c402c7ada570f84",
     "scripts/pgv13sandbox/verify_service.py": "8888b1f176ff32d13dfd581c16c855ce01643d1df69a8a39b19afef8e59a66ae",
-    "scripts/pgv13typocert/contracts.spec.js": "f518ac496c2ccd4471474b84b6485ea7fecde27359fe65e778cc5c5e08daaa03",
+    "scripts/pgv13typocert/contracts.spec.js": "57feec0ae07a78d2800d49e77a1f142097bc5a4abf17f7523f54a066f7644ebd",
     "scripts/pgv13typocert/emit.js": "0a7ffe22dc98a89af8e2504ff1950f01c18b1c03ef138276cb178b4931761138",
     "scripts/pgv13typocert/fixtures.js": "b21f95922fe5de17cbf76d0a05a9552ea85d20cb553405d00da8730b9c9c1d84",
     "scripts/pgv13typocert/measure.js": "e44bd267fa71e06ce642b1c281f56a7f88483c69e135fa2ff6daa3b2a44e50e8",
@@ -1247,7 +1254,14 @@
     "scripts/pgv13uds/test_client.py": "f54795f77e7b8651b3a5f037abc39df9f03f30eee6b87059339bab5a88986dc8",
     "scripts/pgv13uds/test_vm.py": "fcf118a04767ae15d758ee48327c0ceb9de77f5f1bba14a507fb9364dbd3d4eb",
     "scripts/pgv13uds/verify_vm.py": "c5ca6ce6ffe9a18965a533b422b69c7981c7526710ab2e1cc14b4611666f7d7e",
+    "scripts/pgv13vis01/render_samples.mjs": "b2a2479e9fb5114a3b5b61a972089936f3f2f14d77300b4f06d0a7abfc1563bb",
     "scripts/pgv13vm/test_diagnose.py": "a076b9500e18e2813d81a56654431e2b7a112dfb056c6c828bd56313c739194f",
+    "scripts/pgv14/client.py": "2c4b49d47602cb628649294a33fe13ca47eacb988eacf13ac2ffb4bab90cf61c",
+    "scripts/pgv14/pages.py": "8a7f2927c65a991f2f5ed26b7ced11e69c7fde682cbf075aa8201dd61b9b9587",
+    "scripts/pgv14/requirements.txt": "033c116cc8642e4b10c5b3647468ff04b414829f5db79822d05c9a912dc8913d",
+    "scripts/pgv14/test_native.py": "0d01833ed72e76c4263d77f5521418ac7462b0d64de0088fe51e4ad3d7c67548",
+    "scripts/pgv14/test_page_sets.py": "0c10a01cf801f44f6734b1ce1c5d5920721b88801d5af8ade19e6642f03858ad",
+    "scripts/pgv14/verify_vm.py": "b5d6e016a6cfc1bdfb7b4ec40fcbe4edd73b721157205bdfd4862b44c63c725b",
     "spec_auth.md": "d72c4ee23293d126aadbfd65ab410262af032ef8560f2fc9c14ee7b82fb8596a",
     "spec_auth_architecture.md": "74a9864baf48d2694c83032803680668280fdd3b42e45b8502cbf69a730dfd6f",
     "spec_billing_accounts.md": "eb2aadbce2b5b1052d4a524ddf1acfa8134507e31dd4230c9e96cb8a4d61938c",
@@ -1283,11 +1297,12 @@
     "tests/unit/test_personal_demo.py": "87b3639df4b8fe516404223f1625b1f4b4051e4e3571f68912fb75094cb334ec",
     "tests/unit/test_personal_demo_admin.py": "26db032d88c09cf264043cc7b2f4f7b74d315a4c30b1ad72696d2d0910b03de9",
     "tests/unit/test_personal_demo_entry_pointer.py": "6ae17f273d6d4e523ba2d0049018112e3beb1684b880b65d8bf001a52bb5bd41",
-    "tests/unit/test_pgv13_accept.py": "67a8e1ff1fc7aad761012f1e178427b3e738bbf70e1113488658a3a9dcff7cf4",
+    "tests/unit/test_pgv13_accept.py": "166b6c31a7c67a4c77172f6e33e0d898da15a92f1282c3cbe99c808237090032",
     "tests/unit/test_pgv13_image_assets.py": "e24b9e8a3ce1999248920f21adc152895dd3bdd388e5c840bb3e8103827a6819",
     "tests/unit/test_pgv13_local_gate.py": "4168cf57746f1bda567e933b6108db85a267fa25bac27982d3b68e3b7b83c9cb",
     "tests/unit/test_pgv13_ocr_pipeline.py": "2af9457163614f51f595da0303547cee0fb25cd647d49deabb29a2ba2371ff02",
     "tests/unit/test_pgv13_release.py": "400828a4f2d7176b2f6bd683c14a54019e423af52b76813bbbec80bf04b72ce4",
+    "tests/unit/test_pgv14_accept.py": "9e6c1b0d802420269818c2eeaaabbd0bbaff94cca9f0cb8d7313514224da491e",
     "validation/engine.py": "2c5c190e2e80726c756ba700b73f18e1dc8adc1dd46991cc83c0e540041baac4"
   },
   "entries": [
@@ -2073,7 +2088,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 559,
+          "line": 566,
           "symbol": "list_document_revisions"
         },
         {
@@ -2106,7 +2121,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 748,
+          "line": 755,
           "symbol": "get_job"
         },
         {
@@ -2172,7 +2187,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 780,
+          "line": 787,
           "symbol": "get_rendition_content"
         },
         {
@@ -2239,7 +2254,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 581,
+          "line": 588,
           "symbol": "get_revision"
         },
         {
@@ -2272,7 +2287,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1012,
+          "line": 1019,
           "symbol": "revision_diff"
         },
         {
@@ -2305,7 +2320,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 993,
+          "line": 1000,
           "symbol": "revision_lifecycle"
         },
         {
@@ -2338,7 +2353,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 604,
+          "line": 611,
           "symbol": "get_revision_preview"
         },
         {
@@ -2372,7 +2387,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 411,
+          "line": 418,
           "symbol": "list_documents"
         },
         {
@@ -2542,7 +2557,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1268,
+          "line": 1275,
           "symbol": "list_passport_sources_route"
         },
         {
@@ -2575,7 +2590,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1116,
+          "line": 1123,
           "symbol": "list_visual_sources_route"
         },
         {
@@ -7701,7 +7716,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1035,
+          "line": 1042,
           "symbol": "document_retention"
         },
         {
@@ -7735,7 +7750,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 761,
+          "line": 768,
           "symbol": "cancel_job"
         },
         {
@@ -7837,7 +7852,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 696,
+          "line": 703,
           "symbol": "request_print_rendition"
         },
         {
@@ -7906,7 +7921,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 877,
+          "line": 884,
           "symbol": "revision_approvals"
         },
         {
@@ -7940,7 +7955,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 928,
+          "line": 935,
           "symbol": "revision_publish"
         },
         {
@@ -7974,7 +7989,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 642,
+          "line": 649,
           "symbol": "request_rendition"
         },
         {
@@ -8008,7 +8023,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 961,
+          "line": 968,
           "symbol": "revision_retract"
         },
         {
@@ -8042,7 +8057,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1076,
+          "line": 1083,
           "symbol": "archive_run"
         },
         {
@@ -8076,7 +8091,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1092,
+          "line": 1099,
           "symbol": "archive_verify"
         },
         {
@@ -8110,7 +8125,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 458,
+          "line": 465,
           "symbol": "create_document_draft"
         },
         {
@@ -8250,7 +8265,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1285,
+          "line": 1292,
           "symbol": "request_passport_document_route"
         },
         {
@@ -8284,7 +8299,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1060,
+          "line": 1067,
           "symbol": "retention_sweep"
         },
         {
@@ -8318,7 +8333,7 @@
       "evidence": [
         {
           "source": "apps/api/routers/documentation.py",
-          "line": 1137,
+          "line": 1144,
           "symbol": "request_visual_export_route"
         },
         {
@@ -12940,13 +12955,18 @@
       "id": "internal_operation:pgv13.document_acceptance",
       "kind": "internal_operation",
       "method": "CLI",
-      "path": "run/finalize with OS Docker access; dedicated disposable document acceptance",
+      "path": "run/finalize; PGV13 single-page or PGV14 every-page mode; OS Docker; dedicated disposable acceptance",
       "operation": "pgv13.documents",
       "evidence": [
         {
           "source": "scripts/pgv13accept/verify_vm.py",
-          "line": 374,
+          "line": 397,
           "symbol": "main"
+        },
+        {
+          "source": "scripts/pgv14/verify_vm.py",
+          "line": 12,
+          "symbol": "main(page_sets=True)"
         }
       ],
       "discovery": "manual-reviewed",
@@ -20373,7 +20393,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 316,
+          "line": 328,
           "symbol": "createRendererServer"
         }
       ],
@@ -20397,7 +20417,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 320,
+          "line": 332,
           "symbol": "createRendererServer"
         }
       ],
@@ -20421,7 +20441,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 337,
+          "line": 349,
           "symbol": "createRendererServer"
         }
       ],
@@ -20446,7 +20466,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 341,
+          "line": 353,
           "symbol": "createRendererServer"
         }
       ],
@@ -21117,7 +21137,7 @@
       "stage_namespace": "service"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:710",
+      "id": "worker:apps/api/document_render_worker.py:721",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "run",
@@ -21125,7 +21145,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 710,
+          "line": 721,
           "symbol": "run"
         }
       ],
@@ -21142,7 +21162,7 @@
       "admission": "managed AUTH-13 path remains fenced; legacy print worker has cancellation/deadline monitoring, backend remains publisher"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:747",
+      "id": "worker:apps/api/document_render_worker.py:758",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "target",
@@ -21150,7 +21170,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 747,
+          "line": 758,
           "symbol": "target"
         }
       ],
@@ -21166,7 +21186,7 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
     },
     {
-      "id": "worker:apps/api/document_render_worker.py:769",
+      "id": "worker:apps/api/document_render_worker.py:780",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "self._loop",
@@ -21174,7 +21194,7 @@
       "evidence": [
         {
           "source": "apps/api/document_render_worker.py",
-          "line": 769,
+          "line": 780,
           "symbol": "self._loop"
         }
       ],
@@ -21190,7 +21210,7 @@
       "admission": "recheck revoke/grant/reservation + fencing before execution and publication"
     },
     {
-      "id": "worker:apps/api/png_renderer_client.py:387",
+      "id": "worker:apps/api/png_renderer_client.py:398",
       "kind": "worker",
       "method": "DISPATCH",
       "path": "watch",
@@ -21198,7 +21218,7 @@
       "evidence": [
         {
           "source": "apps/api/png_renderer_client.py",
-          "line": 387,
+          "line": 398,
           "symbol": "watch"
         }
       ],

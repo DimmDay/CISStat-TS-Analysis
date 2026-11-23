@@ -1100,3 +1100,111 @@ TDD инструмента: oracle module initially missing → RED, после 
 Финальная проверка текущих sources: полный local_gates --only auth00 --skip-install PASS73.1с, unittest61/61 и оба strict временных INDEX602 fences; настоящий INDEX SHA256 до/после идентичен, staged diff пуст. Actual routes284/288/668 PASS, все entries/policies побайтно по JSON-семантике прежние; новые/обновлённые fingerprints ровно8 (6 tooling JS, акт, local_gates.md), удалённых нет. Новые CommonJS helpers имеют расширение.js, которое уже нормализуется штатным collector для WindowsCRLF; collector не менялся. Environment.json фиксирует реальные версии локального venv (это не pinned final-image runtime). Финальный ZIP/clean-overlay/CRLF INDEX и bytes — отдельные protocols/overlay.txt и delivery.json; код продукта/проверенные tools после этого не меняются.
 
 Поставка подтверждена: реальный36-file ZIP распакован поверх чистого a6429e3; свежий renderer tsc, oracle controls6/6 и raw contracts9PASS/3FAIL повторены. INDEX шести новых JS заменён CRLF при LF worktree — официальный strict INDEX602 PASS; actual ASGI284/288/668 PASS, whitespace PASS. Окончательная перепаковка включает завершённые протоколы без изменения проверенных code/product sources; ZIP CRC/точный manifest/каждый payload byte/SHA256 сверяются упаковщиком. Worklog и акт выданы отдельно. Исходный HEAD/main/INDEX/GitHub/VM неизменны.
+
+---
+
+## PGV-14 — необходимая пагинация P01/P02, 23.11.2026 (база5be3e29)
+
+По прямому указанию тимлида подготовлен отдельный detached checkout точного
+`5be3e29b32d954f9abe009236c4546d876ec2b9b` (серверная база); прежний рабочий
+checkout и его INDEX сохранены. Изучены AGENTS.md, worklog_summary2.md,
+worklog12.md, spec_passport_graphics_visual.md, предыдущий акт VIS-01-CERT,
+renderer/print/jobs/managed-worker/object-delivery/release/acceptance контуры.
+Единственный доступный attachment 1.txt содержит CLI capture errors, не новый
+PNG/визуальный отчёт; отсутствующие внешние результаты не объявляются изученными.
+GitHub main/HEAD не коммитились и не пушились; VM агентом не изменялась.
+
+Дизайн/риски: docs/pgv14_pagination.md. Измеряемая DOM-пагинация после fonts.ready
+делит P01/P02 по целым строкам/абзацам/list items при прежних9.5/8–8.5pt и300ppi.
+Повторяются document/table/group headers, stage/source identifiers, provenance,
+footer и сквозные folios; каждый физический паспорт начинается новой страницей.
+Checkpoint confirmation не становится четвёртым паспортом. Empty groups и
+unknown-group hint сохраняются; scope=colgroup отличает band от colspan hint.
+Все unit IDs покрываются строго один раз, порядок секций/строк сохраняется.
+Полный layout preflight всех страниц — до первого screenshot; oversized atom,
+width/page/byte budget/cancel/deadline отказывают целиком. Один admission/browser/
+60s deadline; потолки20страниц/12MP на страницу/50MiB output сохранены.
+Заголовок и подвал каркаса не сжимаются flex; внутренний slot измеряется явно.
+
+Wire: прежний POST/v1/render с additive options.page_set=true для full-size
+P01/P02; PNG страниц → ZIP STORE с фиксированными filenames/timestamps,
+manifest.json/metadata.json и hashes вне PNG. Общий PGV01 `pgv.print_manifest/1` сохранён и расширен page_set_version,
+unit/source/section descriptors, физическим профилем, render_version,
+data_included=false. Frozen source_payload/metadata/page hashes связаны.
+API до staging проверяет каждый ZIP member и каждый PNG: CRC, IHDR/dimensions,
+pHYs11811 (300ppi), bounded decompression/raster/filter/chunk order, hashes,
+точный frozen input, render/font versions, section/unit/dependency coverage.
+Сторонние пути/артефакты/дубликаты/неполные пакеты не становятся ready.
+Один PNG → PNG main + protected JSON sidecar; multipage или mode=set → ZIP +
+JSON sidecar. AUTH13 publication transaction/fencing/authority сохранены;
+Memory lock/rollback также не допускает half-ready при сбое JSON. Job.format
+сохраняет requested PNG intent, rendition.format/MIME/extension — фактический
+PNG/ZIP. Ready replay использует job.rendition_id и не создаёт второй job из-за
+ZIP. Passport builder version повышена /2→/3; прежние frozen records неизменны.
+
+Проверки: начальные RED missing Python/TS modules сохранены; последующие
+исправления моделей/fixtures (jsdom selector, finite prefix geometry,
+compiled-probe double, terminal method name) отделены от product findings.
+Protocol directory scripts/pgv14/protocols хранит raw RED/переходы/GREEN.
+Новый default local_gates pgv14 и workflow pgv14.yml: package/publication/replay/
+cancel/rollback + every-page review, Ubuntu/Windows CI запланированы; Windows
+в сессии не запускался. Прежний PGV13 acceptance по умолчанию остаётся legacy,
+новый scripts/pgv14/verify_vm.py требует version2 report и7 compiled hashes,
+сохраняет EXACT все11 CASES (включая p01-corrupt), проверяет каждую PNG/оба OCR
+TSV, общий document OCR и hash-bound review каждой страницы. Контроль host
+pipeline11×2страницы + finalize прошёл на контролируемых пикселях/OCR doubles.
+Это не native визуальное доказательство. Missing/false/extra/changed last-page
+review блокирует приёмку. F-TYPO01 finite guard теперь GREEN; старый sample
+helper получил missing corrupt-case и строгий error code/retryability check;
+независимые typography contracts12+controls6=18GREEN. Исторические raw RED акта
+не переписаны. Legacy sample helper не заменяет PGV14 acceptance.
+
+Текущие результаты: targeted Jest18 suites/353PASS; полный Jest273suites/
+2969PASS,1suite/2tests legacy skips (сохранены), FAIL0. Дополнительно4 новых
+worker-page controls PASS: preflight до screenshots, все страницы, later-page
+failure без частичного ZIP, запрет scaled page-set. Expanded Python248PASS;
+предыдущий82PASS regression также сохранён. Компилированный Node ZIP writer →
+Python/PGV01 manifest/every-page validation прошёл для3 профилей×3страницы.
+Fresh renderer tsc, typecheck обеих Next и обе production Next builds PASS.
+Реальный disposable PostgreSQL16.2/AuthSession/CSRF/AUTH13 managed-worker/jobs/
+PNG-ZIP+JSON download/replay/uniform denial/audit прошёл все11 сценариев,
+scientific_session_rows0, held_reservations0; renderer в этом контроле —
+явный HTTP ZIP double. Реальные версии host venv отличаются от pinned API
+image; native PG не выдаётся за final-image/UDS/Chromium acceptance.
+
+Повторный настоящий Chromium launch в сессии: BLOCKED cases0 до layout,
+ProcessSingleton socket()EPERM; sandbox=true, обход/ослабление не применялись.
+Docker отсутствует. Поэтому real Chromium pagination/UDS/OCR/physical visual
+review/final-image acceptance остаются PENDING на VM. Полный PGV13 NOT CERTIFIED.
+Реальные PNG не изобретались и дефектные сценарии не удалялись ради GREEN.
+Нужен НОВЫЙ coherent API/web/renderer bundle, A/B/candidate/recreate/live,
+новый11-case pages report и review каждой PNG. Bash/порядок/откат —
+docs/pgv14_deploy.md с сохранением прежнего release/IPC/seccomp/volumes процесса;
+миграций и host changes нет. Ошибки capture attachment учтены: требуется
+--renderer-project, --prev-bundle не существует.
+
+Роуты: actual check_routes PASS284API/288bindings/668entries, added/missing=[];
+PGV13 parity gate подтверждает только прежнюю пару routes относительноfc510f0.
+Новые methods/paths/BFF/DDL отсутствуют. Ready job DTO аддитивно получает
+output_format и metadata_url прежнего protected rendition content route,
+sidecar привязан к тому же ready job. AUTH00 reviewed source/worker line-shifts
+и существующая operator boundary дополнены PGV14 mode, collector штатный.
+Строгий INDEX gate и task-only ZIP/byte/CRC verification — итоговые протоколы.
+Поставка: download/cisstat-pgv14-5be3e29.zip, manifest scripts/pgv14/files.txt,
+worklog12.md выдаётся отдельно. Настоящий INDEX/HEAD/remote/VM не меняются;
+commit/push выполняет тимлид после review.
+
+Итог PGV14: default pgv14 gate GREEN17 package/lifecycle tests +33 unit/orchestration
+controls (включая11×2pages finalize); strict AUTH00 GREEN74.5с,61/61tests,
+602 discovery surfaces и оба INDEX fences. Настоящий INDEX SHA256 до/после
+совпадает. HTTP semantics исходной карты равны базе (routes-delta.json).
+Финальная упаковка: только task manifest; clean-base ZIP overlay/CRC/каждый
+payload byte проверяются до выдачи; протокол overlay.txt и delivery.json.
+Итоговая SHA256 архива выдаётся отдельно, чтобы не создавать циклический hash.
+
+Финальная поставка подтверждена: ZIP89 task files распакован поверх чистого
+5be3e29; официальный strict INDEX602 PASS при CRLF blobs трёх новых TS sources
+и LF worktree; свежий renderer tsc PASS; targeted19suites/357tests PASS;
+Python page-set17/17 PASS; actual ASGI284/288/668 и whitespace PASS.
+Только завершённые протоколы/журнал допакованы после этого; проверенные product
+sources идентичны overlay. Все bytes/CRC/manifest и внешний SHA256 сверены.

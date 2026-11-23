@@ -1,0 +1,18 @@
+test_all_eleven_real_managed_jobs_and_metadata_download (scripts.pgv14.test_native.NativePageSets.test_all_eleven_real_managed_jobs_and_metadata_download) ... ERROR
+
+======================================================================
+ERROR: test_all_eleven_real_managed_jobs_and_metadata_download (scripts.pgv14.test_native.NativePageSets.test_all_eleven_real_managed_jobs_and_metadata_download)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14/scripts/pgv14/test_native.py", line 18, in test_all_eleven_real_managed_jobs_and_metadata_download
+    with psycopg.connect(admin,autocommit=True) as c:c.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(database)))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/venv/lib/python3.12/site-packages/psycopg/connection.py", line 126, in connect
+    raise last_ex.with_traceback(None)
+psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 48053 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+----------------------------------------------------------------------
+Ran 1 test in 0.146s
+
+FAILED (errors=1)

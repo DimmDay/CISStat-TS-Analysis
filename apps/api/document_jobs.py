@@ -2288,6 +2288,16 @@ class DocumentDeliveryService:
                 f"{sorted(PRINT_RENDER_BASIS_KINDS)} (§10.2; PGV-09/PGV-13)"
             )
         basis_artifact_id = revision.basis_artifact_ids[0]
+        # PGV14: requested PNG intent may have produced a concrete ZIP.
+        # Replay the ready job pointer; never schedule another job just because
+        # its actual media differs from the request's intent.
+        for previous in reversed(self.registry.list_jobs(revision.run_id)):
+            if (previous.print_revision_id == print_revision_id and previous.format == format
+                and previous.redaction_profile == redaction_profile and previous.state == JOB_READY
+                and previous.rendition_id):
+                ready = self.registry.get_rendition(previous.rendition_id)
+                if ready is not None and ready.state == RENDITION_READY:
+                    return previous, ready
         # Идемпотентность (AC09): печатная цель --
         # (print_revision_id, format, redaction_profile).
         existing = self.registry.find_print_rendition(
@@ -2454,7 +2464,7 @@ class DocumentDeliveryService:
                         None,
                     )
 
-        existing = self._find_rendition_for_job(job)
+        existing = self._find_rendition_for_job(job, actual_format=spec.format)
         rendition_id = (
             existing.rendition_id if existing is not None else new_rendition_id()
         )
@@ -2486,7 +2496,7 @@ class DocumentDeliveryService:
             revision_id=target_revision_id,
             snapshot_id=job.snapshot_id,
             run_id=job.run_id,
-            format=job.format,
+            format=spec.format,
             redaction_profile=job.redaction_profile,
             state=RENDITION_READY,
             media_type=spec.media_type,
@@ -2578,13 +2588,13 @@ class DocumentDeliveryService:
         return job, rendition
 
     def _find_rendition_for_job(
-        self, job: DocumentJobRecord
+        self, job: DocumentJobRecord, *, actual_format: str | None = None
     ) -> Optional[DocumentRenditionRecord]:
         """PGV-09: поиск цели job'а -- печатные jobs по
         print_revision_id, snapshot-путь прежний."""
         if job.print_revision_id:
             return self.registry.find_print_rendition(
-                job.print_revision_id, job.format, job.redaction_profile
+                job.print_revision_id, actual_format or job.format, job.redaction_profile
             )
         return self.registry.find_rendition(
             job.snapshot_id, job.format, job.redaction_profile

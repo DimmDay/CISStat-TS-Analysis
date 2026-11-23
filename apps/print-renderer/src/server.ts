@@ -41,6 +41,7 @@ import {
   RenderTimeoutError,
   readConfig,
 } from "./renderWorker";
+import {PageSetError} from "./pageSet";
 import {listenOnSocket} from "./socketTransport";
 import { runFullSmoke, runProbeSmoke, type SmokeReport } from "./smokeScenarios";
 
@@ -243,6 +244,14 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
       sha256: outcome.sha256,
       sanitizer_warnings: outcome.sanitizerWarnings.length,
     });
+    if(outcome.archive) {
+      res.writeHead(200,{"Content-Type":"application/zip","Content-Length":outcome.archive.length,
+        "Content-Disposition":'attachment; filename="pages.zip"',"X-Render-Page-Count":String(outcome.pageCount),
+        "X-Render-Sha256":outcome.sha256,"X-Renderer-Version":RENDERER_VERSION,
+        "X-Render-Payload-Version":RENDER_PAYLOAD_SCHEMA_VERSION,"X-Render-Width":String(outcome.width),
+        "X-Render-Height":String(outcome.height),"X-Render-Ppi":String(outcome.ppi)});
+      res.end(outcome.archive);return;
+    }
     sendPng(res, outcome.png, {
       "X-Renderer-Version": RENDERER_VERSION,
       "X-Render-Payload-Version": RENDER_PAYLOAD_SCHEMA_VERSION,
@@ -276,6 +285,9 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
         "X-Render-Dependency-Reason": error.reason,
       });
       return;
+    }
+    if (error instanceof PageSetError) {
+      sendJson(res,413,buildErrorBody(error.code,error.message),{"X-Render-Retryable":"false"});return;
     }
     if (error instanceof RenderContentOverflowError) {
       // PGV13-VIS-01: контент не умещается в страницу при обязательной

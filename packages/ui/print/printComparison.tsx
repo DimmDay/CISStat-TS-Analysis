@@ -216,6 +216,8 @@ export function PrintPassportComparisonPage({ snapshot }: PrintPassportCompariso
   return (
     <article
       data-testid="print-comparison-page"
+      data-print-source-refs={JSON.stringify(snapshot.ordered_refs.filter(Boolean))}
+      data-print-role="P02"
       style={{
         backgroundColor: PRINT_PALETTE.page_background,
         color: PRINT_PALETTE.ink,

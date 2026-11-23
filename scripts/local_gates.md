@@ -626,3 +626,27 @@ BLOCKED exit2, final-container/PGV13 certificate не выдаёт.
 Поставка только сертификат/инструменты: образы, SQL и HTTP paths прежние.
 Stage для этой задачи — `git add --pathspec-from-file=scripts/pgv13typocert/files.txt`,
 затем обычный AUTH00 INDEX gate. Commit/push выполняет тимлид.
+
+## PGV-14 — пагинация всех 11 сценариев (база5be3e29)
+
+Default gate `pgv14` и `.github/workflows/pgv14.yml` (Ubuntu/Windows contracts)
+проверяют bounded PNG/ZIP/manifest, frozen binding, каждую страницу,
+публикацию/rollback/cancel/replay и human-review coverage. Jest существующего
+workflow включает DOM pagination controls; это finite модель, не Chromium.
+
+```bash
+python scripts/local_gates.py --only pgv14 --skip-install
+npm run build --workspace=@cisstat/print-renderer
+npx jest packages/ui/print apps/print-renderer/src scripts/pgv07cert scripts/pgv08cert --runInBand
+node --test scripts/pgv13typocert/oracle.spec.js scripts/pgv13typocert/contracts.spec.js
+# disposable CISSTAT_PGV13_CERT_DSN, не production:
+python -m unittest scripts.pgv14.test_native -v
+```
+
+Native PG control использует controlled ZIP renderer, не подтверждает Chromium/
+UDS/OCR. Новый coherent bundle и обязательная VM every-page приёмка:
+`docs/pgv14_deploy.md`, `scripts/pgv14/verify_vm.py run|finalize`. Все11 cases
+сохранены; page-sets требуют report version2 и review каждой PNG. Нет новых
+HTTP paths/methods/BFF или DDL; ready job DTO аддитивно содержит output_format и
+metadata_url прежнего protected content route. AUTH00 reviewed source/line
+карта обновляется штатным collector; staging manifest `scripts/pgv14/files.txt`.

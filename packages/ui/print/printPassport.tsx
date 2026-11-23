@@ -239,6 +239,8 @@ export function PrintPassportPage({ record }: PrintPassportPageProps) {
   return (
     <article
       data-testid="print-passport-page"
+      data-print-source-refs={JSON.stringify([record.snapshot_ref])}
+      data-print-role="P01"
       style={{
         backgroundColor: PRINT_PALETTE.page_background,
         color: PRINT_PALETTE.ink,

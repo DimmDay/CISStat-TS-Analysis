@@ -179,8 +179,9 @@ def validate_review(report_path, review):
     report_path = Path(report_path).resolve()
     raw = report_path.read_bytes()
     report = json.loads(raw)
-    require(report.get('schema_version') == 'pgv13.documents/1' and report.get('automated_passed') is True, 'Automated acceptance must pass before visual review')
-    require(review.get('schema_version') == 'pgv13.visual_review/1', 'Unknown review schema')
+    page_sets=report.get('schema_version')=='pgv13.documents/2'
+    require(report.get('schema_version') in ('pgv13.documents/1','pgv13.documents/2') and report.get('automated_passed') is True, 'Automated acceptance must pass before visual review')
+    require(review.get('schema_version') == ('pgv14.visual_review/1' if page_sets else 'pgv13.visual_review/1'), 'Unknown review schema')
     require(review.get('report_sha256') == sha(raw), 'Review report hash changed')
     require(isinstance(review.get('reviewer'),str) and review['reviewer'].strip(), 'Named operator review required')
     try:
@@ -192,6 +193,17 @@ def validate_review(report_path, review):
     ids = [c['id'] for c in cases]
     require(ids and len(ids) == len(set(ids)) and set(review.get('cases',{})) == set(ids), 'Exact visual review case coverage required')
     for case in cases:
+        if page_sets:
+            pages=case.get('pages') or []
+            require(pages,'Every case must contain pages')
+            flags_by_page=review['cases'][case['id']].get('pages',{})
+            require(set(flags_by_page)=={p['png'] for p in pages},'Exact per-page review coverage required')
+            for page in pages:
+                flags=flags_by_page[page['png']]
+                require(set(flags)==set(REVIEW_CHECKS) and all(v is True for v in flags.values()),'Every page visual criterion must be explicitly true')
+                path=(report_path.parent/page['png']).resolve()
+                require(path.is_relative_to(report_path.parent) and path.is_file() and sha(path.read_bytes())==page['png_sha256'],'Reviewed page changed')
+            continue
         flags = review['cases'][case['id']]
         require(set(flags) == set(REVIEW_CHECKS) and all(v is True for v in flags.values()), 'Every visual criterion must be explicitly true')
         path = (report_path.parent / case['png']).resolve()

@@ -1,0 +1,108 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+FAIL apps/print-renderer/src/pageSet.test.ts
+  ● PGV14 page set: complete coverage, repeated labels, bounded output › rows are complete and unique and table/group labels repeat
+
+    SyntaxError: ':has([colspan]))' is not a valid selector
+
+       9 |     jest.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(100);
+      10 |     jest.spyOn(HTMLElement.prototype,'scrollWidth','get').mockReturnValue(100);
+    > 11 |     jest.spyOn(HTMLElement.prototype,'scrollHeight','get').mockImplementation(function(this:HTMLElement){return this.dataset.testid==='print-page-content'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;});
+         |                                                                                                                                                                    ^
+      12 |     jest.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+      13 |       const top=this.dataset.testid==='print-footer'?90:0;
+      14 |       const bottom=this.dataset.testid==='print-page-content'?height:this.tagName==='ARTICLE'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;
+
+      at emit (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:670:17)
+      at compileSelector (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1503:11)
+      at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:878:16)
+      at match_collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1562:16)
+      at Object._matches [as match] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1627:35)
+      at Array.Resolver (eval at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:894:17), <anonymous>:3:105)
+      at collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1747:21)
+      at Object._querySelectorAll [as select] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1699:36)
+      at HTMLDivElementImpl.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/nodes/ParentNode-impl.js:80:26)
+      at HTMLDivElement.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/generated/Element.js:1119:58)
+      at HTMLDivElement.<anonymous> (apps/print-renderer/src/pageSet.test.ts:11:164)
+      at fit (apps/print-renderer/src/pageSet.ts:35:17)
+      at apps/print-renderer/src/pageSet.ts:78:13
+          at Array.forEach (<anonymous>)
+      at paginatePassportDocument (apps/print-renderer/src/pageSet.ts:40:14)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:20:52)
+
+  ● PGV14 page set: complete coverage, repeated labels, bounded output › page cap refuses whole set
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /export_too_large/
+    Received message: "':has([colspan]))' is not a valid selector"
+
+           9 |     jest.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(100);
+          10 |     jest.spyOn(HTMLElement.prototype,'scrollWidth','get').mockReturnValue(100);
+        > 11 |     jest.spyOn(HTMLElement.prototype,'scrollHeight','get').mockImplementation(function(this:HTMLElement){return this.dataset.testid==='print-page-content'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;});
+             |                                                                                                                                                                    ^
+          12 |     jest.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+          13 |       const top=this.dataset.testid==='print-footer'?90:0;
+          14 |       const bottom=this.dataset.testid==='print-page-content'?height:this.tagName==='ARTICLE'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;
+
+      at emit (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:670:17)
+      at compileSelector (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1503:11)
+      at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:878:16)
+      at match_collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1562:16)
+      at Object._matches [as match] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1627:35)
+      at Array.Resolver (eval at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:894:17), <anonymous>:3:105)
+      at collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1747:21)
+      at Object._querySelectorAll [as select] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1699:36)
+      at HTMLDivElementImpl.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/nodes/ParentNode-impl.js:80:26)
+      at HTMLDivElement.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/generated/Element.js:1119:58)
+      at HTMLDivElement.<anonymous> (apps/print-renderer/src/pageSet.test.ts:11:164)
+      at fit (apps/print-renderer/src/pageSet.ts:35:17)
+      at apps/print-renderer/src/pageSet.ts:78:13
+                at Array.forEach (<anonymous>)
+      at paginatePassportDocument (apps/print-renderer/src/pageSet.ts:40:14)
+      at apps/print-renderer/src/pageSet.test.ts:26:89
+      at Object.<anonymous> (../CISStat-TS-Analysis/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-TS-Analysis/node_modules/expect/build/index.js:2235:93)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:26:105)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:26:105)
+
+  ● PGV14 page set: complete coverage, repeated labels, bounded output › a single indivisible row cannot be clipped into a page
+
+    expect(received).toThrow(expected)
+
+    Expected pattern: /render_content_overflow/
+    Received message: "':has([colspan]))' is not a valid selector"
+
+           9 |     jest.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(100);
+          10 |     jest.spyOn(HTMLElement.prototype,'scrollWidth','get').mockReturnValue(100);
+        > 11 |     jest.spyOn(HTMLElement.prototype,'scrollHeight','get').mockImplementation(function(this:HTMLElement){return this.dataset.testid==='print-page-content'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;});
+             |                                                                                                                                                                    ^
+          12 |     jest.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+          13 |       const top=this.dataset.testid==='print-footer'?90:0;
+          14 |       const bottom=this.dataset.testid==='print-page-content'?height:this.tagName==='ARTICLE'?20+this.querySelectorAll('tr:not(:has([colspan]))').length*15:100;
+
+      at emit (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:670:17)
+      at compileSelector (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1503:11)
+      at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:878:16)
+      at match_collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1562:16)
+      at Object._matches [as match] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1627:35)
+      at Array.Resolver (eval at compile (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:894:17), <anonymous>:3:105)
+      at collect (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1747:21)
+      at Object._querySelectorAll [as select] (../CISStat-TS-Analysis/node_modules/nwsapi/src/nwsapi.js:1699:36)
+      at HTMLDivElementImpl.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/nodes/ParentNode-impl.js:80:26)
+      at HTMLDivElement.querySelectorAll (../CISStat-TS-Analysis/node_modules/jsdom/lib/jsdom/living/generated/Element.js:1119:58)
+      at HTMLDivElement.<anonymous> (apps/print-renderer/src/pageSet.test.ts:11:164)
+      at fit (apps/print-renderer/src/pageSet.ts:35:17)
+      at apps/print-renderer/src/pageSet.ts:78:13
+                at Array.forEach (<anonymous>)
+      at paginatePassportDocument (apps/print-renderer/src/pageSet.ts:40:14)
+      at apps/print-renderer/src/pageSet.test.ts:27:119
+      at Object.<anonymous> (../CISStat-TS-Analysis/node_modules/expect/build/index.js:1824:9)
+      at Object.throwingMatcher [as toThrow] (../CISStat-TS-Analysis/node_modules/expect/build/index.js:2235:93)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:27:136)
+      at Object.<anonymous> (apps/print-renderer/src/pageSet.test.ts:27:136)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 1 passed, 4 total
+Snapshots:   0 total
+Time:        3.483 s
+Ran all test suites within paths "apps/print-renderer/src/pageSet.test.ts".

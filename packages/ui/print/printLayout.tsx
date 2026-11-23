@@ -405,6 +405,7 @@ export function PrintPageFrame({
         <header
           data-testid="print-header"
           style={{
+            flexShrink: 0,
             borderBottom: `1px solid ${PRINT_PALETTE.border}`,
             paddingBottom: PRINT_SPACING_PX.band_pad,
             display: headerMode === "none" ? "none" : undefined,
@@ -488,12 +489,13 @@ export function PrintPageFrame({
         </header>
 
         {/* ── Центр §7: секции тела ───────────────────────────── */}
-        <div style={{ flex: "1 1 auto", minHeight: 0 }}>{children}</div>
+        <div data-testid="print-page-content" style={{ flex: "1 1 auto", minHeight: 0 }}>{children}</div>
 
         {/* ── Низ §7 ──────────────────────────────────────────── */}
         <footer
           data-testid="print-footer"
           style={{
+            flexShrink: 0,
             borderTop: `1px solid ${PRINT_PALETTE.border}`,
             paddingTop: PRINT_SPACING_PX.band_pad,
             display: "flex",
