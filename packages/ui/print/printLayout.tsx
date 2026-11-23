@@ -29,6 +29,7 @@ import { PRINT_PROFILE_CATALOG, resolvePrintProfile } from "./printSchema";
 import {
   PRINT_FONT_STACK,
   PRINT_PALETTE,
+  PRINT_SPACING_PX,
   PRINT_TYPE_SCALE,
 } from "./printTheme";
 
@@ -154,6 +155,11 @@ export interface PrintPageSurfaceProps {
  * Фиксированная печатная поверхность: пиксели профиля × scale, непрозрачный
  * белый фон, шрифтовой стек печати. Не viewport и не резиновый контейнер —
  * детерминированная геометрия для растеризации (PGV-08).
+ *
+ * PGV13-VIS-01: при scale ≠ 1 (мини-probe readiness) содержимое остаётся
+ * в ПОЛНОЙ физической геометрии и уменьшается transform-обёрткой — probe
+ * пропорциональная миниатюра страницы. При прод-рендере scale=1 обёртка
+ * не создаётся: DOM байт-идентичен прежнему (детерминизм растеризации).
  */
 export function PrintPageSurface({
   profileId,
@@ -162,21 +168,40 @@ export function PrintPageSurface({
   testId = "print-page-surface",
 }: PrintPageSurfaceProps) {
   const geometry = pageGeometry(profileId);
+  const surfaceStyle: React.CSSProperties = {
+    width: `${Math.round(geometry.width_px * scale)}px`,
+    height: `${Math.round(geometry.height_px * scale)}px`,
+    backgroundColor: PRINT_PALETTE.page_background,
+    color: PRINT_PALETTE.ink,
+    fontFamily: PRINT_FONT_STACK,
+    overflow: "hidden",
+    position: "relative",
+    boxSizing: "border-box",
+  };
+  if (scale === 1) {
+    return (
+      <div data-testid={testId} style={surfaceStyle}>
+        {children}
+      </div>
+    );
+  }
   return (
-    <div
-      data-testid={testId}
-      style={{
-        width: `${Math.round(geometry.width_px * scale)}px`,
-        height: `${Math.round(geometry.height_px * scale)}px`,
-        backgroundColor: PRINT_PALETTE.page_background,
-        color: PRINT_PALETTE.ink,
-        fontFamily: PRINT_FONT_STACK,
-        overflow: "hidden",
-        position: "relative",
-        boxSizing: "border-box",
-      }}
-    >
-      {children}
+    <div data-testid={testId} style={surfaceStyle}>
+      <div
+        // Layout-контейнер полной геометрии: scrollWidth/scrollHeight
+        // отражают реальное переполнение контента независимо от
+        // визуального transform (оракул overflow-guard'а renderWorker).
+        data-testid="print-probe-content"
+        style={{
+          width: `${geometry.width_px}px`,
+          height: `${geometry.height_px}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          boxSizing: "border-box",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -185,7 +210,7 @@ export function PrintPageSurface({
 
 function labelValue(label: string, value: string): React.ReactNode {
   return (
-    <div key={label} style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+    <div key={label} style={{ display: "flex", gap: PRINT_SPACING_PX.item_gap, alignItems: "baseline" }}>
       <span
         style={{
           fontSize: PRINT_TYPE_SCALE.small,
@@ -200,6 +225,10 @@ function labelValue(label: string, value: string): React.ReactNode {
           fontSize: PRINT_TYPE_SCALE.small,
           color: PRINT_PALETTE.ink_muted,
           fontFamily: "monospace",
+          // PGV13-VIS-01: длинные refs переносятся внутри значения
+          // (строка мета-блока остаётся целой), вместо горизонтального
+          // обрезания канвасом.
+          overflowWrap: "anywhere",
         }}
       >
         {value}
@@ -215,7 +244,7 @@ export function PrintSectionTitle({ children }: { children: React.ReactNode }) {
         fontSize: PRINT_TYPE_SCALE.section,
         fontWeight: 600,
         color: PRINT_PALETTE.ink,
-        margin: "0 0 6px 0",
+        margin: `0 0 ${PRINT_SPACING_PX.item_gap}px 0`,
       }}
     >
       {children}
@@ -231,7 +260,7 @@ export function PrintNotes({ items }: { items: readonly string[] }) {
       data-testid="print-warnings"
       style={{
         margin: 0,
-        paddingLeft: 16,
+        paddingLeft: PRINT_SPACING_PX.block_gap,
         fontSize: PRINT_TYPE_SCALE.small,
         color: PRINT_PALETTE.ink_muted,
       }}
@@ -262,7 +291,7 @@ export function PrintLegendStrip({
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
-        gap: "4px 14px",
+        gap: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.block_gap}px`,
         fontSize: PRINT_TYPE_SCALE.small,
         color: PRINT_PALETTE.ink_muted,
       }}
@@ -313,6 +342,14 @@ export interface PrintPageFrameProps {
   pageCount: number;
   profileId?: PrintProfileId;
   scale?: number;
+  /**
+   * PGV13-VIS-01: «meta» (по умолчанию) — рамка печатает блок меты §7;
+   * «none» — верх страницы несёт ДОКУМЕНТ (P01/P02: h1 + провенанс
+   * документа), рамка не дублирует мету (консолидация колонтитулов —
+   * иначе двойная мета ~300 px съедает физическую высоту страницы).
+   * Подвал §7 (метод/версия/IDs/страница) печатается всегда.
+   */
+  headerMode?: "meta" | "none";
 }
 
 /**
@@ -329,6 +366,7 @@ export function PrintPageFrame({
   pageCount,
   profileId,
   scale = 1,
+  headerMode = "meta",
 }: PrintPageFrameProps) {
   const profile = profileId ?? snapshot.print.profile_id;
   const dims = snapshot.dimensions;
@@ -351,13 +389,16 @@ export function PrintPageFrame({
       {/* Kill-switch анимаций/переходов: печатная страница детерминирована. */}
       <style>{"*, *::before, *::after { animation: none !important; transition: none !important; }"}</style>
       <div
+        data-testid="print-page-body"
         style={{
           display: "flex",
           flexDirection: "column",
           height: "100%",
-          padding: 24,
+          // PGV13-VIS-01: поля страницы в мм (12 мм = 141.73 px @300ppi),
+          // зазор каркаса 4 мм — физическая композиция §7.
+          padding: PRINT_SPACING_PX.page_margin,
           boxSizing: "border-box",
-          gap: 12,
+          gap: PRINT_SPACING_PX.band_gap,
         }}
       >
         {/* ── Верх §7 ─────────────────────────────────────────── */}
@@ -365,7 +406,8 @@ export function PrintPageFrame({
           data-testid="print-header"
           style={{
             borderBottom: `1px solid ${PRINT_PALETTE.border}`,
-            paddingBottom: 8,
+            paddingBottom: PRINT_SPACING_PX.band_pad,
+            display: headerMode === "none" ? "none" : undefined,
           }}
         >
           <h1
@@ -394,8 +436,8 @@ export function PrintPageFrame({
             style={{
               display: "flex",
               flexWrap: "wrap",
-              gap: "2px 16px",
-              marginTop: 8,
+              gap: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.block_gap}px`,
+              marginTop: PRINT_SPACING_PX.item_gap,
             }}
           >
             {labelValue("вид", `${snapshot.view_id} (${snapshot.scope})`)}
@@ -453,13 +495,13 @@ export function PrintPageFrame({
           data-testid="print-footer"
           style={{
             borderTop: `1px solid ${PRINT_PALETTE.border}`,
-            paddingTop: 8,
+            paddingTop: PRINT_SPACING_PX.band_pad,
             display: "flex",
             flexDirection: "column",
-            gap: 4,
+            gap: PRINT_SPACING_PX.item_gap,
           }}
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.block_gap}px` }}>
             {labelValue(
               "метод",
               `${snapshot.method.method} (${snapshot.method.origin} — ${ORIGIN_LABELS[snapshot.method.origin] ?? "происхождение не зафиксировано"})`,

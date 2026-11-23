@@ -33,6 +33,7 @@ import { render } from "@testing-library/react";
 
 import {
   PRINT_PALETTE,
+  PRINT_SPACING_PX,
   PRINT_STATUS_MARKS,
   PRINT_TYPE_SCALE,
   isHexColor,
@@ -132,9 +133,14 @@ describe("PGV-07 printTheme: light-print контракт (AC04)", () => {
     expect(labels.size).toBe(PRINT_STATUS_MARKS.length);
   });
 
-  test("типографская шкала читаема (нельзя уменьшать до нечитаемого шрифта)", () => {
-    expect(PRINT_TYPE_SCALE.body).toBeGreaterThanOrEqual(12);
-    expect(PRINT_TYPE_SCALE.small).toBeGreaterThanOrEqual(10);
+  test("типографская шкала физически читаема (нельзя уменьшать до нечитаемого шрифта)", () => {
+    // PGV13-VIS-01: оракул переведён с «сырых» px на физические pt при
+    // 300 ppi. Прежний оракул (body ≥ 12 px) закреплял дефект: 12 px на
+    // канвасе 300 ppi = 2.88 pt. Новый порог — основной текст ≥ 9 pt
+    // (37.5 px @300ppi), служебная ≥ 8 pt (33.33 px); физический коридор
+    // pt-шкалы детально гвардится printTheme.test.ts.
+    expect(PRINT_TYPE_SCALE.body).toBeGreaterThanOrEqual(9 * (300 / 72));
+    expect(PRINT_TYPE_SCALE.small).toBeGreaterThanOrEqual(8 * (300 / 72));
     expect(PRINT_TYPE_SCALE.title).toBeGreaterThan(PRINT_TYPE_SCALE.section);
   });
 });
@@ -348,6 +354,68 @@ describe("PGV-07 pageGeometry: профили из каталога PGV-01 (AC16
     const surface = getByTestId("print-page-surface");
     expect(surface.style.width).toBe("1240px");
     expect(surface.style.height).toBe("1754px");
+  });
+});
+
+// ── 5a. Физическая типографика (PGV13-VIS-01) ────────────────────
+
+describe("PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка", () => {
+  test("рамка страницы печатает физические поля (12 мм @300ppi), не «сырые» px", () => {
+    const { getByTestId } = renderFrame();
+    const frameBody = getByTestId("print-page-body");
+    // page_margin 12 мм = 141.73 px @300ppi (производное PRINT_SPACING_MM).
+    expect(frameBody.style.padding).toBe(`${PRINT_SPACING_PX.page_margin}px`);
+    expect(PRINT_SPACING_PX.page_margin).toBeCloseTo((12 * 300) / 25.4, 2);
+  });
+
+  test("колонтитулы §7 — bands с физическим паддингом (2.5 мм) и зазором (4 мм)", () => {
+    const { getByTestId } = renderFrame();
+    const header = getByTestId("print-header");
+    const footer = getByTestId("print-footer");
+    // band_pad 2.5 мм = 29.53 px: нижний паддинг шапки / верхний подвала.
+    expect(header.style.paddingBottom).toBe(`${PRINT_SPACING_PX.band_pad}px`);
+    expect(footer.style.paddingTop).toBe(`${PRINT_SPACING_PX.band_pad}px`);
+    // band_gap 4 мм = 47.24 px — зазор между верхом/центром/низом.
+    expect(PRINT_SPACING_PX.band_gap).toBeCloseTo((4 * 300) / 25.4, 2);
+  });
+
+  test("probe scale≠1 — пропорциональная миниатюра через transform-обёртку", () => {
+    // Внутренний div хранит ПОЛНУЮ физическую геометрию и масштабируется
+    // transform'ом: probe readiness остаётся честной миниатюрой страницы.
+    const { getByTestId } = render(
+      <PrintPageSurface profileId="a4-portrait" scale={0.5}>
+        <p>рисунок</p>
+      </PrintPageSurface>,
+    );
+    const surface = getByTestId("print-page-surface");
+    const wrapper = surface.firstElementChild as HTMLElement;
+    expect(wrapper.getAttribute("data-testid")).toBe("print-probe-content");
+    expect(wrapper.style.transform).toBe("scale(0.5)");
+    expect(wrapper.style.transformOrigin).toBe("top left");
+    expect(wrapper.style.width).toBe("2480px");
+    expect(wrapper.style.height).toBe("3508px");
+  });
+
+  test("прод-рендер scale=1 не создаёт обёртку (DOM байт-идентичен прежнему)", () => {
+    const { getByTestId } = render(
+      <PrintPageSurface profileId="a4-portrait">
+        <p>рисунок</p>
+      </PrintPageSurface>,
+    );
+    const surface = getByTestId("print-page-surface");
+    const first = surface.firstElementChild as HTMLElement;
+    expect(first.style.transform).toBe("");
+    expect(first.style.width).toBe("");
+  });
+
+  test("длинные monospace-refs переносятся (overflow-wrap), а не обрезаются", () => {
+    const { getByTestId } = renderFrame();
+    // Метаданные в шапке/подвале: перенос внутри значения, строка цела.
+    const header = getByTestId("print-header");
+    expect(header.textContent).toContain("fixture:data_revision");
+    const sources = Array.from(header.querySelectorAll("span"));
+    const valueSpans = sources.filter((span) => span.style.overflowWrap === "anywhere");
+    expect(valueSpans.length).toBeGreaterThan(0);
   });
 });
 

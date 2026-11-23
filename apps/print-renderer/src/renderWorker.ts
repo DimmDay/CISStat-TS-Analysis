@@ -34,10 +34,12 @@ import {
   buildSandboxLaunchSpec,
   clampTimeoutSeconds,
   DEFAULT_HARD_TIMEOUT_S,
+  detectSurfaceOverflow,
   injectPngPhys,
   RENDERER_FONT_PROFILE,
   validateRenderPayload,
   RENDERER_VERSION,
+  RenderContentOverflowError,
   type DependencyManifest,
   type RenderPagePayload,
 } from "./rendererCore";
@@ -384,6 +386,26 @@ export class PrintRenderWorker {
     await page.setContent(html, { waitUntil: "load", timeout: remainingMs() });
 
     const surface = page.locator('[data-testid="print-page-surface"]');
+    // PGV13-VIS-01: overflow-guard — контент, не умещающийся в поверхность
+    // при обязательной физической типографике, это явный отказ 413
+    // render_content_overflow (§7 «без скрытого усечения», «не разрезать
+    // строки/оси/legend»), а не молча обрезанная страница.
+    // Замер — layout-контейнер: при scale≠1 (probe) содержимое живёт в
+    // обёртке полной геометрии (transform не влияет на layout-scroll),
+    // при прод-рендере scale=1 — сама поверхность.
+    const fit = await surface.evaluate((element) => {
+      const target =
+        element.querySelector('[data-testid="print-probe-content"]') ?? element;
+      return {
+        scrollWidth: target.scrollWidth,
+        clientWidth: target.clientWidth,
+        scrollHeight: target.scrollHeight,
+        clientHeight: target.clientHeight,
+      };
+    });
+    if (detectSurfaceOverflow(fit)) {
+      throw new RenderContentOverflowError(fit);
+    }
     const rawPng = await surface.screenshot({ type: "png", timeout: remainingMs() });
     const ppi = profilePpi(geometry.profile_id);
     const png = injectPngPhys(rawPng, ppi);

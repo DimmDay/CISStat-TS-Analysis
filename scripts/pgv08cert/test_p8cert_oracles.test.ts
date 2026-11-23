@@ -409,6 +409,9 @@ describe("p8cert A5: таймаут и retryability (AC20)", () => {
       renderer_busy: true,
       invalid_payload: false,
       payload_too_large: false,
+      // PGV13-VIS-01: явный отказ на неумещающийся контент (§7 «без
+      // скрытого усечения») — терминален, не повтор.
+      render_content_overflow: false,
       internal_render_error: false,
     });
     const unknown = buildErrorBody("cert_unknown_code", "нет такого");

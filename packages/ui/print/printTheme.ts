@@ -90,17 +90,81 @@ export const PRINT_FONT_STACK =
   "'DejaVu Sans', 'Noto Sans SC', 'Liberation Sans', Arial, sans-serif";
 
 /**
- * Типографская шкала (px при scale=1 к геометрии профиля). Читаемость
- * обязательна: «Нельзя уменьшать до нечитаемого шрифта» (§7) — минимум
- * тела 12 px, мелкая подпись не меньше 10 px (оракул).
+ * Типографская шкала в ФИЗИЧЕСКИХ единицах (pt). PGV13-VIS-01: прежние
+ * «сырые» px применялись 1:1 на канвас 300 ppi и давали 2.88 pt тела
+ * (находка независимого ревью VIS-01; §7 «Нельзя уменьшать до нечитаемого
+ * шрифта»). Целевой коридор задачи: основной текст 9–10 pt (body 9.5),
+ * служебный ~8 pt (small 8.5, micro 8), заголовки 16/12/11 pt.
+ * px-шкала PRINT_TYPE_SCALE — точное производное через ptToPx.
+ */
+export const PRINT_TYPE_SCALE_PT = {
+  title: 16,
+  subtitle: 12,
+  section: 11,
+  body: 9.5,
+  small: 8.5,
+  micro: 8,
+} as const;
+
+/**
+ * Печатные отступы в ФИЗИЧЕСКИХ единицах (мм). Поля страницы, зазоры
+ * колонтитулов и паддинги ячеек — производные PRINT_SPACING_PX через
+ * mmToPx (§7: композиция «верх/центр/низ» на физическом листе).
+ */
+export const PRINT_SPACING_MM = {
+  /** Поля страницы рамки PrintPageFrame (§7). */
+  page_margin: 12,
+  /** Зазор между верхом/центром/низом каркаса. */
+  band_gap: 4,
+  /** Паддинг колонтитулов (верх/низ страницы). */
+  band_pad: 2.5,
+  /** Зазор между секциями/группами документа. */
+  block_gap: 2,
+  /** Межстрочный зазор label/значение, мелкие интервалы. */
+  item_gap: 1,
+  /** Горизонтальный паддинг ячеек таблиц. */
+  cell_pad: 1.2,
+  /** Вертикальный паддинг ячеек таблиц. */
+  cell_pad_y: 1,
+} as const;
+
+/** ppi печати каталога профилей PGV-01 (паритет гвардится printTheme.test). */
+export const PRINT_PROFILE_PPI = 300;
+
+/** pt → px печати: 1 pt = ppi/72 px (при 300 ppi — 4.166667 px). */
+export function ptToPx(pt: number, ppi: number = PRINT_PROFILE_PPI): number {
+  return (pt * ppi) / 72;
+}
+
+/** мм → px печати: 1 мм = ppi/25.4 px (при 300 ppi — 11.811024 px). */
+export function mmToPx(mm: number, ppi: number = PRINT_PROFILE_PPI): number {
+  return (mm * ppi) / 25.4;
+}
+
+/**
+ * Типографская шкала (px при ppi каталога, производное PRINT_TYPE_SCALE_PT).
+ * Все потребители (printLayout/printSections/printIh/printPassport/
+ * printComparison/rendererCore) читают эту шкалу — единственный источник
+ * размеров текста печати. Обратный перевод px→pt даёт целевые pt.
  */
 export const PRINT_TYPE_SCALE = {
-  title: 26,
-  subtitle: 16,
-  section: 14,
-  body: 12,
-  small: 10,
-  micro: 9,
+  title: ptToPx(PRINT_TYPE_SCALE_PT.title),
+  subtitle: ptToPx(PRINT_TYPE_SCALE_PT.subtitle),
+  section: ptToPx(PRINT_TYPE_SCALE_PT.section),
+  body: ptToPx(PRINT_TYPE_SCALE_PT.body),
+  small: ptToPx(PRINT_TYPE_SCALE_PT.small),
+  micro: ptToPx(PRINT_TYPE_SCALE_PT.micro),
+} as const;
+
+/** Отступы в px (производное PRINT_SPACING_MM через mmToPx). */
+export const PRINT_SPACING_PX = {
+  page_margin: mmToPx(PRINT_SPACING_MM.page_margin),
+  band_gap: mmToPx(PRINT_SPACING_MM.band_gap),
+  band_pad: mmToPx(PRINT_SPACING_MM.band_pad),
+  block_gap: mmToPx(PRINT_SPACING_MM.block_gap),
+  item_gap: mmToPx(PRINT_SPACING_MM.item_gap),
+  cell_pad: mmToPx(PRINT_SPACING_MM.cell_pad),
+  cell_pad_y: mmToPx(PRINT_SPACING_MM.cell_pad_y),
 } as const;
 
 /** 6-значный непрозрачный hex-цвет (#RRGGBB). */

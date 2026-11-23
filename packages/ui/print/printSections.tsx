@@ -18,6 +18,7 @@ import React from "react";
 import type { AxisSpec, PrintSectionSpec } from "./printSchema";
 import {
   PRINT_PALETTE,
+  PRINT_SPACING_PX,
   PRINT_TYPE_SCALE,
 } from "./printTheme";
 import {
@@ -166,9 +167,10 @@ export function PrintTableSection({ spec, headings, rows, rowsPerPage, caption }
                   key={`row-${heading}`}
                   style={{
                     border: `1px solid ${PRINT_PALETTE.border}`,
-                    padding: "6px 8px",
+                    padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                     textAlign: "left",
                     fontWeight: 600,
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {heading}
@@ -179,9 +181,10 @@ export function PrintTableSection({ spec, headings, rows, rowsPerPage, caption }
                   key={`col-${heading}`}
                   style={{
                     border: `1px solid ${PRINT_PALETTE.border}`,
-                    padding: "6px 8px",
+                    padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                     textAlign: "right",
                     fontWeight: 600,
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {heading}
@@ -197,9 +200,10 @@ export function PrintTableSection({ spec, headings, rows, rowsPerPage, caption }
                     key={`${spec.section_id}-${chunkIndex}-${rowIndex}-${cellIndex}`}
                     style={{
                       border: `1px solid ${PRINT_PALETTE.border}`,
-                      padding: "5px 8px",
+                      padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                       textAlign: cellIndex === 0 ? "left" : "right",
                       fontVariantNumeric: "tabular-nums",
+                      overflowWrap: "anywhere",
                     }}
                   >
                     {cell}
@@ -261,7 +265,7 @@ export function PrintHeatmapSection({
   const domain: [number, number] = scale?.domain ?? [0, 1];
   const cellStyle = (value: number | null): React.CSSProperties => ({
     border: `1px solid ${PRINT_PALETTE.border}`,
-    padding: "5px 8px",
+    padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
     textAlign: "right",
     fontVariantNumeric: "tabular-nums",
     backgroundColor:
@@ -274,15 +278,24 @@ export function PrintHeatmapSection({
       <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
         <thead>
           <tr style={{ backgroundColor: PRINT_PALETTE.band_fill }}>
-            {rowHeadings.length > 0 && <th aria-label="строки" style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "6px 8px" }} />}
+            {rowHeadings.length > 0 && (
+              <th
+                aria-label="строки"
+                style={{
+                  border: `1px solid ${PRINT_PALETTE.border}`,
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                }}
+              />
+            )}
             {columnHeadings.map((heading) => (
               <th
                 key={heading}
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "6px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: "right",
                   fontWeight: 600,
+                  overflowWrap: "anywhere",
                 }}
               >
                 {heading}
@@ -297,10 +310,11 @@ export function PrintHeatmapSection({
                 scope="row"
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "5px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: "left",
                   fontWeight: 600,
                   backgroundColor: PRINT_PALETTE.band_fill,
+                  overflowWrap: "anywhere",
                 }}
               >
                 {rowHeading}
@@ -374,8 +388,8 @@ export function PrintCardsSection({ spec, cards }: PrintCardsSectionProps) {
             key={card.label}
             style={{
               border: `1px solid ${PRINT_PALETTE.border}`,
-              padding: "6px 10px",
-              minWidth: 120,
+              padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+              minWidth: PRINT_SPACING_PX.block_gap * 5,
             }}
           >
             <div style={{ fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_faint }}>{card.label}</div>

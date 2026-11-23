@@ -1007,9 +1007,9 @@
     "apps/print-renderer/build/deployment/docker-compose.yml": "db8598e9caef1b5c1876fb588cd6a85ad1cc9faa013f3099b045cf8766e89375",
     "apps/print-renderer/build/entrypoint.sh": "dc247f28bb164e7e9cfd076a8efb88a90b4c70a1132203912e0243785094237c",
     "apps/print-renderer/src/healthcheck.ts": "64e719ff471fb9b423cf1474e8c99c8c1c87c953f51c2d9b6d08a69992a97b17",
-    "apps/print-renderer/src/renderWorker.ts": "33c7f02c6582c406b1e66b98c888c161339a3256537199e16786aedf59b25fbf",
-    "apps/print-renderer/src/rendererCore.tsx": "87ef26f3a4f417d3277646e0465f0a7f875911b2fada9c633939fb96ef53979d",
-    "apps/print-renderer/src/server.ts": "852efae992e36dc69e79cb92e3fb9d7eca1301aabc2d785bb14824da024e887c",
+    "apps/print-renderer/src/renderWorker.ts": "b747812c67dbb952a4560d35720c7d9a2a65e55c5be28a660739ae321aec335d",
+    "apps/print-renderer/src/rendererCore.tsx": "33966f05008128589b48e7b3018963a26645ed1b763098054f63e8197c7149fb",
+    "apps/print-renderer/src/server.ts": "496cd4d1423edb4cd1fddfa7a0d76821b4d271f62925a7dc3697043942748af4",
     "apps/print-renderer/src/socketTransport.test.ts": "f6b61a54b5f4d52fa3c34d86416a361a3f733e26589b01533e8857f93a1e46f3",
     "apps/print-renderer/src/socketTransport.ts": "51a524136021fb04ded0c1b5ecc30e86e88987bb32f60802e1e1f8ddfc20b34e",
     "apps/print-renderer/src/transportCancel.test.ts": "86908cae19ec4b4a49f93e5f79acaaf93b68e14c74a1d3232a63e0901a869ac5",
@@ -1171,7 +1171,7 @@
     "packages/ui/lib/tasks.ts": "d478d705451d88d3d634b8ede74298f00d788bbe69e9b7aa3f038ecaac8a1aae",
     "packages/ui/lib/team.ts": "5570ce9c10ee7b1635d785668f6bedac9f83b217fa1154e29106402534a20c11",
     "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
-    "packages/ui/print/printPassport.tsx": "78f2c41f3fbc537605303a528a969d1a969992f9866f6dd56ef02088df651451",
+    "packages/ui/print/printPassport.tsx": "d353f0e13ff7962d33caa49c595041e195c14e023f03ef08ced3fda23887196f",
     "packages/ui/server/firstPartyProxy.ts": "8f30acae14acac8c2834b34a9d70bc6c5fd5113a09626e3c6008ba236730560d",
     "packages/ui/server/proxy-routes.generated.json": "5633719ebf659ff02a4b4e8e6dd6f2c560f34cbab0a5c39772438838f312c97b",
     "scripts/auth00/check_committed.py": "a3c0acb8c3e51d9c68459fc0e16bbd92b53658ea534e2655c11938ed4106f02e",
@@ -20366,7 +20366,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 305,
+          "line": 316,
           "symbol": "createRendererServer"
         }
       ],
@@ -20390,7 +20390,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 309,
+          "line": 320,
           "symbol": "createRendererServer"
         }
       ],
@@ -20414,7 +20414,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 326,
+          "line": 337,
           "symbol": "createRendererServer"
         }
       ],
@@ -20439,7 +20439,7 @@
       "evidence": [
         {
           "source": "apps/print-renderer/src/server.ts",
-          "line": 330,
+          "line": 341,
           "symbol": "createRendererServer"
         }
       ],

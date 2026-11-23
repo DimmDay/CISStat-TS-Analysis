@@ -17,10 +17,17 @@
 
 import React from "react";
 import { formatNumberRu, formatPrintTime, shortRef } from "./printLayout";
-import { PRINT_PALETTE, PRINT_TYPE_SCALE } from "./printTheme";
+import { PRINT_PALETTE, PRINT_SPACING_PX, PRINT_TYPE_SCALE } from "./printTheme";
 
 // P02 headings must survive the fixed 300ppi raster; no font shrink-to-fit.
-const DOCUMENT_HEADING_STYLE = { fontSize: 22, fontWeight: 700, lineHeight: 1.4, margin: 0 } as const;
+// PGV13-VIS-01: размер — шкала секций (11 pt = 45.83 px @300ppi), не
+// захардкоженные 22px (5.28 pt — находка ревью VIS-01).
+const DOCUMENT_HEADING_STYLE = {
+  fontSize: PRINT_TYPE_SCALE.section,
+  fontWeight: 700,
+  lineHeight: 1.4,
+  margin: 0,
+} as const;
 
 /** Версия frozen-контракта сравнения (паритет PGV-06). */
 export const PASSPORT_COMPARISON_SCHEMA_VERSION = "pgv.passport_comparison/1";
@@ -144,11 +151,19 @@ function Badge({ tone, children }: { tone: "neutral" | "warning"; children: Reac
 
 function ProvLine({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+    <div style={{ display: "flex", gap: PRINT_SPACING_PX.item_gap, alignItems: "baseline" }}>
       <span style={{ fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_faint, whiteSpace: "nowrap" }}>
         {label}:
       </span>
-      <span style={{ fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_muted, fontFamily: "monospace" }}>
+      <span
+        style={{
+          fontSize: PRINT_TYPE_SCALE.small,
+          color: PRINT_PALETTE.ink_muted,
+          fontFamily: "monospace",
+          // Перенос длинных refs внутри значения (строка цела, без обрезания).
+          overflowWrap: "anywhere",
+        }}
+      >
         {value}
       </span>
     </div>
@@ -170,7 +185,7 @@ export interface PrintPassportComparisonPageProps {
  * подтверждения reused checkpoint, честные gaps, маркировка cross_context
  * и полноты (§9/AC11/AC13).
  */
-export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount = 1 }: PrintPassportComparisonPageProps) {
+export function PrintPassportComparisonPage({ snapshot }: PrintPassportComparisonPageProps) {
   // Значения по этапам: v_old → from_stage, v_new → to_stage (паритет
   // экранной ComparisonView DatasetPassportPanel; без пересчёта).
   const stageValues = new Map<string, Map<string, number>>();
@@ -204,18 +219,28 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       style={{
         backgroundColor: PRINT_PALETTE.page_background,
         color: PRINT_PALETTE.ink,
-        padding: 24,
+        // PGV13-VIS-01: документ печатается внутри рамки PrintPageFrame
+        // (buildPrintHtml) — поля страницы даёт рамка (12 мм); свой
+        // padding не дублирует их. Зазоры секций — 2 мм.
+        padding: 0,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: PRINT_SPACING_PX.block_gap,
       }}
     >
-      <header style={{ borderBottom: `1px solid ${PRINT_PALETTE.border}`, paddingBottom: 8 }}>
+      <header style={{ borderBottom: `1px solid ${PRINT_PALETTE.border}`, paddingBottom: PRINT_SPACING_PX.item_gap }}>
         <h1 style={{ fontSize: PRINT_TYPE_SCALE.title, fontWeight: 700, margin: 0 }}>
           Сравнение паспортов свойств ряда
         </h1>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginTop: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.block_gap}px`,
+            marginTop: PRINT_SPACING_PX.item_gap,
+          }}
+        >
           <ProvLine label="run" value={snapshot.run_id} />
           <ProvLine label="режим" value={snapshot.mode} />
           <ProvLine label="этапы" value={snapshot.path.join(" → ")} />
@@ -228,24 +253,38 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       </header>
 
       {metricNames.length > 0 && (
-        <section style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <section style={{ display: "flex", flexDirection: "column", gap: PRINT_SPACING_PX.item_gap }}>
           <h3 style={DOCUMENT_HEADING_STYLE}>Числовые метрики по этапам</h3>
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
             <thead>
               <tr style={{ backgroundColor: PRINT_PALETTE.band_fill }}>
-                <th scope="col" style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "6px 8px", textAlign: "left" }}>
+                <th scope="col" style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`, textAlign: "left" }}>
                   Метрика
                 </th>
                 {snapshot.path.map((stage) => (
-                  <th key={stage} scope="col" style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "6px 8px", textAlign: "right" }}>
-                    {stage}
-                  </th>
+                  <th
+                      key={stage}
+                      scope="col"
+                      style={{
+                        border: `1px solid ${PRINT_PALETTE.border}`,
+                        padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                        textAlign: "right",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {stage}
+                    </th>
                 ))}
                 {snapshot.comparisons.map((pair) => (
                   <th
                     key={`${pair.from_stage}-${pair.to_stage}`}
                     scope="col"
-                    style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "6px 8px", textAlign: "right" }}
+                    style={{
+                      border: `1px solid ${PRINT_PALETTE.border}`,
+                      padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                      textAlign: "right",
+                      overflowWrap: "anywhere",
+                    }}
                   >
                     {`Δ ${pair.from_stage} → ${pair.to_stage}`}
                   </th>
@@ -255,11 +294,25 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
             <tbody>
               {metricNames.map((name) => (
                 <tr key={name}>
-                  <td style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "5px 8px", fontWeight: 600 }}>{name}</td>
+                  <td
+                      style={{
+                        border: `1px solid ${PRINT_PALETTE.border}`,
+                        padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                        fontWeight: 600,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {name}
+                    </td>
                   {snapshot.path.map((stage) => (
                     <td
                       key={`${name}-${stage}`}
-                      style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "5px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                      style={{
+                        border: `1px solid ${PRINT_PALETTE.border}`,
+                        padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
                     >
                       {formatNumberRu(stageValues.get(stage)?.get(name) ?? null, 4)}
                     </td>
@@ -269,7 +322,12 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
                     return (
                       <td
                         key={`${name}-${pair.from_stage}-${pair.to_stage}`}
-                        style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "5px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                        style={{
+                        border: `1px solid ${PRINT_PALETTE.border}`,
+                        padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
                       >
                         {metric
                           ? `${signedNumber(metric.delta)} (${signedNumber(metric.delta_pct)} %)`
@@ -288,7 +346,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
         </section>
       )}
 
-      <section style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <section style={{ display: "flex", flexDirection: "column", gap: PRINT_SPACING_PX.item_gap }}>
         <h3 style={DOCUMENT_HEADING_STYLE}>Качественные и категориальные изменения</h3>
         {snapshot.comparisons.map((pair) => (
           <p key={`${pair.from_stage}-${pair.to_stage}`} style={{ margin: 0, fontSize: PRINT_TYPE_SCALE.body }}>
@@ -331,7 +389,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       {snapshot.confirmation && (
         <section
           data-testid="print-comparison-confirmation"
-          style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "8px 12px", fontSize: PRINT_TYPE_SCALE.body }}
+          style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.cell_pad}px`, fontSize: PRINT_TYPE_SCALE.body }}
         >
           <strong>Подтверждение чекпоинта</strong>{" "}
           {snapshot.checkpoint?.stage ? `(этап ${snapshot.checkpoint.stage})` : ""}: подтверждено{" "}
@@ -351,11 +409,11 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       {snapshot.gaps.length > 0 && (
         <section
           data-testid="print-comparison-gaps"
-          style={{ border: `1px solid ${PRINT_PALETTE.status_warning}`, padding: "8px 12px", fontSize: PRINT_TYPE_SCALE.body }}
+          style={{ border: `1px solid ${PRINT_PALETTE.status_warning}`, padding: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.cell_pad}px`, fontSize: PRINT_TYPE_SCALE.body }}
         >
           <strong>Полнота: {snapshot.completeness}</strong> — отсутствующие точки перечислены явно, нулем
           не подменяются (§9):
-          <ul style={{ margin: "4px 0 0 0", paddingLeft: 16 }}>
+          <ul style={{ margin: `${PRINT_SPACING_PX.item_gap}px 0 0 0`, paddingLeft: PRINT_SPACING_PX.block_gap }}>
             {snapshot.gaps.map((gap) => (
               <li key={`${gap.at}-${gap.reason}`}>
                 {gap.at}: {gap.reason} — {gap.detail}
@@ -368,10 +426,15 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
 
       <section
         data-testid="print-comparison-definitions"
-        style={{ borderTop: `1px solid ${PRINT_PALETTE.border}`, paddingTop: 8, fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_muted }}
+        style={{
+          borderTop: `1px solid ${PRINT_PALETTE.border}`,
+          paddingTop: PRINT_SPACING_PX.item_gap,
+          fontSize: PRINT_TYPE_SCALE.small,
+          color: PRINT_PALETTE.ink_muted,
+        }}
       >
         <h3 style={{ ...DOCUMENT_HEADING_STYLE, color: PRINT_PALETTE.ink }}>Определения:</h3>
-        <ul style={{ margin: "4px 0 0 0", paddingLeft: 16 }}>
+        <ul style={{ margin: `${PRINT_SPACING_PX.item_gap}px 0 0 0`, paddingLeft: PRINT_SPACING_PX.block_gap }}>
           {Object.entries(snapshot.definitions).map(([key, text]) => (
             <li key={key}>
               {key}: {text}
@@ -383,7 +446,7 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
       <footer
         style={{
           borderTop: `1px solid ${PRINT_PALETTE.border}`,
-          paddingTop: 8,
+          paddingTop: PRINT_SPACING_PX.item_gap,
           display: "flex",
           justifyContent: "space-between",
           fontSize: PRINT_TYPE_SCALE.small,
@@ -393,7 +456,6 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
         <span>
           источник: {snapshot.schema_version}; aliases: {snapshot.aliases.length}; пар: {snapshot.comparisons.length}
         </span>
-        <span>{`Стр. ${pageIndex} из ${pageCount}`}</span>
       </footer>
     </article>
   );

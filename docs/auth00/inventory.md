@@ -741,10 +741,10 @@
 
 | ID / метод и путь | Operation / stage | Policy / resource | Источник |
 |---|---|---|---|
-| renderer:GET:/healthz | renderer:/healthz / service:documentation | public.metadata / frozen print payload / PNG output | apps/print-renderer/src/server.ts:305 |
-| renderer:GET:/readyz | renderer:/readyz / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:309 |
-| renderer:POST:/v1/render | renderer:/v1/render / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:326 |
-| renderer:POST:/v1/smoke | renderer:/v1/smoke / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:330 |
+| renderer:GET:/healthz | renderer:/healthz / service:documentation | public.metadata / frozen print payload / PNG output | apps/print-renderer/src/server.ts:316 |
+| renderer:GET:/readyz | renderer:/readyz / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:320 |
+| renderer:POST:/v1/render | renderer:/v1/render / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:337 |
+| renderer:POST:/v1/smoke | renderer:/v1/smoke / service:documentation | renderer.service / frozen print payload / PNG output | apps/print-renderer/src/server.ts:341 |
 
 ## static_asset
 

@@ -21,10 +21,13 @@ import {
   buildRequestPolicy,
   clampTimeoutSeconds,
   DEFAULT_HARD_TIMEOUT_S,
+  detectSurfaceOverflow,
   DEPENDENCY_CHECKS,
   ERROR_BODY_RETRYABILITY,
   injectPngPhys,
   parsePngChunks,
+  RENDER_CONTENT_OVERFLOW_HTTP_STATUS,
+  RenderContentOverflowError,
   RENDER_PAYLOAD_SCHEMA_VERSION,
   RENDERER_VERSION,
   RENDER_PORT_DEFAULT,
@@ -818,5 +821,48 @@ describe("PGV-13 rendererCore: секции паспорта/сравнения 
     };
     const result = validateRenderPayload(payload);
     expect(result.violations.map((v) => v.code)).toContain("missing_field");
+  });
+});
+
+// ── PGV13-VIS-01: fail-visible overflow-guard (§7 «без скрытого усечения») ──
+
+describe("PGV13-VIS-01 rendererCore: overflow-guard печатной страницы", () => {
+  const metrics = (overX: number, overY: number) => ({
+    scrollWidth: 2480 + overX,
+    clientWidth: 2480,
+    scrollHeight: 3508 + overY,
+    clientHeight: 3508,
+  });
+
+  it("умещающийся контент (допуск 1px) не считается переполнением", () => {
+    expect(detectSurfaceOverflow(metrics(0, 0))).toBe(false);
+    expect(detectSurfaceOverflow(metrics(1, 0))).toBe(false);
+    expect(detectSurfaceOverflow(metrics(0, 1))).toBe(false);
+  });
+
+  it("переполнение по ширине ИЛИ высоте — violation (строки не режутся молча)", () => {
+    expect(detectSurfaceOverflow(metrics(2, 0))).toBe(true);
+    expect(detectSurfaceOverflow(metrics(0, 2))).toBe(true);
+    expect(detectSurfaceOverflow(metrics(40, 900))).toBe(true);
+  });
+
+  it("RenderContentOverflowError несёт код/габариты и честную неповторяемость", () => {
+    const error = new RenderContentOverflowError({
+      scrollWidth: 2600, clientWidth: 2480, scrollHeight: 4400, clientHeight: 3508,
+    });
+    expect(error.code).toBe("render_content_overflow");
+    expect(error.retryable).toBe(false);
+    expect(error.message).toContain("2600");
+    expect(error.message).toContain("4400");
+    // Тело ошибки 413 строится единым механизмом с renderer_version.
+    const body = buildErrorBody(error.code, error.message);
+    expect(body.error.code).toBe("render_content_overflow");
+    expect(body.error.retryable).toBe(false);
+    expect(body.error.renderer_version).toBe(RENDERER_VERSION);
+  });
+
+  it("HTTP-статус overflow — 413 (семья §7 «превышение без скрытого усечения»)", () => {
+    expect(RENDER_CONTENT_OVERFLOW_HTTP_STATUS).toBe(413);
+    expect(ERROR_BODY_RETRYABILITY.render_content_overflow).toBe(false);
   });
 });

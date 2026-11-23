@@ -24,7 +24,8 @@ import {
   formatPrintTime,
   shortRef,
 } from "./printLayout";
-import { PRINT_PALETTE, PRINT_TYPE_SCALE } from "./printTheme";
+import { PRINT_PALETTE,
+  PRINT_SPACING_PX, PRINT_TYPE_SCALE } from "./printTheme";
 
 /**
  * Версии схемы паспорта, известные печатному слою (§8: «Неизвестная
@@ -185,11 +186,19 @@ export function flattenPassportGroup(group: Record<string, unknown>, prefix = ""
 
 function ProvItem({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+    <div style={{ display: "flex", gap: PRINT_SPACING_PX.item_gap, alignItems: "baseline" }}>
       <span style={{ fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_faint, whiteSpace: "nowrap" }}>
         {label}:
       </span>
-      <span style={{ fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_muted, fontFamily: "monospace" }}>
+      <span
+        style={{
+          fontSize: PRINT_TYPE_SCALE.small,
+          color: PRINT_PALETTE.ink_muted,
+          fontFamily: "monospace",
+          // Перенос длинных durable-refs внутри значения (без обрезания).
+          overflowWrap: "anywhere",
+        }}
+      >
         {value}
       </span>
     </div>
@@ -216,7 +225,7 @@ export interface PrintPassportPageProps {
  * схемы + неизвестные группы по ключу. Content-гэп — честный баннер без
  * фабкации таблиц; неизвестная схема — баннер unsupported_schema (§8).
  */
-export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPassportPageProps) {
+export function PrintPassportPage({ record }: PrintPassportPageProps) {
   const isKnownSchema =
     typeof record.passport_schema_version === "string" &&
     KNOWN_PASSPORT_SCHEMA_VERSIONS.includes(record.passport_schema_version);
@@ -233,19 +242,28 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
       style={{
         backgroundColor: PRINT_PALETTE.page_background,
         color: PRINT_PALETTE.ink,
-        padding: 24,
+        // PGV13-VIS-01: документ внутри рамки PrintPageFrame — поля
+        // страницы даёт рамка (12 мм); зазоры секций — 2 мм.
+        padding: 0,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: PRINT_SPACING_PX.block_gap,
       }}
     >
-      <header style={{ borderBottom: `1px solid ${PRINT_PALETTE.border}`, paddingBottom: 8 }}>
+      <header style={{ borderBottom: `1px solid ${PRINT_PALETTE.border}`, paddingBottom: PRINT_SPACING_PX.item_gap }}>
         <h1 style={{ fontSize: PRINT_TYPE_SCALE.title, fontWeight: 700, margin: 0 }}>
           Паспорт свойств ряда
           {record.stage ? `: ${record.stage}` : ""}
         </h1>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", marginTop: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.block_gap}px`,
+            marginTop: PRINT_SPACING_PX.item_gap,
+          }}
+        >
           <ProvItem label="снимок" value={record.session_snapshot_id ?? shortRef(record.snapshot_ref)} />
           <ProvItem label="этап" value={record.stage ?? "—"} />
           <ProvItem label="вселенная" value={record.universe ?? "—"} />
@@ -276,7 +294,7 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
           style={{
             border: `1px solid ${PRINT_PALETTE.status_warning}`,
             color: PRINT_PALETTE.status_warning,
-            padding: "10px 12px",
+            padding: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.cell_pad}px`,
             fontSize: PRINT_TYPE_SCALE.body,
           }}
         >
@@ -292,7 +310,7 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
               style={{
                 border: `1px solid ${PRINT_PALETTE.status_warning}`,
                 color: PRINT_PALETTE.status_warning,
-                padding: "10px 12px",
+                padding: `${PRINT_SPACING_PX.item_gap}px ${PRINT_SPACING_PX.cell_pad}px`,
                 fontSize: PRINT_TYPE_SCALE.body,
               }}
             >
@@ -300,77 +318,130 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
               печатному слою; группы печатаются как есть, интерпретация полей не гарантируется.
             </div>
           )}
-          <div data-testid="print-passport-groups" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {KNOWN_PASSPORT_GROUPS.filter((group) => {
-              const value = (record.passport ?? {})[group.key];
-              return value !== undefined && value !== null;
-            }).map((group) => {
-              const raw = (record.passport ?? {})[group.key] as Record<string, unknown>;
-              const rows = flattenPassportGroup(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : { value: raw });
-              return (
-                <section key={group.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <h3 style={{ fontSize: PRINT_TYPE_SCALE.section, fontWeight: 600, margin: 0 }}>{group.label}</h3>
-                  <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={`${group.key}-${row.label}`}>
-                          <td
-                            style={{
-                              border: `1px solid ${PRINT_PALETTE.border}`,
-                              padding: "4px 8px",
-                              width: "40%",
-                              color: row.muted ? PRINT_PALETTE.ink_faint : PRINT_PALETTE.ink_muted,
-                            }}
-                          >
-                            {row.label}
-                          </td>
-                          <td
-                            style={{
-                              border: `1px solid ${PRINT_PALETTE.border}`,
-                              padding: "4px 8px",
-                              fontVariantNumeric: "tabular-nums",
-                              color: row.muted ? PRINT_PALETTE.ink_faint : PRINT_PALETTE.ink,
-                            }}
-                          >
-                            {row.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              );
-            })}
-            {unknownGroupKeys.map((key) => {
-              const raw = (record.passport ?? {})[key];
-              const rows = flattenPassportGroup(
-                raw && typeof raw === "object" && !Array.isArray(raw)
-                  ? (raw as Record<string, unknown>)
-                  : { value: raw },
-              );
-              return (
-                <section key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <h3 style={{ fontSize: PRINT_TYPE_SCALE.section, fontWeight: 600, margin: 0 }}>{key}</h3>
-                  <p style={{ margin: 0, fontSize: PRINT_TYPE_SCALE.small, color: PRINT_PALETTE.ink_faint }}>
-                    группа вне известного print'у набора — печатается по ключу без интерпретации
-                  </p>
-                  <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={`${key}-${row.label}`}>
-                          <td style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "4px 8px", width: "40%", color: PRINT_PALETTE.ink_muted }}>
-                            {row.label}
-                          </td>
-                          <td style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "4px 8px", fontVariantNumeric: "tabular-nums" }}>
-                            {row.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              );
-            })}
+          {/* PGV13-VIS-01: группы — ЕДИНАЯ таблица с band-строками групп
+              (заголовок группы — строка таблицы, не отдельный h3+таблица):
+              экономит физическую высоту страницы при честной типографике,
+              сохраняя все группы существующей схемы (§8) и их читаемость. */}
+          <div data-testid="print-passport-groups">
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: PRINT_TYPE_SCALE.body }}>
+              <tbody>
+                {KNOWN_PASSPORT_GROUPS.filter((group) => {
+                  const value = (record.passport ?? {})[group.key];
+                  return value !== undefined && value !== null;
+                }).flatMap((group) => {
+                  const raw = (record.passport ?? {})[group.key] as Record<string, unknown>;
+                  const rows = flattenPassportGroup(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : { value: raw });
+                  return [
+                    <tr key={`${group.key}-band`}>
+                      <th
+                        colSpan={2}
+                        scope="colgroup"
+                        style={{
+                          border: `1px solid ${PRINT_PALETTE.border}`,
+                          padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                          backgroundColor: PRINT_PALETTE.band_fill,
+                          fontSize: PRINT_TYPE_SCALE.section,
+                          fontWeight: 600,
+                          textAlign: "left",
+                        }}
+                      >
+                        {group.label}
+                      </th>
+                    </tr>,
+                    ...rows.map((row) => (
+                      <tr key={`${group.key}-${row.label}`}>
+                        <td
+                          style={{
+                            border: `1px solid ${PRINT_PALETTE.border}`,
+                            padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                            width: "40%",
+                            color: row.muted ? PRINT_PALETTE.ink_faint : PRINT_PALETTE.ink_muted,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {row.label}
+                        </td>
+                        <td
+                          style={{
+                            border: `1px solid ${PRINT_PALETTE.border}`,
+                            padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                            fontVariantNumeric: "tabular-nums",
+                            color: row.muted ? PRINT_PALETTE.ink_faint : PRINT_PALETTE.ink,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {row.value}
+                        </td>
+                      </tr>
+                    )),
+                  ];
+                })}
+                {unknownGroupKeys.flatMap((key) => {
+                  const raw = (record.passport ?? {})[key];
+                  const rows = flattenPassportGroup(
+                    raw && typeof raw === "object" && !Array.isArray(raw)
+                      ? (raw as Record<string, unknown>)
+                      : { value: raw },
+                  );
+                  return [
+                    <tr key={`${key}-band`}>
+                      <th
+                        colSpan={2}
+                        scope="colgroup"
+                        style={{
+                          border: `1px solid ${PRINT_PALETTE.border}`,
+                          padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                          backgroundColor: PRINT_PALETTE.band_fill,
+                          fontSize: PRINT_TYPE_SCALE.section,
+                          fontWeight: 600,
+                          textAlign: "left",
+                        }}
+                      >
+                        {key}
+                      </th>
+                    </tr>,
+                    <tr key={`${key}-hint`}>
+                      <td
+                        colSpan={2}
+                        style={{
+                          border: `1px solid ${PRINT_PALETTE.border}`,
+                          padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                          fontSize: PRINT_TYPE_SCALE.small,
+                          color: PRINT_PALETTE.ink_faint,
+                        }}
+                      >
+                        группа вне известного print'у набора — печатается по ключу без интерпретации
+                      </td>
+                    </tr>,
+                    ...rows.map((row) => (
+                      <tr key={`${key}-${row.label}`}>
+                        <td
+                          style={{
+                            border: `1px solid ${PRINT_PALETTE.border}`,
+                            padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                            width: "40%",
+                            color: PRINT_PALETTE.ink_muted,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {row.label}
+                        </td>
+                        <td
+                          style={{
+                            border: `1px solid ${PRINT_PALETTE.border}`,
+                            padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
+                            fontVariantNumeric: "tabular-nums",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {row.value}
+                        </td>
+                      </tr>
+                    )),
+                  ];
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -378,7 +449,7 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
       <footer
         style={{
           borderTop: `1px solid ${PRINT_PALETTE.border}`,
-          paddingTop: 8,
+          paddingTop: PRINT_SPACING_PX.item_gap,
           display: "flex",
           justifyContent: "space-between",
           fontSize: PRINT_TYPE_SCALE.small,
@@ -386,7 +457,6 @@ export function PrintPassportPage({ record, pageIndex, pageCount }: PrintPasspor
         }}
       >
         <span>источник: pgv.passport_history/1 (PassportHistoryReader, durable refs без SessionStore)</span>
-        <span>{`Стр. ${pageIndex} из ${pageCount}`}</span>
       </footer>
     </article>
   );

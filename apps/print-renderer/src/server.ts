@@ -30,6 +30,8 @@ import {
   RENDERER_VERSION,
   validateRenderPayload,
   type RenderPagePayload,
+  RENDER_CONTENT_OVERFLOW_HTTP_STATUS,
+  RenderContentOverflowError,
 } from "./rendererCore";
 import {
   PrintRenderWorker,
@@ -272,6 +274,15 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
       sendJson(res, 503, buildErrorBody("render_dependency_unavailable", error.reason), {
         "X-Render-Retryable": "false",
         "X-Render-Dependency-Reason": error.reason,
+      });
+      return;
+    }
+    if (error instanceof RenderContentOverflowError) {
+      // PGV13-VIS-01: контент не умещается в страницу при обязательной
+      // типографике — явный отказ (§7 «Превышение … без скрытого усечения»).
+      log("warn", "render_content_overflow", { request_id: payload.request_id, code: error.code });
+      sendJson(res, RENDER_CONTENT_OVERFLOW_HTTP_STATUS, buildErrorBody(error.code, error.message), {
+        "X-Render-Retryable": "false",
       });
       return;
     }

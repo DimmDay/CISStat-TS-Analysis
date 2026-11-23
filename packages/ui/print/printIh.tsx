@@ -19,7 +19,8 @@ import {
   PrintSectionTitle,
 } from "./printLayout";
 import { heatColor } from "./printSections";
-import { PRINT_PALETTE, PRINT_TYPE_SCALE } from "./printTheme";
+import { PRINT_PALETTE,
+  PRINT_SPACING_PX, PRINT_TYPE_SCALE } from "./printTheme";
 
 const IH_SCALE_DOMAIN: [number, number] = [0, 100];
 
@@ -82,7 +83,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
               scope="col"
               style={{
                 border: `1px solid ${PRINT_PALETTE.border}`,
-                padding: "6px 8px",
+                padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                 textAlign: "left",
                 fontWeight: 600,
               }}
@@ -95,7 +96,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
                 scope="col"
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "6px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: "right",
                   fontWeight: 600,
                 }}
@@ -107,7 +108,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
               scope="col"
               style={{
                 border: `1px solid ${PRINT_PALETTE.border}`,
-                padding: "6px 8px",
+                padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                 textAlign: "right",
                 fontWeight: 600,
               }}
@@ -123,7 +124,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
                 scope="row"
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "5px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: "left",
                   fontWeight: 600,
                   backgroundColor: PRINT_PALETTE.band_fill,
@@ -137,7 +138,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
                   data-testid="print-ih-cell"
                   style={{
                     border: `1px solid ${PRINT_PALETTE.border}`,
-                    padding: "5px 8px",
+                    padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                     backgroundColor: heatColor(value, IH_SCALE_DOMAIN),
@@ -149,7 +150,7 @@ export function PrintIhConditionalMatrix({ input }: { input: PrintIhConditionalI
               <td
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "5px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: "right",
                   fontVariantNumeric: "tabular-nums",
                   color: hasRowTotals ? PRINT_PALETTE.ink : PRINT_PALETTE.ink_faint,
@@ -223,7 +224,7 @@ export function PrintIhMetricsMap({ results }: { results: readonly PrintIhMetric
                 scope="col"
                 style={{
                   border: `1px solid ${PRINT_PALETTE.border}`,
-                  padding: "6px 8px",
+                  padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                   textAlign: index === 0 ? "left" : "right",
                   fontWeight: 600,
                 }}
@@ -236,7 +237,7 @@ export function PrintIhMetricsMap({ results }: { results: readonly PrintIhMetric
         <tbody>
           {results.map((row) => (
             <tr key={row.feature}>
-              <td style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: "5px 8px", fontWeight: 600 }}>
+              <td style={{ border: `1px solid ${PRINT_PALETTE.border}`, padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`, fontWeight: 600 }}>
                 {row.feature}
               </td>
               {[row.h_x, row.mi, row.r, row.r_adjusted].map((value, index) => (
@@ -244,7 +245,7 @@ export function PrintIhMetricsMap({ results }: { results: readonly PrintIhMetric
                   key={`${row.feature}-v${index}`}
                   style={{
                     border: `1px solid ${PRINT_PALETTE.border}`,
-                    padding: "5px 8px",
+                    padding: `${PRINT_SPACING_PX.cell_pad_y}px ${PRINT_SPACING_PX.cell_pad}px`,
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                   }}

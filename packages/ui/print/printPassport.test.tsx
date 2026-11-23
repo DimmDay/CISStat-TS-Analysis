@@ -34,6 +34,7 @@ import {
   PASSPORT_COMPARISON_SCHEMA_VERSION,
   type PrintComparisonSnapshot,
 } from "./printComparison";
+import { PRINT_TYPE_SCALE } from "./printTheme";
 
 // ── Фикстуры (данные-оракулы, не научные расчёты) ────────────────
 
@@ -170,9 +171,13 @@ describe("PGV-07 PrintPassportPage: полный паспорт без сокр�
     expect(getByTestId("print-passport-content-gap").textContent).toContain("snapshot_id_mismatch");
   });
 
-  test("номер страницы в подвале печатной страницы", () => {
+  test("подвал документа несёт источник; номер страницы печатает рамка §7 (PGV13-VIS-01: без дубля)", () => {
     const { getByTestId } = render(<PrintPassportPage record={fullRecord()} pageIndex={2} pageCount={3} />);
-    expect(getByTestId("print-passport-page").textContent).toContain("Стр. 2 из 3");
+    const article = getByTestId("print-passport-page");
+    expect(article.textContent).toContain("источник: pgv.passport_history/1");
+    // Консолидация колонтитулов: «Стр. N из M» печатает PrintPageFrame
+    // (оракул printLayout.test «Номер страницы»), документ не дублирует.
+    expect(article.textContent).not.toContain("Стр. 2 из 3");
   });
 });
 
@@ -227,7 +232,9 @@ describe("PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13)", ()
     const { getByRole } = render(<PrintPassportComparisonPage snapshot={comparisonSnapshot()} />);
     for (const name of ["Числовые метрики по этапам", "Качественные и категориальные изменения", "Определения:"]) {
       const heading = getByRole("heading", { name });
-      expect(heading).toHaveStyle({ fontSize: "22px", lineHeight: "1.4" });
+      // PGV13-VIS-01: заголовки документов — шкала секций (11 pt = 45.83 px
+      // @300ppi), не захардкоженные 22px (5.28 pt — находка VIS-01).
+      expect(heading).toHaveStyle({ fontSize: `${PRINT_TYPE_SCALE.section}px`, lineHeight: "1.4" });
     }
   });
 

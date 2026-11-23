@@ -738,9 +738,14 @@ describe("p7cert A6: печатный паспорт на своих данны�
     expect(JSON.stringify(rows)).not.toContain("[object Object]");
   });
 
-  test("A6.12 номер страницы паспорта: свои значения", () => {
+  test("A6.12 номер страницы паспорта: печатается рамкой §7, документ не дублирует (PGV13-VIS-01)", () => {
+    // PGV13-VIS-01: консолидация колонтитулов — «Стр. N из M» печатает
+    // PrintPageFrame (оракул printLayout.test «Номер страницы»), подвал
+    // документа несёт только источник; дубль снят.
     const { getByTestId } = render(<PrintPassportPage record={p7record()} pageIndex={7} pageCount={9} />);
-    expect(getByTestId("print-passport-page").textContent).toContain("Стр. 7 из 9");
+    const article = getByTestId("print-passport-page").textContent ?? "";
+    expect(article).toContain("источник: pgv.passport_history/1");
+    expect(article).not.toContain("Стр. 7 из 9");
   });
 });
 
@@ -914,7 +919,9 @@ describe("p7cert A7: печатное сравнение на своих дан�
     expect(footer).toContain("pgv.passport_comparison/1");
     expect(footer).toContain("aliases: 1");
     expect(footer).toContain("пар: 2");
-    expect(footer).toContain("Стр. 3 из 4");
+    // PGV13-VIS-01: номер страницы печатает рамка §7 (оракул
+    // printLayout.test), документ дубля не несёт.
+    expect(footer).not.toContain("Стр. 3 из 4");
   });
 });
 

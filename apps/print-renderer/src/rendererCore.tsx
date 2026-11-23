@@ -33,6 +33,7 @@ import { pngCrc32 } from "./pngCrc32";
 import type { PrintProfileId, UnitDeclaration, VisualPrintSnapshotV1 } from "../../../packages/ui/print/printSchema";
 import { PRINT_PROFILE_CATALOG, resolvePrintProfile } from "../../../packages/ui/print/printSchema";
 import { PRINT_LIMITS } from "../../../packages/ui/print/printSchema";
+import { PRINT_TYPE_SCALE } from "../../../packages/ui/print/printTheme";
 import {
   PrintPageFrame,
   formatNumberRu,
@@ -432,8 +433,60 @@ export const ERROR_BODY_RETRYABILITY: Record<string, boolean> = {
   renderer_busy: true,
   invalid_payload: false,
   payload_too_large: false,
+  // PGV13-VIS-01: контент не умещается в страницу при обязательной
+  // типографике — явный отказ (§7 «без скрытого усечения»), не повтор.
+  render_content_overflow: false,
   internal_render_error: false,
 };
+
+/** HTTP-статус overflow-guard'а — семья §7 «Превышение — 413». */
+export const RENDER_CONTENT_OVERFLOW_HTTP_STATUS = 413;
+
+/** Допуск на субпиксельное округление при замере поверхности (px). */
+export const SURFACE_OVERFLOW_TOLERANCE_PX = 1;
+
+export interface SurfaceOverflowMetrics {
+  scrollWidth: number;
+  clientWidth: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/**
+ * PGV13-VIS-01: умещается ли контент в печатную поверхность (§7 «Длинные
+ * таблицы/подписи пагинируются до rasterization … не разрезать строки» и
+ * «Превышение … без скрытого усечения»). Переполнение по ширине ИЛИ
+ * высоте (с допуском 1px) — violation: страница не может молча обрезать
+ * строки/оси/легенду. Pure-функция (оракул rendererCore.test).
+ */
+export function detectSurfaceOverflow(
+  metrics: SurfaceOverflowMetrics,
+  tolerancePx: number = SURFACE_OVERFLOW_TOLERANCE_PX,
+): boolean {
+  return (
+    metrics.scrollWidth > metrics.clientWidth + tolerancePx ||
+    metrics.scrollHeight > metrics.clientHeight + tolerancePx
+  );
+}
+
+/**
+ * Ошибка overflow-guard'а: контент превышает геометрию профиля при
+ * обязательной физической типографике. Операторский выбор — другой
+ * профиль/размер либо явный отказ (§7).
+ */
+export class RenderContentOverflowError extends Error {
+  readonly code = "render_content_overflow";
+  readonly retryable = false;
+  constructor(metrics: SurfaceOverflowMetrics) {
+    super(
+      `render_content_overflow: контент превышает печатную поверхность ` +
+        `${metrics.clientWidth}x${metrics.clientHeight} px ` +
+        `(scroll ${metrics.scrollWidth}x${metrics.scrollHeight} px); ` +
+        `скрытое усечение запрещено (spec §7) — выберите другой профиль/размер либо страничный комплект (page-set)`,
+    );
+    this.name = "RenderContentOverflowError";
+  }
+}
 
 export interface RenderErrorBody {
   error: { code: string; message: string; retryable: boolean; renderer_version: string };
@@ -640,7 +693,7 @@ function renderSectionElement(
       "section",
       { key: section.section_id, style: { display: "flex", flexDirection: "column", gap: 8 } },
       [
-        section.title ? React.createElement("h3", { key: "t", style: { fontSize: 14, fontWeight: 600, margin: 0 } }, section.title) : null,
+        section.title ? React.createElement("h3", { key: "t", style: { fontSize: PRINT_TYPE_SCALE.section, fontWeight: 600, margin: 0 } }, section.title) : null,
         React.createElement(PrintIhConditionalMatrix, { key: "ih", input: section.ih_input }),
       ],
     );
@@ -654,7 +707,7 @@ function renderSectionElement(
       { key: section.section_id, "data-testid": "print-chart-unwired" },
       React.createElement(
         "p",
-        { style: { fontSize: 12, color: "#525252" } },
+        { style: { fontSize: PRINT_TYPE_SCALE.body, color: "#525252" } },
         "научная геометрия не приложена к frozen снапшоту (подключение экранной геометрии — PGV-10…12); график не фабрикуется",
       ),
     );
@@ -725,10 +778,25 @@ export function buildPrintHtml(
   // scale — только для быстрого probe/readiness (мини-рендер); продовые
   // рендеры всегда scale=1 (полные px профиля, лимит 12 MP PGV-01).
   const scale = payload.options?.scale ?? 1;
+  // PGV13-VIS-01: P01/P02 — документные секции; верх страницы несёт
+  // документ (h1 + провенанс), рамка не дублирует мету (консолидация
+  // колонтитулов). Подвал §7 печатается рамкой всегда.
+  const documentSections =
+    payload.sections.length > 0 &&
+    payload.sections.every(
+      (section) => section.kind === "passport_record" || section.kind === "passport_comparison",
+    );
   const body = renderToStaticMarkup(
     React.createElement(
       PrintPageFrame,
-      { snapshot, pageIndex, pageCount, profileId: profile.id, scale },
+      {
+        snapshot,
+        pageIndex,
+        pageCount,
+        profileId: profile.id,
+        scale,
+        headerMode: documentSections ? "none" : "meta",
+      },
       confirmation ? React.createElement(PrintPassportConfirmation, { checkpoint: confirmation }) : null,
       payload.sections.map((section) =>
         renderSectionElement(section, pageIndex, pageCount),
