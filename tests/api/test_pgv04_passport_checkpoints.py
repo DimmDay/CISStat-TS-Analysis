@@ -389,10 +389,14 @@ class TestSyncFreezeModelingEntry:
         )
 
     def test_reused_handoff_no_fourth_copy_and_own_confirmed_at(self, client):
-        """AC11: reused handoff (ряд вернулся к состоянию start) --
-        durable-факт ссылается на ИСХОДНЫЙ снимок; НОВАЯ физическая
-        копия паспорта не создаётся (passport-артефактов ровно 3);
-        confirmed_at -- собственный, отдельный от исходного снимка."""
+        """AC11: reused handoff -- durable-факт ссылается на ИСХОДНЫЙ
+        снимок; НОВАЯ физическая копия паспорта не создаётся
+        (passport-артефактов ровно 3); confirmed_at -- собственный,
+        отдельный от исходного снимка. Сценарий: exit снимается уже в
+        восстановленном состоянии start, поэтому reuse-поиск находит
+        ПОСЛЕДНИЙ снимок с совпадающим fingerprint (exit) --
+        previous == сам снимок -> VIS-02: продюсер заявляет
+        flags.unchanged=True (доказуемый unchanged-handoff)."""
         _upload(client)
         _select_series(client)
         original = _first_target_value(client)
@@ -413,8 +417,10 @@ class TestSyncFreezeModelingEntry:
         assert payload["flags"] == {
             "created": False,
             "reused": True,
-            "unchanged": False,
+            "unchanged": True,
         }
+        # Самоссылка не пишется (запрет F-P2C4); previous == сам снимок.
+        assert payload["previous_snapshot_ref"] is None
         start_snapshots = [
             a for a in _passport_artifact_ids(session.run_id)
         ]
@@ -1108,3 +1114,133 @@ class TestPassportSnapshotRecords:
                 checkpoint=checkpoint, created_snapshot=False,
                 provenance="producer_capture",
             )
+
+
+# ══════════════════════════════════════════════════════════════════════
+# VIS-02 (PGV-13, 21.11.2026): продюсер заявляет доказуемый unchanged
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestUnchangedFlagClaim:
+    """VIS-02: durable-флаг unchanged -- доказуемое заявление продюсера,
+    не «всегда False». Критерий тот же, что у session-контура
+    (routers/session.py unchanged_from_previous):
+    modeling_entry -- not created и previous == сам снимок (reuse
+    ПОСЛЕДНЕГО паспорта; самоссылка не пишется, запрет F-P2C4 сохранён);
+    panel_entry -- previous==self лишь конвенция confirm, заявление
+    остаётся False (409-гейты гарантируют изменённость свойств).
+    Контракт: docs/pgv13_unchanged_semantics.md §3.1."""
+
+    def test_unchanged_reuse_of_last_snapshot_claims_true(self, client):
+        """Ряд вернулся к состоянию exit (последнего снимка) -> reuse
+        последнего паспорта, previous == сам снимок -> durable
+        flags.unchanged=True (reader без дериваций печатает честное
+        «совпало» по явному заявлению продюсера)."""
+        _upload(client)
+        _select_series(client)
+        _capture(client, "start")
+        _mutate_target(client, 3.0)
+        _capture(client, "validation")
+        _mutate_target(client, 4.0)
+        _capture(client, "exit")
+        exit_value = _first_target_value(client)
+        _set_first_target_value(client, exit_value)
+        capture = _capture(client, "modeling_entry")
+        assert capture["reused_snapshot"] is True
+
+        session = get_session_store().get(client.cookies.get(SESSION_COOKIE_NAME))
+        artifact = _durable_checkpoint(session.run_id, capture["checkpoint_id"])
+        assert artifact is not None
+        payload = _checkpoint_payload(artifact)
+        assert payload["flags"] == {
+            "created": False,
+            "reused": True,
+            "unchanged": True,
+        }
+        # Самоссылка по-прежнему не пишется (запрет F-P2C4).
+        assert payload["previous_snapshot_ref"] is None
+
+    def test_alias_return_keeps_unchanged_false(self, client):
+        """Reuse более СТАРОГО снимка (ряд вернулся к состоянию
+        validation, previous == exit != подтверждённый) ->
+        unchanged=False честно (возврат к старому снимку -- не
+        unchanged-handoff)."""
+        _upload(client)
+        _select_series(client)
+        _capture(client, "start")
+        _mutate_target(client, 3.0)
+        validation_value = _first_target_value(client)
+        _capture(client, "validation")
+        _mutate_target(client, 4.0)
+        _capture(client, "exit")
+        # Ряд возвращается к состоянию validation-снимка: reuse-поиск
+        # находит ВАЛИДАЦИЮ (не exit) -- previous (exit) != подтверждённый.
+        _set_first_target_value(client, validation_value)
+        capture = _capture(client, "modeling_entry")
+        assert capture["reused_snapshot"] is True
+
+        session = get_session_store().get(client.cookies.get(SESSION_COOKIE_NAME))
+        payload = _checkpoint_payload(
+            _durable_checkpoint(session.run_id, capture["checkpoint_id"])
+        )
+        assert payload["flags"] == {
+            "created": False,
+            "reused": True,
+            "unchanged": False,
+        }
+        # previous (exit) != подтверждённый (start) -- ссылка пишется.
+        assert payload["previous_snapshot_ref"]
+        assert payload["previous_snapshot_ref"] != payload["snapshot_ref"]
+
+    def test_created_handoff_keeps_unchanged_false(self, client):
+        """Created-handoff (новый физический паспорт) -> unchanged=False:
+        неизменность не заявляется (паритет прежнего пина)."""
+        _upload(client)
+        _select_series(client)
+        _capture(client, "start")
+        _mutate_target(client, 3.0)
+        _capture(client, "validation")
+        _mutate_target(client, 4.0)
+        _capture(client, "exit")
+        _mutate_target(client, 5.0)
+        capture = _capture(client, "modeling_entry")
+        assert capture["reused_snapshot"] is False
+
+        session = get_session_store().get(client.cookies.get(SESSION_COOKIE_NAME))
+        payload = _checkpoint_payload(
+            _durable_checkpoint(session.run_id, capture["checkpoint_id"])
+        )
+        assert payload["flags"] == {
+            "created": True,
+            "reused": False,
+            "unchanged": False,
+        }
+
+    def test_panel_confirm_keeps_unchanged_false(self):
+        """panel_entry: previous==self -- конвенция confirm, НЕ
+        доказательство неизменности -> unchanged=False (в 409-гейты
+        панельного confirm новое подтверждение несёт изменённый
+        fingerprint)."""
+        _seed_run()
+        session = _seed_session_object()
+        _, checkpoint = _seed_panel_checkpoints(session)
+        from apps.api.passport_checkpoints import freeze_passport_checkpoint
+
+        artifact = freeze_passport_checkpoint(
+            RUN_ID,
+            _owner_subject(),
+            session=session,
+            session_id=SESSION_ID,
+            checkpoint=checkpoint,
+            created_snapshot=False,
+            provenance="producer_capture",
+        )
+        assert artifact is not None
+        payload = _checkpoint_payload(artifact)
+        assert payload["stage"] == "panel_entry"
+        assert payload["flags"] == {
+            "created": False,
+            "reused": True,
+            "unchanged": False,
+        }
+        assert payload["previous_snapshot_ref"] is None

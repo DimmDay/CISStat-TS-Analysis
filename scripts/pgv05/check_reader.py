@@ -2,7 +2,8 @@
 после утраты session/Redis (реестр + ObjectStore; AC09).
 
 Запуск: python scripts/pgv05/check_reader.py
-Ожидаемый вывод: trajectory с полными группами паспорта (13 метрик),
+Ожидаемый вывод: trajectory с полными группами паспорта (счётчик групп
+скрипт печатает из фактического контента, groups=len(passport)),
 content_status=present, schema/calculation version = legacy_unknown.
 """
 from __future__ import annotations

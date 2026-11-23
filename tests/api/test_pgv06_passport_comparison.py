@@ -1488,3 +1488,244 @@ class TestPanelAccessAndPurity:
                 old_snap.passport, new_snap.passport
             )
         )
+
+
+# ══════════════════════════════════════════════════════════════════════
+# VIS-02 (PGV-13, 21.11.2026): tri-state семантика confirmation.unchanged
+# ══════════════════════════════════════════════════════════════════════
+
+
+def _vis02_record(ref: str, stage: str, **extra):
+    """Минимальная present-запись PGV-05 для pure-тестов резолвера."""
+    record = {
+        "snapshot_ref": ref,
+        "snapshot_id": ref,
+        "stage": stage,
+        "captured_at": "2026-11-20T09:00:00+00:00",
+        "content_status": "present",
+        "passport": {"basic_stats": {"n": 37, "mean": 0.0}},
+        "target_column": "value",
+        "universe": "single",
+        "entity_id": None,
+        "passport_schema_version": "ts_passport/1",
+        "context_id": None,
+        "schema_version": "pgv.passport_history/1",
+    }
+    record.update(extra)
+    return record
+
+
+def _vis02_trajectory(flags, snapshots, previous=None):
+    """Минимальная траектория PGV-05 (форма read_passport_trajectory)."""
+    confirmed_at = "2026-11-20T10:02:00+00:00"
+    return {
+        "schema_version": "pgv.passport_history/1",
+        "checkpoint_ref": "pck-" + "0" * 32,
+        "checkpoint_artifact_id": "art-" + "0" * 32,
+        "stage": "modeling_entry",
+        "universe": "single",
+        "confirmed_at": confirmed_at,
+        "confirmed_at_reason": None,
+        "flags": flags,
+        "provenance": {"source": "producer_capture"},
+        "context": None,
+        "snapshots": snapshots,
+        "previous_snapshot": previous,
+        "gaps": [],
+        "integrity_status": "ok",
+        "integrity_reason": None,
+        "created_at": confirmed_at,
+    }
+
+
+class TestUnchangedSemanticsTriState:
+    """VIS-02: явный flags.unchanged не подменяется деривацией из
+    отсутствующего previous_ref; неизвестность и дедупликация одинаковых
+    refs -- отдельные решения. Контракт: docs/pgv13_unchanged_semantics.md
+    §3.2 (приоритет «доказательство refs > явный флаг > неизвестность»).
+    Негативные контроли review: explicit false / отсутствующий флаг /
+    previous missing / equal / different."""
+
+    @staticmethod
+    def _resolve(monkeypatch, trajectory):
+        from apps.api import passport_comparison, passport_history
+
+        monkeypatch.setattr(
+            passport_history,
+            "read_passport_trajectory",
+            lambda *args, **kwargs: trajectory,
+        )
+        return passport_comparison.resolve_passport_comparison(
+            RUN_ID, object(), checkpoint_id="pck-vis02", session_id=""
+        )
+
+    def test_explicit_false_with_missing_previous_stays_false(self, monkeypatch):
+        """Fixture-форма p02-reused: reused=true, unchanged=ЯВНО false,
+        previous отсутствует -> confirmation.unchanged=False
+        (basis=producer_flag_false); физический алиас последнего элемента
+        пути по-прежнему исключается (дедупликация отдельна)."""
+        exit_ref, validation_ref, start_ref = (
+            "rs-" + "a" * 32,
+            "rs-" + "b" * 32,
+            "rs-" + "c" * 32,
+        )
+        snapshots = {
+            "start": _vis02_record(start_ref, "start"),
+            "validation": _vis02_record(validation_ref, "validation"),
+            "exit": _vis02_record(exit_ref, "exit"),
+            # Алиас исходного снимка под ключом этапа подтверждения
+            # (reader: одна rs-запись, два адреса пути, AC11).
+            "modeling_entry": _vis02_record(exit_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory(
+                {"created": False, "reused": True, "unchanged": False},
+                snapshots,
+            ),
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is False
+        assert confirmation["unchanged_basis"] == "producer_flag_false"
+        assert confirmation["reused"] is True
+        assert confirmation["reused_ref"] == exit_ref
+        assert confirmation["previous_ref"] is None
+        # Дедупликация -- физическая, отдельно от утверждения: путь
+        # fixture-паритета start/validation/exit.
+        assert snapshot["path"] == ["start", "validation", "exit"]
+
+    def test_missing_flag_with_missing_previous_is_unknown(self, monkeypatch):
+        """Флага unchanged нет, previous отсутствует -> unknown (None,
+        basis=unknown_no_evidence): ни «совпало», ни «изменилось» не
+        заявляется (неизвестность обработана отдельно)."""
+        exit_ref = "rs-" + "a" * 32
+        snapshots = {
+            "start": _vis02_record("rs-" + "c" * 32, "start"),
+            "validation": _vis02_record("rs-" + "b" * 32, "validation"),
+            "exit": _vis02_record(exit_ref, "exit"),
+            "modeling_entry": _vis02_record(exit_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory({"created": False, "reused": True}, snapshots),
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is None
+        assert confirmation["unchanged_basis"] == "unknown_no_evidence"
+
+    def test_none_flags_with_missing_previous_is_unknown(self, monkeypatch):
+        """flags=None (legacy/corrupt-форма) + previous отсутствует ->
+        unknown (None): отсутствие данных не доказывает unchanged."""
+        exit_ref = "rs-" + "a" * 32
+        snapshots = {
+            "exit": _vis02_record(exit_ref, "exit"),
+            "modeling_entry": _vis02_record(exit_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch, _vis02_trajectory(None, snapshots)
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is None
+        assert confirmation["unchanged_basis"] == "unknown_no_evidence"
+
+    def test_explicit_true_with_missing_previous_is_true(self, monkeypatch):
+        """Явный true + previous отсутствует (новый продюсер заявляет
+        доказуемый unchanged) -> true (basis=producer_flag)."""
+        exit_ref = "rs-" + "a" * 32
+        snapshots = {
+            "start": _vis02_record("rs-" + "c" * 32, "start"),
+            "validation": _vis02_record("rs-" + "b" * 32, "validation"),
+            "exit": _vis02_record(exit_ref, "exit"),
+            "modeling_entry": _vis02_record(exit_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory(
+                {"created": False, "reused": True, "unchanged": True},
+                snapshots,
+            ),
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is True
+        assert confirmation["unchanged_basis"] == "producer_flag"
+        assert snapshot["path"] == ["start", "validation", "exit"]
+
+    def test_previous_equal_ref_proves_identity(self, monkeypatch):
+        """Previous ПРИСУТСТВУЕТ и равен подтверждённому ref ->
+        доказательство идентичности (basis=previous_ref_identity),
+        сильнее заявления."""
+        start_ref = "rs-" + "c" * 32
+        snapshots = {
+            "start": _vis02_record(start_ref, "start"),
+            "modeling_entry": _vis02_record(start_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory(
+                {"created": False, "reused": True, "unchanged": False},
+                snapshots,
+                previous=_vis02_record(start_ref, "start"),
+            ),
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is True
+        assert confirmation["unchanged_basis"] == "previous_ref_identity"
+
+    def test_previous_different_ref_refutes(self, monkeypatch):
+        """Previous ПРИСУТСТВУЕТ и отличен -> доказанное отличие
+        (basis=previous_ref_differs); алиас не предыдущего элемента пути
+        остаётся в пути."""
+        start_ref, other_ref = "rs-" + "c" * 32, "rs-" + "e" * 32
+        snapshots = {
+            "start": _vis02_record(start_ref, "start"),
+            "modeling_entry": _vis02_record("rs-" + "d" * 32, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory(
+                {"created": False, "reused": True, "unchanged": True},
+                snapshots,
+                previous=_vis02_record(other_ref, "exit"),
+            ),
+        )
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is False
+        assert confirmation["unchanged_basis"] == "previous_ref_differs"
+        assert confirmation["previous_ref"] == other_ref
+        assert snapshot["path"] == ["start", "modeling_entry"]
+        assert len(snapshot["comparisons"]) == 1
+
+    def test_dedup_does_not_silently_drop_return_pair(self, monkeypatch):
+        """Дедупликация отделена от утверждения: reuse СЕРЕДИНЫ пути
+        (алиас validation при предыдущем элементе exit) остаётся в пути --
+        пара возврата (exit -> modeling_entry) не теряется молча
+        (старый код терял её при выводе unchanged=true)."""
+        start_ref, validation_ref, exit_ref = (
+            "rs-" + "c" * 32,
+            "rs-" + "b" * 32,
+            "rs-" + "a" * 32,
+        )
+        snapshots = {
+            "start": _vis02_record(start_ref, "start"),
+            "validation": _vis02_record(validation_ref, "validation"),
+            "exit": _vis02_record(exit_ref, "exit"),
+            "modeling_entry": _vis02_record(validation_ref, "modeling_entry"),
+        }
+        snapshot = self._resolve(
+            monkeypatch,
+            _vis02_trajectory(
+                {"created": False, "reused": True, "unchanged": False},
+                snapshots,
+            ),
+        )
+        assert snapshot["path"] == [
+            "start", "validation", "exit", "modeling_entry",
+        ]
+        pair_stages = [
+            (p["from_stage"], p["to_stage"]) for p in snapshot["comparisons"]
+        ]
+        assert ("exit", "modeling_entry") in pair_stages
+        assert len(snapshot["comparisons"]) == 3
+        confirmation = snapshot["confirmation"]
+        assert confirmation["unchanged"] is False
+        assert confirmation["unchanged_basis"] == "producer_flag_false"

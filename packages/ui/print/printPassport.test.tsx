@@ -291,6 +291,53 @@ describe("PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13)", ()
     expect(confirmation.textContent).toContain("без повторного расчёта");
   });
 
+  test("VIS-02: явный unchanged=false не печатает «Состояние совпало»", () => {
+    const { getByTestId } = render(
+      <PrintPassportComparisonPage
+        snapshot={comparisonSnapshot({
+          confirmation: {
+            checkpoint_ref: "artifact:passport_checkpoint:ck1",
+            confirmed_at: "2026-10-28T12:00:00Z",
+            confirmed_at_reason: null,
+            reused: true,
+            unchanged: false,
+            reused_ref: "artifact:passport:s2",
+            previous_ref: null,
+          },
+        })}
+      />,
+    );
+    const confirmation = getByTestId("print-comparison-confirmation");
+    expect(confirmation.textContent).not.toContain("Состояние совпало");
+    expect(confirmation.textContent).toContain("без повторного расчёта");
+    expect(confirmation.textContent).toContain("не подтверждено");
+    // Отсутствие previous_ref больше не выдаётся за неизменность.
+    expect(confirmation.textContent).not.toContain("нет (unchanged)");
+  });
+
+  test("VIS-02: unknown (null) печатает честную неизвестность", () => {
+    const { getByTestId } = render(
+      <PrintPassportComparisonPage
+        snapshot={comparisonSnapshot({
+          confirmation: {
+            checkpoint_ref: "artifact:passport_checkpoint:ck1",
+            confirmed_at: "2026-10-28T12:00:00Z",
+            confirmed_at_reason: null,
+            reused: true,
+            unchanged: null,
+            unchanged_basis: "unknown_no_evidence",
+            reused_ref: "artifact:passport:s2",
+            previous_ref: null,
+          },
+        })}
+      />,
+    );
+    const confirmation = getByTestId("print-comparison-confirmation");
+    expect(confirmation.textContent).toContain("неизвестно");
+    expect(confirmation.textContent).not.toContain("Состояние совпало");
+    expect(confirmation.textContent).toContain("нет в записи чекпоинта");
+  });
+
   test("gaps честны: отсутствующая validation — gap, не ноль (AC13/§9)", () => {
     const { getByTestId } = render(
       <PrintPassportComparisonPage

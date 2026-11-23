@@ -66,10 +66,14 @@ pgv.passport_checkpoint/1 и register_passport_checkpoint уже
   что ЧЕСТНО маркируется provenance=legacy_import (контекст момента
   подтверждения legacy-чекпоинта из session-записей недоказуем).
 - flags: created/reused -- по created_snapshot session-чекпоинта;
-  unchanged НЕ заявляется (False): session-контур не производит
-  доказуемо отличный от reused «unchanged»-случай (409 на повторное
-  подтверждение того же fingerprint) -- поле остаётся контрактом
-  валидатора для будущих источников.
+  unchanged -- ДОКАЗУЕМОЕ заявление, не «всегда False» (VIS-02,
+  docs/pgv13_unchanged_semantics.md §3.1): modeling_entry заявляет
+  unchanged=true ровно когда reuse ПОСЛЕДНЕГО паспорта
+  (previous == сам снимок -- тот же доказуемый критерий, что и
+  unchanged_from_previous session-контура, routers/session.py);
+  panel_entry -- False: previous==self там лишь конвенция confirm
+  (отдельного «предыдущего» у панельного handoff нет), а 409-гейты
+  гарантируют, что новое подтверждение несёт изменённый fingerprint.
 - panel_entry: entity_id = entity_column панели (идентификатор
   entity-вселенной, AC14 «панели не смешиваются»);
   previous_snapshot_ref = None -- session-конвенция confirm ставит
@@ -324,6 +328,21 @@ def build_passport_checkpoint_payload(
         context_id = session.current_context_id()
     except Exception:  # pragma: no cover -- честная деградация
         context_id = None
+    # VIS-02 (docs/pgv13_unchanged_semantics.md §3.1): unchanged --
+    # доказуемое заявление продюсера, не «всегда False». modeling_entry:
+    # reuse ПОСЛЕДНЕГО паспорта (previous == сам снимок) -- тот же
+    # критерий, что unchanged_from_previous session-контура
+    # (routers/session.py); created и reuse более старого снимка --
+    # False. panel_entry: previous==self -- конвенция confirm, а не
+    # доказательство (новое подтверждение всегда несёт изменённый
+    # fingerprint из-за 409-гейтов) -- False.
+    if checkpoint.stage == "panel_entry":
+        unchanged_flag = False
+    else:
+        unchanged_flag = bool(
+            not created_snapshot
+            and checkpoint.previous_snapshot_id == checkpoint.snapshot_id
+        )
     payload: dict[str, Any] = {
         "schema_version": CHECKPOINT_SCHEMA_VERSION,  # pgv.passport_checkpoint/1
         "checkpoint_id": durable_checkpoint_id(checkpoint.checkpoint_id),
@@ -335,9 +354,7 @@ def build_passport_checkpoint_payload(
         "flags": {
             "created": bool(created_snapshot),
             "reused": not created_snapshot,
-            # Не заявляется: session-контур не производит доказуемо
-            # отличный от reused unchanged-случай (см. докстринг модуля).
-            "unchanged": False,
+            "unchanged": unchanged_flag,
         },
         "stage_refs": dict(stage_refs),
         "context": {

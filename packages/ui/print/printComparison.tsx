@@ -61,7 +61,13 @@ export interface PrintComparisonConfirmation {
   confirmed_at: string | null;
   confirmed_at_reason: string | null;
   reused: boolean;
-  unchanged: boolean;
+  /** VIS-02: tri-state — true/false доказаны, null = неизвестно (нет ни
+   * явного флага чекпоинта, ни previous_ref). */
+  unchanged: boolean | null;
+  /** VIS-02: код основания решения резолвера (previous_ref_identity /
+   * previous_ref_differs / producer_flag / producer_flag_false /
+   * unknown_no_evidence). */
+  unchanged_basis?: string | null;
   reused_ref: string | null;
   previous_ref: string | null;
 }
@@ -330,11 +336,15 @@ export function PrintPassportComparisonPage({ snapshot, pageIndex = 1, pageCount
           <strong>Подтверждение чекпоинта</strong>{" "}
           {snapshot.checkpoint?.stage ? `(этап ${snapshot.checkpoint.stage})` : ""}: подтверждено{" "}
           {formatPrintTime(snapshot.confirmation.confirmed_at, snapshot.confirmation.confirmed_at_reason)}.
-          {snapshot.confirmation.unchanged
+          {snapshot.confirmation.unchanged === true
             ? " Состояние совпало с предыдущим снимком — подтверждение без повторного расчёта и без четвёртой копии паспорта."
-            : " Используется ранее рассчитанный снимок без повторного расчёта."}{" "}
+            : snapshot.confirmation.unchanged === false
+              ? snapshot.confirmation.reused
+                ? " Используется ранее рассчитанный снимок без повторного расчёта; совпадение состояния с предыдущим снимком чекпоинтом не подтверждено."
+                : " Снимок рассчитан заново; совпадение с предыдущим состоянием не применимо."
+              : " Совпадение состояния с предыдущим снимком неизвестно: в чекпоинте нет ни явного флага, ни ссылки на предыдущий снимок."}{" "}
           reused ref: {snapshot.confirmation.reused_ref ?? "—"}.{" "}
-          previous ref: {snapshot.confirmation.previous_ref ?? "нет (unchanged)"}.
+          previous ref: {snapshot.confirmation.previous_ref ?? "нет в записи чекпоинта"}.
         </section>
       )}
 

@@ -44,9 +44,19 @@ partial явно перечисляет пропуски».
     чекпоинта на момент подтверждения (cutoff; не latest каждого stage);
     отсутствующая точка -- явный gap, пары строятся по доказанным
     соседним точкам (семантика session-пропуска missing validation);
-    unchanged-подтверждение (reused ref == previous ref) НЕ добавляет
-    дублирующую колонку -- отдельная строка confirmation несёт
-    confirmed_at и reused ref (§9/AC11);
+    unchanged-подтверждение НЕ добавляет дублирующую колонку --
+    отдельная строка confirmation несёт confirmed_at и reused ref
+    (§9/AC11);
+  - confirmation.unchanged -- tri-state (VIS-02,
+    docs/pgv13_unchanged_semantics.md §3.2): приоритет «доказательство
+    refs > явный флаг продюсера > неизвестность» (previous_ref_identity /
+    previous_ref_differs / producer_flag / producer_flag_false /
+    unknown_no_evidence); явный flags.unchanged=false НЕ превращается
+    в true из-за отсутствующего previous_ref;
+  - дедупликация одинаковых физических refs -- ОТДЕЛЬНОЕ решение:
+    этап подтверждения исключается из пути только как алиас
+    НЕПОСРЕДСТВЕННО предыдущего элемента пути (нулевая самопара
+    запрещена); алиас более раннего снимка остаётся (пара возврата);
   - explicit-refs режим (произвольный выбор UI): ordered refs КАК
     ЗАДАНО; пары -- только СОСЕДНИЕ разрешённые позиции (молчаливый
     «мост» через дыру запрещён); повтор ref -- алиас без нулевой пары;
@@ -345,26 +355,43 @@ def _resolve_from_trajectory(
     snapshots: dict[str, dict[str, Any]] = dict(trajectory.get("snapshots") or {})
     previous = trajectory.get("previous_snapshot")
     confirmed_record = snapshots.get(checkpoint_stage) if checkpoint_stage else None
-
-    # Reuse-семантика (§9/AC11): unchanged-подтверждение -- reused ref
-    # совпадает с previous ref; дублирующая колонка НЕ добавляется,
-    # подтверждение -- отдельной строкой. Durable-деривация: freeze
-    # НЕ пишет previous_snapshot_ref, когда previous == подтверждённый
-    # снимок (session-семантика previous_snapshot_id == snapshot_id),
-    # поэтому reused + отсутствующий previous == unchanged; reused
-    # с ДОКАЗАННЫМ отличным previous -- возврат к старому снимку (алиас).
-    unchanged = bool(
-        flags.get("reused")
-        and confirmed_record is not None
-        and (
-            previous is None
-            or previous.get("snapshot_ref") == confirmed_record.get("snapshot_ref")
-        )
+    confirmed_ref = (
+        confirmed_record.get("snapshot_ref") if confirmed_record is not None else None
     )
+    previous_ref = previous.get("snapshot_ref") if previous is not None else None
+
+    # VIS-02 (PGV-13, 21.11.2026; docs/pgv13_unchanged_semantics.md §3.2):
+    # confirmation.unchanged -- tri-state утверждение о НАУЧНОЙ
+    # неизменности с приоритетом «доказательство refs > явный флаг
+    # продюсера > неизвестность»:
+    #   1) previous ПРИСУТСТВУЕТ и ref равен подтверждённому -> True
+    #      (previous_ref_identity: та же физическая rs-запись);
+    #   2) previous присутствует и ref отличен -> False
+    #      (previous_ref_differs);
+    #   3) previous отсутствует + ЯВНЫЙ флаг true -> True (producer_flag);
+    #   4) previous отсутствует + ЯВНЫЙ флаг false -> False
+    #      (producer_flag_false): явный false НЕ превращается в true
+    #      из-за отсутствующего previous_ref (fixture p02-reused);
+    #   5) previous отсутствует + флага нет -> None (unknown_no_evidence):
+    #      неизвестность -- отдельное состояние, утверждение не делается.
+    # Дедупликация одинаковых физических refs (алиас, §9/AC11) --
+    # ОТДЕЛЬНОЕ решение ниже (path-shaping): отсутствие четвёртой копии
+    # не доказывает unchanged.
+    explicit_unchanged = flags.get("unchanged")
+    if previous_ref is not None and confirmed_ref is not None:
+        if str(previous_ref) == str(confirmed_ref):
+            unchanged: Optional[bool] = True
+            unchanged_basis = "previous_ref_identity"
+        else:
+            unchanged, unchanged_basis = False, "previous_ref_differs"
+    elif explicit_unchanged is True:
+        unchanged, unchanged_basis = True, "producer_flag"
+    elif explicit_unchanged is False:
+        unchanged, unchanged_basis = False, "producer_flag_false"
+    else:
+        unchanged, unchanged_basis = None, "unknown_no_evidence"
     reused_ref = (
-        confirmed_record.get("snapshot_ref")
-        if (confirmed_record is not None and flags.get("reused"))
-        else None
+        confirmed_ref if (confirmed_ref is not None and flags.get("reused")) else None
     )
 
     path_stages = sorted(
@@ -375,8 +402,23 @@ def _resolve_from_trajectory(
             str(s),
         ),
     )
-    if unchanged and checkpoint_stage in path_stages:
-        path_stages = [s for s in path_stages if s != checkpoint_stage]
+    # Физическая дедупликация (§9/AC11), ОТДЕЛЬНАЯ от утверждения
+    # unchanged: этап подтверждения исключается из пути ТОЛЬКО когда его
+    # запись -- алиас НЕПОСРЕДСТВЕННО ПРЕДЫДУЩЕГО элемента пути (та же
+    # rs-запись: иначе пара была бы нулевым самосравнением). Алиас более
+    # раннего снимка ОСТАЁТСЯ -- пара возврата научно осмысленна (а не
+    # теряется молча при выводе unchanged, как раньше).
+    if (
+        flags.get("reused")
+        and confirmed_ref is not None
+        and checkpoint_stage in path_stages
+    ):
+        stage_index = path_stages.index(checkpoint_stage)
+        if stage_index > 0:
+            prev_stage = path_stages[stage_index - 1]
+            prev_ref = str(snapshots[prev_stage].get("snapshot_ref") or "")
+            if prev_ref == str(confirmed_ref):
+                path_stages = [s for s in path_stages if s != checkpoint_stage]
     ordered_refs = [snapshots[s].get("snapshot_ref") for s in path_stages]
 
     # Reader-гэпы траектории -- с нормализацией detail на границе
@@ -424,6 +466,10 @@ def _resolve_from_trajectory(
         "confirmed_at_reason": trajectory.get("confirmed_at_reason"),
         "reused": bool(flags.get("reused")),
         "unchanged": unchanged,
+        # VIS-02: код основания tri-state решения (см. блок семантики
+        # выше); печатная фраза строится по unchanged/reused, основание
+        # остаётся в frozen metadata.
+        "unchanged_basis": unchanged_basis,
         "reused_ref": reused_ref,
         "previous_ref": (
             previous.get("snapshot_ref") if previous is not None else None

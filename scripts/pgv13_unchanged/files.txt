@@ -1,0 +1,10 @@
+apps/api/passport_checkpoints.py
+apps/api/passport_comparison.py
+docs/auth00/inventory.json
+docs/pgv13_unchanged_semantics.md
+packages/ui/print/printComparison.tsx
+packages/ui/print/printPassport.test.tsx
+tests/api/test_pgv04_passport_checkpoints.py
+tests/api/test_pgv06_passport_comparison.py
+scripts/pgv13_unchanged/files.txt
+scripts/pgv05/check_reader.py
