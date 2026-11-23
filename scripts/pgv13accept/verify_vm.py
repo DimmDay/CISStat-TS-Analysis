@@ -204,9 +204,9 @@ def run(args, *, page_sets=False):
         report.update(image_revision=m['revision'],image_tree=m['tree'],images=m['images'],
             tool_revision=command(['git','rev-parse','HEAD']),case_manifest_sha256=O.sha(json.dumps(C.CASES,sort_keys=True).encode()))
         phase('evidence_and_images')
-        ab = json.loads((bundle/'ab.json').read_text())
-        R.validate_evidence(m,ab,json.loads((bundle/'candidate-recreated.json').read_text()))
-        live = json.loads((bundle/'live.json').read_text())
+        ab = json.loads((bundle/'ab.json').read_text(encoding='utf-8'))
+        R.validate_evidence(m,ab,json.loads((bundle/'candidate-recreated.json').read_text(encoding='utf-8')))
+        live = json.loads((bundle/'live.json').read_text(encoding='utf-8'))
         O.require(live.get('passed') is True and live.get('mode')=='live-api' and live.get('image_id')==m['images']['print-renderer'] and live.get('volume')==m['volume'],'Matching successful live transport evidence required')
         for role in ('api','print-renderer'):
             image_marker(m['images'][role],m,role)
@@ -341,7 +341,7 @@ def run(args, *, page_sets=False):
 
 def finalize(args, *, page_sets=False):
     report_path=args.report.resolve()
-    report=json.loads(report_path.read_text())
+    report=json.loads(report_path.read_text(encoding='utf-8'))
     if page_sets:
         O.require(report.get('schema_version')=='pgv13.documents/2','PGV14 page-set report required')
         tools14={name:O.sha((ROOT/'scripts/pgv14'/name).read_bytes().replace(b'\r\n',b'\n')) for name in ('client.py','pages.py','verify_vm.py')}
@@ -375,7 +375,7 @@ def finalize(args, *, page_sets=False):
         for suffix,key in [('.payload.json','payload_sha256'),('.ocr.tsv','ocr_tsv_sha256'),('.latin.ocr.tsv','latin_ocr_tsv_sha256')]:
             path=report_path.parent/(case['id']+suffix)
             O.require(O.sha(path.read_bytes())==case[key],'Reviewed payload/OCR evidence hash changed')
-        payload=json.loads((report_path.parent/(case['id']+'.payload.json')).read_text())
+        payload=json.loads((report_path.parent/(case['id']+'.payload.json')).read_text(encoding='utf-8'))
         O.require(payload.get('schema_version')=='pgv.render_payload/1' and payload.get('snapshot',{}).get('print',{}).get('profile_id')==case['profile']
             and payload.get('sections'),'Raw frozen render payload evidence missing')
         O.require(case.get('pixels',{}).get('passed') is True and case.get('ocr',{}).get('passed') is True,'Pixel/OCR evidence must pass')
@@ -384,7 +384,7 @@ def finalize(args, *, page_sets=False):
         O.check_document_ocr((report_path.parent/(case['id']+'.ocr.tsv')).read_text(encoding='utf-8'),
             (report_path.parent/(case['id']+'.latin.ocr.tsv')).read_text(encoding='utf-8'),
             case['expected_text'],case['expected_numbers'],O.GEOMETRY[case['profile']],case.get('expected_counts',{}))
-    result=O.validate_review(report_path,json.loads(args.review.read_text()))
+    result=O.validate_review(report_path,json.loads(args.review.read_text(encoding='utf-8')))
     target=report_path.parent/'accepted.json'
     O.require(not target.exists(),'Acceptance receipt already exists; preserve immutable evidence')
     result.update(scope='P01/P02 document content, jobs/download, OCR and human visual review',

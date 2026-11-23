@@ -17,5 +17,7 @@ jobs:
       - run: python -m pip install -r scripts/pgv14/requirements.txt
       - run: python -m pytest scripts/pgv14/test_page_sets.py -v
       - run: python -m unittest tests.unit.test_pgv14_accept tests.unit.test_pgv13_accept -v
+      - name: CP1252 filesystem parity (also under forced UTF8 local gates)
+        run: python scripts/pgv14/cifix/windows_parity.py
 # DOM controls, renderer build and both typechecks also run in jest.yml.
 # Chromium/UDS/OCR acceptance is explicit, isolated VM run + every-page review.

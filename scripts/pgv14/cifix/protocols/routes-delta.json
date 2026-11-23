@@ -1,0 +1,31 @@
+{
+  "base": "2db9f9c8700ce726b69291541a541889e05caa76",
+  "entries_policies_counts_identical": true,
+  "counts": {
+    "api": 284,
+    "framework": 8,
+    "internal_operation": 39,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 3,
+    "worker": 13
+  },
+  "new_fingerprints": [
+    "docs/pgv14_ci_encoding_fix.md",
+    "scripts/pgv14/cifix/windows_parity.py"
+  ],
+  "changed_fingerprints": [
+    ".github/workflows/pgv14.yml",
+    "scripts/local_gates.md",
+    "scripts/local_gates.py",
+    "scripts/pgv13accept/verify_vm.py",
+    "tests/unit/test_pgv13_accept.py",
+    "tests/unit/test_pgv14_accept.py"
+  ]
+}

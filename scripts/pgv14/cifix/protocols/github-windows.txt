@@ -1,0 +1,63 @@
+Source: https://github.com/DimmDay/CISStat-TS-Analysis/actions/runs/45181960169/job/137717738350
+Base: 2db9f9c8700ce726b69291541a541889e05caa76
+Ubuntu job137717737956: SUCCESS; Windows job137717738350: FAILURE.
+Extract from GitHub plugin job logs, actual tracebacks:
+2026-11-23T13:15:35.5520146Z ERROR: test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review)
+2026-11-23T13:15:35.5521389Z ----------------------------------------------------------------------
+2026-11-23T13:15:35.5521781Z Traceback (most recent call last):
+2026-11-23T13:15:35.5527518Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv14_accept.py", line 31, in test_all_eleven_page_sets_run_and_finalize_with_exact_page_review
+2026-11-23T13:15:35.5528426Z     result=runner.run_pipeline(page_sets=True,finalize=True)
+2026-11-23T13:15:35.5528818Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5529390Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv13_accept.py", line 305, in run_pipeline
+2026-11-23T13:15:35.5529974Z     result=json.loads((args.out/'report.json').read_text())
+2026-11-23T13:15:35.5530314Z                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5530789Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\pathlib.py", line 1028, in read_text
+2026-11-23T13:15:35.5531258Z     return f.read()
+2026-11-23T13:15:35.5531516Z            ^^^^^^^^
+2026-11-23T13:15:35.5531913Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\encodings\cp1252.py", line 23, in decode
+2026-11-23T13:15:35.5532406Z     return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+2026-11-23T13:15:35.5532807Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5533278Z UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 794: character maps to <undefined>
+2026-11-23T13:15:35.5533625Z 
+2026-11-23T13:15:35.5533794Z ======================================================================
+2026-11-23T13:15:35.5534434Z ERROR: test_finalize_requires_human_review_and_binds_payload_ocr (tests.unit.test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr)
+2026-11-23T13:15:35.5535083Z ----------------------------------------------------------------------
+2026-11-23T13:15:35.5535451Z Traceback (most recent call last):
+2026-11-23T13:15:35.5536044Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv13_accept.py", line 254, in test_finalize_requires_human_review_and_binds_payload_ocr
+2026-11-23T13:15:35.5536678Z     self.run_pipeline(finalize=True)
+2026-11-23T13:15:35.5537171Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv13_accept.py", line 305, in run_pipeline
+2026-11-23T13:15:35.5537669Z     result=json.loads((args.out/'report.json').read_text())
+2026-11-23T13:15:35.5538061Z                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5538539Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\pathlib.py", line 1028, in read_text
+2026-11-23T13:15:35.5538996Z     return f.read()
+2026-11-23T13:15:35.5539237Z            ^^^^^^^^
+2026-11-23T13:15:35.5539608Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\encodings\cp1252.py", line 23, in decode
+2026-11-23T13:15:35.5540126Z     return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+2026-11-23T13:15:35.5540518Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5540964Z UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 794: character maps to <undefined>
+2026-11-23T13:15:35.5541342Z 
+2026-11-23T13:15:35.5541489Z ======================================================================
+2026-11-23T13:15:35.5542156Z ERROR: test_native_pipeline_writes_bound_images_and_pending_visual_review (tests.unit.test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review)
+2026-11-23T13:15:35.5543096Z ----------------------------------------------------------------------
+2026-11-23T13:15:35.5543896Z Traceback (most recent call last):
+2026-11-23T13:15:35.5544959Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv13_accept.py", line 241, in test_native_pipeline_writes_bound_images_and_pending_visual_review
+2026-11-23T13:15:35.5545588Z     report=self.run_pipeline()
+2026-11-23T13:15:35.5545900Z            ^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5546505Z   File "D:\a\CISStat-TS-Analysis\CISStat-TS-Analysis\tests\unit\test_pgv13_accept.py", line 305, in run_pipeline
+2026-11-23T13:15:35.5547028Z     result=json.loads((args.out/'report.json').read_text())
+2026-11-23T13:15:35.5547379Z                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5547847Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\pathlib.py", line 1028, in read_text
+2026-11-23T13:15:35.5548265Z     return f.read()
+2026-11-23T13:15:35.5548554Z            ^^^^^^^^
+2026-11-23T13:15:35.5548942Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\encodings\cp1252.py", line 23, in decode
+2026-11-23T13:15:35.5549429Z     return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+2026-11-23T13:15:35.5549818Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-23T13:15:35.5550278Z UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 794: character maps to <undefined>
+2026-11-23T13:15:35.5550633Z 
+2026-11-23T13:15:35.5550781Z ----------------------------------------------------------------------
+2026-11-23T13:15:35.5551165Z Ran 33 tests in 12.457s
+2026-11-23T13:15:35.5551300Z 
+2026-11-23T13:15:35.5551418Z FAILED (errors=3)
+2026-11-23T13:15:35.5552397Z {"automated_passed": false, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "api_print_assets", "detail": "Document workload requires the dedicated release candidate, not the production renderer", "client_failure": null, "failed_cases": null, "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+2026-11-23T13:15:35.6762646Z ##[error]Process completed with exit code 1.
+2026-11-23T13:15:35.7011617Z Post job cleanup.

@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/scripts/pgv14/cifix/windows_parity.py", line 52, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/scripts/pgv14/cifix/windows_parity.py", line 42, in main
+    raise AssertionError('CP1252 negative control did not fail')
+AssertionError: CP1252 negative control did not fail

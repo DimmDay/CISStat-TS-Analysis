@@ -1,0 +1,125 @@
+test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review) ... PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ERROR
+test_finalize_requires_human_review_and_binds_payload_ocr (tests.unit.test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ERROR
+test_native_pipeline_writes_bound_images_and_pending_visual_review (tests.unit.test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ERROR
+
+======================================================================
+ERROR: test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv14_accept.py", line 31, in test_all_eleven_page_sets_run_and_finalize_with_exact_page_review
+    result=runner.run_pipeline(page_sets=True,finalize=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv13_accept.py", line 305, in run_pipeline
+    result=json.loads((args.out/'report.json').read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/scripts/pgv14/cifix/windows_parity.py", line 34, in cp1252_read
+    return original_read(path, encoding=encoding or 'cp1252', errors=errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1252.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 767: character maps to <undefined>
+
+======================================================================
+ERROR: test_finalize_requires_human_review_and_binds_payload_ocr (tests.unit.test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv13_accept.py", line 254, in test_finalize_requires_human_review_and_binds_payload_ocr
+    self.run_pipeline(finalize=True)
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv13_accept.py", line 305, in run_pipeline
+    result=json.loads((args.out/'report.json').read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/scripts/pgv14/cifix/windows_parity.py", line 34, in cp1252_read
+    return original_read(path, encoding=encoding or 'cp1252', errors=errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1252.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 767: character maps to <undefined>
+
+======================================================================
+ERROR: test_native_pipeline_writes_bound_images_and_pending_visual_review (tests.unit.test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv13_accept.py", line 241, in test_native_pipeline_writes_bound_images_and_pending_visual_review
+    report=self.run_pipeline()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/tests/unit/test_pgv13_accept.py", line 305, in run_pipeline
+    result=json.loads((args.out/'report.json').read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV14-CIFIX/scripts/pgv14/cifix/windows_parity.py", line 34, in cp1252_read
+    return original_read(path, encoding=encoding or 'cp1252', errors=errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/encodings/cp1252.py", line 23, in decode
+    return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 767: character maps to <undefined>
+
+----------------------------------------------------------------------
+Ran 3 tests in 19.057s
+
+FAILED (errors=3)
+{"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+CP1252 filesystem parity: FAIL

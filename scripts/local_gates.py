@@ -86,6 +86,7 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv14/requirements.txt"],
         [sys.executable, "-m", "pytest", "scripts/pgv14/test_page_sets.py", "-v"],
         [sys.executable, "-m", "unittest", "tests.unit.test_pgv14_accept", "tests.unit.test_pgv13_accept", "-v"],
+        [sys.executable, "scripts/pgv14/cifix/windows_parity.py"],
     ]),
     ("personal-demo", "personal_demo.yml contracts", "Personal MONO trial, SMTP and two-column entry contracts", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/personal_demo/requirements.txt"],

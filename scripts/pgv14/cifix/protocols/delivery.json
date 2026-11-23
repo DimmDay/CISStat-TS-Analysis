@@ -1,0 +1,16 @@
+{
+  "base": "2db9f9c8700ce726b69291541a541889e05caa76",
+  "root_cause": "implicit UTF-8 report read with Windows CP1252; local PYTHONUTF8 masked it",
+  "red": "same3 tests,3 UnicodeDecodeError",
+  "green": "pgv14 17+33+3; auth00 61; build/compile/routes PASS",
+  "routes_entries_policies_unchanged": true,
+  "actual_routes": [
+    284,
+    288,
+    668
+  ],
+  "crc_manifest_every_byte_verified": true,
+  "runtime_images_changed": false,
+  "windows_postfix_ci": "NOT RUN; CP1252 model PASS, new commit CI pending",
+  "commit_push": false
+}

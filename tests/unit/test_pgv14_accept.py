@@ -39,7 +39,7 @@ class EveryPageTests(unittest.TestCase):
                 p=root/f'page-{i+1:03}.png';p.write_bytes(b'controlled review bytes'+bytes([i]))
                 pages.append({'png':p.name,'png_sha256':O.sha(p.read_bytes())})
             report={'schema_version':'pgv13.documents/2','automated_passed':True,'cases':[{'id':'case','pages':pages}]}
-            path=root/'report.json';path.write_text(json.dumps(report))
+            path=root/'report.json';path.write_text(json.dumps(report), encoding='utf-8')
             review=review_template(report);review.update(report_sha256=O.sha(path.read_bytes()),reviewer='unit operator',reviewed_at='2026-11-23T12:00:00+03:00')
             for flags in review['cases']['case']['pages'].values():flags.update(dict.fromkeys(O.REVIEW_CHECKS,True))
             self.assertTrue(O.validate_review(path,review)['p01_p02_accepted'])

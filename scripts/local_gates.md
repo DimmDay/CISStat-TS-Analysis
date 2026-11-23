@@ -650,3 +650,17 @@ UDS/OCR. Новый coherent bundle и обязательная VM every-page п
 HTTP paths/methods/BFF или DDL; ready job DTO аддитивно содержит output_format и
 metadata_url прежнего protected content route. AUTH00 reviewed source/line
 карта обновляется штатным collector; staging manifest `scripts/pgv14/files.txt`.
+
+### PGV14 CI UTF-8 hotfix (2db9f9c, 23.11.2026)
+
+Реальный Windows CI упал3 UnicodeDecodeError при `.read_text()` UTF-8 report
+через CP1252; Ubuntu прошёл. Локальный runner принудительно включает UTF8 mode
+и скрывал ошибку. Explicit UTF-8 добавлен в host verifier/tests; теперь default
+`pgv14` gate и CI дополнительно исполняют
+`python scripts/pgv14/cifix/windows_parity.py` — те же три исходных теста с
+принудительным CP1252 pathlib default даже под PYTHONUTF8=1. Negative probe
+проверяет чувствительность модели; missing/error/skips не считаются PASS.
+Все11 scenarios/PNG hashes/review сохранены. Нативный Windows после fix
+подтверждается отдельным новым CI run, не локальной симуляцией.
+Подробности: `docs/pgv14_ci_encoding_fix.md`; hotfix manifest:
+`scripts/pgv14/cifix/files.txt`. Runtime/routes/образы/миграции не меняются.

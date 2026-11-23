@@ -1208,3 +1208,63 @@ payload byte проверяются до выдачи; протокол overlay.
 Python page-set17/17 PASS; actual ASGI284/288/668 и whitespace PASS.
 Только завершённые протоколы/журнал допакованы после этого; проверенные product
 sources идентичны overlay. Все bytes/CRC/manifest и внешний SHA256 сверены.
+
+---
+
+## PGV14 CI UTF-8 FIX — Windows3errors, 23.11.2026 (база2db9f9c)
+
+По сообщению тимлида через GitHub plugin изучены actual PGV14 workflow
+45181960169 и job logs137717738350. Ubuntu137717737956 SUCCESS; Windows17
+package tests GREEN, затем33 unittest/3ERROR. Все traceback —
+tests/unit/test_pgv13_accept.py:305 read_text UTF-8 report через CP1252,
+UnicodeDecodeError byte0x81. Это не ошибка dedicated candidate: соответствующий
+последний JSON — ожидаемый negative control. Новая итерация на отдельном
+detached checkout exact2db9f9c8700ce726b69291541a541889e05caa76; прежние
+checkouts/INDEX/архивы не сбрасывались. AGENTS.md повторно прочитан.
+
+Причина пропуска предыдущей локальной проверки: local_gates задаёт
+PYTHONUTF8=1/PYTHONIOENCODING=utf-8, Linux также использует UTF-8. Это ошибка
+переносимости предыдущей поставки. Дизайн/риски/применение:
+docs/pgv14_ci_encoding_fix.md. На19 неявных pathlib text boundaries добавлен
+explicit UTF-8:6 host verifier run/finalize/evidence/review/payload reads,
+12 PGV13 harness read/write и1 PGV14 fixture write. Binary hashes, Unicode,
+11CASE corpus, PNG/ZIP checks и strict review не ослаблены; malformed UTF-8
+не игнорируется. API/renderer/runtime/SQL не менялись.
+
+TDD: новый CP1252 parity runner запускает ровно три упавших исходных теста и
+проверяет, что UTF-8 Cyrillic probe ломается при implicitCP1252, но читается
+explicitUTF8. Первичная модель только Path.open была недостаточна под
+PYTHONUTF8=1: отрицательный контроль не упал; initial log сохранён. Исправленная
+модель read_text/write_text/open воспроизвела ровно3 UnicodeDecodeError на базе
+2db9f9c (RED19.057с), после code fix те же3 GREEN27.683с. Все11 случаев в каждом
+pipeline сохранены, including every-page/finalize; не raw Chromium/VM evidence.
+Код parity входит в default pgv14 local_gates и обе ветви CI workflow: принудительный
+UTF8 mode локального runner больше не маскирует эту ошибку. Пропуски/неполный
+набор/nonzero не PASS. Новый настоящий Windows post-fix run ожидается после
+commit/push тимлида; Linux CP1252 model не выдаётся за исполнение Windows.
+
+Сборка renderer tsc и py_compile изменённых Python PASS; actual routes284API/
+288bindings/668entries, added/missing=[] PASS. JSON entries/policies карты
+должны быть семантически идентичны базе, новые reviewed fingerprints только
+host tool/тесты/CI/gates/docs. Default pgv14 regression17+33 и новая parity3,
+полный strict temporary INDEX AUTH00 — raw итоговые протоколы scripts/pgv14/cifix/protocols. Никаких новых authority/HTTP
+surfaces; штатный collector, без ослабления gates.
+
+Поставка — download/cisstat-pgv14-cifix-2db9f9c.zip только текущие hotfix files,
+manifest scripts/pgv14/cifix/files.txt, отдельный актуальный worklog12.md.
+Прежний89-file PGV14 manifest не применяется для этого hotfix. Build/recreate
+образов или DDL на VM НЕ требуются. Старые hash-bound acceptance report/tool
+hashes не переписывать: обновлённый verifier требует новый report при новой
+приёмке. Native Chromium/UDS/OCR остаётся отдельным этапом PGV14. Агент не
+выполнял commit/push/main/VM mutations; настоящий INDEX сохраняется.
+
+
+Итог CI hotfix: новый default pgv14 gate GREEN68.5с (17 package +33unit +3
+CP1252 parity), no new skips. Strict temporary INDEX AUTH00 GREEN76.9с,
+61/61 tests, оба INDEX602 fences; настоящий INDEX SHA256 до/после одинаков.
+Actual routes284/288/668 PASS, entries/policies/counts JSON-семантически равны
+2db9f9c; изменены6 fingerprints, добавлены2 reviewed sources. Renderer tsc,
+py_compile и whitespace PASS. Task ZIP проверяется по точному manifest/CRC/
+каждому payload byte; внешний SHA256 выдаётся отдельно. Нативный Windows CI
+после hotfix не запускался: нужен новый commit/push тимлида, прежний SHA при
+повторном запуске по-прежнему содержит дефект. Runtime/VM/образы неизменны.

@@ -1,0 +1,65 @@
+test_all_eleven_page_sets_run_and_finalize_with_exact_page_review (tests.unit.test_pgv14_accept.EveryPageTests.test_all_eleven_page_sets_run_and_finalize_with_exact_page_review) ... PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_finalize_requires_human_review_and_binds_payload_ocr (tests.unit.test_pgv13_accept.RunnerTests.test_finalize_requires_human_review_and_binds_payload_ocr) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"p01_p02_accepted": true, "pgv13_certified": false, "reviewer": "unit double operator", "report_sha256": "e10664344f55e2aca6770664f5f233e84c43bda28cb1593ef3a8fca54e700ab9", "scope": "P01/P02 document content, jobs/download, OCR and human visual review", "review_sha256": "90d8a0cbf904b65f307a6cfa29d2e88de890805338be7ca48d2630135e08fceb", "images": {"api": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "web": "sha256:9999999999999999999999999999999999999999999999999999999999999999", "print-renderer": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "image_revision": "cccccccccccccccccccccccccccccccccccccccc"}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+test_native_pipeline_writes_bound_images_and_pending_visual_review (tests.unit.test_pgv13_accept.RunnerTests.test_native_pipeline_writes_bound_images_and_pending_visual_review) ... {"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+{"p01_p02_accepted": true, "pgv13_certified": false, "reviewer": "unit double operator", "report_sha256": "c20906679eca5d5942f3905b863276d8b0cfd3a3b815bde75ec16c89bbb9decd", "scope": "P01/P02 document content, jobs/download, OCR and human visual review", "review_sha256": "36da22ae62e9eed9cbace4a7e388c53103aaac02340091a24ab5621ab2e3fd60", "images": {"api": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "web": "sha256:9999999999999999999999999999999999999999999999999999999999999999", "print-renderer": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "image_revision": "cccccccccccccccccccccccccccccccccccccccc"}
+PGV13 documents: reviewed_source
+PGV13 documents: evidence_and_images
+PGV13 documents: api_print_assets
+PGV13 documents: isolated_postgres
+PGV13 documents: native_auth_jobs_download
+PGV13 documents: downloaded_png_pixels_and_ocr
+PGV13 documents OCR: p01-figure-landscape
+PGV13 documents OCR: p01-a4-landscape
+PGV13 documents OCR: p01-a4-portrait
+PGV13 documents OCR: p01-reused
+PGV13 documents OCR: p02-figure-landscape
+PGV13 documents OCR: p02-a4-landscape
+PGV13 documents OCR: p02-a4-portrait
+PGV13 documents OCR: p02-reused
+PGV13 documents OCR: p01-missing
+PGV13 documents OCR: p01-corrupt
+PGV13 documents OCR: p02-missing
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 27.683s
+
+OK
+{"automated_passed": true, "p01_p02_accepted": false, "pgv13_certified": false, "phase": "complete", "detail": null, "client_failure": null, "failed_cases": [], "temporary_cleanup": {"passed": true, "unremoved_resources": []}}
+CP1252 filesystem parity: PASS

@@ -118,7 +118,7 @@ class OracleTests(unittest.TestCase):
     def test_review_rejects_pending_and_missing_case(self):
         with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp:
             folder = Path(temp)
-            (folder/'report.json').write_text(json.dumps({'schema_version':'pgv13.documents/1','automated_passed':True,'cases':[{'id':'one'}]}))
+            (folder/'report.json').write_text(json.dumps({'schema_version':'pgv13.documents/1','automated_passed':True,'cases':[{'id':'one'}]}), encoding='utf-8')
             review = {'schema_version':'pgv13.visual_review/1','report_sha256':hashlib.sha256((folder/'report.json').read_bytes()).hexdigest(),
                       'reviewer':'operator','reviewed_at':'2026-11-20T14:00:00+03:00','cases':{}}
             with self.assertRaises(ValueError):
@@ -154,7 +154,7 @@ class NativeClientContractTests(unittest.TestCase):
         from scripts.pgv13accept.client import check_sources
         with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp:
             root = Path(temp)
-            (root/'a.py').write_text('real code\n')
+            (root/'a.py').write_text('real code\n', encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'source'):
                 check_sources(root, {'a.py':'0'*64})
             check_sources(root, {'a.py':hashlib.sha256(b'real code\n').hexdigest()})
@@ -224,7 +224,7 @@ class RunnerTests(unittest.TestCase):
             args=argparse.Namespace(out=out)
             with patch.object(self.v.shutil,'which',return_value=None):
                 self.assertEqual(self.v.run(args),2)
-            report=json.loads((out/'report.json').read_text())
+            report=json.loads((out/'report.json').read_text(encoding='utf-8'))
             self.assertFalse(report['automated_passed'])
             self.assertFalse(report['pgv13_certified'])
             self.assertFalse((out/'review.template.json').exists())
@@ -232,10 +232,10 @@ class RunnerTests(unittest.TestCase):
     def test_existing_evidence_directory_is_not_overwritten(self):
         with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp:
             target=Path(temp)
-            (target/'report.json').write_text('original')
+            (target/'report.json').write_text('original', encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.v.run(argparse.Namespace(out=target))
-            self.assertEqual((target/'report.json').read_text(),'original')
+            self.assertEqual((target/'report.json').read_text(encoding='utf-8'),'original')
 
     def test_native_pipeline_writes_bound_images_and_pending_visual_review(self):
         report=self.run_pipeline()
@@ -290,7 +290,7 @@ class RunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT.parent) as temp, ExitStack() as patches:
             root=Path(temp);bundle=root/'bundle';bundle.mkdir()
             for name,value in [('ab.json',{}),('candidate-recreated.json',{}),('live.json',{'passed':True,'mode':'live-api','image_id':m['images']['print-renderer'],'volume':m['volume']})]:
-                (bundle/name).write_text(json.dumps(value))
+                (bundle/name).write_text(json.dumps(value), encoding='utf-8')
             args=argparse.Namespace(out=root/'out',bundle=bundle,renderer_project=project,postgres_image='sha256:'+'f'*64,tesseract='tesseract')
             for obj,name,value in [(self.v,'command',command),(self.v,'image_marker',lambda *a:None),
                 (self.v,'product_sources',lambda *a:{name:self.v.O.sha((ROOT/name).read_bytes().replace(b'\r\n',b'\n')) for name in self.v.PRINT_ASSETS}),
@@ -302,7 +302,7 @@ class RunnerTests(unittest.TestCase):
                 (self.v.O,'capture',lambda *a,**k:tsv(['Паспорт','Источник','Стр','1','2','37'] if page_sets else ['Паспорт','37'])),(self.v.shutil,'which',lambda *a:'/docker')]:
                 patches.enter_context(patch.object(obj,name,value))
             code=self.v.run(args,page_sets=True) if page_sets else self.v.run(args)
-            result=json.loads((args.out/'report.json').read_text())
+            result=json.loads((args.out/'report.json').read_text(encoding='utf-8'))
             if project=='candidate' and assets_valid:
                 self.assertEqual(code,0,result)
                 client_cmd=next(cmd for cmd,_ in calls if self.v.BOOTSTRAP in cmd)
@@ -311,23 +311,23 @@ class RunnerTests(unittest.TestCase):
                 self.assertTrue(any('readonly,volume-nocopy' in item for item in client_cmd))
                 self.assertFalse(any(item.startswith('--publish') for item in client_cmd))
                 self.assertTrue((args.out/'review.template.json').is_file())
-                template=json.loads((args.out/'review.template.json').read_text())
+                template=json.loads((args.out/'review.template.json').read_text(encoding='utf-8'))
                 self.assertTrue(all(not flag for value in template['cases'].values() for flags in (value['pages'].values() if page_sets else [value]) for flag in flags.values()))
                 if finalize:
                     review_path=args.out/'review.json'
-                    review_path.write_text(json.dumps(template))
+                    review_path.write_text(json.dumps(template), encoding='utf-8')
                     with self.assertRaises(ValueError):
                         self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets)
                     template.update(reviewer='unit double operator',reviewed_at='2026-11-20T15:00:00+03:00')
                     for case in template['cases'].values():
                         for flags in (case['pages'].values() if page_sets else [case]):flags.update(dict.fromkeys(flags,True))
-                    review_path.write_text(json.dumps(template))
+                    review_path.write_text(json.dumps(template), encoding='utf-8')
                     self.assertEqual(self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets),0)
-                    accepted=json.loads((args.out/'accepted.json').read_text())
+                    accepted=json.loads((args.out/'accepted.json').read_text(encoding='utf-8'))
                     self.assertTrue(accepted['p01_p02_accepted'])
                     self.assertFalse(accepted['pgv13_certified'])
                     (args.out/'accepted.json').unlink()
-                    (args.out/(self.v.C.CASES[0]['id']+'.payload.json')).write_text('{}')
+                    (args.out/(self.v.C.CASES[0]['id']+'.payload.json')).write_text('{}', encoding='utf-8')
                     with self.assertRaisesRegex(ValueError,'hash|changed'):
                         self.v.finalize(SimpleNamespace(report=args.out/'report.json',review=review_path),page_sets=page_sets)
             else:
