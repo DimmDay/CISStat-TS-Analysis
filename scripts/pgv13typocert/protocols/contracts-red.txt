@@ -1,0 +1,72 @@
+✔ p01 figure-landscape: physical fonts, page geometry, table padding and footer (152.203515ms)
+✔ p02 figure-landscape: physical fonts, page geometry, table padding and footer (62.295953ms)
+✔ p01 a4-landscape: physical fonts, page geometry, table padding and footer (47.473448ms)
+✔ p02 a4-landscape: physical fonts, page geometry, table padding and footer (40.013029ms)
+✔ p01 a4-portrait: physical fonts, page geometry, table padding and footer (33.53924ms)
+✔ p02 a4-portrait: physical fonts, page geometry, table padding and footer (25.446331ms)
+✔ physical conversion is independent of screen CSS 96 dpi (0.364148ms)
+✔ P01 long refs and long table labels request wrapping (40.675399ms)
+✔ outer overflow and 1 px rounding controls retain terminal 413 semantics (0.340433ms)
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (85.069804ms)
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (12.451937ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 9
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1320.621513
+
+✖ failing tests:
+
+test at scripts/pgv13typocert/contracts.spec.cjs:58:1
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (85.069804ms)
+  AssertionError [ERR_ASSERTION]: outer fits; inner overflow is invisible to actual callback+guard
+  
+  false !== true
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:68:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:70:1
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (12.451937ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'p01-a4-landscape',
+      'p01-a4-portrait',
+  -   'p01-corrupt',
+      'p01-figure-landscape',
+      'p01-missing',
+      'p01-reused',
+      'p02-a4-landscape',
+      'p02-a4-portrait',
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:77:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    expected: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-corrupt', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

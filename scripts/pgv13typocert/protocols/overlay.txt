@@ -1,0 +1,193 @@
+$ ./node_modules/.bin/tsc -p apps/print-renderer/tsconfig.build.json
+$ node --test scripts/pgv13typocert/oracle.spec.js
+✔ control: a fitting 300 ppi page passes (0.822415ms)
+✔ negative control: inner content hits footer while outer size fits (0.139396ms)
+✔ negative control: internal horizontal truncation while outer size fits (0.124904ms)
+✔ negative control: old 12px text at 300 ppi is unreadable (0.119857ms)
+✔ control: explicit outer overflow is a refusal, not a clipped success (0.138014ms)
+✔ negative control: missing DOM measurements cannot pass (0.291992ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98.455234
+$ node --test --test-reporter=tap scripts/pgv13typocert/contracts.spec.js
+TAP version 13
+# Subtest: p01 figure-landscape: physical fonts, page geometry, table padding and footer
+ok 1 - p01 figure-landscape: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 97.198897
+  type: 'test'
+  ...
+# Subtest: p02 figure-landscape: physical fonts, page geometry, table padding and footer
+ok 2 - p02 figure-landscape: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 29.928935
+  type: 'test'
+  ...
+# Subtest: p01 a4-landscape: physical fonts, page geometry, table padding and footer
+ok 3 - p01 a4-landscape: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 23.445523
+  type: 'test'
+  ...
+# Subtest: p02 a4-landscape: physical fonts, page geometry, table padding and footer
+ok 4 - p02 a4-landscape: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 20.930364
+  type: 'test'
+  ...
+# Subtest: p01 a4-portrait: physical fonts, page geometry, table padding and footer
+ok 5 - p01 a4-portrait: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 27.578793
+  type: 'test'
+  ...
+# Subtest: p02 a4-portrait: physical fonts, page geometry, table padding and footer
+ok 6 - p02 a4-portrait: physical fonts, page geometry, table padding and footer
+  ---
+  duration_ms: 15.130272
+  type: 'test'
+  ...
+# Subtest: physical conversion is independent of screen CSS 96 dpi
+ok 7 - physical conversion is independent of screen CSS 96 dpi
+  ---
+  duration_ms: 0.214628
+  type: 'test'
+  ...
+# Subtest: P01 long refs and long table labels request wrapping
+ok 8 - P01 long refs and long table labels request wrapping
+  ---
+  duration_ms: 15.406702
+  type: 'test'
+  ...
+# Subtest: outer overflow and 1 px rounding controls retain terminal 413 semantics
+ok 9 - outer overflow and 1 px rounding controls retain terminal 413 semantics
+  ---
+  duration_ms: 0.350588
+  type: 'test'
+  ...
+# Subtest: F-TYPO-01: content exceeding its body slot must not pass merely because surface fits
+not ok 10 - F-TYPO-01: content exceeding its body slot must not pass merely because surface fits
+  ---
+  duration_ms: 58.468407
+  type: 'test'
+  location: '/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:58:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    outer fits; inner overflow is invisible to actual callback+guard
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:68:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus
+not ok 11 - F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus
+  ---
+  duration_ms: 8.43739
+  type: 'test'
+  location: '/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:70:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        'p01-a4-landscape',
+        'p01-a4-portrait',
+    -   'p01-corrupt',
+        'p01-figure-landscape',
+        'p01-missing',
+        'p01-reused',
+        'p02-a4-landscape',
+        'p02-a4-portrait',
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'p01-a4-landscape'
+    1: 'p01-a4-portrait'
+    2: 'p01-corrupt'
+    3: 'p01-figure-landscape'
+    4: 'p01-missing'
+    5: 'p01-reused'
+    6: 'p02-a4-landscape'
+    7: 'p02-a4-portrait'
+    8: 'p02-figure-landscape'
+    9: 'p02-missing'
+    10: 'p02-reused'
+  actual:
+    0: 'p01-a4-landscape'
+    1: 'p01-a4-portrait'
+    2: 'p01-figure-landscape'
+    3: 'p01-missing'
+    4: 'p01-reused'
+    5: 'p02-a4-landscape'
+    6: 'p02-a4-portrait'
+    7: 'p02-figure-landscape'
+    8: 'p02-missing'
+    9: 'p02-reused'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:77:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: F-TYPO-03: sample runner must reject a wrong 413 code/retryable response
+not ok 12 - F-TYPO-03: sample runner must reject a wrong 413 code/retryable response
+  ---
+  duration_ms: 56.195528
+  type: 'test'
+  location: '/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:79:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    runner accepted wrong 413 body and retryable=true: VIS01_LOCAL_RENDER_OK
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-overlay/scripts/pgv13typocert/contracts.spec.js:117:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 9
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 845.33864
+$ git read-tree HEAD
+$ git add --pathspec-from-file=scripts/pgv13typocert/files.txt
+CRLF staged JS with unchanged LF worktree: ["scripts/pgv13typocert/contracts.spec.js", "scripts/pgv13typocert/emit.js", "scripts/pgv13typocert/fixtures.js", "scripts/pgv13typocert/measure.js", "scripts/pgv13typocert/native.js", "scripts/pgv13typocert/oracle.spec.js"]
+$ /workspace/scratch/1c5610407fa7/venv/bin/python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+$ /workspace/scratch/1c5610407fa7/venv/bin/python scripts/auth06/check_routes.py
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 668, "added": [], "missing": []}
+$ git diff --check

@@ -1,0 +1,64 @@
+{
+  "revision": "a6429e30f0eb4f9fed12948757e5546065267c17",
+  "attachment": {
+    "file": "1.txt",
+    "sha256": "eeb225e1805d5a01121ca0e377c567becd4aa9680908ffcba2a3cbe6af307d73",
+    "meaning": "CLI capture refusals only; no PNG/native typography evidence"
+  },
+  "sources": {
+    "packages/ui/print/printTheme.ts": "103b73a675b8eb8340e948566e94d596eebec67c91b913a1df488d5d726eb3a3",
+    "packages/ui/print/printLayout.tsx": "8353a68837a08185a6f86124ef7f94fc9296dabd393dd4595fd7aa4951eccc47",
+    "packages/ui/print/printPassport.tsx": "d353f0e13ff7962d33caa49c595041e195c14e023f03ef08ced3fda23887196f",
+    "packages/ui/print/printComparison.tsx": "1adcd13463027c7b99c6f3138b9569be162ac50dfc54d607fc1bb97553e0ec41",
+    "apps/print-renderer/src/renderWorker.ts": "b747812c67dbb952a4560d35720c7d9a2a65e55c5be28a660739ae321aec335d",
+    "apps/print-renderer/src/rendererCore.tsx": "33966f05008128589b48e7b3018963a26645ed1b763098054f63e8197c7149fb",
+    "scripts/pgv13vis01/render_samples.mjs": "a18a15757025bdcef341a5151b3255532a440f1e5bb9a61343c7ce5d0e9b4633",
+    "scripts/pgv13accept/client.py": "4e7074aff9cb6f17cb50bf9369d2d303dc47f284424264fd6f047ab9f648108f"
+  },
+  "runtime_sources_changed": false,
+  "historical_red": {
+    "revision": "73ff44d2a509d5d46981d983f56d5231d1fb62df",
+    "tests": 7,
+    "failed": 7
+  },
+  "independent_contracts": {
+    "tests": 12,
+    "passed": 9,
+    "failed": 3,
+    "errors": 0,
+    "skips": 0
+  },
+  "oracle_controls": {
+    "passed": 6,
+    "failed": 0
+  },
+  "repo_jest": {
+    "passed": 346,
+    "suites": 17
+  },
+  "python_memory": {
+    "passed": 82
+  },
+  "native_chromium": {
+    "status": "BLOCKED",
+    "cases": 0,
+    "reason": "ProcessSingleton socket() EPERM before page creation"
+  },
+  "full_pgv13_certified": false,
+  "typography_certified": false,
+  "scope": "physical conversion/styles verified; layout/native acceptance incomplete",
+  "auth00": {
+    "passed": true,
+    "unit_tests": 61,
+    "discovery_surfaces": 602,
+    "seconds": 73.1,
+    "real_index_unchanged": true
+  },
+  "routes": {
+    "api": 284,
+    "bindings": 288,
+    "entries": 668,
+    "added": [],
+    "removed": []
+  }
+}

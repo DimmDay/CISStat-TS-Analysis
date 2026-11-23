@@ -1,0 +1,140 @@
+✖ p01 figure-landscape: physical fonts, page geometry, table padding and footer (88.401432ms)
+✖ p02 figure-landscape: physical fonts, page geometry, table padding and footer (27.677089ms)
+✖ p01 a4-landscape: physical fonts, page geometry, table padding and footer (23.053656ms)
+✖ p02 a4-landscape: physical fonts, page geometry, table padding and footer (19.172181ms)
+✖ p01 a4-portrait: physical fonts, page geometry, table padding and footer (24.796172ms)
+✖ p02 a4-portrait: physical fonts, page geometry, table padding and footer (13.529323ms)
+✖ physical conversion is independent of screen CSS 96 dpi (0.243791ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 0
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 661.51816
+
+✖ failing tests:
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p01 figure-landscape: physical fonts, page geometry, table padding and footer (88.401432ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 figure-landscape: physical fonts, page geometry, table padding and footer (27.677089ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p01 a4-landscape: physical fonts, page geometry, table padding and footer (23.053656ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 a4-landscape: physical fonts, page geometry, table padding and footer (19.172181ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p01 a4-portrait: physical fonts, page geometry, table padding and footer (24.796172ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 a4-portrait: physical fonts, page geometry, table padding and footer (13.529323ms)
+  AssertionError [ERR_ASSERTION]: 6.24 != 16
+      at close (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:11:27)
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:18:3)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:29:1
+✖ physical conversion is independent of screen CSS 96 dpi (0.243791ms)
+  TypeError [Error]: theme.ptToPx is not a function
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/typo-baseline/scripts/pgv13typocert/contracts.spec.cjs:30:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

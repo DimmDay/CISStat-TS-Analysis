@@ -1,0 +1,18 @@
+{
+  "python": "3.12.14",
+  "node": "v24.22.3",
+  "libraries": {
+    "fastapi": "0.141.1",
+    "starlette": "1.6.0",
+    "pydantic": "2.13.4",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "pytest": "9.2.0",
+    "statsmodels": "0.15.0",
+    "psycopg": "3.3.9"
+  },
+  "docker_executed": false,
+  "native_chromium_rendered_pages": 0,
+  "browser": "system Chromium attempted; ProcessSingleton socket() EPERM",
+  "scope": "local test venv; no pinned final container runtime proof"
+}

@@ -1,0 +1,179 @@
+✔ p01 figure-landscape: physical fonts, page geometry, table padding and footer (143.174483ms)
+✖ p02 figure-landscape: physical fonts, page geometry, table padding and footer (62.670029ms)
+✔ p01 a4-landscape: physical fonts, page geometry, table padding and footer (47.443796ms)
+✖ p02 a4-landscape: physical fonts, page geometry, table padding and footer (47.234286ms)
+✔ p01 a4-portrait: physical fonts, page geometry, table padding and footer (45.789903ms)
+✖ p02 a4-portrait: physical fonts, page geometry, table padding and footer (23.310054ms)
+✔ physical conversion is independent of screen CSS 96 dpi (0.431127ms)
+✖ P01 long refs and long table labels request wrapping (39.233868ms)
+✖ outer overflow and 1 px rounding controls retain terminal 413 semantics (0.640616ms)
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (90.027622ms)
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (12.998887ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 4
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1408.287443
+
+✖ failing tests:
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 figure-landscape: physical fonts, page geometry, table padding and footer (62.670029ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /7 \(— %\)/. Input:
+  
+  "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль figure-landscapeстраница:Стр. 1 из 1"
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:26:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль figure-landscapeстраница:Стр. 1 из 1",
+    expected: /7 \(— %\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 a4-landscape: physical fonts, page geometry, table padding and footer (47.234286ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /7 \(— %\)/. Input:
+  
+  "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль a4-landscapeстраница:Стр. 1 из 1"
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:26:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль a4-landscapeстраница:Стр. 1 из 1",
+    expected: /7 \(— %\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:13:2
+✖ p02 a4-portrait: physical fonts, page geometry, table padding and footer (23.310054ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /7 \(— %\)/. Input:
+  
+  "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль a4-portraitстраница:Стр. 1 из 1"
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:26:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "*, *::before, *::after { animation: none !important; transition: none !important; }Независимая проверка физической типографикивид:passport.independent (research)источник:passport / independenttarget:Показательдаты:Месяцрежим:univariatecontext:ctx-independent-typographydata_revision:3рассчитано:неизвестно (fixture)зафиксировано:2026-11-23 10:00 UTCСравнение паспортов свойств рядаrun:RUN-TYPO-INDEPENDENTрежим:explicitэтапы:start → exitcontext:ctx-independent-typographydata_revision:3движок:independen… 1полнота:completeЧисловые метрики по этапамМетрикаstartexitΔ start → exitn37370 (0 %)mean07+7 (0 %)Абсолютное и относительное изменения приведены как зафиксированы сравнением; цвет ячеек не применяется — знак печатается явно (см. определения ниже).Качественные и категориальные измененияstart → exit: Сравнение сохранённых значений· Кириллица сохранена; знак изменения не означает статистическую значимость.Определения:delta: Абсолютное изменение сохранённых значений.percent: Относительное изменение; при нуле основания не определено.источник: pgv.passport_comparison/1; aliases: 0; пар: 1метод:independent-fixed-input (producer_freeze — фиксация producer'а)версия данных:3результат:independen…рендер:light-print, профиль a4-portraitстраница:Стр. 1 из 1",
+    expected: /7 \(— %\)/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:34:1
+✖ P01 long refs and long table labels request wrapping (39.233868ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '' !== 'anywhere'
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:39:58)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: 'anywhere',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:41:1
+✖ outer overflow and 1 px rounding controls retain terminal 413 semantics (0.640616ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - false
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:46:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:58:1
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (90.027622ms)
+  AssertionError [ERR_ASSERTION]: outer fits; inner overflow is invisible to actual callback+guard
+  
+  false !== true
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:68:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.cjs:70:1
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (12.998887ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'p01-a4-landscape',
+      'p01-a4-portrait',
+  -   'p01-corrupt',
+      'p01-figure-landscape',
+      'p01-missing',
+      'p01-reused',
+      'p02-a4-landscape',
+      'p02-a4-portrait',
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.cjs:77:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    expected: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-corrupt', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

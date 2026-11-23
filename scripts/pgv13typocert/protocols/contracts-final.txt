@@ -1,0 +1,90 @@
+✔ p01 figure-landscape: physical fonts, page geometry, table padding and footer (148.889996ms)
+✔ p02 figure-landscape: physical fonts, page geometry, table padding and footer (54.161228ms)
+✔ p01 a4-landscape: physical fonts, page geometry, table padding and footer (51.596628ms)
+✔ p02 a4-landscape: physical fonts, page geometry, table padding and footer (40.81347ms)
+✔ p01 a4-portrait: physical fonts, page geometry, table padding and footer (19.520331ms)
+✔ p02 a4-portrait: physical fonts, page geometry, table padding and footer (29.339872ms)
+✔ physical conversion is independent of screen CSS 96 dpi (0.349126ms)
+✔ P01 long refs and long table labels request wrapping (35.652433ms)
+✔ outer overflow and 1 px rounding controls retain terminal 413 semantics (0.393181ms)
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (72.020242ms)
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (11.40782ms)
+✖ F-TYPO-03: sample runner must reject a wrong 413 code/retryable response (74.311129ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 9
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1405.803146
+
+✖ failing tests:
+
+test at scripts/pgv13typocert/contracts.spec.js:58:1
+✖ F-TYPO-01: content exceeding its body slot must not pass merely because surface fits (72.020242ms)
+  AssertionError [ERR_ASSERTION]: outer fits; inner overflow is invisible to actual callback+guard
+  
+  false !== true
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.js:68:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.js:70:1
+✖ F-TYPO-02: local sample runner covers the complete existing 11-case acceptance corpus (11.40782ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'p01-a4-landscape',
+      'p01-a4-portrait',
+  -   'p01-corrupt',
+      'p01-figure-landscape',
+      'p01-missing',
+      'p01-reused',
+      'p02-a4-landscape',
+      'p02-a4-portrait',
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.js:77:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    expected: [ 'p01-a4-landscape', 'p01-a4-portrait', 'p01-corrupt', 'p01-figure-landscape', 'p01-missing', 'p01-reused', 'p02-a4-landscape', 'p02-a4-portrait', 'p02-figure-landscape', 'p02-missing', 'p02-reused' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/pgv13typocert/contracts.spec.js:79:1
+✖ F-TYPO-03: sample runner must reject a wrong 413 code/retryable response (74.311129ms)
+  AssertionError [ERR_ASSERTION]: runner accepted wrong 413 body and retryable=true: VIS01_LOCAL_RENDER_OK
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/contracts.spec.js:117:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

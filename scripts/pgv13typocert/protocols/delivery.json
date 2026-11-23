@@ -1,0 +1,87 @@
+{
+  "phase": "overlay_verified",
+  "overlay_base": "a6429e30f0eb4f9fed12948757e5546065267c17",
+  "actual_zip_extracted": true,
+  "raw_red_reproduced": {
+    "tests": 12,
+    "pass": 9,
+    "fail": 3,
+    "skips": 0
+  },
+  "oracle_controls": 6,
+  "fresh_renderer_build": true,
+  "crlf_index_js_count": 6,
+  "strict_index": true,
+  "api_routes": 284,
+  "bindings": 288,
+  "full_pgv13_certified": false,
+  "checks": [
+    {
+      "command": [
+        "./node_modules/.bin/tsc",
+        "-p",
+        "apps/print-renderer/tsconfig.build.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "scripts/pgv13typocert/oracle.spec.js"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "scripts/pgv13typocert/contracts.spec.js"
+      ],
+      "exit_code": 1
+    },
+    {
+      "command": [
+        "git",
+        "read-tree",
+        "HEAD"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "git",
+        "add",
+        "--pathspec-from-file=scripts/pgv13typocert/files.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/workspace/scratch/1c5610407fa7/venv/bin/python",
+        "scripts/auth00/check_committed.py",
+        "--target",
+        "index"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/workspace/scratch/1c5610407fa7/venv/bin/python",
+        "scripts/auth06/check_routes.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "task_files": 36,
+  "final_archive_crc_and_all_bytes_checked_by_packager": true
+}

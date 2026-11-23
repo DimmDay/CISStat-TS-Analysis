@@ -1,0 +1,18 @@
+{
+  "entries_identical": true,
+  "policy_entries_identical": true,
+  "policies_identical": true,
+  "entries": 668,
+  "fingerprints_changed_or_added": [
+    "docs/pgv13_typography_cert_2026-11-23.md",
+    "scripts/local_gates.md",
+    "scripts/pgv13typocert/contracts.spec.js",
+    "scripts/pgv13typocert/emit.js",
+    "scripts/pgv13typocert/fixtures.js",
+    "scripts/pgv13typocert/measure.js",
+    "scripts/pgv13typocert/native.js",
+    "scripts/pgv13typocert/oracle.spec.js"
+  ],
+  "fingerprints_removed": [],
+  "worklog_reviewed": false
+}

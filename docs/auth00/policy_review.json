@@ -9705,6 +9705,13 @@
   "tests/unit/test_pgv13_local_gate.py",
   "tests/unit/test_pgv13_ocr_pipeline.py",
   "tests/unit/test_pgv13_release.py",
-  "validation/engine.py"
+  "validation/engine.py",
+  "docs/pgv13_typography_cert_2026-11-23.md",
+  "scripts/pgv13typocert/contracts.spec.js",
+  "scripts/pgv13typocert/emit.js",
+  "scripts/pgv13typocert/fixtures.js",
+  "scripts/pgv13typocert/measure.js",
+  "scripts/pgv13typocert/native.js",
+  "scripts/pgv13typocert/oracle.spec.js"
  ]
 }

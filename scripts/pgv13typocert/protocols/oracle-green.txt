@@ -1,0 +1,14 @@
+✔ control: a fitting 300 ppi page passes (0.873511ms)
+✔ negative control: inner content hits footer while outer size fits (0.132576ms)
+✔ negative control: internal horizontal truncation while outer size fits (0.121139ms)
+✔ negative control: old 12px text at 300 ppi is unreadable (0.113908ms)
+✔ control: explicit outer overflow is a refusal, not a clipped success (0.187558ms)
+✔ negative control: missing DOM measurements cannot pass (0.089943ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.858272

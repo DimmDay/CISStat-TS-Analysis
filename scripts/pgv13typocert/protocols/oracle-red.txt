@@ -1,0 +1,39 @@
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+
+Error: Cannot find module './measure.cjs'
+Require stack:
+- /workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/oracle.spec.cjs
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/oracle.spec.cjs:2:16)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/workspace/scratch/1c5610407fa7/CISStat-TS-Analysis/scripts/pgv13typocert/oracle.spec.cjs'
+  ]
+}
+
+Node.js v24.22.3
+✖ scripts/pgv13typocert/oracle.spec.cjs (86.463853ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.961013
+
+✖ failing tests:
+
+test at scripts/pgv13typocert/oracle.spec.cjs:1:1
+✖ scripts/pgv13typocert/oracle.spec.cjs (86.463853ms)
+  'test failed'

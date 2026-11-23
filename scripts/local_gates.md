@@ -271,7 +271,7 @@ python scripts/kabinet_demo_cert/verify_postgres.py
 ```
 
 Без DSN native runner возвращает2, skips не PASS. Production browser smoke требует готовые .next и Chromium:
-`node scripts/kabinet_demo_cert/browser_smoke.cjs standalone enabled` (или embedded; disabled для сборки без пары).
+`node scripts/kabinet_demo_cert/browser_smoke.js standalone enabled` (или embedded; disabled для сборки без пары).
 Только синтетические build-time fixtures `cert-public-demo`/`cert-public-pair-not-personal` — не настоящие credentials;
 обычная production сборка задаётся оператором. Smoke использует настоящий first-party proxy/HTTPS, но controlled authority stub;
 PostgreSQL authority подтверждается отдельным native gate, smoke не выдаётся за production AUTH-CERT.
@@ -601,3 +601,28 @@ Tesseract rus/eng обязателен для explicit pixel controls; synthetic
 остаётся прежним. Меняется compiled P01/P02 layout: новый согласованный bundle,
 A/B/candidate/recreate/live и 11 новых PNG необходимы; прежний report не чинить.
 Полный порядок: `docs/pgv13_ocr_fix.md`. Routes/guards/DTO/IPC прежние.
+
+## PGV13-VIS-01-CERT (23.11.2026), база a6429e3
+
+Независимая проверка физической типографики:
+
+```bash
+npm run build --workspace=@cisstat/print-renderer
+node --test scripts/pgv13typocert/oracle.spec.js
+node --test scripts/pgv13typocert/contracts.spec.js
+npx jest packages/ui/print apps/print-renderer/src scripts/pgv07cert scripts/pgv08cert --runInBand
+python scripts/auth06/check_routes.py
+```
+
+На указанной базе contracts ожидаемо **RED9/3 (exit1)** по F-TYPO-01…03;
+controls6/6 GREEN. Это opt-in акт находок, default local_gates.py/Jest не меняется.
+Нет xfail/skip и нет «PASS сертификата» по зелёному default. Пояснения/границы
+модели DOM, missing p01-corrupt, неправильного 413 и native BLOCKED —
+`docs/pgv13_typography_cert_2026-11-23.md`.
+Дополнительный реальный local Chromium layout gate (69 собственных frozen inputs):
+`node scripts/pgv13typocert/native.js --out /NEW/OUTSIDE/DIRECTORY`.
+Требуется установленный pinned browser (optional `--browser`), sandbox=true;
+BLOCKED exit2, final-container/PGV13 certificate не выдаёт.
+Поставка только сертификат/инструменты: образы, SQL и HTTP paths прежние.
+Stage для этой задачи — `git add --pathspec-from-file=scripts/pgv13typocert/files.txt`,
+затем обычный AUTH00 INDEX gate. Commit/push выполняет тимлид.
