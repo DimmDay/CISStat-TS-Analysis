@@ -1,0 +1,4 @@
+DEBUG:tzlocal:Looking up time zone info from registry
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 284, "inventory_api": 284, "registry_bindings": 288, "inventory_entries": 668, "added": [], "missing": []}

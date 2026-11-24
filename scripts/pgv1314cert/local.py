@@ -1,4 +1,5 @@
 """Fresh bounded local probes; these alone never issue task certificates."""
+from contextlib import ExitStack
 from pathlib import Path
 import json
 import os
@@ -12,7 +13,7 @@ from scripts.pgv1314cert.verify import ROOT, require, read, sha, validate_files,
 SELECTION=['scripts/pgv13cert/test_contracts.py','scripts/pgv13cert/test_local_acceptance.py',
  'scripts/pgv13cert/test_deployment.py','tests/api/test_pgv13_passport_documents.py',
  'scripts/pgv14/test_page_sets.py','tests/unit/test_pgv13_accept.py','tests/unit/test_pgv14_accept.py',
- 'tests/unit/test_pgv1314_certification.py']
+ 'tests/unit/test_pgv1314_certification.py','tests/unit/test_pgv1314_ci.py']
 CHECKS=('workspace_dependencies','renderer_build','pytest','print_jest','typography','windows_parity','routes','inventory','typecheck','web_builds')
 
 
@@ -38,6 +39,17 @@ def validate_local(path):
     route=read(path.parent/'routes.log')
     require(route.get('status')=='ok' and not route.get('added') and not route.get('missing'),'Actual route parity failed')
     return report
+
+
+def diagnostic_tail(path,limit=60):
+    """Console diagnostics only; raw hashed evidence stays byte-exact on disk."""
+    path=Path(path)
+    if not path.is_file():return 'Diagnostic log is unavailable'
+    text='\n'.join(path.read_bytes().decode('utf-8',errors='replace').splitlines()[-limit:])[-12288:]
+    text=re.sub(r'([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s@]+@',r'\1[REDACTED]@',text)
+    text=re.sub(r'(?i)(authorization\s*:\s*)(?:Bearer|Basic)\s+\S+',r'\1[REDACTED]',text)
+    text=re.sub(r'(?i)\b(password|passwd|secret|token|api[_-]?key)\b(\s*[:=]\s*)[^\s,;]+',r'\1\2[REDACTED]',text)
+    return text
 
 
 def run_local(out):
@@ -71,10 +83,14 @@ def run_local(out):
                 'typecheck':[npm,'run','typecheck:all'],
                 'web_builds':[npm,'run','build:all']}
             for name,command in commands.items():
+                report['active_check']=name;save()
                 print('PGV13/14 local: '+name,flush=True)
                 shell=os.name=='nt' and str(command[0]).lower().endswith(('.cmd','.bat'))
-                with (out/(name+'.log')).open('w',encoding='utf-8') as log:
-                    run=subprocess.run(subprocess.list2cmdline(command) if shell else command,cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=900,shell=shell)
+                with ExitStack() as streams:
+                    log=streams.enter_context((out/(name+'.log')).open('w',encoding='utf-8'))
+                    # routes.log is a strict JSON protocol, not a merged console stream.
+                    errors=streams.enter_context((out/(name+'.stderr.log')).open('w',encoding='utf-8')) if name=='routes' else subprocess.STDOUT
+                    run=subprocess.run(subprocess.list2cmdline(command) if shell else command,cwd=ROOT,env=env,stdout=log,stderr=errors,timeout=900,shell=shell)
                 if name=='print_jest' and run.returncode==0:
                     # Portable evidence: retain exact test names, remove machine-root dependence.
                     data=read(out/'jest.json')
@@ -84,13 +100,25 @@ def run_local(out):
                     (out/'jest.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
                 report['checks'][name]={'exit':run.returncode};save()
                 require(run.returncode==0,'Local '+name+' failed; inspect its log')
+        report['active_check']='source_fence';save()
         require(report['source_fingerprints']==source_fingerprints(),'Source changed during local probes')
         report['files']={p.name:sha(p.read_bytes()) for p in sorted(out.iterdir()) if p.name not in ('summary.json','summary.tmp')}
         report.update(state='PASS',passed=True);save()
+        report['active_check']='evidence_validation';save()
         validate_local(out/'summary.json')
     except (OSError,ValueError,subprocess.SubprocessError) as error:
         report.update(state='FAIL',passed=False,error_type=type(error).__name__)
         if isinstance(error,ValueError):report['detail']=str(error)
+        report['failed_check']=report.get('active_check','preflight')
+        if isinstance(error,subprocess.TimeoutExpired):report['detail']='Local '+report['failed_check']+' timed out'
+        log=out/(report['failed_check']+'.log');report['failed_log']=str(log)
+        stderr_log=out/(report['failed_check']+'.stderr.log')
+        if stderr_log.is_file():report['failed_stderr_log']=str(stderr_log)
         save()
-    print(json.dumps({'state':report['state'],'passed':report['passed'],'task_certification':report['task_certification']}))
+        print('PGV13/14 failed check: '+report['failed_check']+'; log: '+str(log),flush=True)
+        for line in diagnostic_tail(log).splitlines():print('PGV13/14 diagnostic | '+line,flush=True)
+        if stderr_log.is_file():
+            print('PGV13/14 stderr log: '+str(stderr_log),flush=True)
+            for line in diagnostic_tail(stderr_log).splitlines():print('PGV13/14 diagnostic | '+line,flush=True)
+    print(json.dumps({k:report[k] for k in ('state','passed','task_certification','failed_check','failed_log','failed_stderr_log','detail','error_type') if k in report},ensure_ascii=False))
     return 0 if report['passed'] else 1

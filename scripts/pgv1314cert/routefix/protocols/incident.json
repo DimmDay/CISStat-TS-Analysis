@@ -1,0 +1,48 @@
+{
+  "schema_version": "pgv1314.local/1",
+  "state": "FAIL",
+  "passed": false,
+  "task_certification": {
+    "PGV-13": false,
+    "PGV-14": false
+  },
+  "checks": {
+    "workspace_dependencies": {
+      "exit": 0
+    },
+    "renderer_build": {
+      "exit": 0
+    },
+    "pytest": {
+      "exit": 0
+    },
+    "print_jest": {
+      "exit": 0
+    },
+    "typography": {
+      "exit": 0
+    },
+    "windows_parity": {
+      "exit": 0
+    },
+    "routes": {
+      "exit": 0
+    },
+    "inventory": {
+      "exit": 0
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "web_builds": {
+      "exit": 0
+    }
+  },
+  "active_check": "evidence_validation",
+  "error_type": "JSONDecodeError",
+  "detail": "Expecting value: line 1 column 1 (char 0)",
+  "failed_check": "evidence_validation",
+  "failed_log": "C:\\Users\\User\\pgv1314-local-prvrof30\\evidence\\evidence_validation.log",
+  "archive_sha256": "de0eda0a1246e64870c4a51770994575cf3108a5f240aabb4fb07ce2c751d0ed",
+  "all_supplied_hashes_valid": true
+}

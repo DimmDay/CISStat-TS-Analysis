@@ -109,13 +109,15 @@ def source_fingerprints():
     paths={p for p in paths if p.startswith(('app/','apps/','packages/','validation/','src/','rules/','shared/','config/'))
            and not p.endswith('.md') and '/protocols/' not in p}
     paths.update(['package.json','package-lock.json','.dockerignore','AGENTS.md','spec_passport_graphics_visual.md',
+                  '.github/workflows/pgv1314cert.yml','scripts/local_gates.py',
                   'scripts/pgv13accept/verify_vm.py','scripts/pgv13accept/oracles.py','scripts/pgv14/client.py',
                   'scripts/pgv14/pages.py','scripts/pgv14/verify_vm.py','scripts/pgv14/cifix/windows_parity.py',
                   'scripts/pgv13typocert/contracts.spec.js','scripts/pgv13typocert/oracle.spec.js'])
     paths.update(p.relative_to(ROOT).as_posix() for p in (ROOT/'scripts/pgv1314cert').glob('*') if p.suffix in ('.py','.json','.txt') and p.name!='files.txt')
     for directory in ('scripts/pgv13cert','scripts/pgv13local','scripts/pgv13accept','scripts/pgv14','scripts/pgv13typocert','scripts/pgv07cert','scripts/pgv08cert','scripts/auth00'):
         paths.update(p.relative_to(ROOT).as_posix() for p in (ROOT/directory).glob('*') if p.suffix in ('.py','.js','.ts','.tsx','.json'))
-    paths.update(['tests/unit/test_pgv1314_certification.py','tests/unit/test_pgv13_accept.py','tests/unit/test_pgv14_accept.py',
+    paths.update(p.relative_to(ROOT).as_posix() for p in (ROOT/'scripts/pgv1314cert/cifix').glob('*.py'))
+    paths.update(['tests/unit/test_pgv1314_ci.py','tests/unit/test_pgv1314_certification.py','tests/unit/test_pgv13_accept.py','tests/unit/test_pgv14_accept.py',
         'tests/unit/test_pgv13_release.py','tests/api/test_pgv13_passport_documents.py','scripts/auth06/check_routes.py',
         'docs/auth00/inventory.json','docs/auth00/policy_review.json','jest.config.js','jest.tsconfig.json','jest.setup.js'])
     out={}

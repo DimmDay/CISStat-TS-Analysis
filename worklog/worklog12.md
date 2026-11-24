@@ -1366,3 +1366,101 @@ FastAPI/psycopg/pytest проверил перенесённый local report и
 Поставка61 task files + отдельный13-file local proof ZIP; CRC/manifest/каждый
 byte и внешний SHA256 проверены. Native VM/PNG/OCR/review ещё не предоставлены;
 истинный task certificate не создан. Commit/push/VM actions не исполнялись.
+
+---
+
+## TaskID: PGV1314 CI parity/artifacts fix, база086b4f6 (24.11.2026)
+
+По прямому указанию тимлида создан отдельный detached checkout точного
+086b4f69aed0b2862958e1eccbe0bf85cc498adb. Предыдущие dirty checkouts не
+изменялись. Изучены AGENTS, spec PGV13/14, реализация сертификатора и actual
+GitHub run45361226628/job138331498865. Controls Ubuntu/Windows GREEN;
+local-evidence FAIL после web_builds, upload-artifact v6 отверг ../ путь.
+Подробный build log не был сохранён, точная историческая причина неизвестна.
+Повторные обе production-сборки на Node22.23.5 GREEN; frontend/runtime
+изменения без подтверждённой причины не вносились.
+
+Дизайн/риски/runbook: docs/pgv1314_ci_parity_fix.md. Run/upload используют
+одинаковый абсолютный runner.temp путь, допустимый step env/with context.
+Общий Node22 driver вызывается workflow и default local_gates pgv1314cert;
+локально теперь выполняется полный Linux CI pipeline с API requirements,
+а не только17 issuer controls. Runner печатает упавший stage/log и bounded
+redacted tail, сохраняет исходные bytes/hashes и ненулевой exit. Timeout
+имеет собственную диагностику; failures не становятся task certificate.
+Workflow/gate/driver/new tests включены в source fingerprints. Старый local
+report после fix stale; необходим новый proof companion/CI artifact.
+
+TDD: RED missing driver; исходные086b4f6 workflow/gate отдельно отвергнуты
+новыми controls. GREEN25 controls (17issuer +8CI), все153 старых exact pytest
+IDs сохранены, добавлены8. Полный default gate с Node22.23.5/npm10.9.9:
+PASS188.3с, pytest161 +43subtests, Jest357, typography18, CP1252, renderer
+build, routes/inventory, обе typechecks и обе production-сборки. typecheck
+удаляет .next, поэтому обе production-сборки выполнены без старого Next cache.
+Raw local evidence создаётся вне checkout, source fence и точная coverage
+проверены. task_certification PGV-13/PGV-14=false ожидаемо: native VM11 cases,
+PNG/OCR/every-page review и issue по-прежнему обязательны. GitHub upload и
+нативный Windows в этой Linux-сессии не исполнялись; нужен новый CI run.
+
+AUTH00 reviewed sources обновлены штатным collector. Семантика всех668
+entries и policies равна базе (284API,288bindings); HTTP paths/methods,
+DTO/guards/SQL/runtime/Dockerfiles не изменены. Для host CI fix пересборка
+образов, миграции и перезапуск на VM не нужны. VM не затрагивалась.
+Поставка только текущей задачи: scripts/pgv1314cert/cifix/files.txt;
+protocols в том же cifix, worklog12, ZIP исходников и отдельный новый local
+proof ZIP. Commit/push не выполнялись; их выполняет тимлид.
+
+Итог hotfix: strict temporary INDEX AUTH00 PASS48.0с,61/61 unit, оба
+INDEX602 fences GREEN; реальный INDEX неизменен. git diff --check GREEN.
+Новый local proof ZIP распакован в другой каталог и повторно принят строгим
+validate_local: exact coverage/source fingerprints/все log hashes совпали.
+Пакет содержит28 task files, отдельный13-file local evidence companion и
+контрольные SHA256; ZIP CRC и bytes каждого файла проверены. Исходная
+GitHub web_builds причина по-прежнему неизвестна; подтверждение нового
+GitHub run требуется после применения и коммита тимлидом.
+
+---
+
+## 24.11.2026 — PGV1314 Windows: route JSON/stderr separation
+
+Продолжение CI fix на086b4f6, без новой синхронизации/commit/push. После
+перехода пользователя с Node20.12.2 на Node22.23.5/npm10.9.9 gate прошёл
+все10 subprocess checks, но упал в evidence_validation. Изучен реальный
+pgv1314-failure.zip: все12 raw file hashes совпадают, pytest161/Jest357,
+типографика/CP1252/routes/inventory/typechecks/обе production-сборки GREEN.
+Точная причина — routes.log начинается DEBUG строками tzlocal/clickhouse,
+затем содержит валидный JSON. stderr и stdout route checker объединялись,
+а итоговый reader строго требует JSON; получен JSONDecodeError line1col1.
+Этот Windows случай не устанавливает причину старого GitHub web_builds.
+
+Дизайн/риски/PowerShell runbook: docs/pgv1314_route_streams_fix.md.
+Host runner только для routes сохраняет отдельные routes.log (stdout JSON)
+и routes.stderr.log. ExitStack закрывает оба файла при отказе/timeout;
+успешный evidence manifest и artifact содержат оба raw файла с SHA256.
+При route failure stderr path/tail доступен в summary/console. Строгий JSON
+parse/exit codes/source fence/11 native cases/every-page review/task flags
+сохранены. Failed user evidence не переписывается в PASS.
+
+TDD RED: новый stdout/stderr control FAIL, stderr failure field control
+ERROR; negative dirty stdout control GREEN. После fix issuer17 +CI11 =28
+GREEN. Исходные161 pytest cases сохранены, добавлены3 (итого164); Jest357,
+типографика18 прежние. Реальный route checker с дополнительным OS stderr
+DEBUG дал strict stdout JSON PASS. Это Linux OS-stream probe и контролы,
+не утверждение об исполнении нативного Windows в этой сессии.
+AUTH00 reviewed host source fingerprints обновлены штатным collector;
+все668 entries/policies/counts строго равны086b4f6. HTTP/runtime/guard/DTO,
+SQL, route checker и Dockerfiles не изменялись. Пересборка образов/миграции/
+перезапуск VM для этого fix не требуются; VM не затрагивалась.
+Поставка delta поверх предыдущего CI fix; manifest
+scripts/pgv1314cert/routefix/files.txt. Commit/push выполняет тимлид.
+
+Итог route-streams fix: полный default pgv1314cert gate PASS175.0с,
+pytest164 +43subtests/Jest357/typography18/CP1252/routes/inventory/renderer
+build/обе typechecks/обе production-сборки GREEN. Новый14-file evidence
+включает routes.stderr.log в raw hashes; proof ZIP распакован в отдельный
+каталог и повторно принят strict validate_local. Native task flags false
+сохранены. Strict temporary INDEX AUTH00 PASS54.6с,61/61 unit, оба602
+fences GREEN; финальный INDEX обновлён по полной delta manifest и повторно
+прошёл snapshot parity. Реальный INDEX/HEAD/remote/VM не изменены.
+Поставка21 delta files, новый local proof ZIP, README команд PowerShell,
+worklog12 и SHA256; ZIP CRC/bytes/полнота manifest проверены. Native Windows
+controls и user Windows full gate предстоит повторить после наложения fix.

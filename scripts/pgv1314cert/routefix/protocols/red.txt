@@ -1,0 +1,26 @@
+test_route_stderr_is_separate_hashed_evidence_and_stdout_is_strict_json (tests.unit.test_pgv1314_ci.CIParityTests.test_route_stderr_is_separate_hashed_evidence_and_stdout_is_strict_json) ... FAIL
+test_route_failure_keeps_stderr_diagnostics_and_nonzero_exit (tests.unit.test_pgv1314_ci.CIParityTests.test_route_failure_keeps_stderr_diagnostics_and_nonzero_exit) ... ERROR
+test_route_stdout_noise_is_still_rejected_even_with_valid_json_last (tests.unit.test_pgv1314_ci.CIParityTests.test_route_stdout_noise_is_still_rejected_even_with_valid_json_last) ... ok
+
+======================================================================
+ERROR: test_route_failure_keeps_stderr_diagnostics_and_nonzero_exit (tests.unit.test_pgv1314_ci.CIParityTests.test_route_failure_keeps_stderr_diagnostics_and_nonzero_exit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV1314-CIFIX/tests/unit/test_pgv1314_ci.py", line 58, in test_route_failure_keeps_stderr_diagnostics_and_nonzero_exit
+    self.assertTrue(report['failed_stderr_log'].endswith('routes.stderr.log'))
+                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'failed_stderr_log'
+
+======================================================================
+FAIL: test_route_stderr_is_separate_hashed_evidence_and_stdout_is_strict_json (tests.unit.test_pgv1314_ci.CIParityTests.test_route_stderr_is_separate_hashed_evidence_and_stdout_is_strict_json)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV1314-CIFIX/tests/unit/test_pgv1314_ci.py", line 47, in test_route_stderr_is_separate_hashed_evidence_and_stdout_is_strict_json
+    self.assertEqual(code,0);self.assertTrue(report['passed'])
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.016s
+
+FAILED (failures=1, errors=1)

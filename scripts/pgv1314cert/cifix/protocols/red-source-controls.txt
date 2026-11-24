@@ -1,0 +1,25 @@
+test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload (tests.unit.test_pgv1314_ci.CIParityTests.test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload) ... ERROR
+test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies (tests.unit.test_pgv1314_ci.CIParityTests.test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies) ... FAIL
+
+======================================================================
+ERROR: test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload (tests.unit.test_pgv1314_ci.CIParityTests.test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV1314-CIFIX/tests/unit/test_pgv1314_ci.py", line 21, in test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload
+    run=next(s for s in job['steps'] if s.get('id')=='local')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+
+======================================================================
+FAIL: test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies (tests.unit.test_pgv1314_ci.CIParityTests.test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV1314-CIFIX/tests/unit/test_pgv1314_ci.py", line 34, in test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies
+    self.assertTrue(any('scripts/pgv1314cert/cifix/verify_ci_local.py' in c for c in gate[3]))
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+
+FAILED (failures=1, errors=1)
+Both regression controls reject original 086b4f6 workflow/gate.

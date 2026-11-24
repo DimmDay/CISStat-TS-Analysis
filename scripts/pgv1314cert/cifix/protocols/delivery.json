@@ -1,0 +1,66 @@
+{
+  "base": "086b4f69aed0b2862958e1eccbe0bf85cc498adb",
+  "local": "PASS",
+  "checks": {
+    "workspace_dependencies": {
+      "exit": 0
+    },
+    "renderer_build": {
+      "exit": 0
+    },
+    "pytest": {
+      "exit": 0
+    },
+    "print_jest": {
+      "exit": 0
+    },
+    "typography": {
+      "exit": 0
+    },
+    "windows_parity": {
+      "exit": 0
+    },
+    "routes": {
+      "exit": 0
+    },
+    "inventory": {
+      "exit": 0
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "web_builds": {
+      "exit": 0
+    }
+  },
+  "task_certification": {
+    "PGV-13": false,
+    "PGV-14": false
+  },
+  "case_counts": {
+    "pytest": 161,
+    "print_jest": 357,
+    "typography": 18,
+    "issuer_and_ci_controls": 25
+  },
+  "node": "22.23.5",
+  "npm": "10.9.9",
+  "runtime_changes": false,
+  "vm_commands_required": false,
+  "historical_web_builds_cause": "unknown: original log not uploaded",
+  "source_file_count": 999,
+  "task_file_count": 28,
+  "auth00": {
+    "state": "PASS",
+    "seconds": 48.0,
+    "unit_tests": 61,
+    "index_discovery_surfaces": 602,
+    "real_index_unchanged": true
+  },
+  "portable_local_evidence": {
+    "state": "PASS",
+    "files": 13,
+    "archive": "CISStat-PGV1314-local-evidence-086b4f6-cifix.zip",
+    "sha256": "7b2870c34b489770bd107ef457a6dc33bf25c5fbd040c7db021dff4a6cabd7c0"
+  }
+}

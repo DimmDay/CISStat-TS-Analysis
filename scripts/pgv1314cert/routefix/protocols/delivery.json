@@ -1,0 +1,66 @@
+{
+  "base": "086b4f69aed0b2862958e1eccbe0bf85cc498adb",
+  "apply_after": "previous CISStat-PGV1314-CI-fix-086b4f6 package",
+  "task_files": 21,
+  "node": "22.23.5",
+  "npm": "10.9.9",
+  "full_gate": {
+    "passed": true,
+    "seconds": 175.0,
+    "pytest": 164,
+    "subtests": 43,
+    "jest": 357,
+    "typography": 18,
+    "issuer_and_ci_controls": 28,
+    "checks": {
+      "workspace_dependencies": {
+        "exit": 0
+      },
+      "renderer_build": {
+        "exit": 0
+      },
+      "pytest": {
+        "exit": 0
+      },
+      "print_jest": {
+        "exit": 0
+      },
+      "typography": {
+        "exit": 0
+      },
+      "windows_parity": {
+        "exit": 0
+      },
+      "routes": {
+        "exit": 0
+      },
+      "inventory": {
+        "exit": 0
+      },
+      "typecheck": {
+        "exit": 0
+      },
+      "web_builds": {
+        "exit": 0
+      }
+    }
+  },
+  "auth00": {
+    "passed": true,
+    "seconds": 54.6,
+    "tests": 61,
+    "final_index_parity": true,
+    "real_index_unchanged": true
+  },
+  "routes_unchanged": true,
+  "vm_image_changes": false,
+  "portable_evidence": {
+    "passed": true,
+    "files": 14,
+    "sha256": "66e1f1b87e4479aec69c59cc7f4ceef3887849e6ca5e2b5300ae450856cbaac6"
+  },
+  "task_certification": {
+    "PGV-13": false,
+    "PGV-14": false
+  }
+}

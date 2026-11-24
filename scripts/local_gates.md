@@ -678,3 +678,34 @@ immutable certificate двух задач. `local` сам по себе не с�
 sources/непроверенная последняя страница блокируют выдачу. HTTP routes/SQL
 не меняются. Task manifest `scripts/pgv1314cert/files.txt`, затем штатный
 strict INDEX AUTH00. Post-fix native image/OCR/visual требуется на VM.
+
+### PGV1314 CI parity fix (086b4f6, 24.11.2026)
+
+Default `pgv1314cert` теперь выполняет issuer17 + CI8 controls и **полный**
+`local-evidence` pipeline через общий Node22 driver, включая pytest161,
+Jest357, typography18, CP1252, routes/inventory, typechecks и обе production
+сборки. Требуются Node22 и API + certificate Python requirements; npm ci
+с workspace dependencies выполняется заранее. Вывод сообщает новый каталог
+evidence вне checkout. Это дольше прежнего controls-only gate, но повторяет
+объём GitHub Linux job; native certificate по-прежнему не выдаётся.
+
+CI сохраняет evidence в абсолютный `runner.temp` путь; упавший stage и tail
+его лога выводятся в console. Старые local reports stale по fingerprints.
+Историческая причина `web_builds` run45361226628 неизвестна из-за утраты
+artifact, повторные Node22 сборки прошли. Применение/TDD/риски:
+`docs/pgv1314_ci_parity_fix.md`, task manifest
+`scripts/pgv1314cert/cifix/files.txt`. Runtime/роуты/образы прежние.
+
+
+### PGV1314 Windows route streams fix (24.11.2026)
+
+Уточнение к предыдущему CI fix: controls теперь28 (issuer17 +CI11), exact
+pytest164 (все161 прежних +3 stream regression), Jest357/typography18 прежние.
+На Windows DEBUG от tzlocal/clickhouse в stderr смешивался с routes JSON;
+все10 этапов проходили, но итоговый strict JSON parse падал. Для routes
+stdout и stderr теперь сохраняются раздельно: routes.log и routes.stderr.log,
+оба входят в evidence hashes/artifact. Строгий JSON reader не ослаблен;
+ненулевой route exit сохраняет FAIL и console diagnostics stderr.
+Workflow/default gate уже запускают этот test module, их команды прежние.
+Дизайн/применение: docs/pgv1314_route_streams_fix.md; delta task manifest:
+scripts/pgv1314cert/routefix/files.txt. VM images/runtime/routes прежние.

@@ -82,9 +82,10 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
-    ("pgv1314cert", "pgv1314cert.yml controls", "PGV13/14 certificate issuer, evidence and negative controls (no VM claim)", [
-        [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv1314cert/requirements.txt"],
-        [sys.executable, "-m", "unittest", "tests.unit.test_pgv1314_certification", "-v"],
+    ("pgv1314cert", "pgv1314cert.yml controls + local-evidence", "PGV13/14 controls and full Node22 CI pipeline, including both production builds", [
+        [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/pgv1314cert/requirements.txt"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv1314_certification", "tests.unit.test_pgv1314_ci", "-v"],
+        [sys.executable, "scripts/pgv1314cert/cifix/verify_ci_local.py"],
     ]),
     ("pgv14", "pgv14.yml contracts", "Page-set validation/publication and every-page review (no VM claim)", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv14/requirements.txt"],

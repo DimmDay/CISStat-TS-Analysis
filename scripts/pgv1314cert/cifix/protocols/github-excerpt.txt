@@ -1,0 +1,19 @@
+Commit: 086b4f69aed0b2862958e1eccbe0bf85cc498adb
+Job: https://github.com/DimmDay/CISStat-TS-Analysis/actions/runs/45361226628/job/138331498865
+Both controls Ubuntu/Windows passed. local-evidence failed. The web_builds.log was never uploaded; the historical build cause is not available.
+2026-11-24T09:01:36.9379284Z node: v22.23.5
+2026-11-24T09:01:36.9380192Z npm: 10.9.9
+2026-11-24T09:02:30.7412918Z ##[group]Run python scripts/pgv1314cert/verify.py local --out ../pgv1314-local
+2026-11-24T09:02:31.0264158Z PGV13/14 local: workspace_dependencies
+2026-11-24T09:02:31.0589772Z PGV13/14 local: renderer_build
+2026-11-24T09:02:33.0954964Z PGV13/14 local: pytest
+2026-11-24T09:03:15.8819301Z PGV13/14 local: print_jest
+2026-11-24T09:03:24.7556514Z PGV13/14 local: typography
+2026-11-24T09:03:25.4741506Z PGV13/14 local: windows_parity
+2026-11-24T09:03:47.0546534Z PGV13/14 local: routes
+2026-11-24T09:03:54.1894127Z PGV13/14 local: inventory
+2026-11-24T09:04:00.8200059Z PGV13/14 local: typecheck
+2026-11-24T09:04:20.3163132Z PGV13/14 local: web_builds
+2026-11-24T09:05:27.5180933Z {"state": "FAIL", "passed": false, "task_certification": {"PGV-13": false, "PGV-14": false}}
+2026-11-24T09:05:27.5304361Z ##[error]Process completed with exit code 1.
+2026-11-24T09:05:27.6557323Z ##[error]Invalid pattern '../pgv1314-local/'. Relative pathing '.' and '..' is not allowed.

@@ -1,0 +1,13 @@
+test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies (tests.unit.test_pgv1314_ci.CIParityTests.test_default_gate_runs_full_ci_pipeline_and_has_its_dependencies) ... ok
+test_diagnostics_show_reason_but_redact_credentials_and_bound_output (tests.unit.test_pgv1314_ci.CIParityTests.test_diagnostics_show_reason_but_redact_credentials_and_bound_output) ... ok
+test_driver_rejects_wrong_node_major_before_claiming_parity (tests.unit.test_pgv1314_ci.CIParityTests.test_driver_rejects_wrong_node_major_before_claiming_parity) ... ok
+test_driver_runs_same_pipeline_outside_checkout_and_keeps_failure (tests.unit.test_pgv1314_ci.CIParityTests.test_driver_runs_same_pipeline_outside_checkout_and_keeps_failure) ... ok
+test_node22_driver_preserves_an_explicit_output_path (tests.unit.test_pgv1314_ci.CIParityTests.test_node22_driver_preserves_an_explicit_output_path) ... ok
+test_timeout_has_a_stage_and_diagnostic_log (tests.unit.test_pgv1314_ci.CIParityTests.test_timeout_has_a_stage_and_diagnostic_log) ... ok
+test_web_build_error_is_visible_and_cannot_become_pass (tests.unit.test_pgv1314_ci.CIParityTests.test_web_build_error_is_visible_and_cannot_become_pass) ... ok
+test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload (tests.unit.test_pgv1314_ci.CIParityTests.test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.023s
+
+OK

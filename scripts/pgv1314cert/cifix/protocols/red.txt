@@ -1,0 +1,19 @@
+test_pgv1314_ci (unittest.loader._FailedTest.test_pgv1314_ci) ... ERROR
+
+======================================================================
+ERROR: test_pgv1314_ci (unittest.loader._FailedTest.test_pgv1314_ci)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_pgv1314_ci
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/1c5610407fa7/CISStat-PGV1314-CIFIX/tests/unit/test_pgv1314_ci.py", line 13, in <module>
+    from scripts.pgv1314cert.cifix import verify_ci_local as D
+ImportError: cannot import name 'verify_ci_local' from 'scripts.pgv1314cert.cifix' (unknown location)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
