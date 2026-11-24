@@ -133,6 +133,10 @@
   },
   {
     "method": "GET",
+    "path": "/v1/documentation/runs/{run_id}/print-documents"
+  },
+  {
+    "method": "GET",
     "path": "/v1/documentation/runs/{run_id}/visual-sources"
   },
   {

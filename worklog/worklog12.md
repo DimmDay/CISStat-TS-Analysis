@@ -1420,7 +1420,7 @@ GitHub run требуется после применения и коммита 
 
 ---
 
-## 24.11.2026 — PGV1314 Windows: route JSON/stderr separation
+## Task ID: PGV1314 Windows: route JSON/stderr separation (24.11.2026)
 
 Продолжение CI fix на086b4f6, без новой синхронизации/commit/push. После
 перехода пользователя с Node20.12.2 на Node22.23.5/npm10.9.9 gate прошёл
@@ -1464,3 +1464,88 @@ fences GREEN; финальный INDEX обновлён по полной delta 
 Поставка21 delta files, новый local proof ZIP, README команд PowerShell,
 worklog12 и SHA256; ZIP CRC/bytes/полнота manifest проверены. Native Windows
 controls и user Windows full gate предстоит повторить после наложения fix.
+
+---
+
+## TaskID: PGV-15 — Documents picker/preview/PNG UI, база a224296 (24.11.2026)
+
+По прямому указанию тимлида изучены spec_passport_graphics_visual.md (§10.2/
+§11/§13 строка PGV-15, AC06/AC09–AC14/AC21/AC22/AC24), хвост worklog12
+(PGV-13/14) и код контура: passport_documents/passport_history/print_page_sets/
+document_jobs/print_render_payload, DocumentationWorkspace/lib/documentation/
+visualExports, роутер documentation, карта AUTH-00. Дизайн/риски/применение:
+docs/pgv15_documents_picker_ui.md. Отдельный checkout не создавался: работа в
+существующем клоне main@a224296; commit/push запрещены и не выполнялись.
+
+Поставка PGV-15: «Документы исследования» получают печатные семейства (§10.2).
+Фильтр семейств DocumentationWorkspace (default «Документы» — прежний D01–D12
+поток байт-в-байт; D-каталог скрыт в печатных семействах), вкладка «Паспорта
+свойств»: сохранённые P01/P02 (листинг) + «Восстановить паспорта» — пикер
+durable-источников GET passport-sources (PGV-13) с режимами «Один паспорт» /
+«Комплект траектории» (default, §8) / «Сравнение» (чекпоинт-траектория либо
+ровно два снимка — детерминированный приоритет), честные статусы content
+(present/missing/corrupt), reused-чекпоинт «исходный снимок» (AC11), сводка
+resolved-точек/gaps/completeness (AC10/AC12), поллинг job → предпросмотр и
+скачивания. Вкладка «Визуализации»: сохранённые V01 + честная подпись Пути A.
+Критерий «D02 не P01»: явная подпись разведения + тест-гвард; D02 остаётся
+видом snapshot-каталога D01–D12 (AC22). Критерий «ZIP страниц доступен»:
+ready job DTO PGV-14 (output_format/metadata_url) → «Скачать PNG» (одна
+страница) / «Скачать все страницы PNG (ZIP)» + Metadata (JSON); предпросмотр
+соответствует скачиваемой версии: PNG — blob того же защищённого
+content-маршрута, ZIP не рисуется клиентом — состав страниц из frozen
+metadata (pgv.page_metadata/1) с честной подписью. JobPayload получил
+аддитивные optional output_format/metadata_url.
+
+API: один новый READ-маршрут GET /v1/documentation/runs/{run_id}/print-documents
+(операция documentation.list_print_documents_route, policy document.object,
+effects [read], admission authorize-before-operation). Субстрат —
+DocumentDeliveryService.list_print_document_deliveries поверх
+list_print_documents (метод-заготовка PGV-13/14 «субстрат PGV-15»): ≤3
+документа на run (V01/P01/P02), ревизии печатных документов + ГОТОВЫЕ
+renditions одной выборкой jobs (metadata-only: без байтов, §14); авторизация
+_read первым шагом, чужой/несуществующий run — uniform 404 (AC18), GET не
+создаёт jobs (§11 read-only). Идемпотентность восстановления — существующий
+POST passport-documents (§11); сборка PNG — существующий POST
+print-revisions/{id}/renditions с replay ready (AC09). Новых POST/науки/
+SQL/Docker нет.
+
+TDD: Python RED 10 → GREEN 13 (tests/api/test_pgv15_print_documents_ui.py:
+листинг/форма/404/empty/renditions/job-DTO/picker single-set-compare/
+идемпотентность/честные gaps/коды ошибок/гвард D02≠P01; протоколы
+scripts/pgv15/protocols/red_python.txt, green_python.txt; изоляция паттерна
+PGV-13 + reset_documentation_service_for_testing). TS RED 4 suite (модули
+отсутствуют) → GREEN 42 (passportDocuments.test.ts — URL-формы/плоские коды/
+offline; PassportDocumentsPanel.test.tsx — режимы/версии/D02≠P01/честные
+статусы/ZIP-vs-PNG/failed; PrintDocumentsPanel.test.tsx — листинг/фильтр
+семейств/404/offline/предпросмотр PNG-blob vs ZIP-metadata/replay 429;
+DocumentationWorkspace.pgv15.test.tsx — интеграция фильтра; red_ts.txt,
+green_ts_pgv15.txt). Регрессия: прежние Documentation suite 36 PASS; полный
+jest 3000 PASS/0 failed (2 skipped — легаси; 2 suite-ошибки — flaky песочницы:
+SIGKILL воркера и ts-jest NODE_ENV при параллельном старте, оба проходят
+индивидуально и в параллельном одиночном прогоне); pytest PGV-15+PGV-13+PGV-09
+90 PASS. Аффектед-фиксы честных оракулов: doclog4-badge-dark (пин h2 3→4 —
+четвёртая бейдж-область PGV-15 с тем же scoped-классом), PGV-00 coverage
+(exclusion operational_list для пикера печатных семейств — научная геометрия
+P01/P02/V01 рендерится print-renderer из frozen inputs, пины 10→11 в двух
+тестах), JSON-твин config/visual_registry.json перегенерирован
+(scripts/pgv00/export_registry.ts). Предсуществующий красный a224296 (не
+PGV-15): scripts/pgv00/check_documents.py 358/362 (total_sites 93 vs 92 и
+legacy_client/not_mounted пины) — подтверждён на чистой базе.
+
+Карта роутов: actual ASGI 285 = inventory 285, bindings 289 (+1), added/
+missing=[] (auth06); inventory 668→669, OpenAPI/TS auth01 и proxy allowlist
+перегенерированы (access_registry → auth01 → auth06 → inventory); policy_review
++1 классификация +7 reviewed sources. Task-гейт
+scripts/pgv15/check_routes_auth00.py PASS (дифф полной карты с fc510f0 =
+ровно 3 added: 2×PGV-13 + 1×PGV-15 / 0 removed; символы роутера; классификации/
+binding; basis-каталог V01/P01/P02; read-only листинг без write-вызовов).
+scripts/local_gates.py НЕ менялись (корпус гоняют штатные pytest/jest/auth00/
+auth01/auth06); local_gates.md дополнен разделом PGV-15. strict temporary
+INDEX и unit-прогоны AUTH00 — штатные гейты; typecheck обеих apps PASS; обе
+production Next builds PASS. Native Chromium/UDS/OCR/VM — вне задачи PGV-15
+(PGV-14 этап); images/DDL/runtime не менялись: пересборка web-image нужна
+только при штатном выпуске новой сборки оболочки, API-image — не требуется.
+Поставка: download/cisstat-pgv15-documents-picker-ui.zip, manifest
+scripts/pgv15/package_delivery.py (files.txt внутри ZIP), worklog12.md выдаётся
+отдельно. Реальный INDEX/HEAD/main/remote/VM не меняются; commit/push
+выполняет тимлид после review.

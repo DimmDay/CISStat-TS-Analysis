@@ -1,0 +1,602 @@
+PASS packages/ui/components/PassportDocumentsPanel.test.tsx
+  ● Console
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      139 |     const nextSnapshots = result.data?.snapshots ?? [];
+      140 |     const nextCheckpoints = result.data?.checkpoints ?? [];
+    > 141 |     setSnapshots(nextSnapshots);
+          |     ^
+      142 |     setCheckpoints(nextCheckpoints);
+      143 |     setSourcesPhase(
+      144 |       nextSnapshots.length === 0 && nextCheckpoints.length === 0 ? "empty" : "ready",
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:141:5
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      140 |     const nextCheckpoints = result.data?.checkpoints ?? [];
+      141 |     setSnapshots(nextSnapshots);
+    > 142 |     setCheckpoints(nextCheckpoints);
+          |     ^
+      143 |     setSourcesPhase(
+      144 |       nextSnapshots.length === 0 && nextCheckpoints.length === 0 ? "empty" : "ready",
+      145 |     );
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:142:5
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      141 |     setSnapshots(nextSnapshots);
+      142 |     setCheckpoints(nextCheckpoints);
+    > 143 |     setSourcesPhase(
+          |     ^
+      144 |       nextSnapshots.length === 0 && nextCheckpoints.length === 0 ? "empty" : "ready",
+      145 |     );
+      146 |     // Выбор по умолчанию: первый чекпоинт траектории (§8 default).
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:143:5
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      145 |     );
+      146 |     // Выбор по умолчанию: первый чекпоинт траектории (§8 default).
+    > 147 |     setSelectedCheckpoint((current) => current ?? nextCheckpoints[0]?.checkpoint_id ?? null);
+          |     ^
+      148 |     setSelectedRef((current) => current ?? nextSnapshots[0]?.snapshot_ref ?? null);
+      149 |     setCompareRefs([]);
+      150 |   }, [runId]);
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:147:5
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      146 |     // Выбор по умолчанию: первый чекпоинт траектории (§8 default).
+      147 |     setSelectedCheckpoint((current) => current ?? nextCheckpoints[0]?.checkpoint_id ?? null);
+    > 148 |     setSelectedRef((current) => current ?? nextSnapshots[0]?.snapshot_ref ?? null);
+          |     ^
+      149 |     setCompareRefs([]);
+      150 |   }, [runId]);
+      151 |
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:148:5
+
+    console.error
+      Warning: An update to PassportDocumentsPanel inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PassportDocumentsPanel (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/PassportDocumentsPanel.tsx:100:42)
+
+      147 |     setSelectedCheckpoint((current) => current ?? nextCheckpoints[0]?.checkpoint_id ?? null);
+      148 |     setSelectedRef((current) => current ?? nextSnapshots[0]?.snapshot_ref ?? null);
+    > 149 |     setCompareRefs([]);
+          |     ^
+      150 |   }, [runId]);
+      151 |
+      152 |   useEffect(() => {
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/PassportDocumentsPanel.tsx:149:5
+
+PASS packages/ui/components/PrintDocumentsPanel.test.tsx
+PASS packages/ui/components/DocumentationWorkspace.pgv15.test.tsx
+  ● Console
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      327 |     }
+      328 |     const next = result.data?.documents ?? [];
+    > 329 |     setDocuments(next);
+          |     ^
+      330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:329:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      328 |     const next = result.data?.documents ?? [];
+      329 |     setDocuments(next);
+    > 330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+          |     ^
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+      333 |     // терялись и первый документ было невозможно создать (акт §4 C02:
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:330:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      335 |     // списке активный kind остаётся, если ещё существует, иначе --
+      336 |     // первый существующий документ (прежнее поведение).
+    > 337 |     setActiveKind((current) => {
+          |     ^
+      338 |       if (current && next.some((document) => document.kind_code === current)) {
+      339 |         return current;
+      340 |       }
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:337:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      327 |     }
+      328 |     const next = result.data?.documents ?? [];
+    > 329 |     setDocuments(next);
+          |     ^
+      330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:329:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      328 |     const next = result.data?.documents ?? [];
+      329 |     setDocuments(next);
+    > 330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+          |     ^
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+      333 |     // терялись и первый документ было невозможно создать (акт §4 C02:
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:330:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      335 |     // списке активный kind остаётся, если ещё существует, иначе --
+      336 |     // первый существующий документ (прежнее поведение).
+    > 337 |     setActiveKind((current) => {
+          |     ^
+      338 |       if (current && next.some((document) => document.kind_code === current)) {
+      339 |         return current;
+      340 |       }
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:337:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      327 |     }
+      328 |     const next = result.data?.documents ?? [];
+    > 329 |     setDocuments(next);
+          |     ^
+      330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:329:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      328 |     const next = result.data?.documents ?? [];
+      329 |     setDocuments(next);
+    > 330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+          |     ^
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+      333 |     // терялись и первый документ было невозможно создать (акт §4 C02:
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:330:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      335 |     // списке активный kind остаётся, если ещё существует, иначе --
+      336 |     // первый существующий документ (прежнее поведение).
+    > 337 |     setActiveKind((current) => {
+          |     ^
+      338 |       if (current && next.some((document) => document.kind_code === current)) {
+      339 |         return current;
+      340 |       }
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:337:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      327 |     }
+      328 |     const next = result.data?.documents ?? [];
+    > 329 |     setDocuments(next);
+          |     ^
+      330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:329:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      328 |     const next = result.data?.documents ?? [];
+      329 |     setDocuments(next);
+    > 330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+          |     ^
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+      333 |     // терялись и первый документ было невозможно создать (акт §4 C02:
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:330:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      335 |     // списке активный kind остаётся, если ещё существует, иначе --
+      336 |     // первый существующий документ (прежнее поведение).
+    > 337 |     setActiveKind((current) => {
+          |     ^
+      338 |       if (current && next.some((document) => document.kind_code === current)) {
+      339 |         return current;
+      340 |       }
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:337:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      327 |     }
+      328 |     const next = result.data?.documents ?? [];
+    > 329 |     setDocuments(next);
+          |     ^
+      330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:329:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      328 |     const next = result.data?.documents ?? [];
+      329 |     setDocuments(next);
+    > 330 |     setListPhase(next.length === 0 ? "empty" : "ready");
+          |     ^
+      331 |     // C02 (DOCLOG-E2E-RECHECK-1-FIX): выбор вида НЕ сбрасывается успешным
+      332 |     // ПУСТЫМ списком -- иначе deep-link initialKind и ручной выбор
+      333 |     // терялись и первый документ было невозможно создать (акт §4 C02:
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:330:5
+
+    console.error
+      Warning: An update to DocumentationWorkspace inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at DocumentationWorkspace (/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/DocumentationWorkspace.tsx:256:3)
+
+      335 |     // списке активный kind остаётся, если ещё существует, иначе --
+      336 |     // первый существующий документ (прежнее поведение).
+    > 337 |     setActiveKind((current) => {
+          |     ^
+      338 |       if (current && next.some((document) => document.kind_code === current)) {
+      339 |         return current;
+      340 |       }
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at packages/ui/components/DocumentationWorkspace.tsx:337:5
+
+PASS packages/ui/lib/passportDocuments.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       42 passed, 42 total
+Snapshots:   0 total
+Time:        4.754 s, estimated 6 s
+Ran all test suites within paths "packages/ui/lib/passportDocuments.test.ts", "packages/ui/components/PassportDocumentsPanel.test.tsx", "packages/ui/components/PrintDocumentsPanel.test.tsx", "packages/ui/components/DocumentationWorkspace.pgv15.test.tsx".

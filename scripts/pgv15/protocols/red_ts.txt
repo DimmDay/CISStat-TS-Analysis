@@ -1,0 +1,49 @@
+FAIL packages/ui/components/DocumentationWorkspace.pgv15.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module './PassportDocumentsPanel' from 'packages/ui/components/DocumentationWorkspace.pgv15.test.tsx'
+
+      23 | }));
+      24 |
+    > 25 | jest.mock("./PassportDocumentsPanel", () => ({
+         |      ^
+      26 |   PassportDocumentsPanel: () => (
+      27 |     <div data-testid="pgv15-passports-panel-mock">passports panel</div>
+      28 |   ),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:895:11)
+      at Object.<anonymous> (packages/ui/components/DocumentationWorkspace.pgv15.test.tsx:25:6)
+
+FAIL packages/ui/components/PrintDocumentsPanel.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/PrintDocumentsPanel.test.tsx[0m:[93m10[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module './PrintDocumentsPanel' or its corresponding type declarations.
+
+    [7m10[0m import { PrintDocumentsPanel } from "./PrintDocumentsPanel";
+    [7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [96mpackages/ui/components/PrintDocumentsPanel.test.tsx[0m:[93m25[0m:[93m42[0m - [91merror[0m[90m TS2554: [0mExpected 1 arguments, but got 2.
+
+    [7m25[0m     libMock.passportDocumentErrorText(s, c),
+    [7m  [0m [91m                                         ~[0m
+
+FAIL packages/ui/components/PassportDocumentsPanel.test.tsx
+  ● Test suite failed to run
+
+    [96mpackages/ui/components/PassportDocumentsPanel.test.tsx[0m:[93m11[0m:[93m40[0m - [91merror[0m[90m TS2307: [0mCannot find module './PassportDocumentsPanel' or its corresponding type declarations.
+
+    [7m11[0m import { PassportDocumentsPanel } from "./PassportDocumentsPanel";
+    [7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+FAIL packages/ui/lib/passportDocuments.test.ts
+  ● Test suite failed to run
+
+    [96mpackages/ui/lib/passportDocuments.test.ts[0m:[93m14[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module './passportDocuments' or its corresponding type declarations.
+
+    [7m14[0m } from "./passportDocuments";
+    [7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 4 failed, 4 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        3.358 s
+Ran all test suites within paths "packages/ui/lib/passportDocuments.test.ts", "packages/ui/components/PassportDocumentsPanel.test.tsx", "packages/ui/components/PrintDocumentsPanel.test.tsx", "packages/ui/components/DocumentationWorkspace.pgv15.test.tsx".

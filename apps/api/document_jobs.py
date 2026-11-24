@@ -1991,6 +1991,92 @@ class DocumentDeliveryService:
             )
         return result
 
+    def list_print_document_deliveries(
+        self,
+        run_id: str,
+        subject: Any,
+        *,
+        session_id: str = "",
+    ) -> list[dict[str, Any]]:
+        """PGV-15 (spec_passport_graphics_visual.md §10.2/§11/§13, строка
+        PGV-15): versioned-листинг печатных документов V01/P01/P02 с
+        ревизиями и ГОТОВЫМИ renditions -- субстрат фильтров семейств
+        «Визуализации»/«Паспорта свойств» UI «Документов исследования».
+
+        Read-only (§11: GET не меняет scientific state и не создаёт jobs):
+        metadata-only -- байты не выдаются, только states/размеры/hashes
+        (§14 audit-безопасная проекция). Авторизация -- ПЕРВЫЙ шаг
+        (_authorized_run read): чужой/несуществующий run -- uniform
+        DocumentAccessDenied (HTTP 404, AC18). Готовые renditions
+        собираются ОДНОЙ выборкой jobs run'а по print_revision_id
+        (без N+1); не-ready renditions не показываются -- листинг
+        отражает только фактически готовые файлы (AC08 по построению)."""
+        from apps.api.report_snapshot import PRINT_DOCUMENT_KINDS
+
+        pairs = self.list_print_documents(run_id, subject, session_id=session_id)
+        renditions_by_revision: dict[str, list[DocumentRenditionRecord]] = {}
+        for job in self.registry.list_jobs(run_id):
+            if not job.print_revision_id or not job.rendition_id:
+                continue
+            rendition = self.registry.get_rendition(job.rendition_id)
+            if rendition is None or rendition.state != RENDITION_READY:
+                continue
+            renditions_by_revision.setdefault(job.print_revision_id, []).append(
+                rendition
+            )
+        documents: list[dict[str, Any]] = []
+        for document, revisions in pairs:
+            kind_title = PRINT_DOCUMENT_KINDS.get(
+                document.kind_code, (None, document.kind_code, None)
+            )[1]
+            revision_views: list[dict[str, Any]] = []
+            for revision in revisions:
+                renditions = sorted(
+                    renditions_by_revision.get(revision.print_revision_id, []),
+                    key=lambda item: (item.created_at, item.rendition_id),
+                )
+                revision_views.append(
+                    {
+                        "print_revision_id": revision.print_revision_id,
+                        "version_no": revision.version_no,
+                        "profile_id": revision.profile_id,
+                        "basis_kind": revision.basis_kind,
+                        "basis_artifact_ids": list(revision.basis_artifact_ids),
+                        "basis_fingerprint": revision.basis_fingerprint,
+                        "created_by": revision.created_by,
+                        "created_at": revision.created_at,
+                        "renditions": [
+                            {
+                                "rendition_id": item.rendition_id,
+                                "format": item.format,
+                                "redaction_profile": item.redaction_profile,
+                                "state": item.state,
+                                "media_type": item.media_type,
+                                "size_bytes": item.size_bytes,
+                                "content_sha256": item.content_sha256,
+                                "job_id": item.job_id,
+                                "created_at": item.created_at,
+                            }
+                            for item in renditions
+                        ],
+                    }
+                )
+            documents.append(
+                {
+                    "document_id": document.document_id,
+                    "run_id": document.run_id,
+                    "print_kind": document.kind_code,
+                    "family": (
+                        "visuals" if document.kind_code == "V01" else "passports"
+                    ),
+                    "kind_title": kind_title,
+                    "created_by": document.created_by,
+                    "created_at": document.created_at,
+                    "revisions": revision_views,
+                }
+            )
+        return documents
+
     def list_documents(
         self,
         run_id: str,

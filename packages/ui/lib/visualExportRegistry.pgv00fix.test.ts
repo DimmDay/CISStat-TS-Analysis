@@ -187,7 +187,9 @@ describe("PGV-00-FIX / F-P0C4: navigator.upload.preview.schema", () => {
   it("группа исключений: 10 после PGV-12 (+standalone diagnostics panel)", () => {
     // PGV-12: +1 -- ResidualDiagnosticsPanel не смонтирован; печать
     // диагностики -- смонтированная поверхность workflow-обзора.
-    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(10);
+    // PGV-15: +1 -- пикер/листинг печатных семейств (Passport/Print
+    // DocumentsPanel) -- операционные таблицы документного слоя.
+    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(11);
   });
 });
 

@@ -262,6 +262,21 @@ export { ProgressDrawer } from "./components/ProgressDrawer";
 // представление поверх снимков DOCLOG-2 (состояния §12.3, негативные
 // состояния AC17; preview -- sandboxed iframe, §12.3/AC16).
 export { DocumentationWorkspace, type RunIdSource } from "./components/DocumentationWorkspace";
+// PGV-15 (спека §10.2/§13): печатные семейства «Документов исследования» --
+// пикер паспортов (one/all/compare по версии), предпросмотр и PNG/ZIP UI.
+export { PassportDocumentsPanel } from "./components/PassportDocumentsPanel";
+export { PrintDocumentsPanel } from "./components/PrintDocumentsPanel";
+export {
+  listPassportSources,
+  listPrintDocuments,
+  requestPassportDocument,
+  passportDocumentErrorText,
+} from "./lib/passportDocuments";
+export type {
+  PassportDocumentMode,
+  PrintDocumentFamily,
+  PrintDocumentSummary,
+} from "./lib/passportDocuments";
 // DOCLOG-E2E-RECHECK-1-FIX (C01): разрешение текущего исследования для
 // перехода в «Документы» без ?run= (единый источник run_id -- /trace).
 export { resolveCurrentRun } from "./lib/documentation";

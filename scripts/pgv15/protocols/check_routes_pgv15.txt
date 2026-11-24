@@ -1,0 +1,1 @@
+PASS: routes delta vs fc510f0 == 3 added/0 removed; classification/binding present; basis catalog V01/P01/P02; listing is read-only

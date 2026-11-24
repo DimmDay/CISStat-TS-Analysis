@@ -121,6 +121,11 @@ export interface JobPayload {
   created_at: string;
   updated_at: string;
   rendition: RenditionSummary | null;
+  // PGV-14 (аддитивно в ready job DTO): фактический формат готовых байтов
+  // (запрошенный png intent может быть опубликован как zip page-set) и
+  // ссылка на metadata JSON sidecar (protected rendition content route).
+  output_format?: string;
+  metadata_url?: string;
 }
 
 export interface ApiResult<T> {

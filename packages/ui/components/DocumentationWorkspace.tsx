@@ -49,6 +49,20 @@ import {
 } from "../lib/documentation";
 import { MonitoringComparisonPanel } from "./MonitoringComparisonPanel";
 import { Doclog9ProfileControls } from "./Doclog9ProfileControls";
+import { PassportDocumentsPanel } from "./PassportDocumentsPanel";
+import { PrintDocumentsPanel } from "./PrintDocumentsPanel";
+
+// PGV-15 (spec_passport_graphics_visual.md §10.2/§13): аддитивные
+// семейства «Документов исследования». Default «documents» сохраняет
+// прежнее поведение D01-D12 байт-в-байт; паспорта/визуализации --
+// печатные семейства (P01/P02, V01) из durable-слоя.
+export type DocumentationFamily = "documents" | "passports" | "visuals";
+
+export const FAMILY_LABELS: Record<DocumentationFamily, string> = {
+  documents: "Документы",
+  passports: "Паспорта свойств",
+  visuals: "Визуализации",
+};
 
 // Виды документов D01-D11 (спека §6/§12.2 «Левый список»; D10/D11 --
 // DOCLOG-6 «Согласование и архив»); заголовки -- серверный реестр
@@ -277,6 +291,10 @@ export function DocumentationWorkspace({
   const [reopenedRun, setReopenedRun] = useState<{ runId: string | null } | null>(
     null,
   );
+  // PGV-15: семейство «Документов исследования» (default -- прежний
+  // D01-D12 поток; открытие раздела не создаёт документы фактом открытия,
+  // §12.1 -- переключение фильтра только читает).
+  const [family, setFamily] = useState<DocumentationFamily>("documents");
 
   const effectiveRunId = reopenedRun !== null ? reopenedRun.runId : runId;
   const effectiveRunIdSource: RunIdSource =
@@ -601,6 +619,72 @@ export function DocumentationWorkspace({
       className="flex flex-col gap-4 lg:flex-row lg:items-stretch"
       aria-label="Документы исследования"
     >
+      {/* PGV-15 (§10.2): фильтр семейств -- аддитивные печатные типы.
+          Default «Документы»: прежний D01-D12 поток без изменений. */}
+      <div
+        data-testid="pgv15-family-filter"
+        role="group"
+        aria-label="Семейство документов"
+        className="flex flex-wrap gap-2"
+      >
+        {(Object.keys(FAMILY_LABELS) as DocumentationFamily[]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            data-testid={`pgv15-family-${value}`}
+            aria-pressed={family === value}
+            onClick={() => setFamily(value)}
+            className={`rounded-full px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              family === value
+                ? "bg-brand/20 font-medium text-brand"
+                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/10 dark:text-neutral-200"
+            }`}
+          >
+            {FAMILY_LABELS[value]}
+          </button>
+        ))}
+      </div>
+
+      {/* PGV-15: печатные семейства (V01/P01/P02) -- панели durable-слоя.
+          Требуют разрешённый run; негативные состояния честны внутри
+          панелей (§12.3), D-каталог ниже не рендерится. */}
+      {family !== "documents" && effectiveRunId && (
+        <section
+          data-testid="pgv15-family-pane"
+          aria-label={FAMILY_LABELS[family]}
+          className="doclog4-badge flex min-w-0 flex-col gap-3 rounded-xl border border-brand/60 bg-brand-light/60 px-4 pt-3 pb-6"
+        >
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {family === "passports"
+              ? "Паспорта свойств (печать P01/P02)"
+              : "Визуализации (печать V01)"}
+          </h2>
+          {family === "passports" ? (
+            <PassportDocumentsPanel runId={effectiveRunId} />
+          ) : (
+            <>
+              <p className="text-xs text-neutral-500">
+                Сохранённые печатные визуализации (V01). Экспорт создаётся
+                действием «Скачать PNG» на остановках исследования (Путь A);
+                переход между модулями не теряет задание (§10.1).
+              </p>
+              <PrintDocumentsPanel runId={effectiveRunId} family="visuals" />
+            </>
+          )}
+        </section>
+      )}
+
+      {family !== "documents" && !effectiveRunId && (
+        <p
+          role="status"
+          data-testid="pgv15-family-no-run"
+          className="text-sm text-neutral-500"
+        >
+          Исследование не выбрано — печатные семейства читают durable-слой
+          конкретного запуска («Прогресс» → «Документы» или ?run=…).
+        </p>
+      )}
+
       {/* Область 1: этапы/виды документов (§12.1: 220-260px desktop).
           Бейдж = вся область: рамка/фон эталона RouteCard + pb-6.
           Маркер doclog4-badge — носитель scoped-ревизии тёмной темы
@@ -608,7 +692,10 @@ export function DocumentationWorkspace({
           удвоенный маркер; globals.css, гвард doclog4-badge-dark).
           FIX-4 п.3: hover строк темнеет (dark:hover:bg-black/30; прежний
           dark:hover:bg-neutral-800 = #E3E5EA — почти белая поверхность
-          под белым текстом). */}
+          под белым текстом). D-каталог скрыт в печатных семействах (PGV-15):
+          D02 «Паспорт источника» остаётся здесь и не смешивается с P01. */}
+      {family === "documents" && (
+      <>
       <nav
         data-testid="doclog4-kind-list"
         aria-label="Виды документов"
@@ -1197,6 +1284,8 @@ export function DocumentationWorkspace({
           <p className="text-sm text-neutral-500">Загрузка предпросмотра…</p>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

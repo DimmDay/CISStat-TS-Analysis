@@ -1116,6 +1116,49 @@ def archive_verify(request: Request, run_id: str, payload: dict[str, Any]) -> di
     return report
 
 
+# ── PGV-15: листинг печатных документов (spec_passport_graphics_
+#    visual.md §10.2/§11/§13, строка PGV-15) ─────────────────────────────
+
+
+@router.get("/runs/{run_id}/print-documents")
+def list_print_documents_route(request: Request, run_id: str) -> dict[str, Any]:
+    """PGV-15 (spec_passport_graphics_visual.md §10.2/§11/§13, строка
+    PGV-15): versioned-листинг сохранённых печатных документов
+    V01/P01/P02 с ревизиями и готовыми renditions -- субстрат фильтров
+    семейств «Визуализации»/«Паспорта свойств» UI «Документов
+    исследования». Read-only (§11: GET не запускает науку и не создаёт
+    jobs); D01-D12 legacy-листинг и D02 «Паспорт источника» не задействованы
+    (AC22: печатные P01 -- отдельные документы, не переименование D02).
+    Чужой/несуществующий run -- uniform 404 (AC18: существование не
+    дисклоужается)."""
+    subject, session_id = _subject_and_session(request)
+    try:
+        documents = _delivery_service().list_print_document_deliveries(
+            run_id, subject, session_id=session_id
+        )
+    except DocumentAccessDenied:
+        # Uniform-404 (R09/AC18): «нет» и «чужой» неразличимы; плоское
+        # тело -- паритет соседних PGV-10/13 маршрутов документации.
+        return _export_flat_error(404, "not_found", "Печатные документы недоступны")
+    except UnsupportedFormatError as exc:  # pragma: no cover -- kinds согласованы
+        return _export_flat_error(422, "invalid_selection", str(exc))
+    except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
+        from apps.api.telemetry import emit
+
+        emit(
+            "print_documents_list_unexpected_error",
+            "WARN",
+            message_template="print documents listing failed with unexpected error",
+            error_code=type(exc).__name__,
+        )
+        return _export_flat_error(
+            503,
+            "print_documents_unavailable",
+            "Листинг печатных документов временно недоступен",
+        )
+    return {"run_id": run_id, "documents": documents}
+
+
 # ── PGV-10: экспорт научных визуализаций (spec_passport_graphics_
 #    visual.md §10.1/§11/§13, строка PGV-10) ────────────────────────────
 

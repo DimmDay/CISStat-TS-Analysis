@@ -709,3 +709,42 @@ stdout и stderr теперь сохраняются раздельно: routes.
 Workflow/default gate уже запускают этот test module, их команды прежние.
 Дизайн/применение: docs/pgv1314_route_streams_fix.md; delta task manifest:
 scripts/pgv1314cert/routefix/files.txt. VM images/runtime/routes прежние.
+
+## PGV-15 — Documents picker/preview/PNG UI (база a224296, 24.11.2026)
+
+**Роуты затронуты: +1 READ-маршрут документации** (`GET /v1/documentation/runs/{run_id}/print-documents`,
+операция `documentation.list_print_documents_route`, policy `document.object`,
+effects `[read]`, admission `authorize-before-operation`): actual ASGI 285 =
+inventory 285, bindings 289 (+1), added/missing=[]; научные пути не
+переименованы. Inventory 668→669, OpenAPI/TS (auth01), proxy allowlist
+(auth06) перегенерированы (порядок: access_registry → auth01 → auth06 →
+inventory). policy_review: +1 классификация +7 reviewed sources. Task-гейт:
+`python scripts/pgv15/check_routes_auth00.py` (дифф полной карты с fc510f0 =
+ровно 3 added: 2×PGV-13 + 1×PGV-15 / 0 removed; символы роутера,
+классификации/binding; basis-каталог V01/P01/P02; read-only листинг без
+write-вызовов). Гейты local_gates.py НЕ менялись: корпус PGV-15 —
+tests/api/test_pgv15_print_documents_ui.py (штатный pytest tests/) и 4 Jest
+suite (штатный jest); auth00/auth01/auth06 проверяют карту.
+
+Субстрат листинга — DocumentDeliveryService.list_print_document_deliveries
+(metadata-only: ревизии печатных документов V01/P01/P02 + ГОТОВЫЕ renditions
+одной выборкой jobs; ≤3 документа на run). UI: фильтр семейств
+«Документы/Паспорта свойств/Визуализации» (default — прежний D01–D12 поток;
+D-каталог скрыт в печатных семействах), пикер «Восстановить паспорта»
+(single/set/compare по версии через существующие passport-sources/
+passport-documents; default set — траектория чекпоинта §8), честные статусы
+content (present/missing/corrupt), reused-чекпоинт без ложной копии (AC11),
+поллинг job → предпросмотр (PNG — blob того же content-маршрута; ZIP не
+рисуется клиентом — состав страниц из frozen metadata) и скачивания
+«Скачать PNG» / «Скачать все страницы PNG (ZIP)» + Metadata JSON (PGV-14
+output_format/metadata_url). JobPayload получил аддитивные optional поля.
+D02 «Паспорт источника» остаётся видом snapshot-каталога D01–D12 и не есть
+P01 — подпись разведена, тест-гвард (критерий «D02 не P01», AC22).
+
+RED/GREEN: tests/api 10 RED → 13 PASS (протоколы scripts/pgv15/protocols/
+red_python.txt, green_python.txt); Jest 4 suite RED (модули отсутствуют) →
+42 PASS (red_ts.txt, green_ts_pgv15.txt); регрессия прежних Documentation
+suite 36 PASS. Дизайн/риски: docs/pgv15_documents_picker_ui.md.
+Роуты PGV-13/маршруты D01–D12/jobs/renditions/content не менялись; VM
+образы/runtime не затронуты; пересборка web-image нужна только при выпуске
+новой сборки оболочки (обычный release-путь, без новых зависимостей).

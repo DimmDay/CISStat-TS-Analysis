@@ -1765,6 +1765,19 @@ export const VISUAL_RENDER_SITE_EXCLUSIONS: VisualExclusionRecord[] = [
     reason_class: "controls",
     reason: "Мастера коррекций и описания методик Валидации/Предобработки (Validation*/Preprocessing* Pipeline) — контролы и параметры исправлений; научные результаты рендерят зарегистрированные Overview/Visualizations. Появление графика в мастере будет поймано pattern-сканом как unknown site. Сужено по F-P0C4 (акт PGV-00-CERT): UploadAutoPreviewPipeline — научная блок-схема пайплайна автопревью, зарегистрирована как navigator.upload.preview.schema, а не исключается.",
   },
+  {
+    // PGV-15 (спека §10.2): пикер/листинг печатных семейств «Документов
+    // исследования» -- операционные таблицы версий/источников/статусов.
+    // Научное содержимое печатных представлений P01/P02/V01 рендерит
+    // серверный print-renderer контур (PGV-07/08/13/14) из frozen
+    // payload, НЕ эти панели; таблицы пикера -- документный слой.
+    targets: [
+      "packages/ui/components/PassportDocumentsPanel.tsx",
+      "packages/ui/components/PrintDocumentsPanel.tsx",
+    ],
+    reason_class: "operational_list",
+    reason: "Пикер/листинг печатных документов PGV-15 (версии печатных ревизий, durable-источники паспортов, статусы jobs/renditions) -- операционные таблицы документного слоя; научная геометрия P01/P02/V01 рендерится print-renderer'ом из frozen inputs (PGV-13/14), а не этими панелями.",
+  },
 ];
 
 // ── Хелперы ──────────────────────────────────────────────────────

@@ -2745,6 +2745,14 @@
         "capability": null,
         "selector": "none",
         "authority": "external"
+      },
+      "documentation.list_print_documents_route": {
+        "operation_id": "documentation.list_print_documents_route",
+        "stage_namespace": "service",
+        "stage": "documentation",
+        "capability": null,
+        "selector": "none",
+        "authority": "functional"
       }
     },
     "bindings": {
@@ -3898,6 +3906,10 @@
       },
       "api:GET:/v1/auth/personal-demo": {
         "operation_id": "auth.personal_demo.info",
+        "programmatic_api": false
+      },
+      "api:GET:/v1/documentation/runs/{run_id}/print-documents": {
+        "operation_id": "documentation.list_print_documents_route",
         "programmatic_api": false
       }
     }

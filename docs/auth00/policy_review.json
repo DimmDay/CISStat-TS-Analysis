@@ -8403,6 +8403,17 @@
    ],
    "canonical_operation": "pgv13.documents.operator",
    "admission": "privileged host operator; fresh labelled disposable resources only; no production DSN or public port; exact case/source/image/evidence fences; explicit hash-bound visual review"
+  },
+  "api:GET:/v1/documentation/runs/{run_id}/print-documents": {
+   "policy": "document.object",
+   "stage": "documentation",
+   "stage_namespace": "service",
+   "resource": "run/document/revision/rendition/job/profile",
+   "effects": [
+    "read"
+   ],
+   "canonical_operation": "apps.api.routers.documentation:list_print_documents_route",
+   "admission": "authorize-before-operation"
   }
  },
  "extra_surfaces": [
@@ -9529,6 +9540,7 @@
   "docs/pgv14_ci_encoding_fix.md",
   "docs/pgv14_deploy.md",
   "docs/pgv14_pagination.md",
+  "docs/pgv15_documents_picker_ui.md",
   "packages/ui/components/AccountScreen.tsx",
   "packages/ui/components/BillingPanel.tsx",
   "packages/ui/components/DatasetPassportPanel.tsx",
@@ -9542,6 +9554,7 @@
   "packages/ui/components/EmbeddedHome.tsx",
   "packages/ui/components/LoginScreen.tsx",
   "packages/ui/components/ModelingWorkflowOverview.tsx",
+  "packages/ui/components/PassportDocumentsPanel.tsx",
   "packages/ui/components/PersonalDemoEntry.tsx",
   "packages/ui/components/PreprocessingDecompositionPipeline.tsx",
   "packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx",
@@ -9561,6 +9574,7 @@
   "packages/ui/components/PreprocessingSpectralPipeline.tsx",
   "packages/ui/components/PreprocessingStationarityPipeline.tsx",
   "packages/ui/components/PreprocessingVariancePipeline.tsx",
+  "packages/ui/components/PrintDocumentsPanel.tsx",
   "packages/ui/components/ProgressCheckpointBar.tsx",
   "packages/ui/components/ProgressDrawer.tsx",
   "packages/ui/components/ResidualDiagnosticsPanel.tsx",
@@ -9612,6 +9626,7 @@
   "packages/ui/lib/forecasting.ts",
   "packages/ui/lib/mentor.ts",
   "packages/ui/lib/monitoring.ts",
+  "packages/ui/lib/passportDocuments.ts",
   "packages/ui/lib/plans.ts",
   "packages/ui/lib/researchOwnership.ts",
   "packages/ui/lib/tasks.ts",
@@ -9710,11 +9725,14 @@
   "scripts/pgv14/test_native.py",
   "scripts/pgv14/test_page_sets.py",
   "scripts/pgv14/verify_vm.py",
+  "scripts/pgv15/check_routes_auth00.py",
+  "scripts/pgv15/package_delivery.py",
   "spec_auth.md",
   "spec_auth_architecture.md",
   "spec_billing_accounts.md",
   "tests/api/test_cisstat_stack_deployment.py",
   "tests/api/test_pgv13_passport_documents.py",
+  "tests/api/test_pgv15_print_documents_ui.py",
   "tests/integration/test_auth12_ledger.py",
   "tests/integration/test_auth15_demo.py",
   "tests/integration/test_auth16_lifecycle.py",

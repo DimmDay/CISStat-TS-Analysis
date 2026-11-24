@@ -338,7 +338,10 @@ describe("PGV-00: coverage-оракул — unknown scientific site blocks CERT"
     // placeholder, мастера-контролы ×1 группа). Удаление записи падает.
     // PGV-12: +1 -- standalone ResidualDiagnosticsPanel (не смонтирован;
     // печать диагностики -- workflow-обзор).
-    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(10);
+    // PGV-15: +1 -- пикер/листинг печатных семейств (Passport/Print
+    // DocumentsPanel) -- операционные таблицы документного слоя; научная
+    // геометрия P01/P02/V01 -- print-renderer из frozen inputs.
+    expect(VISUAL_RENDER_SITE_EXCLUSIONS.length).toBe(11);
     for (const exclusion of VISUAL_RENDER_SITE_EXCLUSIONS) {
       expect(exclusion.reason).toMatch(/\S/);
       expect(exclusion.reason_class.length).toBeGreaterThan(0);

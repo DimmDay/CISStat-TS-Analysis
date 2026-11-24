@@ -11,7 +11,7 @@
 
 | Вид | Число |
 |---|---:|
-| api | 284 |
+| api | 285 |
 | framework | 8 |
 | internal_operation | 39 |
 | legacy_authority | 1 |
@@ -113,8 +113,9 @@
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons | apps.api.routers.monitoring:list_comparisons / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:210 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id} | apps.api.routers.monitoring:get_comparison / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:224 |
 | api:GET:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions | apps.api.routers.monitoring:list_decisions / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:270 |
-| api:GET:/v1/documentation/runs/{run_id}/passport-sources | apps.api.routers.documentation:list_passport_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1275 |
-| api:GET:/v1/documentation/runs/{run_id}/visual-sources | apps.api.routers.documentation:list_visual_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1123 |
+| api:GET:/v1/documentation/runs/{run_id}/passport-sources | apps.api.routers.documentation:list_passport_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1318 |
+| api:GET:/v1/documentation/runs/{run_id}/print-documents | apps.api.routers.documentation:list_print_documents_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1123 |
+| api:GET:/v1/documentation/runs/{run_id}/visual-sources | apps.api.routers.documentation:list_visual_sources_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1166 |
 | api:GET:/v1/internal/rules/load/{template_id} | apps.api.routers.internal:load_rules_template / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:113 |
 | api:GET:/v1/internal/rules/templates | apps.api.routers.internal:get_rules_templates / scientific:validation | scientific.operation / server rule template / module-global override (not Account scoped) | apps/api/routers/internal.py:108 |
 | api:GET:/v1/knowledge/articles | apps.api.knowledge.router:get_articles / service:education | public.metadata / public knowledge registry | apps/api/knowledge/router.py:143 |
@@ -268,9 +269,9 @@
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/actuals | apps.api.routers.monitoring:register_actuals / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:116 |
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons | apps.api.routers.monitoring:create_comparison / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:182 |
 | api:POST:/v1/documentation/runs/{run_id}/monitoring/comparisons/{comparison_id}/decisions | apps.api.routers.monitoring:create_decision / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/monitoring.py:243 |
-| api:POST:/v1/documentation/runs/{run_id}/passport-documents | apps.api.routers.documentation:request_passport_document_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1292 |
+| api:POST:/v1/documentation/runs/{run_id}/passport-documents | apps.api.routers.documentation:request_passport_document_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1335 |
 | api:POST:/v1/documentation/runs/{run_id}/retention/sweep | apps.api.routers.documentation:retention_sweep / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1067 |
-| api:POST:/v1/documentation/runs/{run_id}/visuals | apps.api.routers.documentation:request_visual_export_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1144 |
+| api:POST:/v1/documentation/runs/{run_id}/visuals | apps.api.routers.documentation:request_visual_export_route / service:documentation | document.object / run/document/revision/rendition/job/profile | apps/api/routers/documentation.py:1187 |
 | api:POST:/v1/internal/models/backtest | apps.api.routers.internal:run_backtest_internal / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/internal.py:201 |
 | api:POST:/v1/internal/models/candidates | apps.api.routers.internal:get_candidates_internal / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/internal.py:309 |
 | api:POST:/v1/internal/models/diagnostics | apps.api.routers.diagnostics_internal:run_internal_diagnostics / scientific:modeling | scientific.operation / submitted data / research session / rule namespace | apps/api/routers/diagnostics_internal.py:33 |

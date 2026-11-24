@@ -1,0 +1,103 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.0.2, pluggy-1.6.0
+Fugue tests will be initialized with options:
+rootdir: /home/z/my-project/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: Faker-40.1.2, metadata-3.1.1, asyncio-1.3.0, ddtrace-4.2.2, cov-7.0.0, json-report-1.5.0, anyio-4.13.0, typeguard-4.6.1, fugue-0.9.9
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 13 items
+
+tests/api/test_pgv15_print_documents_ui.py FFFFF..FFF..F                 [100%]
+
+=================================== FAILURES ===================================
+_________ TestPrintDocumentsHTTP.test_list_print_documents_owner_shape _________
+tests/api/test_pgv15_print_documents_ui.py:208: in test_list_print_documents_owner_shape
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Not Found"}
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-BF7C3012 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-BF7C3012 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestPrintDocumentsHTTP.test_list_print_documents_does_not_create_jobs_or_renditions _
+tests/api/test_pgv15_print_documents_ui.py:243: in test_list_print_documents_does_not_create_jobs_or_renditions
+    assert first.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-D6E5AB9C action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-D6E5AB9C operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+___ TestPrintDocumentsHTTP.test_list_print_documents_unknown_run_uniform_404 ___
+tests/api/test_pgv15_print_documents_ui.py:261: in test_list_print_documents_unknown_run_uniform_404
+    assert body["code"] == "not_found"
+           ^^^^^^^^^^^^
+E   KeyError: 'code'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-4EBBF241 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4EBBF241 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+__________ TestPrintDocumentsHTTP.test_list_print_documents_empty_run __________
+tests/api/test_pgv15_print_documents_ui.py:271: in test_list_print_documents_empty_run
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Not Found"}
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-47C45A4D action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-47C45A4D operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+____ TestPrintDocumentsHTTP.test_ready_rendition_summary_appears_in_listing ____
+tests/api/test_pgv15_print_documents_ui.py:306: in test_ready_rendition_summary_appears_in_listing
+    assert response.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-D5F86E97 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-D5F86E97 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+________ TestPickerFlowContract.test_single_by_ref_creates_p01_document ________
+tests/api/test_pgv15_print_documents_ui.py:416: in test_single_by_ref_creates_p01_document
+    assert listing.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-D852CD06 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-D852CD06 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestPickerFlowContract.test_compare_two_refs_creates_p02_and_listing_shows_family _
+tests/api/test_pgv15_print_documents_ui.py:435: in test_compare_two_refs_creates_p02_and_listing_shows_family
+    documents = listing.json()["documents"]
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'documents'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-3DED5337 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-3DED5337 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_____ TestPickerFlowContract.test_idempotent_restore_same_revision_and_job _____
+tests/api/test_pgv15_print_documents_ui.py:460: in test_idempotent_restore_same_revision_and_job
+    p01 = listing.json()["documents"][0]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'documents'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-15928FDE action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-15928FDE operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestDocumentationCatalogUnchanged.test_d02_is_snapshot_catalog_kind_not_p01 __
+tests/api/test_pgv15_print_documents_ui.py:526: in test_d02_is_snapshot_catalog_kind_not_p01
+    kinds = {document["print_kind"] for document in listing.json()["documents"]}
+                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'documents'
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-CBD50D09 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-CBD50D09 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+=============================== warnings summary ===============================
+tests/api/test_pgv15_print_documents_ui.py: 52 warnings
+  /home/z/my-project/CISStat-TS-Analysis/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPrintDocumentsHTTP::test_list_print_documents_owner_shape
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPrintDocumentsHTTP::test_list_print_documents_does_not_create_jobs_or_renditions
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPrintDocumentsHTTP::test_list_print_documents_unknown_run_uniform_404
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPrintDocumentsHTTP::test_list_print_documents_empty_run
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPrintDocumentsHTTP::test_ready_rendition_summary_appears_in_listing
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPickerFlowContract::test_single_by_ref_creates_p01_document
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPickerFlowContract::test_compare_two_refs_creates_p02_and_listing_shows_family
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestPickerFlowContract::test_idempotent_restore_same_revision_and_job
+FAILED tests/api/test_pgv15_print_documents_ui.py::TestDocumentationCatalogUnchanged::test_d02_is_snapshot_catalog_kind_not_p01
+=================== 9 failed, 4 passed, 52 warnings in 6.41s ===================
