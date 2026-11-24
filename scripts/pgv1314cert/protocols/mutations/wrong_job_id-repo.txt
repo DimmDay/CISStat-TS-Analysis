@@ -1,0 +1,100 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1c5610407fa7/CISStat-PGV13-14-FINAL
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 39 items
+
+tests/api/test_pgv13_passport_documents.py ..............F.F.........F.. [ 74%]
+....F.....                                                               [100%]
+
+=================================== FAILURES ===================================
+_ TestRequestPassportDocumentLifecycle.test_set_from_checkpoint_creates_p01_document_and_job _
+tests/api/test_pgv13_passport_documents.py:718: in test_set_from_checkpoint_creates_p01_document_and_job
+    assert job is not None and job.state == "queued"
+E   assert (None is not None)
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-4864F70B action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-4864F70B operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestRequestPassportDocumentLifecycle.test_idempotent_repeat_same_revision_and_job _
+tests/api/test_pgv13_passport_documents.py:755: in test_idempotent_repeat_same_revision_and_job
+    assert second["job"]["job_id"] == first["job"]["job_id"]
+E   AssertionError: assert 'job-5c98cbdb...25d5b7d128e5f' == 'job-3b227003...654cac2dab13c'
+E     
+E     - job-3b22700387184e0c9ce654cac2dab13c
+E     + job-5c98cbdbe87e4baeb9525d5b7d128e5f
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-E5E3A2FC action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-E5E3A2FC operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+_ TestRequestPassportDocumentLifecycle.test_print_rendition_gate_accepts_new_basis_kinds _
+tests/api/test_pgv13_passport_documents.py:958: in test_print_rendition_gate_accepts_new_basis_kinds
+    assert job.job_id == outcome["job"]["job_id"]
+E   AssertionError: assert 'djob-620ff06...20cb952c6d234' == 'job-dd23406e...0cda65c659c1c'
+E     
+E     - job-dd23406e67c3451d8390cda65c659c1c
+E     + djob-620ff063b27d4f30a0620cb952c6d234
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-23F0A534 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-23F0A534 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+______ TestPassportDocumentsHTTP.test_post_passport_documents_idempotent _______
+tests/api/test_pgv13_passport_documents.py:1080: in test_post_passport_documents_idempotent
+    assert second.json()["job"]["job_id"] == first.json()["job"]["job_id"]
+E   AssertionError: assert 'job-4307111a...a97e3d8f297ed' == 'job-30d598b5...2ad278e41ace7'
+E     
+E     - job-30d598b56911452caca2ad278e41ace7
+E     + job-4307111a169243dd9c9a97e3d8f297ed
+------------------------------ Captured log setup ------------------------------
+WARNING  apps.api.identity:identity.py:394 Run access: DENY run=RUN-52F13FC1 action=write subject=anonymous via=anonymous reason=anonymous
+WARNING  apps.api.promotion_integration:promotion_integration.py:87 Artifact promotion failed (durable receipt recorded): run=RUN-52F13FC1 operation=promote_data_version:upload producer_key=data_version:upload error=write denied: anonymous
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/api/test_pgv13_passport_documents.py: 103 warnings
+  /workspace/scratch/1c5610407fa7/CISStat-PGV13-14-FINAL/app/core/passport.py:281: FutureWarning: adfuller currently returns a plain tuple whose length depends on the store and autolag arguments. In release 0.16 or after July 2027, whichever is later, the default behavior will switch to always returning an ADFullerResult. Set result_object=True to switch now, or result_object=False to keep the current behavior and silence this warning.
+    adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
+
+tests/api/test_pgv13_passport_documents.py::TestPassportDocumentsHTTP::test_post_compare_mixed_universes_409
+  /workspace/scratch/1c5610407fa7/CISStat-PGV13-14-FINAL/validation/engine.py:153: FutureWarning: Importing pandas-specific classes and functions from the
+  top-level pandera module will be **removed in a future version of pandera**.
+  If you're using pandera to validate pandas objects, we highly recommend updating
+  your import:
+  
+  ```
+  # old import
+  import pandera as pa
+  
+  # new import
+  import pandera.pandas as pa
+  ```
+  
+  If you're using pandera to validate objects from other compatible libraries
+  like pyspark or polars, see the supported libraries section of the documentation
+  for more information on how to import pandera:
+  
+  https://pandera.readthedocs.io/en/stable/supported_libraries.html
+  
+  To disable this warning, set the environment variable:
+  
+  ```
+  export DISABLE_PANDERA_IMPORT_WARNING=True
+  ```
+  
+    return DataFrameSchema(columns, strict=False, coerce=True)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/1c5610407fa7/CISStat-PGV13-14-FINAL/scripts/pgv1314cert/protocols/mutations/wrong_job_id-repo.xml -
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv13_passport_documents.py::TestRequestPassportDocumentLifecycle::test_set_from_checkpoint_creates_p01_document_and_job
+FAILED tests/api/test_pgv13_passport_documents.py::TestRequestPassportDocumentLifecycle::test_idempotent_repeat_same_revision_and_job
+FAILED tests/api/test_pgv13_passport_documents.py::TestRequestPassportDocumentLifecycle::test_print_rendition_gate_accepts_new_basis_kinds
+FAILED tests/api/test_pgv13_passport_documents.py::TestPassportDocumentsHTTP::test_post_passport_documents_idempotent
+================== 4 failed, 35 passed, 106 warnings in 4.02s ==================

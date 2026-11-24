@@ -62,6 +62,20 @@ def check_disposable_database(dsn):
         require(not c.execute("SELECT 1 FROM pg_tables WHERE schemaname='public' LIMIT 1").fetchone(), 'Disposable database must be empty; refusing existing data')
 
 
+def expected_case(case):
+    """Fixed semantic oracle for the eleven own native fixtures, also used by certification."""
+    kind=case['kind'];compare=kind.startswith('compare')
+    needles=['Сравнение паспортов','Определения'] if compare else ['Паспорт свойств ряда',*GROUPS,'БЕРЁЗА']
+    numbers=[] if compare else ['37']
+    if kind=='compare':
+        needles+=['Числовые метрики','Качественные и категориальные изменения','не определено'];numbers=['7','100']
+    if kind=='set':needles+=['Подтверждение паспорта']
+    if kind=='compare-reused':needles+=['Подтверждение чекпоинта']
+    if kind in ('missing','corrupt'):needles+=['Паспорт недоступен','missing_artifact' if kind=='missing' else 'corrupt']
+    if kind=='compare-missing':needles+=['Полнота','partial']
+    return needles,numbers,({'БЕРЁЗА':3 if kind=='set' else 1} if not compare else {})
+
+
 def passport(index):
     return {
         'basic_stats': {'n':37, 'mean':[0,7,11][index]},
@@ -323,26 +337,14 @@ def exercise(config):
             require(foreign_job.status_code==absent_job.status_code==404 and public_error(foreign_job)==public_error(absent_job), 'Foreign/missing job must be uniform 404')
             require(foreign_file.status_code==absent_file.status_code==404 and public_error(foreign_file)==public_error(absent_file), 'Foreign/missing download must be uniform 404')
             require(anonymous.get(url).status_code in (401,404), 'Anonymous download disclosed content')
-            needles = ['Паспорт свойств ряда',*GROUPS,'БЕРЁЗА'] if not selection['mode']=='compare' else ['Сравнение паспортов','Определения']
-            numbers = ['37'] if selection['mode']!='compare' else []
-            if kind=='compare':
-                needles += ['Числовые метрики','Качественные и категориальные изменения','не определено']
-                numbers = ['7','100']
-            if kind=='set':
-                needles += ['Подтверждение паспорта']
-            if kind=='compare-reused':
-                needles += ['Подтверждение чекпоинта']
-            if kind in ('missing','corrupt'):
-                needles += ['Паспорт недоступен', 'missing_artifact' if kind=='missing' else 'corrupt']
-            if kind=='compare-missing':
-                needles += ['Полнота','partial']
+            needles,numbers,counts = expected_case(case)
             records.append({'id':case['id'],'profile':case['profile'],'job_id':job_id,
                 'print_revision_id':outcome['print_revision_id'],'basis_artifact_id':outcome['snapshot_artifact_id'],
                 'rendition':{k:job['rendition'][k] for k in ('rendition_id','content_sha256','size_bytes','snapshot_payload_sha256')},
                 'download_headers':{k:download.headers[k] for k in ('content-type','content-disposition','cache-control','x-content-type-options')},
                 'payload':actual_payload,'metadata_base64':base64.b64encode(metadata_response.content).decode(), 'delivery_format':job['rendition']['format'],
                 'download_base64':base64.b64encode(download.content).decode(), 'expected_text':needles,'expected_numbers':numbers,
-                'expected_counts':{'БЕРЁЗА':3 if kind=='set' else 1} if selection['mode']!='compare' else {},
+                'expected_counts':counts,
                 'checks':dict.fromkeys(('full_durable_content','queued_http','managed_worker','ready_http','download_digest','repeat_download','queued_idempotency','ready_idempotency','foreign_job_404','foreign_download_404','anonymous_denied','download_headers','download_audit'),True),
                 'worker_cycle':cycle})
         finally:

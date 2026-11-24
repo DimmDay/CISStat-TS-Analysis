@@ -664,3 +664,17 @@ metadata_url прежнего protected content route. AUTH00 reviewed source/li
 подтверждается отдельным новым CI run, не локальной симуляцией.
 Подробности: `docs/pgv14_ci_encoding_fix.md`; hotfix manifest:
 `scripts/pgv14/cifix/files.txt`. Runtime/routes/образы/миграции не меняются.
+
+## PGV13/PGV14 — окончательный task-scoped сертификатор (77cbd70)
+
+Default `pgv1314cert` и CI Ubuntu/Windows проверяют issuer/coverage/подмены
+без Docker; отдельный Linux CI сохраняет полный local evidence artifact.
+Явный `scripts/pgv1314cert/verify.py local|plan|run|issue` замыкает local →
+новый A/B/candidate/recreate/live →11 native cases/каждая PNG → review →
+immutable certificate двух задач. `local` сам по себе не сертификат.
+Подробности/продолжение уже captured VM baseline:
+`docs/pgv1314_final_certification.md`. Набор exact pytest153/print Jest357,
+18 typography controls, CP1252 и обе production builds; skips/xfail/stale
+sources/непроверенная последняя страница блокируют выдачу. HTTP routes/SQL
+не меняются. Task manifest `scripts/pgv1314cert/files.txt`, затем штатный
+strict INDEX AUTH00. Post-fix native image/OCR/visual требуется на VM.

@@ -339,8 +339,9 @@ def run(args, *, page_sets=False):
     return 0 if report['automated_passed'] else 2
 
 
-def finalize(args, *, page_sets=False):
-    report_path=args.report.resolve()
+def validate_acceptance(report_path, review_path, *, page_sets=False):
+    """Read-only revalidation of all pixels/OCR/metadata and the human review."""
+    report_path=Path(report_path).resolve()
     report=json.loads(report_path.read_text(encoding='utf-8'))
     if page_sets:
         O.require(report.get('schema_version')=='pgv13.documents/2','PGV14 page-set report required')
@@ -384,11 +385,16 @@ def finalize(args, *, page_sets=False):
         O.check_document_ocr((report_path.parent/(case['id']+'.ocr.tsv')).read_text(encoding='utf-8'),
             (report_path.parent/(case['id']+'.latin.ocr.tsv')).read_text(encoding='utf-8'),
             case['expected_text'],case['expected_numbers'],O.GEOMETRY[case['profile']],case.get('expected_counts',{}))
-    result=O.validate_review(report_path,json.loads(args.review.read_text(encoding='utf-8')))
-    target=report_path.parent/'accepted.json'
-    O.require(not target.exists(),'Acceptance receipt already exists; preserve immutable evidence')
+    result=O.validate_review(report_path,json.loads(Path(review_path).read_text(encoding='utf-8')))
     result.update(scope='P01/P02 document content, jobs/download, OCR and human visual review',
-        review_sha256=O.sha(args.review.read_bytes()),images=report['images'],image_revision=report['image_revision'])
+        review_sha256=O.sha(Path(review_path).read_bytes()),images=report['images'],image_revision=report['image_revision'])
+    return result
+
+
+def finalize(args, *, page_sets=False):
+    result=validate_acceptance(args.report,args.review,page_sets=page_sets)
+    target=args.report.resolve().parent/'accepted.json'
+    O.require(not target.exists(),'Acceptance receipt already exists; preserve immutable evidence')
     write(target,result)
     print(json.dumps(result,ensure_ascii=False))
     return 0

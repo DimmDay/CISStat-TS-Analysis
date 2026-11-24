@@ -1,0 +1,8 @@
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 19 passed, 19 total
+Tests:       357 passed, 357 total
+Snapshots:   0 total
+Time:        6.783 s
+Ran all test suites matching packages/ui/print|apps/print-renderer/src|scripts/pgv07cert|scripts/pgv08cert.
+Test results written to: ../pgv1314-jest-baseline.json

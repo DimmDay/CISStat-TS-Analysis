@@ -9350,13 +9350,18 @@
    "evidence": [
     {
      "source": "scripts/pgv13accept/verify_vm.py",
-     "line": 397,
+     "line": 403,
      "symbol": "main"
     },
     {
      "source": "scripts/pgv14/verify_vm.py",
      "line": 12,
      "symbol": "main(page_sets=True)"
+    },
+    {
+     "source": "scripts/pgv1314cert/verify.py",
+     "line": 1,
+     "symbol": "local/plan/run/issue, task-scoped certification"
     }
    ]
   }
@@ -9371,6 +9376,7 @@
   ".github/workflows/auth18.yml",
   ".github/workflows/kabinet_demo_cert.yml",
   ".github/workflows/personal_demo.yml",
+  ".github/workflows/pgv1314cert.yml",
   ".github/workflows/pgv14.yml",
   "app/core/auth.py",
   "app/data/db_connectors.py",
@@ -9506,6 +9512,7 @@
   "docs/auth19/design.md",
   "docs/auth21/design.md",
   "docs/auth22/design.md",
+  "docs/pgv1314_final_certification.md",
   "docs/pgv13_api_image_assets.md",
   "docs/pgv13_document_acceptance.md",
   "docs/pgv13_fixes.md",
@@ -9649,6 +9656,14 @@
   "scripts/personal_demo/migrate.py",
   "scripts/personal_demo/requirements.txt",
   "scripts/personal_demo/verify_postgres.py",
+  "scripts/pgv1314cert/extra_client.py",
+  "scripts/pgv1314cert/jest-cases.json",
+  "scripts/pgv1314cert/local.py",
+  "scripts/pgv1314cert/pytest-cases.json",
+  "scripts/pgv1314cert/requirements.txt",
+  "scripts/pgv1314cert/resume.py",
+  "scripts/pgv1314cert/verify.py",
+  "scripts/pgv1314cert/vm.py",
   "scripts/pgv13accept/client.py",
   "scripts/pgv13accept/oracles.py",
   "scripts/pgv13accept/requirements.txt",
@@ -9727,6 +9742,7 @@
   "tests/unit/test_personal_demo.py",
   "tests/unit/test_personal_demo_admin.py",
   "tests/unit/test_personal_demo_entry_pointer.py",
+  "tests/unit/test_pgv1314_certification.py",
   "tests/unit/test_pgv13_accept.py",
   "tests/unit/test_pgv13_image_assets.py",
   "tests/unit/test_pgv13_local_gate.py",

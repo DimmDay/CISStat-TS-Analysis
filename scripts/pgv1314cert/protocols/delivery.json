@@ -1,0 +1,35 @@
+{
+  "schema_version": "pgv1314.delivery_status/1",
+  "state": "READY_FOR_VM_NATIVE_AND_REVIEW",
+  "base": "77cbd70251d9dc46eff82f78ac2b5f92ebc0d155",
+  "task_certification": {
+    "PGV-13": false,
+    "PGV-14": false
+  },
+  "local": {
+    "state": "PASS",
+    "pytest": 153,
+    "jest": 357,
+    "typography": 18,
+    "cp1252": 3,
+    "source_fingerprints": 995,
+    "summary_sha256": "af37a8d0d5f7dd18db586d7a8312ae72a920754456f15e7b37ff32cf9f41d116",
+    "archive": "pgv1314-local-evidence-77cbd70.zip"
+  },
+  "auth00": "PASS61 tests,45.3s; both strict INDEX602 fences; real INDEX unchanged",
+  "route_counts": [
+    284,
+    288,
+    668
+  ],
+  "runtime_images_changed": false,
+  "docker": "absent",
+  "chromium": "BLOCKED before layout, socket EPERM, cases0; sandbox retained",
+  "postgres_control": "PASS11 real managed jobs with explicit HTTP ZIP double; NOT Chromium/UDS/OCR",
+  "mutants": "control both green;3 independent product mutants killed with assertion failures, errors/skips0",
+  "vm_attachment": "baseline capture success only",
+  "commit_push": false,
+  "clean_overlay": "PASS77cbd70; issuer17; strict CRLF INDEX602; portable local proof and thin-host PNG validation",
+  "source_zip_only_task_files": true,
+  "crc_all_bytes_verified": true
+}

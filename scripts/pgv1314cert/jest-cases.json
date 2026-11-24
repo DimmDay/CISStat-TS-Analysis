@@ -1,0 +1,1430 @@
+[
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake Windows shell paths use forward slashes; Unix backslashes stay literal"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake cancellation before spawn prevents exec, even when the wrapper starts later"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake failure to record ownership cannot fall through to browser exec"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake known job PID is killed as an entire process group"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake uncancelled wrapper executes its command on a path with spaces and quotes"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake unsafe PID -1 cannot signal another group"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake unsafe PID 0 cannot signal another group"
+  ],
+  [
+    "apps/print-renderer/src/launchGuard.test.ts",
+    "PGV-08 launch ownership before handshake unsafe PID not-a-pid cannot signal another group"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output ZIP contains explicit member hashes without circular archive hash"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output a single indivisible row cannot be clipped into a page"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output comparison identity, table headings, numbered folios and confirmation repeat on every page"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output empty groups are preserved as indivisible units and failure removes partial pages"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output page cap refuses whole set"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output rows are complete and unique and table/group labels repeat"
+  ],
+  [
+    "apps/print-renderer/src/pageSet.test.ts",
+    "PGV14 page set: complete coverage, repeated labels, bounded output unknown-group hint is content, while its group heading repeats with every slice"
+  ],
+  [
+    "apps/print-renderer/src/pageSetWorker.test.ts",
+    "a later-page screenshot failure rejects the whole archive and closes the context"
+  ],
+  [
+    "apps/print-renderer/src/pageSetWorker.test.ts",
+    "one admitted job preflights then screenshots every page and builds the archive"
+  ],
+  [
+    "apps/print-renderer/src/pageSetWorker.test.ts",
+    "page-set cannot be used as a scaled probe or an arbitrary renderer option"
+  ],
+  [
+    "apps/print-renderer/src/pageSetWorker.test.ts",
+    "preflight failure cannot emit even the first PNG"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle IEEE check vector"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle PNG IEND chunk type"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle agrees with a bit-at-a-time oracle on deterministic binary inputs"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle binary bytes"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle checks only visible bytes in a Uint8Array view"
+  ],
+  [
+    "apps/print-renderer/src/pngCrc32.test.ts",
+    "PNG CRC-32: runtime-independent checksum and independent oracle empty"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) HTML без <script, без внешних URL (http/https/file), с CSP default-src 'none' (AC19)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) HTML содержит кириллицу заголовка/подзаголовка и meta-состав §7"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) IH-матрица печатается полностью: bins, проценты, знаменатели, правило 100 % (AC02)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) html_cards секция печатает подпись/значение/единицу"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) html_table секция печатает строки и заголовки; единицы объявлены"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) recharts_svg без svg_xml → честный placeholder, не выдуманный график"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) геометрия поверхности = px профиля (AC16) и шрифтовой стек DejaVu Sans"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: SSR print page из общего бандла PGV-07 (§4.1) санитизированный svg_xml попадает в страницу как научная геометрия (§4.1 passthrough)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: dependency-манифест (PGV-AC17, без ложного ready) бандл не загружен → unavailable/missing_bundle"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: dependency-манифест (PGV-AC17, без ложного ready) все зависимости на месте → available с зафиксированными чеками"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: dependency-манифест (PGV-AC17, без ложного ready) нет браузера → unavailable/missing_browser, не available"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: dependency-манифест (PGV-AC17, без ложного ready) нет шрифтов → unavailable/missing_fonts"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: dependency-манифест (PGV-AC17, без ложного ready) первый недостающий ресурс — единственная причина (детерминизм диагностики)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) parsePngChunks возвращает размеры IHDR (база смоука без растровых библиотек)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) ppi→px/m конверсия честна: 72 ppi → 2835, 600 ppi → 23622"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) removes a legal pHYs located after another ancillary chunk"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) вставляет pHYs после IHDR с 11811 px/m для 300 ppi"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) заменяет существующий pHYs, а не дублирует (идемпотентность)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) отказ на не-PNG входе (сигнатура) — без молчаливой порчи"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: pHYs-инъекция 300 ppi (PGV-AC16) сохраняет байты исходного изображения (IHDR/IDAT/IEND не менялись)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: sandbox-политика (PGV-AC19) javascript отключён и service workers блокируются на странице рендера"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: sandbox-политика (PGV-AC19) launch-спецификация без сетевых/фоновых служб, с пином цветового профиля"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: sandbox-политика (PGV-AC19) политика запросов: http/https/file/blob/ftp — блок, data:/about:blank — разрешён"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: sandbox-политика (PGV-AC19) санитайзер frozen SVG удаляет script/foreignObject/on*-атрибуты и внешние ссылки"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: sandbox-политика (PGV-AC19) санитайзер пропускает чистый SVG без предупреждений (не портит научную геометрию)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 IH-секция без ih_input → missing_field (нет фабкации данных)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 валидный payload проходит без нарушений"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 не-уникальные section_id → duplicate_section"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 неверный schema_version → schema_version_mismatch"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 неизвестный renderer_kind секции → invalid_section_kind"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 неизвестный профиль → invalid_profile (паритет кода PGV-01)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: валидация payload pgv.render_payload/1 пустой список секций → empty_sections"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: версии контрактов hard timeout по умолчанию равен render_timeout_s каталога PGV-01"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: версии контрактов пинует версию payload, версию рендерера и порт по умолчанию"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: таймаут (PGV-AC20) effective timeout = min(requested, hard cap); запрос больше cap зажимается"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-08 rendererCore: таймаут (PGV-AC20) тела ошибок: dependency_unavailable — терминальная (retryable=false), timeout — повторяемая"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-13 rendererCore: секции паспорта/сравнения (P01/P02) gap-запись рендерится баннером без фабкации таблиц (AC12)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-13 rendererCore: секции паспорта/сравнения (P01/P02) passport_comparison без comparison → missing_field"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-13 rendererCore: секции паспорта/сравнения (P01/P02) passport_comparison-секция рендерит PrintPassportComparisonPage (AC13)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-13 rendererCore: секции паспорта/сравнения (P01/P02) passport_record без record → missing_field (контент не фабрикуется)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV-13 rendererCore: секции паспорта/сравнения (P01/P02) passport_record-секция валидна и рендерит PrintPassportPage (§8: все группы)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV13-VIS-01 rendererCore: overflow-guard печатной страницы HTTP-статус overflow — 413 (семья §7 «превышение без скрытого усечения»)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV13-VIS-01 rendererCore: overflow-guard печатной страницы RenderContentOverflowError несёт код/габариты и честную неповторяемость"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV13-VIS-01 rendererCore: overflow-guard печатной страницы переполнение по ширине ИЛИ высоте — violation (строки не режутся молча)"
+  ],
+  [
+    "apps/print-renderer/src/rendererCore.test.ts",
+    "PGV13-VIS-01 rendererCore: overflow-guard печатной страницы умещающийся контент (допуск 1px) не считается переполнением"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX cold launch cancellation late launch is killed and never starts a page after timeout"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries IH fixture denominator equals its population"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries SVG reference custom:x is removed"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries SVG reference file:///etc/passwd is removed"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries SVG reference javascript:x is removed"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries SVG reference relative.png is removed"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries SVG reference vbscript:x is removed"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL //host/x is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL chrome://settings is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL custom:payload is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL javascript:alert(1) is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL relative.svg is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries URL vbscript:x is denied by default"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries direct worker call rejects oversized payload before dependency/browser work"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale -1 is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale 0 is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale 1.1 is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale 2 is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale 3 is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale Infinity is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries invalid production scale NaN is rejected"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries local SVG fragments survive"
+  ],
+  [
+    "apps/print-renderer/src/rendererFix.test.ts",
+    "PGV-08-FIX independent boundaries mini probes and full-size scale are valid"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "active endpoint or ambiguous error never unlinks"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "changed endpoint is never deleted"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "directory mode 1512 fails closed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "directory mode 493 fails closed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "directory mode 504 fails closed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "directory mode 511 fails closed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "foreign UID or unsafe lock fails closed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "missing socket needs no unlink"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "only refused owned same-inode stale socket removed"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "private owned directory and lock accepted"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "regular file and symlink endpoint survive refusal"
+  ],
+  [
+    "apps/print-renderer/src/socketTransport.test.ts",
+    "symlink directory and noncanonical paths fail"
+  ],
+  [
+    "apps/print-renderer/src/transportCancel.test.ts",
+    "HTTP disconnect reaches only this request AbortSignal"
+  ],
+  [
+    "apps/print-renderer/src/transportCancel.test.ts",
+    "HTTP limits are finite independently of Chromium"
+  ],
+  [
+    "apps/print-renderer/src/transportCancel.test.ts",
+    "abort ends admitted worker promptly and frees its slot"
+  ],
+  [
+    "apps/print-renderer/src/transportCancel.test.ts",
+    "operator config cannot remove the transport budgets"
+  ],
+  [
+    "apps/print-renderer/src/transportCancel.test.ts",
+    "receiver enforces body cap before worker admission"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 AC04: рендер в тёмной теме байт-идентичен светлому PrintPageFrame внутри .dark и без него — одинаковый HTML инлайн-стилей"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintIhConditionalMatrix: HTML IH печатается полностью (AC02) PrintIhMetricsMap печатает карту метрик с заголовками"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintIhConditionalMatrix: HTML IH печатается полностью (AC02) color legend шкалы присутствует (0–100 %)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintIhConditionalMatrix: HTML IH печатается полностью (AC02) без построчных знаменателей — честная причина, не выдуманные числа"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintIhConditionalMatrix: HTML IH печатается полностью (AC02) все bins строк/колонок, все проценты в DOM"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintIhConditionalMatrix: HTML IH печатается полностью (AC02) знаменатель строки печатается (n по строке), общий N и правило 100 %"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) SamplingBadge не теряется при раскрытии и честно называет усечение"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) metadata-блок одинаков для compact и expanded (ничего не теряется при раскрытии)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) верх: заголовок, вид, источник (module/stop), target/date/entity, даты"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) низ: метод/параметры, версия данных, короткий ID результата, номер страницы"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) панельный сайт печатает entity (без смешивания, AC14)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 PrintPageFrame: композиция §7 (AC05) предупреждения снапшота печатаются в поясе пояснений (не молча теряются)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 pageGeometry: профили из каталога PGV-01 (AC16) PrintPageSurface задаёт фиксированную геометрию профиля (не viewport)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 pageGeometry: профили из каталога PGV-01 (AC16) PrintPageSurface с масштабом печати сохраняет пропорцию"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 pageGeometry: профили из каталога PGV-01 (AC16) пиксели профилей совпадают с каталогом, пропорции A4 сохранены"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 printTheme: light-print контракт (AC04) resolveChartVarLight паритетен карте chartVars (единственный источник светлых значений)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 printTheme: light-print контракт (AC04) resolveVarStringLight подставляет hex вместо var() и не теряет незнакомые ссылки (fail-visible)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 printTheme: light-print контракт (AC04) статусные метки дублируют цвет формой/текстом (цвет не единственный носитель смысла)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 printTheme: light-print контракт (AC04) типографская шкала физически читаема (нельзя уменьшать до нечитаемого шрифта)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 printTheme: light-print контракт (AC04) фон страницы — непрозрачный белый, все константы палитры — hex"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 purity: print-бандл без fetch/animation/состояния печатная страница несёт глобальный kill-switch анимаций/переходов"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 purity: print-бандл без fetch/animation/состояния статический оракул исходников: запрещённые паттерны отсутствуют"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты PrintCardsSection: подпись+значение+единица"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты PrintChartSection: имена осей с единицами (значение XOR причина), полная легенда"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты PrintHeatmapSection: ячейки, шкала с domain+units, честный пропуск"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты PrintLegendStrip рендерит все записи и не теряется"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты PrintTableSection повторяет заголовки на каждой части и помечает продолжение"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 секции: labels/legend/таблицы/теплокарты chunkTableRows режет только целыми строками (база AC15)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность describeSampling различает режимы (AC08: без скрытого upgrade)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность formatNumberRu детерминирован и не зависит от ICU машины"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность formatPrintTime детерминирован (из ISO-строки, без локали машины)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность formatPrintTime: отсутствие даты — явная причина, не выдуманное время"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность formatUnit: значение XOR причина (§6: единицы не выдумываются)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07 форматтеры: детерминизм и XOR-честность shortRef укорачивает ID и честен на null"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07-FIX: маркировка иллюстративности свотчей легенды (F-P7C2) маркировка присутствует и при пользовательской note (не замещается)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV-07-FIX: маркировка иллюстративности свотчей легенды (F-P7C2) свотчи сопровождаются явной маркировкой «иллюстративные»"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка probe scale≠1 — пропорциональная миниатюра через transform-обёртку"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка длинные monospace-refs переносятся (overflow-wrap), а не обрезаются"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка колонтитулы §7 — bands с физическим паддингом (2.5 мм) и зазором (4 мм)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка прод-рендер scale=1 не создаёт обёртку (DOM байт-идентичен прежнему)"
+  ],
+  [
+    "packages/ui/print/printLayout.test.tsx",
+    "PGV13-VIS-01: mm-отступы каркаса, колонтитулы и probe-обёртка рамка страницы печатает физические поля (12 мм @300ppi), не «сырые» px"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) P02 section headings remain readable in the 300ppi raster"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) VIS-02: unknown (null) печатает честную неизвестность"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) VIS-02: явный unchanged=false не печатает «Состояние совпало»"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) cross_context маркируется в явном режиме"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) gaps честны: отсутствующая validation — gap, не ноль (AC13/§9)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) reused checkpoint: строка подтверждения с confirmed_at и reused ref (AC11)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) категории/списки/булевы/качественные изменения печатаются (AC13)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) определения с zero-denominator reason печатаются (цвет delta не значимость)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportComparisonPage: сравнение (§9/AC13) этапы-колонки, значения, absolute/relative дельты"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) XOR-честность: отсутствующий fingerprint — причина legacy_unknown, не выдуманный хэш (AC12)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) content-гэп — честный баннер без паспортных таблиц (фабкация запрещена)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) corrupt-контент — баннер integrity-проблемы с причиной"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) все известные группы печатаются со значениями"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) неизвестная print'у группа не выбрасывается — печатается по ключу"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) неизвестная схема паспорта — баннер unsupported_schema, не пустая картинка (§8)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) подвал документа несёт источник; номер страницы печатает рамка §7 (PGV13-VIS-01: без дубля)"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07 PrintPassportPage: полный паспорт без сокращений (§8) провенанс: этап, снимок, capture, context/data_revision, схема и версия расчёта"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07-FIX: семантика вложенных applicable (§3.6, F-P7C3) вложенный applicable:false печатает «не применимо: <reason>» без рекурсии по полям"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07-FIX: семантика вложенных applicable (§3.6, F-P7C3) вложенный applicable:true разворачивается по полям без «[object Object]»"
+  ],
+  [
+    "packages/ui/print/printPassport.test.tsx",
+    "PGV-07-FIX: семантика вложенных applicable (§3.6, F-P7C3) печатная страница паспорта не производит «[object Object]» на смешанной форме группы"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: VisualResult/1 — нормализованный frozen input client-authored parameters в VisualResult — нарушение untrusted_parameter_origin"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: VisualResult/1 — нормализованный frozen input digest XOR digest_reason (честный digest либо причина)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: VisualResult/1 — нормализованный frozen input валидный VisualResult проходит"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: VisualResult/1 — нормализованный frozen input коды нарушений стабильны (контракт для PGV-02/09: 422 invalid_selection/profile и пр.)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: registry cross-check — каждый render-site PGV-00 валиден по схеме research-scope сайты несут context_id+data_revision (version обязателен; уточнение required_refs PGV-01)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: registry cross-check — каждый render-site PGV-00 валиден по схеме минимальный валидный снапшот строится и валиден для всех 92 сайтов реестра"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: registry cross-check — каждый render-site PGV-00 валиден по схеме паритет TS⇄JSON: config/print_schema.json — структурно честный твин print-схемы"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: sampling обязателен по applicability, режимы различимы downsampled без point_cap — нарушение missing_point_cap (нет скрытого detail upgrade)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: sampling обязателен по applicability, режимы различимы html_cards: sampling not applicable с явной причиной — валидно"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: sampling обязателен по applicability, режимы различимы samplingRequiredForSite: графики/таблицы/heatmap — да; html_cards — нет"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: sampling обязателен по applicability, режимы различимы график без sampling-блока — нарушение missing_sampling"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: units — значение XOR причина, без выдуманных единиц unit не объявлен: оба null или оба заполнены — нечестно"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: units — значение XOR причина, без выдуманных единиц unit объявлен: ровно одно из value/reason"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей A4 при 300 ppi — ровно 2480×3508 (portrait) и 3508×2480 (landscape) px (spec §7)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей версии схем закреплены (versioned contracts, spec §6)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей каталог профилей: ровно 3 профиля spec §7 — figure-landscape и A4 portrait/landscape"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей лимиты §7 закреплены: 12 MP/стр, 20 стр, 50 MiB, 60 s, tenant=1/global=2"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей пиксели согласованы с физическим размером при 300 ppi (PGV-AC16, допуск округления ≤1px)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: версии схем и каталог print-профилей профиль по умолчанию — figure-landscape; неизвестный профиль не резолвится (422 invalid_profile — PGV-09)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: манифест комплекта — порядок/hash отдельно от PNG bytes (PGV-AC21) hash страницы обязателен; data_included=true запрещён (без raw данных)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: манифест комплекта — порядок/hash отдельно от PNG bytes (PGV-AC21) валидный манифест проходит"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: манифест комплекта — порядок/hash отдельно от PNG bytes (PGV-AC21) дубликаты имён страниц и разрыв порядка — нарушения"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) date честна: computed_at null без reason — нарушение; с reason legacy_unknown — валидно (PGV-AC12)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) research-снапшот без data_revision — нарушение missing_required_ref (критерий version)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) scope выводится из реестра: demo / research / passport / comparison"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) все заявленные refs реестра (required_refs) обязательны в снапшоте — по applicability"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) обязательные refs по scope закреплены (version обязателен для research/passport)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: обязательные refs по scope (Result/version/date по applicability) результат обязателен (Result): result_ref/result_schema_version пустые — нарушение"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: панель без смешивания; reused checkpoint с подтверждением entity_id на чисто univariate виде — нарушение panel_mixing (смешивание запрещено)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: панель без смешивания; reused checkpoint с подтверждением reused checkpoint без confirmed_at/source_snapshot_ref — нарушение (PGV-AC11)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: панель без смешивания; reused checkpoint с подтверждением панельный вид (panel) требует entity_column и mode=panel (PGV-AC14)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: параметры trusted — producer freeze, client selection по allowlist client selection вне allowlist view_params реестра — нарушение selection_not_allowlisted"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: параметры trusted — producer freeze, client selection по allowlist origin client запрещён: только producer_freeze/producer_first_export"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: параметры trusted — producer freeze, client selection по allowlist selection в пределах view_params — валидно"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: содержательные требования секций по renderer_kind detail_level compact/expanded не теряет обязательную metadata (PGV-AC05)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: содержательные требования секций по renderer_kind html_heatmap: цветовая шкала с domain и units обязательна (spec §6 heatmap scale/domain)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: содержательные требования секций по renderer_kind html_table: заголовки строк/колонок обязательны (axes_applicability=not_applicable, spec §6)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: содержательные требования секций по renderer_kind recharts_svg: оси с именами и units обязательны; ось без units — нарушение (PGV-AC05)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: уточнение required_refs сохраняет инварианты PGV-00 schema_version реестра и denominator не менялись"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: уточнение required_refs сохраняет инварианты PGV-00 уточнённые записи PGV-01 несут data_revision (version обязателен)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: честный renderer env и sensitive-политика metadata dependency_status unavailable без причины — нарушение (PGV-AC17)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: честный renderer env и sensitive-политика metadata raw данные в metadata запрещены схемой (raw_data_included=false — пин, PGV-AC21)"
+  ],
+  [
+    "packages/ui/print/printSchema.test.ts",
+    "PGV-01: честный renderer env и sensitive-политика metadata schema_version чужой версии — нарушение schema_version_mismatch"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: отступы в мм (физические поля страницы) все ключи mm-шкалы имеют px-производные (без «сырых» px в каркасе)"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: отступы в мм (физические поля страницы) поля страницы ≥ 10 мм (print margin), колонтитулы и ячейки согласованы"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: перевод физических единиц печати PRINT_PROFILE_PPI паритетен каталогу профилей PGV-01 (все 300 ppi)"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: перевод физических единиц печати mmToPx: 1 мм при 300 ppi = 300/25.4 px (точный перевод)"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: перевод физических единиц печати ptToPx: 1 pt при 300 ppi = 300/72 px (точный перевод)"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: целевая шкала типа (основной 9–10 pt, служебный ~8 pt) px-шкала — точное производное pt-шкалы при ppi каталога (без расхождений)"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: целевая шкала типа (основной 9–10 pt, служебный ~8 pt) иерархия заголовков: title > subtitle > section > body > small > micro"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: целевая шкала типа (основной 9–10 pt, служебный ~8 pt) основной текст body в целевом коридоре 9–10 pt"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: целевая шкала типа (основной 9–10 pt, служебный ~8 pt) служебный текст (small/micro) около 8 pt, не ниже 8 pt"
+  ],
+  [
+    "packages/ui/print/printTheme.test.ts",
+    "PGV13-VIS-01: целевая шкала типа (основной 9–10 pt, служебный ~8 pt) физическая читаемость @300ppi: тело ≥ 9 pt (37.5 px), служебная ≥ 8 pt (33.33 px)"
+  ],
+  [
+    "scripts/pgv07cert/probe_dead_branch.test.tsx",
+    "p7cert-probe-dead D1 вложенный applicable:false — фактические строки"
+  ],
+  [
+    "scripts/pgv07cert/probe_dead_branch.test.tsx",
+    "p7cert-probe-dead D2 вложенный applicable:true — фактические строки"
+  ],
+  [
+    "scripts/pgv07cert/probe_dead_branch.test.tsx",
+    "p7cert-probe-dead D3 вложенный БЕЗ applicable — рекурсия"
+  ],
+  [
+    "scripts/pgv07cert/probe_extra.test.tsx",
+    "p7cert-extra пробы E1 signedNumber малых значений"
+  ],
+  [
+    "scripts/pgv07cert/probe_extra.test.tsx",
+    "p7cert-extra пробы E2 heatColor перевернутый домен"
+  ],
+  [
+    "scripts/pgv07cert/probe_extra.test.tsx",
+    "p7cert-extra пробы E3 formatPrintTime длина 15/16"
+  ],
+  [
+    "scripts/pgv07cert/probe_extra.test.tsx",
+    "p7cert-extra пробы E4 formatNumberRu округление вверх с группировкой"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P1 (REJECTED-документация) flattenPassportGroup: группа с applicable:true разворачивается по полям"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P10 buildMinimalValidSnapshot: detailLevel меняет только display.detail_level"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P1b (REJECTED-документация) flattenPassportGroup: seasonality applicable:true"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P1c (REJECTED-документация) PrintPassportPage: реальная форма паспорта без «[object Object]»"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P2 barrel print/index.ts: PrintLegendStrip резолвится"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P3 formatPrintTime: ISO +03:00 печатается с подписью UTC"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P3b formatPrintTime: подпись зоны из снапшота без конверсии"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P4 chunkTableRows: NaN как rowsPerPage"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P5 heatColor: значения вне домена зажаты"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P6 PrintLegendStrip: 3 записи — записи 0 и 2 получают одинаковый свотч"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P7 PrintPageFrame: источник версии данных — refs.data_revision"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P8 shortRef: keep=10 на кириллическом ref"
+  ],
+  [
+    "scripts/pgv07cert/probe_findings.test.tsx",
+    "PGV-07-CERT пробы находок (p7cert) P9 KNOWN_PASSPORT_GROUPS: состав 12 групп"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_findings.test.tsx",
+    "p7cert Class B: F-P7C1 счётчик doc-contract гварда в журнале B1 worklog-заявление о числе проверок гварда совпадает с фактическим корпусом"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_findings.test.tsx",
+    "p7cert Class B: F-P7C2 свотчи легенды не факты снапшота B2 3 записи легенды различимы цветом ИЛИ явно маркированы как иллюстративные"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_findings.test.tsx",
+    "p7cert Class B: F-P7C3 flattenPassportGroup dead-branch B3a вложенный applicable:false печатает заявленную семантику «не применимо: <reason>»"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_findings.test.tsx",
+    "p7cert Class B: F-P7C3 flattenPassportGroup dead-branch B3b вложенный applicable:true не печатается «[object Object]» (контрактно возможная форма данных)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_findings.test.tsx",
+    "p7cert Class B: F-P7C3 flattenPassportGroup dead-branch B3c печатная страница паспорта не производит «[object Object]» на смешанной форме"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.1 легенда с note; записи все, порядок сохранён"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.1-ext маркировка иллюстративности свотчей присутствует и не замещает note (PGV-07-FIX)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.2 PrintSectionTitle рендерит текст своего раздела"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.3 PRINT_STATUS_MARKS: знаки различимы, уникальны и непусты (свой пин)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.4 PRINT_TYPE_SCALE: микро-порог 9, small 10 — читаемость ограничена контрактом"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.5 resolveVarStringLight: смешанная строка с двумя var() и текстом (свои значения)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.6 resolveChartVarLight: --префикс и без — оба пути"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A10: PrintLegendStrip/PrintSectionTitle — свои данные A10.7 isHexColor: собственные граничные случаи"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.1 formatNumberRu: крупный масштаб, шесть знаков, ноль, целое"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.2 formatNumberRu: нечисловое — честный прочерк (не 0)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.3 formatPrintTime: короткая ISO без секунд печатается, мусор — прочерк/причина"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.4 formatPrintTime: причина приоритетнее прочерка только при отсутствии ISO"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.5 formatUnit: собственные единицы и причина dimensionless"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.6 shortRef: keep=1 — минимум; ref ровно keep — без многоточия"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.7 describeSampling: все режимы различимы на своих данных (AC08)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A1: форматтеры — собственные числа/времена (детерминизм и честность) A1.8 describeAxis: своя ось — имя с единицей и честная ось без единицы"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A2: геометрия профилей и поверхность (AC16) на своих данных A2.1 все три профиля; неизвестный — явный отказ (не молчаливый viewport)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A2: геометрия профилей и поверхность (AC16) на своих данных A2.2 PrintPageSurface: scale=0.25 — четверть пикселей, фон белый непрозрачный"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A2: геометрия профилей и поверхность (AC16) на своих данных A2.3 PrintPageSurface: scale по умолчанию 1 — полный профиль A4"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.1 header: вид/источник (явный source приоритетнее деривации)/target/даты/режим"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.2 footer: метод+origin, версия данных, короткий результат, профиль, номер страницы"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.3 панельный сайт: entity_id печатается; univariate — нет (AC14-дух)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.4 reused-checkpoint строка в header при checkpointReused"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.5 kill-switch анимаций присутствует и охватывает все элементы (пин текста)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.6 warnings печатаются PrintNotes (свои предупреждения, не repo-строки)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A3: каркас страницы (AC05) на своём research-сайте A3.7 PrintNotes пустой список — ничего не рендерит (data-testid отсутствует)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.1 PrintChartSection: оси/легенда 3 записи в порядке/геометрия children"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.2 chunkTableRows: свои размеры — 7 строк по 3, дробный размер floor, пустой вход, размер 1"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.3 PrintTableSection: 7 строк по 3 на части — 3 таблицы, заголовки ×3, продолжение ×2, все строки ровно по разу"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.4 PrintTableSection: единицы секции печатаются в подписи"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.5 heatColor: интерполяция середины домена, отрицательный домен, строгая монотонность синевы"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.6 PrintHeatmapSection: своя матрица 3×4, 2 пропуска, шкала с domain/units, все ячейки"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.7 PrintHeatmapSection: домен по умолчанию [0,1] при null-scale (не фабкация фактического домена)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A4: секции на своих данных A4.8 PrintCardsSection: свои карточки с единицей-причиной"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.1 все 5×2 ячеек, свои проценты, знаменатели строк, общий N, правило строки"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.2 частичные row_totals (null в середине) — печатается прочерк в этой строке, остальные — числа"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.3 row_totals короче rows — недостающие строки: прочерк, без фабкации"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.4 denom note честно печатается при row_totals=null"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.5 цветовая шкала 0–100 % с легендой"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A5: HTML IH на своих данных (AC02) A5.6 PrintIhMetricsMap: свои метрики в ru-формате 4 знаков"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.1 все 12 известных групп + неизвестная группа по ключу; ничего не выброшено; отсутствующие группы НЕ фабкуются"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.10 flattenPassportGroup: applicable:true группы — applicable печатается «Да», поля не теряются"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.11 контрактная семантика вложенного applicable:false (PGV-07-FIX) — «не применимо: <reason>», muted, поля не фабкуются"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.11-ext вложенный applicable:true разворачивается по полям без «[object Object]» (PGV-07-FIX)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.12 номер страницы паспорта: печатается рамкой §7, документ не дублирует (PGV13-VIS-01)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.2 реальные формы данных паспорта (applicable:true) разворачиваются по полям"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.3 особые случаи схемы: направление словами, стационарность текстом; group-level applicable:false — reason виден честно (фабкации нет)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.4 XOR-честность: fingerprint отсутствует — причина legacy_unknown, не выдуманный хэш"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.5 провенанс полный: этап/снимок/время/context/revision/schema/calculation"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.6 content-гэп: баннер с причиной, паспортных таблиц нет (фабкация запрещена)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.7 unsupported_schema: passport/2.0 — баннер; известная 1.2 — без баннера"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.8 схема отсутствует (legacy_unknown) — баннер unsupported_schema + причина в провенансе + группы печатаются как есть"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A6: печатный паспорт на своих данных (§8) A6.9 flattenPassportGroup: вложенность — свои dict'ы без applicable разворачиваются с префиксом"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.1 три этапа-колонки, значения, дельты со знаком, вторая пара только для общей метрики"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.2 категория/список/булево/качественные — свои изменения"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.3 zero-denominator definition и non-significance печатаются из своих definitions"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.4 gaps: свой gap с reason/detail, полнота partial"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.5 cross_context бейдж (свой явный режим)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.6 confirmation reused/unchanged: свои значения, отдельная строка (AC11)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.7 confirmation с причиной времени: честная причина вместо выдуманной даты (AC12-дух)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A7: печатное сравнение на своих данных (§9/AC13) A7.8 футер: schema/aliases count/пар count — свои значения"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A8: AC04 динамический оракул на своих данных (тема не просачивается) A8.1 паспорт: .dark-предок — style идентичен светлому"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A8: AC04 динамический оракул на своих данных (тема не просачивается) A8.2 сравнение: .dark-предок — style идентичен светлому"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A8: AC04 динамический оракул на своих данных (тема не просачивается) A8.3 каркас на своём сайте: .dark-предок — style идентичен"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert A9: AC05 байт-равенство meta compact/expanded на своём сайте A9.1 meta-блок идентичен; обязательный состав на месте"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U01 дизъюнкт namespace: p7cert не встречается в print-модулях (анти-самотриггер: проверяем только packages/ui/print)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U02 версии контрактов print-бандла pinned"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U03 barrel экспортирует все 6 модулей (состав пинуется ключами)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U04 PRINT_PALETTE: собственная транскрипция ключевых светлых значений из globals.css :root (chart-brand/chart-blue/chart-grid/chart-border)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U05 статусные цвета печати затемнены относительно экранной карты (честное решение контраста, не копия)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U06 ORIGIN_LABELS каркаса покрывают PARAMETER_ORIGINS схемы PGV-01"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U07 шрифтовой стек печати pinned и без web-ссылок"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U08 KNOWN_PASSPORT_SCHEMA_VERSIONS: allowlist ровно 1.0–1.2 (документация движка сравнения)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U09 статический оракул сертификатора: дополнительные запрещённые паттерны (сеть печати не отсоединена от repo-корпуса)"
+  ],
+  [
+    "scripts/pgv07cert/test_p7cert_oracles.test.tsx",
+    "p7cert U: контракт и границы корпуса U10 бандл не смонтирован в продуктовый граф (граница PGV-07; экраны — PGV-10…12)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A1: версии контрактов и пины каталога PGV-01 hard timeout пинуется каталогом PGV-01 (не литералом)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A1: версии контрактов и пины каталога PGV-01 версии payload/рендерера/шрифтового профиля и порт зафиксированы"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A2: pHYs-инъекция на своих ppi (AC16) 150 ppi → 5906 px/m, позиция сразу после IHDR, до IDAT"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A2: pHYs-инъекция на своих ppi (AC16) 96 ppi → 3780 px/m; 300 ppi → 11811 px/m (конверсия честна)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A2: pHYs-инъекция на своих ppi (AC16) CRC чанка честен (независимый пересчёт сертификатора)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A2: pHYs-инъекция на своих ppi (AC16) байты изображения не меняются; повторная инъекция идемпотентна"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A2: pHYs-инъекция на своих ppi (AC16) не-PNG вход → отказ без молчаливой порчи; parsePngChunks честен"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A3: dependency-манифест (AC17, без ложного ready) полный комплект → available; порядок чеков зафиксирован"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A3: dependency-манифест (AC17, без ложного ready) пустая строка пути браузера не признаётся зависимостью (ложный ready исключён)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A3: dependency-манифест (AC17, без ложного ready) шрифты/бандл по отдельности дают свои причины; приоритет browser→fonts→bundle"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A4: sandbox-политика (AC19) --no-sandbox сознательно НЕ ставится (fail-closed, §12); цветовой пин на месте"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A4: sandbox-политика (AC19) JS выключен, service workers блокируются, CSP не обходится"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A4: sandbox-политика (AC19) перечисленные внешние/файловые схемы блокируются; data:/about:blank/пусто — разрешены (регистронезависимо)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A4: sandbox-политика (AC19) санитайзер удаляет свои враждебные конструкты и считает честные warnings"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A4: sandbox-политика (AC19) чистый SVG сертификатора проходит без изменений и без warnings"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A5: таймаут и retryability (AC20) зажим [1, cap]: запрос больше cap не расширяет лимит"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A5: таймаут и retryability (AC20) матрица retryability полная; неизвестный код — честный false"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A6: валидация payload pgv.render_payload/1 валидный payload сертификатора — 0 нарушений"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A6: валидация payload pgv.render_payload/1 своя матрица нарушений: коды паритета PGV-01"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) CSP default-src 'none', base about:blank, белый фон; без script/внешних URL (AC19/AC23)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) IH-фикстура сертификатора печатается: bins/проценты/согласный знаменатель (AC02)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) escapeHtml сертификатора: полная пятёрка спецсимволов"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) html_heatmap: явный домен и честный «нет данных» для null-ячейки"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) recharts_svg: чистая геометрия проходит; без svg_xml — честный placeholder"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) геометрия a4-landscape из бандла: 3508×2480 и DejaVu Sans (AC16)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A7: SSR print page на своих данных (§4.1, AC02/04/16/19/23) кириллица заголовка/таблицы; ru-группировка своего числа 12 345"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A8: readConfig (env allowlist CISSTAT_PRINT_RENDERER_*) дефолты: порт 8907, timeout 60 из каталога, concurrency 2, тело 8 MiB, TTL 30"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A8: readConfig (env allowlist CISSTAT_PRINT_RENDERER_*) невалидные int-значения деградируют к дефолту; явные env читаются"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A9: смоук-фикстуры поставки — payload валиден, структура согласна геометрии смоук-сценариев согласны с каталогом PGV-01 (px/ppi)"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_oracles.test.ts",
+    "p8cert A9: смоук-фикстуры поставки — payload валиден, структура согласна три сценария проходят validateRenderPayload без нарушений"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_red_evidence.test.ts",
+    "p8cert RED-свидетельства (падают, пока находки не устранены) R1 / F-P8C4: не-перечисленные схемы (javascript:/chrome:/vbscript:) обязаны блокироваться allowlist'ом"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_red_evidence.test.ts",
+    "p8cert RED-свидетельства (падают, пока находки не устранены) R2 / F-P8C5: scale, выводящий рендер за 12 MP (PGV-01), обязан нарушать валидацию"
+  ],
+  [
+    "scripts/pgv08cert/test_p8cert_red_evidence.test.ts",
+    "p8cert RED-свидетельства (падают, пока находки не устранены) R3 / F-P8C6: знаменатели смоук-фикстуры IH согласны (row_totals суммируются к n_observations)"
+  ]
+]

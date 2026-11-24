@@ -1,0 +1,201 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/1c5610407fa7/CISStat-PGV13-14-FINAL
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 149 items
+
+<Dir CISStat-PGV13-14-FINAL>
+  <Dir scripts>
+    <Dir pgv13cert>
+      <Module test_contracts.py>
+        <Function test_all_groups_survive_without_session_or_scientific_calls>
+        <Function test_exact_request_is_idempotent>
+        <Function test_requested_profile_matches_revision_and_render_payload[single]>
+        <Function test_requested_profile_matches_revision_and_render_payload[set]>
+        <Function test_requested_profile_matches_revision_and_render_payload[compare]>
+        <Function test_p01_reused_checkpoint_prints_three_records_and_confirmation>
+        <Function test_p01_confirmation_is_visible_in_compiled_renderer>
+        <Function test_different_confirmation_keeps_its_own_frozen_metadata>
+        <Function test_historical_refs_do_not_follow_newest_record>
+        <Function test_actual_foreign_principal_and_missing_run_uniform_denial>
+        <Function test_missing_reference_is_gap_and_single_is_unavailable>
+        <Function test_corrupt_source_never_exposes_passport>
+        <Function test_valid_renderer_html_preserves_all_groups>
+        <Function test_python_payload_passes_actual_compiled_renderer[single]>
+        <Function test_python_payload_passes_actual_compiled_renderer[set]>
+        <Function test_python_payload_passes_actual_compiled_renderer[compare]>
+        <Function test_new_builder_does_not_reuse_legacy_frozen_basis[single]>
+        <Function test_new_builder_does_not_reuse_legacy_frozen_basis[set]>
+        <Function test_new_builder_does_not_reuse_legacy_frozen_basis[compare]>
+        <Function test_confirmed_source_is_exact_alias_not_latest>
+        <Function test_retry_time_does_not_change_basis_revision_or_job>
+        <Function test_envelope_does_not_fabricate_scientific_times>
+        <Function test_confirmation_missing_time_and_source_are_visible_reasons>
+        <Function test_confirmed_source_survives_partial_stage_path>
+      <Module test_local_acceptance.py>
+        <Function test_registry_reload_preserves_basis_revision_and_job[single]>
+        <Function test_registry_reload_preserves_basis_revision_and_job[set]>
+        <Function test_registry_reload_preserves_basis_revision_and_job[compare]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[missing_bytes-single]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[missing_bytes-set]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[missing_bytes-compare]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[corrupt_bytes-single]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[corrupt_bytes-set]>
+        <Function test_lost_or_corrupt_object_is_gap_without_invented_content[corrupt_bytes-compare]>
+        <Function test_foreign_ref_has_same_safe_result_as_missing_ref[single]>
+        <Function test_foreign_ref_has_same_safe_result_as_missing_ref[set]>
+        <Function test_foreign_ref_has_same_safe_result_as_missing_ref[compare]>
+        <Function test_incompatible_passports_refuse_before_print_persistence[change0-target_mismatch]>
+        <Function test_incompatible_passports_refuse_before_print_persistence[change1-schema_mismatch]>
+        <Function test_incompatible_passports_refuse_before_print_persistence[change2-universe_mixing]>
+        <Function test_later_same_stage_cannot_replace_historical_checkpoint>
+        <Function test_already_frozen_print_survives_loss_of_source_objects[single]>
+        <Function test_already_frozen_print_survives_loss_of_source_objects[set]>
+        <Function test_already_frozen_print_survives_loss_of_source_objects[compare]>
+      <Module test_deployment.py>
+        <Function test_documented_build_tag_is_the_image_compose_starts>
+        <Function test_new_proxy_paths_require_web_build_in_primary_procedure>
+        <Function test_shipped_topology_declares_a_usable_api_renderer_transport>
+        <Function test_isolation_is_not_disabled_to_get_a_green_smoke>
+  <Package tests>
+    <Dir api>
+      <Module test_pgv13_passport_documents.py>
+        <Class TestModuleBoundaries>
+          <Function test_passport_documents_imports_exclude_session_store_pandas_redis>
+          <Function test_passport_documents_does_not_capture_science>
+        <Class TestPassportPrintSnapshotBuilder>
+          <Function test_single_record_full_content_embedded>
+          <Function test_set_keeps_record_order_and_marks_partial_on_gaps>
+          <Function test_identity_is_deterministic_per_refs>
+          <Function test_snapshot_carries_honest_times_and_sensitive_policy>
+        <Class TestComparisonPrintSnapshotBuilder>
+          <Function test_comparison_embedded_whole>
+          <Function test_reused_confirmation_printed_not_duplicated>
+        <Class TestVisualArtifactValidation>
+          <Function test_passport_print_snapshot_valid_payload_passes>
+          <Function test_passport_print_snapshot_rejects_corrupt_with_content>
+          <Function test_passport_print_snapshot_rejects_wrong_schema_and_profile>
+          <Function test_passport_comparison_snapshot_valid_payload_passes>
+          <Function test_passport_comparison_snapshot_rejects_wrong_inner_schema>
+        <Class TestFreezePassportPrintSnapshot>
+          <Function test_freeze_registers_passport_print_artifact_without_cas>
+        <Class TestRequestPassportDocumentLifecycle>
+          <Function test_set_from_checkpoint_creates_p01_document_and_job>
+          <Function test_single_from_snapshot_ref_creates_p01>
+          <Function test_idempotent_repeat_same_revision_and_job>
+          <Function test_compare_from_checkpoint_creates_p02>
+          <Function test_compare_explicit_refs_marks_cross_context_but_same_run_ok>
+          <Function test_reused_checkpoint_no_duplicate_physical_copy>
+          <Function test_unknown_checkpoint_source_unavailable>
+          <Function test_unknown_single_ref_source_unavailable>
+          <Function test_foreign_run_uniform_denial>
+          <Function test_missing_ref_in_set_is_honest_partial>
+          <Function test_invalid_mode_selection_rejected>
+          <Function test_full_passport_content_after_session_loss>
+          <Function test_print_rendition_gate_accepts_new_basis_kinds>
+          <Function test_basis_catalog_covers_three_kinds>
+        <Class TestPrintRenderPayloadBridge>
+          <Function test_load_and_build_for_passport_print_snapshot>
+          <Function test_load_and_build_for_comparison_snapshot>
+        <Class TestPassportDocumentsHTTP>
+          <Function test_get_passport_sources_owner>
+          <Function test_get_passport_sources_foreign_uniform_404>
+          <Function test_post_passport_documents_compare_202>
+          <Function test_post_passport_documents_idempotent>
+          <Function test_post_passport_documents_set_202>
+          <Function test_post_invalid_mode_422>
+          <Function test_post_unknown_checkpoint_409>
+          <Function test_post_compare_mixed_universes_409>
+          <Function test_post_unknown_run_uniform_404>
+  <Dir scripts>
+    <Dir pgv14>
+      <Module test_page_sets.py>
+        <Function test_single_png_and_metadata_are_bound_to_exact_frozen_input>
+        <Function test_many_pages_deliver_zip_with_every_hash_checked>
+        <Function test_bad_packages_never_reach_ready[<lambda>0]>
+        <Function test_bad_packages_never_reach_ready[<lambda>1]>
+        <Function test_bad_packages_never_reach_ready[<lambda>2]>
+        <Function test_bad_packages_never_reach_ready[<lambda>3]>
+        <Function test_bad_packages_never_reach_ready[<lambda>4]>
+        <Function test_bad_packages_never_reach_ready[<lambda>5]>
+        <Function test_bad_packages_never_reach_ready[<lambda>6]>
+        <Function test_source_payload_cannot_be_replaced>
+        <Function test_real_worker_publishes_zip_and_json_sidecar_and_replays_same_job>
+        <Function test_every_single_and_multi_case_is_retained>
+        <Function test_metadata_failure_cannot_publish_half_a_page_set>
+        <Function test_cancel_before_publication_does_not_leave_ready_pages_or_metadata>
+        <Function test_last_page_is_decoded_even_when_all_manifest_hashes_match[crc]>
+        <Function test_last_page_is_decoded_even_when_all_manifest_hashes_match[profile]>
+        <Function test_page_budget_is_terminal_and_a_single_page_set_still_delivers_zip>
+  <Package tests>
+    <Package unit>
+      <Module test_pgv13_accept.py>
+        <UnitTestCase OracleTests>
+          <TestCaseFunction test_blank_png_is_not_visual_success>
+          <TestCaseFunction test_corrupt_png>
+          <TestCaseFunction test_low_confidence_text_not_counted>
+          <TestCaseFunction test_missing_group_fails_ocr>
+          <TestCaseFunction test_missing_russian_language_is_not_skip_or_fallback>
+          <TestCaseFunction test_ocr_cyrillic_and_numbers_from_pixels>
+          <TestCaseFunction test_ocr_empty_or_malformed>
+          <TestCaseFunction test_ocr_outside_image>
+          <TestCaseFunction test_profile_catalog_dimensions_are_exact>
+          <TestCaseFunction test_reused_set_requires_three_visible_passport_tail_markers>
+          <TestCaseFunction test_review_rejects_pending_and_missing_case>
+          <TestCaseFunction test_review_requires_exact_report_and_images>
+          <TestCaseFunction test_transparent_png>
+          <TestCaseFunction test_valid_png>
+          <TestCaseFunction test_wrong_profile>
+        <UnitTestCase NativeClientContractTests>
+          <TestCaseFunction test_fixed_manifest_includes_profiles_reuse_gaps_and_comparison>
+          <TestCaseFunction test_foreign_runtime_source_rejected>
+          <TestCaseFunction test_production_dsn_rejected_before_any_connection>
+          <TestCaseFunction test_uniform_denial_ignores_only_correlation_not_message_or_code>
+        <UnitTestCase RunnerTests>
+          <TestCaseFunction test_bootstrap_does_not_expose_unknown_exception_detail>
+          <TestCaseFunction test_cleanup_refuses_foreign_label>
+          <TestCaseFunction test_cleanup_removes_only_owned_container_and_its_anonymous_volumes>
+          <TestCaseFunction test_existing_evidence_directory_is_not_overwritten>
+          <TestCaseFunction test_finalize_requires_human_review_and_binds_payload_ocr>
+          <TestCaseFunction test_missing_case_duplicate_and_missing_control_are_rejected>
+          <TestCaseFunction test_missing_image_assets_stop_before_test_postgres_is_created>
+          <TestCaseFunction test_native_pipeline_writes_bound_images_and_pending_visual_review>
+          <TestCaseFunction test_no_docker_writes_failure_not_success>
+          <TestCaseFunction test_production_renderer_is_refused_before_temporary_resources>
+      <Module test_pgv14_accept.py>
+        <UnitTestCase EveryPageTests>
+          <TestCaseFunction test_all_eleven_page_sets_run_and_finalize_with_exact_page_review>
+          <TestCaseFunction test_new_vm_runner_cannot_use_legacy_single_page_mode>
+          <TestCaseFunction test_renderer_limit_codes_remain_terminal_after_transport>
+          <TestCaseFunction test_review_requires_all_pages_and_hashes_including_last_page>
+      <Module test_pgv1314_certification.py>
+        <UnitTestCase CertificationTests>
+          <TestCaseFunction test_changed_runtime_cannot_reuse_prebuilt_images>
+          <TestCaseFunction test_evidence_paths_are_confined_and_hashes_required>
+          <TestCaseFunction test_expectations_preserve_known_numeric_and_reused_oracles>
+          <TestCaseFunction test_foreign_image_revision_volume_and_compiled_substitution_fail>
+          <TestCaseFunction test_jest_rejects_pending_empty_wrong_selection_and_zero_exit_lie>
+          <TestCaseFunction test_limits_need_exact_terminal_error_and_same_candidate>
+          <TestCaseFunction test_missing_case_duplicate_case_and_missing_worker_checks_fail>
+          <TestCaseFunction test_old_capture_is_not_native_evidence>
+          <TestCaseFunction test_scientific_session_and_remaining_holds_fail>
+          <TestCaseFunction test_strict_junit_rejects_skips_xfail_missing_duplicates_and_substitutes>
+          <TestCaseFunction test_task_flags_cannot_be_issued_without_native_validation>
+          <TestCaseFunction test_valid_context_is_task_scoped>
+          <TestCaseFunction test_weakening_document_ocr_expectations_is_not_allowed>
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 149 tests collected in 3.09s =========================

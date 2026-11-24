@@ -1268,3 +1268,101 @@ py_compile и whitespace PASS. Task ZIP проверяется по точном
 каждому payload byte; внешний SHA256 выдаётся отдельно. Нативный Windows CI
 после hotfix не запускался: нужен новый commit/push тимлида, прежний SHA при
 повторном запуске по-прежнему содержит дефект. Runtime/VM/образы неизменны.
+
+---
+
+## PGV13/PGV14 FINAL-CERT — завершающий task-scoped контур, 24.11.2026 (77cbd70)
+
+По прямому указанию тимлида синхронизирован отдельный detached checkout
+77cbd70251d9dc46eff82f78ac2b5f92ebc0d155; commit/parent подтверждены GitHub plugin.
+Исходные checkouts/индексы/архивы сохранены, AGENTS.md и spec_passport_graphics_visual.md
+повторно изучены. Прочитаны worklog_summary2/worklog12, предыдущие PGV13/14,
+сертификационные/regression/deploy/UDS/release/page-set/OCR контуры.
+
+Attachment1(1).txt подтверждает старый live APIcb1635c…,web0c74b32…,renderer55278b45…,
+успешный capture UDS baseline для rollback. Не подтверждает новые candidate/recreate/
+live/PNG/OCR/review. Capture не превращён в сертификат. Docker в сессии отсутствует;
+повторный Chromium launch BLOCKED/cases0, ProcessSingleton socket()EPERM,
+sandbox не ослаблялся. Native VM visual evidence не выдумано.
+
+Дизайн/риски/команды: docs/pgv1314_final_certification.md; конкретный handoff и
+тонкий host setup/перенос local artifact — worklog/pgv1314_operator_resume.md.
+Новый scripts/pgv1314cert/verify.py local|plan|run|issue. local требует exact153
+pytest и357 print/Jest assertions,18 typography controls, CP1252 regression,
+actual routes/inventory, свежий renderer, workspace/lock identity, обе typecheck
+и production builds. Raw logs/XML/JSON +995 source fingerprints/hash каждого
+файла защищают от incomplete/stale/подмены/skips/xfail. Local сам по себе никогда
+не выставляет task certificate. DSN/SMTP/MFA/worker secrets не передаются probes;
+CA/proxy trust settings сохраняются, TLS verification не отключается.
+
+plan читает ровно заданный уже captured bundle, печатает продолжение A/B→candidate→
+SIGKILL/recreate→check; не выполняет Docker/apply, не re-build/re-capture и не
+читает source непроверенного pins.env. Для прежнего release exact-HEAD guard
+план временно выбирает image-source commit, после explicit apply-after-drain/live
+возвращает tool revision. Разрешено только доказанное host-only отличие от image
+source; любые runtime изменения требуют новых images. Старые inputs/baseline/
+evidence/volumes не переписываются. Live apply остаётся отдельным действием
+оператора после drain, без uncertain/financial hold reset.
+
+run переиспользует существующий isolated PostgreSQL/AuthSession/CSRF/AUTH13
+managed jobs и PGV14 every-page pipeline. Все11 исходных CASES сохранены, включая
+figure/reused/missing/corrupt; ни отказами413, ни другим профилем они не заменены.
+Проверяет каждый PNG/ZIP/JSON/metadata/CRC/300ppi/hash/pixel/OCR/source и живые
+API/web/renderer pins/markers/UID/NNP/seccomp/RO IPC. Дополнительно отдельный
+pinned API-image/UDS client вызывает21-section page-cap и oversized indivisible
+row: необходимы ровно HTTP413/правильный code/retryable=false/header=false,
+никакого PNG/partial ZIP, плюс отсутствие PID/OOM событий и owned cleanup.
+
+issue повторно вызывает read-only validate_acceptance: все raw PNG/OCR/metadata и
+все flags каждой страницы, frozen meanings/numeric/count expectations нельзя
+ослабить в report.json. Функция выделена из прежнего finalize без ослабления его
+политики; только host changes. Native payload ожидания вынесены в pure fixture
+helper expected_case без научных формул/изменения CASES. Bundle/first/recreated/
+live/compiled7/registry/no-science/holds0/limits/source/logs/review hashes связаны,
+live три imageIDs читаются заново. Только после этого immutable
+pgv.tasks_certification/1 выставляет PGV-13/PGV-14=true. full_pgv_certified=false:
+PGV15 UI, PGV16 и весь PGV-CERT не входят. На имеющихся данных true certificate
+не выдан и не заявляется.
+
+TDD: первоначально missing issuer module — RED. Независимые controls достигли
+17 GREEN (43 subtests): old capture, missing/duplicate cases, чужие images/revision/
+volume/compiled module, weaker OCR, wrong terminal flags, OOM, source drift,
+incomplete JUnit/Jest, traversal/symlinks, last-page validator failure и immutable
+issuance. Positive issuance только controlled unit model, не VM. Старые pipeline/
+finalize/CP1252 controls повторены, source/science/worker scope не подменялся.
+
+Первый полный local probe дал честный FAIL на next/font SELF_SIGNED_CERT_IN_CHAIN:
+изолированный env потерял инфраструктурный root CA. Исправлено наследование
+CA variables, не отключением TLS. Первый FAIL сохранён. Новые npm workspaces
+установлены в этом checkout, проверяется отсутствие ссылок на чужой checkout.
+Повторный local: PASS153 tests +357 Jest +18 typography +CP1252 +routes/inventory+
+both typechecks/both production builds. Raw proof companion сохраняет относительные
+Jest paths, переносим при тех же fingerprints. После распаковки проверяется вновь.
+
+Дополнительный actual disposable PostgreSQL16.2 control прошёл11 managed cases/
+protected metadata/download/replay/authority/CSRF без analysis session/holds.
+Renderer здесь HTTP ZIP double; не выдаётся за native Chromium/UDS/OCR.
+Независимые executable PGV13 mutants drop_group/wrong_source_hash/wrong_job_id
+проверены отдельным subprocess wrapper на новых task protocol/temp paths;
+исторические отчёты/исходники не перезаписывались. Матрица исходов сохраняется.
+
+Default local gate pgv1314cert и новая CI matrix Ubuntu/Windows проверяют issuer;
+Linux local-evidence CI job создаёт полный artifact (не native certificate),
+fetch-depth0 для исторического PGV13 route oracle. Native-final gate остаётся
+явным VM действием. AUTH00 reviewed source fingerprints/evidence line updated
+штатным collector; HTTP API/DTO/BFF/SQL/renderer runtime не меняются. Проверка
+strict temporary INDEX/61 units и task-only ZIP — итоговые protocols. Реальный
+INDEX/HEAD/main/remote/VM не изменяются; commit/push выполняет тимлид.
+
+
+Итог FINAL-CERT поставки: strict AUTH00 GREEN45.3с,61/61 unit, оба INDEX602
+fences; реальный INDEX hash неизменен. Actual284API/288bindings/668entries,
+семантика entries/policies равна77cbd70. Все3 executable mutants пойманы
+assertion FAIL, без setup errors/skips; control39+3 GREEN. Local PASS153+357+
+18+CP1252+both production builds повторно проверен после копирования artifact
+в другой checkout. Clean77cbd70 ZIP overlay: issuer17 PASS, strict CRLF index
+пяти новых Python/JSON sources602 PASS, thin host без numpy/pandas/scipy/
+FastAPI/psycopg/pytest проверил перенесённый local report и real PNG validators.
+Поставка61 task files + отдельный13-file local proof ZIP; CRC/manifest/каждый
+byte и внешний SHA256 проверены. Native VM/PNG/OCR/review ещё не предоставлены;
+истинный task certificate не создан. Commit/push/VM actions не исполнялись.

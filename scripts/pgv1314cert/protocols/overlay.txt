@@ -1,0 +1,28 @@
+Preparing worktree (detached HEAD 77cbd70)
+HEAD is now at 77cbd70 PGV14 CI UTF-8 FIX — Windows3errors, 23.11.2026 (база2db9f9c)
+Extracted task ZIP over clean77cbd70 and transferred local evidence to a different path.
+Transferred local evidence: PASS 153 exact pytest/357 exact Jest; thin host and per-PNG validators PASS
+test_changed_runtime_cannot_reuse_prebuilt_images (tests.unit.test_pgv1314_certification.CertificationTests.test_changed_runtime_cannot_reuse_prebuilt_images) ... ok
+test_evidence_paths_are_confined_and_hashes_required (tests.unit.test_pgv1314_certification.CertificationTests.test_evidence_paths_are_confined_and_hashes_required) ... ok
+test_expectations_preserve_known_numeric_and_reused_oracles (tests.unit.test_pgv1314_certification.CertificationTests.test_expectations_preserve_known_numeric_and_reused_oracles) ... ok
+test_foreign_image_revision_volume_and_compiled_substitution_fail (tests.unit.test_pgv1314_certification.CertificationTests.test_foreign_image_revision_volume_and_compiled_substitution_fail) ... ok
+test_issue_revalidates_pages_and_writes_an_immutable_scoped_certificate (tests.unit.test_pgv1314_certification.CertificationTests.test_issue_revalidates_pages_and_writes_an_immutable_scoped_certificate) ... ok
+test_jest_rejects_pending_empty_wrong_selection_and_zero_exit_lie (tests.unit.test_pgv1314_certification.CertificationTests.test_jest_rejects_pending_empty_wrong_selection_and_zero_exit_lie) ... ok
+test_limits_need_exact_terminal_error_and_same_candidate (tests.unit.test_pgv1314_certification.CertificationTests.test_limits_need_exact_terminal_error_and_same_candidate) ... ok
+test_missing_case_duplicate_case_and_missing_worker_checks_fail (tests.unit.test_pgv1314_certification.CertificationTests.test_missing_case_duplicate_case_and_missing_worker_checks_fail) ... ok
+test_native_metrics_mutant_is_rejected (tests.unit.test_pgv1314_certification.CertificationTests.test_native_metrics_mutant_is_rejected) ... ok
+test_native_refusal_harness_rejects_wrong_http_code_retryability_and_png_success (tests.unit.test_pgv1314_certification.CertificationTests.test_native_refusal_harness_rejects_wrong_http_code_retryability_and_png_success) ... ok
+test_old_capture_is_not_native_evidence (tests.unit.test_pgv1314_certification.CertificationTests.test_old_capture_is_not_native_evidence) ... ok
+test_resume_prints_the_existing_capture_chain_without_executing_apply (tests.unit.test_pgv1314_certification.CertificationTests.test_resume_prints_the_existing_capture_chain_without_executing_apply) ... ok
+test_scientific_session_and_remaining_holds_fail (tests.unit.test_pgv1314_certification.CertificationTests.test_scientific_session_and_remaining_holds_fail) ... ok
+test_strict_junit_rejects_skips_xfail_missing_duplicates_and_substitutes (tests.unit.test_pgv1314_certification.CertificationTests.test_strict_junit_rejects_skips_xfail_missing_duplicates_and_substitutes) ... ok
+test_task_flags_cannot_be_issued_without_native_validation (tests.unit.test_pgv1314_certification.CertificationTests.test_task_flags_cannot_be_issued_without_native_validation) ... ok
+test_valid_context_is_task_scoped (tests.unit.test_pgv1314_certification.CertificationTests.test_valid_context_is_task_scoped) ... ok
+test_weakening_document_ocr_expectations_is_not_allowed (tests.unit.test_pgv1314_certification.CertificationTests.test_weakening_document_ocr_expectations_is_not_allowed) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.042s
+
+OK
+auth00 INDEX-parity: ok (602 discovery surfaces; full reviewed inventory/source parity)
+CLEAN BASE ZIP/PORTABLE PROOF/CRLF INDEX602/issuer17: PASS

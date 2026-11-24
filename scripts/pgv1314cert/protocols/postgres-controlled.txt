@@ -1,0 +1,11 @@
+waiting for server to start.... done
+server started
+test_all_eleven_real_managed_jobs_and_metadata_download (scripts.pgv14.test_native.NativePageSets.test_all_eleven_real_managed_jobs_and_metadata_download) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 19.100s
+
+OK
+{"native": "PASS", "cases": 11, "metadata": "authorized/hash-bound", "transport": "controlled ZIP double, NOT Chromium/UDS/OCR"}
+waiting for server to shut down.... done
+server stopped

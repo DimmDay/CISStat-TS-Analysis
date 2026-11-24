@@ -1,0 +1,75 @@
+{
+  "kind": "subprocess runtime-wrapper mutants",
+  "pre_registered": "control both green; three mutants independent-oracle RED",
+  "source_sha256_before_after": "4fb636d16dda6c1aa9f6056ca158559b039ce598efdc25f261c5b79bac322360",
+  "matrix": [
+    {
+      "mutant": "control",
+      "repo_exit": 0,
+      "repo_counts": {
+        "tests": 39,
+        "failure": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "oracle_exit": 0,
+      "oracle_counts": {
+        "tests": 3,
+        "failure": 0,
+        "error": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "mutant": "drop_group",
+      "repo_exit": 1,
+      "repo_counts": {
+        "tests": 39,
+        "failure": 1,
+        "error": 0,
+        "skipped": 0
+      },
+      "oracle_exit": 1,
+      "oracle_counts": {
+        "tests": 3,
+        "failure": 1,
+        "error": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "mutant": "wrong_source_hash",
+      "repo_exit": 1,
+      "repo_counts": {
+        "tests": 39,
+        "failure": 1,
+        "error": 0,
+        "skipped": 0
+      },
+      "oracle_exit": 1,
+      "oracle_counts": {
+        "tests": 3,
+        "failure": 1,
+        "error": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "mutant": "wrong_job_id",
+      "repo_exit": 1,
+      "repo_counts": {
+        "tests": 39,
+        "failure": 4,
+        "error": 0,
+        "skipped": 0
+      },
+      "oracle_exit": 1,
+      "oracle_counts": {
+        "tests": 3,
+        "failure": 1,
+        "error": 0,
+        "skipped": 0
+      }
+    }
+  ]
+}
