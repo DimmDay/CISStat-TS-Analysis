@@ -710,6 +710,18 @@ Workflow/default gate уже запускают этот test module, их ко�
 Дизайн/применение: docs/pgv1314_route_streams_fix.md; delta task manifest:
 scripts/pgv1314cert/routefix/files.txt. VM images/runtime/routes прежние.
 
+### PGV13/14 — полный акт на PGV-15-образах (ce88414, 24.11.2026)
+
+`HOST_FILES` сертификатора дополнен корневым `files.txt` (манифест поставки,
+коммит акта этапа4 ce88414; runtime-байтов не содержит). Классификация
+закрыта тестом `test_delivery_manifest_is_host_only_after_docs_commit`
+(RED→GREEN; exact pytest-манифест 164→165; product-файлы по-прежнему требуют
+rebuild). Сам cert-гейт/CI команды прежние; новый reviewed source — runbook
+акта `docs/pgv1314_cert_vm_2026-11-24.md` (прямой local → run → review →
+issue на bundle 922ff70c2381; plan/resume не используется, transport evidence
+уже в bundle). Роуты/SQL/образы/миграции не меняются; pgv13_certified/task
+flags выставляет только `issue` после операторского every-page review.
+
 ## PGV-15 — Documents picker/preview/PNG UI (база a224296, 24.11.2026)
 
 **Роуты затронуты: +1 READ-маршрут документации** (`GET /v1/documentation/runs/{run_id}/print-documents`,

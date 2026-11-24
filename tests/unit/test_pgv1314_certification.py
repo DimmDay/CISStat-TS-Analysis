@@ -94,6 +94,13 @@ class CertificationTests(unittest.TestCase):
         for path in ('apps/api/main.py','app/data/db_connectors.py','apps/standalone/Dockerfile','scripts/auth05/manage.py'):
             with self.subTest(path=path),self.assertRaises(ValueError):C.assert_host_only_changes([path])
 
+    def test_delivery_manifest_is_host_only_after_docs_commit(self):
+        """A docs/cert commit may ship the root delivery manifest; runtime bytes cannot."""
+        C.assert_host_only_changes(['files.txt'])
+        C.assert_host_only_changes(['files.txt','AGENTS.md','worklog/worklog12.md','docs/pgv1314_cert_vm_2026-11-24.md'])
+        for path in ('package.json','apps/api/Dockerfile','app/core/passport/session.py'):
+            with self.subTest(path=path),self.assertRaises(ValueError):C.assert_host_only_changes([path])
+
     def test_strict_junit_rejects_skips_xfail_missing_duplicates_and_substitutes(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'tests.xml';expected=['suite::one','suite::two']

@@ -24,7 +24,7 @@ COMPILED_FILES=(
     'packages/ui/print/printLayout.js','packages/ui/print/printSchema.js','apps/print-renderer/src/pageSet.js')
 HOST_PREFIXES=('docs/','worklog/','tests/','.github/','scripts/pgv13accept/','scripts/pgv14/',
                'scripts/pgv13cert/','scripts/pgv13local/','scripts/pgv1314cert/')
-HOST_FILES={'scripts/local_gates.py','scripts/local_gates.md','AGENTS.md','spec_passport_graphics_visual.md'}
+HOST_FILES={'scripts/local_gates.py','scripts/local_gates.md','AGENTS.md','spec_passport_graphics_visual.md','files.txt'}
 
 
 def require(value,message):
