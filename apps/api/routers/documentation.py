@@ -76,7 +76,7 @@ from apps.api.security_audit import (
     ACTION_RESPONSE_STREAM_FINISHED,
     ACTION_RESPONSE_STREAM_STARTED,
     MandatoryAuditFailure,
-    record_standard,
+    record_mandatory,
 )
 from apps.api.session_store import SESSION_COOKIE_NAME
 
@@ -611,16 +611,34 @@ def get_revision(request: Request, revision_id: str) -> dict[str, Any]:
 @router.get("/revisions/{revision_id}/preview", response_class=HTMLResponse)
 def get_revision_preview(request: Request, revision_id: str) -> Response:
     """§17 GET /revisions/{revision_id}/preview: существующий безопасный
-    HTML; НЕ создаёт документ/рендеринг/научный расчёт. Аудит
-    protected_document_viewed (standard, §14.1)."""
+    HTML; НЕ создаёт документ/рендеринг/научный расчёт.
+
+    PGV-16 SEC-1 (§11/AC11): protected_document_viewed -- MANDATORY
+    (класс из AUDIT_REQUIREMENTS), fail-closed: решение фиксируется
+    ПОСЛЕ решающей таблицы (честное allowed/denied) и ДО отдачи HTML;
+    недоступный sink роняет выдачу в 503 mandatory_audit_unavailable,
+    а не пропускает просмотр без записи."""
     subject, session_id = _subject_and_session(request)
     try:
         _revision, _document, snapshot = _delivery_service().get_revision(
             revision_id, subject, session_id=session_id
         )
-    except DocumentAccessDenied as exc:
-        raise _map_service_errors(exc) from None
-    record_standard(
+    except DocumentAccessDenied:
+        # PGV-16: чужой/несуществующий -- запись отказа честна
+        # (denied), затем uniform 404 (существование не дисклоужается).
+        record_mandatory(
+            ACTION_PROTECTED_DOCUMENT_VIEWED,
+            "denied",
+            actor_subject=subject.subject_id,
+            actor_via=subject.via,
+            tenant_id=subject.tenant_id,
+            resource_kind="document_revision",
+            resource_id=revision_id,
+            policy_basis="R09 object authorization (denied)",
+            details={"reason_code": "document_not_found"},
+        )
+        raise _map_service_errors(DocumentAccessDenied("недоступно")) from None
+    record_mandatory(
         ACTION_PROTECTED_DOCUMENT_VIEWED,
         "allowed",
         actor_subject=subject.subject_id,
@@ -809,59 +827,123 @@ def get_rendition_content(request: Request, rendition_id: str) -> Response:
     if rendition is None:
         raise HTTPException(status_code=404, detail=_DOCUMENT_NOT_FOUND_DETAIL)
     subject, session_id = _subject_and_session(request)
-    # 1. download_requested (§14.1: запрос).
-    record_standard(
-        ACTION_DOWNLOAD_REQUESTED,
-        "allowed",
-        actor_subject=subject.subject_id,
-        actor_via=subject.via,
-        tenant_id=subject.tenant_id,
-        resource_kind="document_rendition",
-        resource_id=rendition_id,
-        resource_version=str(rendition.format),
-        policy_basis="R09 object authorization",
-        run_id=rendition.run_id,
-        details={"snapshot_id": rendition.snapshot_id, "format": rendition.format},
-    )
+    # PGV-16 SEC-1 (§11/AC11): порядок authorize -> decision -> bytes.
+    # Запись решения ДО авторизации с безусловным «allowed» (нечестная
+    # «allowed»-запись чужого перед 404) НЕ выполняется: решение
+    # download_requested фиксируется по факту решающей таблицы --
+    # allowed/denied/aborted (§14.1), все три записи тройки --
+    # record_mandatory (класс mandatory из AUDIT_REQUIREMENTS):
+    # недоступный sink роняет выдачу в 503 mandatory_audit_unavailable
+    # ДО раскрытия байт. Несуществующий rendition -- uniform 404 без
+    # записи (ресурса нет; run-контекст неизвестен).
     try:
-        content = service.read_rendition_content(
-            rendition, subject, session_id=session_id
+        try:
+            content = service.read_rendition_content(
+                rendition, subject, session_id=session_id
+            )
+        except DocumentAccessDenied:
+            # AC18: чужой run -- denied-запись (uniform 404, существование
+            # не дисклоужается; отказ R09 дополнительно фиксируется
+            # решающей таблицей через record_run_access_decision).
+            record_mandatory(
+                ACTION_DOWNLOAD_REQUESTED,
+                "denied",
+                actor_subject=subject.subject_id,
+                actor_via=subject.via,
+                tenant_id=subject.tenant_id,
+                resource_kind="document_rendition",
+                resource_id=rendition_id,
+                resource_version=str(rendition.format),
+                policy_basis="R09 object authorization (denied)",
+                run_id=rendition.run_id,
+                details={"snapshot_id": rendition.snapshot_id, "format": rendition.format},
+            )
+            raise _map_service_errors(DocumentAccessDenied("недоступно")) from None
+        except RenditionPurgedError as exc:
+            # §16.1/§17: purged rendition -- честный 410 владельцу;
+            # выдача НЕ состоялась -- решение denied с причиной.
+            record_mandatory(
+                ACTION_DOWNLOAD_REQUESTED,
+                "denied",
+                actor_subject=subject.subject_id,
+                actor_via=subject.via,
+                tenant_id=subject.tenant_id,
+                resource_kind="document_rendition",
+                resource_id=rendition_id,
+                resource_version=str(rendition.format),
+                policy_basis="R09 object authorization; retention purge",
+                run_id=rendition.run_id,
+                details={"reason_code": "purged_artifact", "message": str(exc)},
+            )
+            raise _map_service_errors(exc) from None
+        except DocumentIntegrityError as exc:
+            # §11 «Hash mismatch -- failed integrity_error»: выдача
+            # прервана -- решение aborted (байты не выданы).
+            record_mandatory(
+                ACTION_DOWNLOAD_REQUESTED,
+                "aborted",
+                actor_subject=subject.subject_id,
+                actor_via=subject.via,
+                tenant_id=subject.tenant_id,
+                resource_kind="document_rendition",
+                resource_id=rendition_id,
+                resource_version=str(rendition.format),
+                policy_basis="R09 object authorization; integrity gate",
+                run_id=rendition.run_id,
+                details={"reason_code": "integrity_mismatch"},
+            )
+            raise _map_service_errors(exc) from None
+        spec = RENDITION_FORMATS.get(rendition.format)
+        media_type = (
+            rendition.media_type or (spec.media_type if spec else "application/octet-stream")
         )
-    except (DocumentAccessDenied, DocumentIntegrityError, RenditionPurgedError) as exc:
-        # DOCLOG-6: purged rendition -- честный 410 владельцу (§16.1/§17).
+        # 1. download_requested (§14.1: запрос; решение allowed честно --
+        #    решающая таблица пройдена, integrity пройдена).
+        record_mandatory(
+            ACTION_DOWNLOAD_REQUESTED,
+            "allowed",
+            actor_subject=subject.subject_id,
+            actor_via=subject.via,
+            tenant_id=subject.tenant_id,
+            resource_kind="document_rendition",
+            resource_id=rendition_id,
+            resource_version=str(rendition.format),
+            policy_basis="R09 object authorization",
+            run_id=rendition.run_id,
+            details={"snapshot_id": rendition.snapshot_id, "format": rendition.format},
+        )
+        # 2. response_stream_started (начало отдачи).
+        record_mandatory(
+            ACTION_RESPONSE_STREAM_STARTED,
+            "allowed",
+            actor_subject=subject.subject_id,
+            actor_via=subject.via,
+            tenant_id=subject.tenant_id,
+            resource_kind="document_rendition",
+            resource_id=rendition_id,
+            resource_version=str(rendition.format),
+            policy_basis="R09 object authorization",
+            run_id=rendition.run_id,
+            details={"bytes": len(content)},
+        )
+        # 3. response_stream_finished (завершение отдачи).
+        record_mandatory(
+            ACTION_RESPONSE_STREAM_FINISHED,
+            "allowed",
+            actor_subject=subject.subject_id,
+            actor_via=subject.via,
+            tenant_id=subject.tenant_id,
+            resource_kind="document_rendition",
+            resource_id=rendition_id,
+            resource_version=str(rendition.format),
+            policy_basis="R09 object authorization",
+            run_id=rendition.run_id,
+            details={"bytes": len(content)},
+        )
+    except MandatoryAuditFailure as exc:
+        # §14.1/AC11: sink недоступен -- выдача НЕ выполняется
+        # (fail-closed до раскрытия байт; паритет publish-пути).
         raise _map_service_errors(exc) from None
-    spec = RENDITION_FORMATS.get(rendition.format)
-    media_type = (
-        rendition.media_type or (spec.media_type if spec else "application/octet-stream")
-    )
-    # 2. response_stream_started (начало отдачи).
-    record_standard(
-        ACTION_RESPONSE_STREAM_STARTED,
-        "allowed",
-        actor_subject=subject.subject_id,
-        actor_via=subject.via,
-        tenant_id=subject.tenant_id,
-        resource_kind="document_rendition",
-        resource_id=rendition_id,
-        resource_version=str(rendition.format),
-        policy_basis="R09 object authorization",
-        run_id=rendition.run_id,
-        details={"bytes": len(content)},
-    )
-    # 3. response_stream_finished (завершение отдачи).
-    record_standard(
-        ACTION_RESPONSE_STREAM_FINISHED,
-        "allowed",
-        actor_subject=subject.subject_id,
-        actor_via=subject.via,
-        tenant_id=subject.tenant_id,
-        resource_kind="document_rendition",
-        resource_id=rendition_id,
-        resource_version=str(rendition.format),
-        policy_basis="R09 object authorization",
-        run_id=rendition.run_id,
-        details={"bytes": len(content)},
-    )
     return Response(
         content=content,
         media_type=media_type,

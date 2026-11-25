@@ -559,6 +559,13 @@ class DocumentRegistry(ABC):
         (print_revision_id, format, redaction_profile)."""
         raise NotImplementedError
 
+    def list_print_renditions(
+        self, print_revision_id: str
+    ) -> list[DocumentRenditionRecord]:  # pragma: no cover
+        """PGV-16 RET-1: печатные renditions ревизии (retention sweep
+        §12/§16.1 -- TTL честен и для PNG/ZIP печатных семейств)."""
+        raise NotImplementedError
+
     def list_renditions(self, snapshot_id: str) -> list[DocumentRenditionRecord]:  # pragma: no cover
         raise NotImplementedError
 
@@ -773,6 +780,23 @@ class MemoryDocumentRegistry(DocumentRegistry):
                 ):
                     return rendition
             return None
+
+    def list_print_renditions(
+        self, print_revision_id: str
+    ) -> list[DocumentRenditionRecord]:
+        """PGV-16 RET-1 (§12/§16.1): печатные renditions ревизии --
+        перечисление для retention sweep (hold/TTL честен и для PNG).
+        Печатные записи изолированы от snapshot-ключа (snapshot_id
+        печатных записей пуст)."""
+        with self._lock:
+            renditions = [
+                rendition
+                for rendition in self._renditions.values()
+                if rendition.print_revision_id == print_revision_id
+            ]
+        return sorted(
+            renditions, key=lambda item: (item.created_at, item.rendition_id)
+        )
 
     def list_renditions(self, snapshot_id: str) -> list[DocumentRenditionRecord]:
         with self._lock:
@@ -1364,6 +1388,22 @@ class PostgresDocumentRegistry(DocumentRegistry):
             )
             row = cur.fetchone()
         return self._rendition_from_row(row) if row is not None else None
+
+    def list_print_renditions(
+        self, print_revision_id: str
+    ) -> list[DocumentRenditionRecord]:
+        """PGV-16 RET-1: печатные renditions ревизии (retention sweep;
+        SQL симметричен find_print_rendition, миграции не требуются --
+        поле print_revision_id из 0017/0018)."""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                self._RENDITION_SELECT
+                + " WHERE print_revision_id = %s "
+                "ORDER BY created_at, rendition_id",
+                (print_revision_id,),
+            )
+            rows = cur.fetchall()
+        return [self._rendition_from_row(row) for row in rows]
 
     def list_renditions(self, snapshot_id: str) -> list[DocumentRenditionRecord]:
         with self._connect() as conn, conn.cursor() as cur:

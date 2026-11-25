@@ -111,6 +111,12 @@ APPROVAL_POLICY_VERSION = "doclog6-approval-policy-v1"
 RETENTION_DRAFT_DAYS_ENV = "CISSTAT_DOCUMENT_RETENTION_DRAFT_DAYS"
 DEFAULT_RETENTION_DRAFT_DAYS = 30  # §16.1 «Невостребованные draft renditions»
 
+# PGV-16 RET-1 (§12): «Cleanup не ломает pins/holds/retention; источники
+# и PNG могут иметь разные сроки» -- печатные PNG/ZIP (V01/P01/P02)
+# имеют СОБСТВЕННЫЙ срок для renditions; basis-артефакты/пины не трогаются.
+RETENTION_PRINT_DAYS_ENV = "CISSTAT_DOCUMENT_RETENTION_PRINT_DAYS"
+DEFAULT_RETENTION_PRINT_DAYS = 30
+
 ARCHIVE_BUNDLE_PREFIX = "d6arch-"
 
 RENDITION_PURGED = "purged"
@@ -201,6 +207,19 @@ def retention_draft_days() -> int:
     except ValueError:
         return DEFAULT_RETENTION_DRAFT_DAYS
     return value if value >= 0 else DEFAULT_RETENTION_DRAFT_DAYS
+
+
+def retention_print_days() -> int:
+    """PGV-16 RET-1 (§12): срок печатных renditions PNG/ZIP (дней;
+    дефолт 30). Некорректное значение -- честный дефолт; 0 -- purge
+    всего старее now. Basis-артефакты/пины этим сроком НЕ управляются
+    (источники и PNG имеют разные сроки)."""
+    raw = (os.environ.get(RETENTION_PRINT_DAYS_ENV) or "").strip()
+    try:
+        value = int(raw) if raw else DEFAULT_RETENTION_PRINT_DAYS
+    except ValueError:
+        return DEFAULT_RETENTION_PRINT_DAYS
+    return value if value >= 0 else DEFAULT_RETENTION_PRINT_DAYS
 
 
 @dataclass(frozen=True)
@@ -1286,6 +1305,12 @@ class DocumentLifecycleService:
             "kept_published_documents": 0,
             "purged_renditions": 0,
             "draft_days": retention_draft_days(),
+            # PGV-16 RET-1 (§12): печатные PNG/ZIP -- свой срок; hold
+            # печатного документа защищает; basis/пины не трогаются.
+            "scanned_print_documents": 0,
+            "skipped_hold_print_documents": 0,
+            "purged_print_renditions": 0,
+            "print_days": retention_print_days(),
         }
         from apps.api.report_snapshot import DOCUMENT_KINDS
         from apps.api.document_jobs import MemoryDocumentRegistry
@@ -1317,6 +1342,41 @@ class DocumentLifecycleService:
                         continue
                     self._purge_rendition(registry, rendition)
                     report["purged_renditions"] += 1
+        # ── PGV-16 RET-1: печатные семейства V01/P01/P02 (§12/§16.1) ──
+        # Печатные renditions изолированы от snapshot-ключа
+        # (snapshot_id печатных записей пуст), поэтому D-цикл выше их
+        # не находит: честный TTL печатных PNG/ZIP проходит по
+        # print_revision_id. Hold печатного документа защищает
+        # (единый механизм document_retention по document_id).
+        # Basis-артефакты и их пины НЕ трогаются: «источники и PNG
+        # могут иметь разные сроки» (§12) -- источник остаётся
+        # пиннутым, rendition purged честно (410 + пересборка через
+        # штатный POST renditions, replay-ready AC09).
+        from apps.api.report_snapshot import PRINT_DOCUMENT_KINDS
+
+        print_cutoff = datetime.now(timezone.utc) - timedelta_days(
+            retention_print_days()
+        )
+        for kind_code in PRINT_DOCUMENT_KINDS:
+            document = registry.find_document_by_kind(run_id, kind_code)
+            if document is None:
+                continue
+            report["scanned_print_documents"] += 1
+            retention = self.registry.get_retention(document.document_id)
+            if retention is not None and retention.hold:
+                report["skipped_hold_print_documents"] += 1
+                continue
+            for revision in registry.list_print_revisions(document.document_id):
+                for rendition in registry.list_print_renditions(
+                    revision.print_revision_id
+                ):
+                    if rendition.state != "ready":
+                        continue
+                    created = _parse_iso(rendition.created_at)
+                    if created is None or created > print_cutoff:
+                        continue
+                    self._purge_rendition(registry, rendition)
+                    report["purged_print_renditions"] += 1
         from apps.api.security_audit import record_standard
 
         record_standard(
@@ -1327,7 +1387,10 @@ class DocumentLifecycleService:
             tenant_id=getattr(subject, "tenant_id", None),
             resource_kind="run",
             resource_id=str(run_id),
-            policy_basis=f"DOCLOG-6 retention sweep; basis={rights.basis}",
+            policy_basis=(
+                f"DOCLOG-6 retention sweep + PGV-16 print TTL; "
+                f"basis={rights.basis}"
+            ),
             run_id=str(run_id),
             details={key: report[key] for key in sorted(report)},
         )

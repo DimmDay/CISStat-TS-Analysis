@@ -1826,6 +1826,7 @@ export function serializeVisualRegistry(): {
   schema_version: string;
   generated_from: string;
   pgv_task: string;
+  registry_version: string;
   modules: Record<VisualModuleId, number>;
   total_sites: number;
   sites: VisualSiteRecord[];
@@ -1835,10 +1836,36 @@ export function serializeVisualRegistry(): {
     schema_version: PGV_REGISTRY_SCHEMA_VERSION,
     generated_from: "packages/ui/lib/visualExportRegistry.ts",
     pgv_task: "PGV-00",
+    registry_version: visualRegistryVersion(),
     modules: visualRegistrySummary().modules,
     total_sites: VISUAL_SITE_REGISTRY.length,
     sites: VISUAL_SITE_REGISTRY,
     exclusions: VISUAL_RENDER_SITE_EXCLUSIONS,
   };
+}
+
+/**
+ * PGV-16 COV-1 (spec §5 «Unknown/unmapped scientific site блокирует
+ * CERT»): детерминированная версия реестра — 64-битный FNV-1a хэш
+ * канонической сериализации сайтов. Без дат (байт-паритет
+ * воспроизводим) и без node:crypto (файл входит в browser-бандл).
+ * Python-гейт scripts/pgv16/coverage_gate.py пересчитывает ТОТ ЖЕ
+ * хэш над тем же каноническим JSON — дрейф TS⇄JSON ловится гейтом.
+ */
+export function visualRegistryVersion(): string {
+  // Хэш считается по байтам UTF-8 канонической JSON-сериализации
+  // сайтов (JSON.stringify -- тот же канон, что в Python-гейте).
+  return `pgv16-${fnv1a64Utf8(JSON.stringify(VISUAL_SITE_REGISTRY)).toString(16).padStart(16, "0")}`;
+}
+
+function fnv1a64Utf8(input: string): bigint {
+  const bytes = new TextEncoder().encode(input);
+  let hash = 0xcbf29ce484222325n;
+  const fnvPrime = 0x100000001b3n;
+  for (const byte of bytes) {
+    hash ^= BigInt(byte);
+    hash = (hash * fnvPrime) & 0xffffffffffffffffn;
+  }
+  return hash;
 }
 

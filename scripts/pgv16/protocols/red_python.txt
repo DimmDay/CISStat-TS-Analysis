@@ -1,0 +1,4 @@
+FAILED tests/api/test_pgv16_security_retention_ops.py::TestPrintRendererOps::test_section_disabled_reports_honest_reason
+FAILED tests/api/test_pgv16_security_retention_ops.py::TestPrintRendererOps::test_section_probe_ok_facts_only
+FAILED tests/api/test_pgv16_security_retention_ops.py::TestPrintRendererOps::test_probe_failure_does_not_break_health
+================== 20 failed, 2 passed, 36 warnings in 7.54s ===================

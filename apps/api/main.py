@@ -367,6 +367,21 @@ def health_ops():
         snapshot["render_dependencies"] = {
             "pdf_font": {"ok": False, "missing": ["<state unavailable>"]},
         }
+    # PGV-16 OPS-1 (spec_passport_graphics_visual.md §12): печатный PNG
+    # классифицируется ОТДЕЛЬНО от PDF-матрицы выше: facts-only статус
+    # контейнера печати (browser/fonts/bundle + smoke /readyz, PGV-08)
+    # с ограниченным probe. Peek-семантика: секция не инициализирует
+    # фабрики, отказ не роняет health; URL/путь IPC/секретов нет.
+    try:
+        from apps.api.print_renderer_ops import print_renderer_ops_status
+
+        snapshot["print_renderer"] = print_renderer_ops_status()
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        snapshot["print_renderer"] = {
+            "classification": "png_print (print-renderer container)",
+            "enabled": False,
+            "readiness": {"ok": False, "reason": "state_unavailable"},
+        }
     # AUTH-20 (§18 дух, peek-семантика): facts-only состояние
     # обязательного аудита/ops-контура (outbox, sweeper, lockdown,
     # ledger, внешние входы, версия схемы). Секретов нет; диагностика

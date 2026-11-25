@@ -1571,3 +1571,74 @@ scripts/pgv15/package_delivery.py (files.txt внутри ZIP), worklog12.md в�
 Документация: docs/pgv1314_cert_vm_2026-11-24.md — runbook полного акта на bundle 922ff70c2381 (состояние/границы/пошаговые VM команды local→run→review→issue, «candidate не останавливать до завершения акта», failure policy без повторов поверх evidence, после issue — независимый сводный акт отдельной поставкой). scripts/local_gates.md дополнен разделом PGV13/14 (полный акт на PGV-15-образах); default local_gates.py/CI не менялись.
 
 Проверки: unittest CertificationTests 17→18 GREEN (0.32с; RED подтверждён до fix). Роуты: auth06 actual 285=inventory 285, bindings 289, entries 669, added/missing=[] — HTTP-поверхность не затронута. AUTH00: policy_review +1 reviewed source (runbook, 394→395), inventory --write перегенерирован (669 entries, fingerprints 625), strict INDEX-parity gate прогоняется с временно staged delivery-файлами, реальный INDEX после проверки восстанавливается (byte-identical), commit/push — тимлид. Native Docker/PG/Chromium/OCR и операторский every-page review — VM-этап по runbook; evidence не подменяется локальными контролами. ZIP: download/cisstat-pgv1314-cert-act-ce88414.zip (manifest внутри).
+
+---
+
+## Task ID: PGV-16 (25.11.2026) — Security/retention/ops/coverage: честные identity/audit/pins/health/registry
+
+База: fea4063 (origin/main; клон синхронизирован, рабочее дерево чистое; локальный stash прошлой
+поставки не пересекается). Постановка: спроектировать и реализовать PGV-16 из
+spec_passport_graphics_visual.md §13 (точки изменения identity/audit/pins/health/registry;
+критерий «Foreign refs/SSRF denied, permission/holds/TTL/dependency failure честны»);
+проверить роуты; при необходимости обновить scripts/local_gates и карту роутов; ZIP в
+download/. Изучены спека (§11–§14, AC17–AC20), код контура PGV-00…15 и сертификационная
+цепочка; аудит контура выявил 5 разрывов (docs/pgv16_security_retention_ops_coverage.md §1:
+нечестная fail-open аудит-тройка выдачи; неполный SSRF-префлайт API-слоя; отсутствие
+retention печатных PNG/ZIP; /health/ops не классифицирует print-PNG; нет CERT-гейта
+покрытия реестра). AGENTS.md соблюдён: TDD (RED до кода), check_routes, без commit/push,
+без секретов с VM.
+
+Реализация (5 поверхностей, без новых HTTP-роутов и DDL): SEC-1 — тройка
+download_requested/response_stream_started/response_stream_finished и
+protected_document_viewed переведены на record_mandatory (класс mandatory из
+AUDIT_REQUIREMENTS, fail-closed: недоступный sink → 503 mandatory_audit_unavailable ДО
+раскрытия байт), решение честно по решающей таблице — allowed/denied/aborted; чужой больше
+не получает «allowed»-запись перед uniform 404; SEC-2 — validate_screen_svg отклоняет
+внешние ресурсы (http/https/file/blob/ftp/javascript/chrome href/src/xlink:href) → 422
+invalid_screen_svg, внутренние якоря/data: легальны (паритет request-policy контейнера
+PGV-08); RET-1 — sweep_retention покрывает печатные V01/P01/P02: registry.
+list_print_renditions (ABC+Memory+Postgres, SQL симметричен 0017/0018 — миграции не
+требуются), свой TTL CISSTAT_DOCUMENT_RETENTION_PRINT_DAYS (дефолт 30), hold печатного
+документа защищает (единый document_retention), basis-артефакты/пины не трогаются
+(«источники и PNG имеют разные сроки» §12), purge — честный tombstone (410 + пересборка
+replay-ready AC09); OPS-1 — /health/ops получил секцию print_renderer (facts-only,
+peek-семантика: enabled/transport/readiness/probe_ms, ограниченный probe GET /readyz
+контейнера через штатный PngRendererClient.readiness, печатный PNG классифицирован
+ОТДЕЛЬНО от python-матрицы render_dependencies, URL/путь IPC/секретов в payload нет, отказ
+probe не роняет health; модуль apps/api/print_renderer_ops.py); COV-1 —
+config/visual_registry.json получил детерминированный registry_version (FNV-1a/64 UTF-8
+канонического JSON сайтов; паритет visualRegistryVersion() TS — node-экспорт
+воспроизведён), scripts/pgv16/coverage_gate.py — fail-closed CERT-гейт (схема/
+self-consistency версии, уникальность view_id, известные enum'ы, существование
+render_site/exclusion-таргетов (glob), непустые модули, согласованность счётчиков, паритет
+print-схемы: семейства V01/P01/P02 в PRINT_DOCUMENT_KIND_CODES, basis-kinds PGV-13 в
+PRINT_RENDER_BASIS_KINDS, профили §7, лимиты §7); local_gates.py — новый default-гейт
+pgv16, local_gates.md дополнен. AST-скан исходников остаётся jest-оракулом
+visualExportRegistry.coverage.test.ts — разделение труда Python-гейта (структура/ссылки/
+паритет) и TS-оракула (denominator coverage) задокументировано.
+
+TDD: RED python 20F/2P (протокол scripts/pgv16/protocols/red_python.txt; unit-gate RED —
+модуль отсутствовал) → GREEN: tests/api/test_pgv16_security_retention_ops.py 22/22
+(green_python.txt) + tests/unit/test_pgv16_coverage_gate.py 14/14 (green_gate_unit.txt);
+гейт pgv16 через штатный runner: PASS 12.6c. Роуты: auth06-паритет {"status":"ok",
+"api_routes":285}, inventory --write: 669 entries/api 285, added=[]/removed=[] —
+HTTP-поверхность НЕ затронута (нечестные изменения только evidence-line и
+direct_guard_mentions документационных маршрутов — честные метаданные), auth00 suite OK +
+inventory --check OK + check_committed OK, auth01 OpenAPI/TS parity OK. Регрессия: doclog4
+50, doclog3/5/6 205 (1 предсуществующий красный test_non_admin_403_recorded — подтверждён
+на чистой fea4063 worktree'ом, не поставка PGV-16), doclog2/7/9 165, pgv01/02/04/05/06/08
+112, pgv09/10 84, pgv09fix+pdf-env 32, pgv11/12/13/15 230, unit pgv13/14-accept+pgv1314
+62; Jest: printSchema/printLayout/printTheme/registry-coverage 110 PASS, PGV-15 suite
+42 PASS; tsc packages/ui exit=0 (только предсуществующие TS7-deprecation warnings tsconfig).
+
+Границы: routers/logs.py (выдача логов) — best-effort standard-аудит сохранён (вне скоупа
+PGV-16, задокументировано); Postgres-реализация list_print_renditions покрыта
+SQL-симметрией (native PG-прогон — штатный -postgres контур за тимлидом); полный jest и
+pytest-корпус — local_gates у тимлида; контейнер PGV-08 недоступен в песочнице (probe
+оракулится локальным HTTP-double). Поставка: ZIP
+cisstat-pgv16-security-retention-ops-coverage.zip в download/ (manifest files.txt внутри;
+AGENTS.md, spec, local_gates*.py/.md, files.txt — HOST_FILES, пересборка образов не
+требуется для документов; python API-код меняется — api-image пересобирается штатным
+release-пайплайном при следующем выпуске). VM-команд в этой поставке не требуется —
+runtime-поведение меняется с образом api при штатном выпуске; candidate 922ff70c2381 на VM
+не затрагивался. Секреты с VM не извлекались; commit/push — тимлид после review.

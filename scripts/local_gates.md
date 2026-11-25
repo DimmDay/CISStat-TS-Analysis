@@ -760,3 +760,47 @@ suite 36 PASS. Дизайн/риски: docs/pgv15_documents_picker_ui.md.
 Роуты PGV-13/маршруты D01–D12/jobs/renditions/content не менялись; VM
 образы/runtime не затронуты; пересборка web-image нужна только при выпуске
 новой сборки оболочки (обычный release-путь, без новых зависимостей).
+
+## PGV-16 — Security/retention/ops/coverage (gate `pgv16`, 2026-11-25)
+
+Новый default-гейт `pgv16` (первым в списке — самый быстрый python-корпус):
+`pytest tests/api/test_pgv16_security_retention_ops.py` + `unittest
+tests.unit.test_pgv16_coverage_gate` + `python scripts/pgv16/coverage_gate.py`.
+Покрывает пять честных разрывов spec §11–§13 (строка PGV-16; точки изменения
+identity/audit/pins/health/registry):
+
+1. SEC-1 audit (AC11, §11): тройка download_requested/response_stream_started/
+   finished и protected_document_viewed — record_mandatory (fail-closed:
+   недоступный sink → 503 mandatory_audit_unavailable ДО раскрытия байт),
+   решение честно по решающей таблице: allowed/denied/aborted; чужой больше
+   не получает «allowed»-запись перед uniform 404.
+2. SEC-2 SSRF (AC19): validate_screen_svg отклоняет внешние ресурсы
+   (http/https/file/blob/ftp/javascript/chrome href/src/xlink:href) → 422
+   invalid_screen_svg; внутренние якоря и data: легальны (паритет
+   request-policy контейнера PGV-08).
+3. RET-1 retention (§12/§16.1): sweep_retention покрывает печатные
+   V01/P01/P02 (registry.list_print_renditions, Memory+Postgres), свой TTL
+   CISSTAT_DOCUMENT_RETENTION_PRINT_DAYS (дефолт 30), hold печатного
+   документа защищает, basis-артефакты/пины не трогаются (источники и PNG —
+   разные сроки), purge — честный tombstone (410).
+4. OPS-1 health (§12): /health/ops секция print_renderer — facts-only
+   (enabled/transport/readiness/probe_ms), ограниченный probe GET /readyz
+   контейнера печати (browser/fonts/bundle+smoke), печатный PNG
+   классифицирован ОТДЕЛЬНО от python-матрицы render_dependencies;
+   URL/путь IPC/секретов в payload нет; отказ probe не роняет health.
+5. COV-1 registry (§5): config/visual_registry.json получил детерминированный
+   registry_version (FNV-1a/64 UTF-8 от канонического JSON сайтов — паритет
+   с visualRegistryVersion() TS); scripts/pgv16/coverage_gate.py — fail-closed
+   CERT-гейт: схема/self-consistency версии, уникальность view_id, известные
+   enum'ы, существование render_site/exclusion target-файлов, непустые
+   модули, согласованность счётчиков, паритет print-схемы (семейства
+   V01/P01/P02, basis-kinds PGV-13, профили §7, лимиты §7). AST-скан исходников
+   остаётся jest-оракулом visualExportRegistry.coverage.test.ts (разделение
+   труда задокументировано).
+
+Запуск: `python scripts/local_gates.py --only pgv16 --skip-install`.
+Изменённые surface: routers/documentation.py (content/preview), visual_exports.py,
+document_jobs.py (registry), document_lifecycle.py (sweep/env), main.py (+секция),
+print_renderer_ops.py (новый), visualExportRegistry.ts (+версия), config/visual_registry.json
+(перегенерирован штатным export_registry.ts), local_gates.py (+гейт). Роуты
+HTTP не менялись (added=[]/missing=[] — auth06-паритет проверен).

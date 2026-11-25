@@ -2,6 +2,7 @@
   "schema_version": "pgv.visual_registry/1",
   "generated_from": "packages/ui/lib/visualExportRegistry.ts",
   "pgv_task": "PGV-00",
+  "registry_version": "pgv16-9f98ef94d781a192",
   "modules": {
     "navigator": 16,
     "upload": 12,

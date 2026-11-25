@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): pgv16 + pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,12 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("pgv16", "pgv16.yml security/retention/ops/coverage", "PGV-16 honest mandatory delivery audit, SSRF preflight, print-rendition retention, print_renderer ops section and registry coverage gate", [
+        [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt"],
+        [sys.executable, "-m", "pytest", "tests/api/test_pgv16_security_retention_ops.py", "-v"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv16_coverage_gate", "-v"],
+        [sys.executable, "scripts/pgv16/coverage_gate.py"],
+    ]),
     ("pgv1314cert", "pgv1314cert.yml controls + local-evidence", "PGV13/14 controls and full Node22 CI pipeline, including both production builds", [
         [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/pgv1314cert/requirements.txt"],
         [sys.executable, "-m", "unittest", "tests.unit.test_pgv1314_certification", "tests.unit.test_pgv1314_ci", "-v"],

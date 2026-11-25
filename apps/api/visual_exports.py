@@ -717,8 +717,12 @@ def _ih_conditional_frozen_headings(
 
 def validate_screen_svg(screen_svg: str) -> None:
     """Минимальная честная проверка сериализации chart-узла: SVG-корень,
-    без <script>/foreignObject/on*-атрибутов (санитайзер контейнера --
-    второй слой, rendererCore PGV-08)."""
+    без <script>/foreignObject/on*-атрибутов и БЕЗ внешних ресурсов
+    (PGV-16 SEC-2, AC19: script/remote image/SSRF/file URL не
+    исполняются; паритет request-policy контейнера rendererCore PGV-08:
+    разрешены только внутренние якоря «#id» и «data:»-URI -- всё прочее
+    отклоняется ДО frozen-фиксации, а не удаляется молча с warnings).
+    Санитайзер контейнера -- второй слой (rendererCore PGV-08)."""
     stripped = (screen_svg or "").strip()
     if not stripped.startswith(("<svg", "<?xml")):
         raise InvalidScreenSvg(
@@ -735,6 +739,20 @@ def validate_screen_svg(screen_svg: str) -> None:
 
     if re.search(r"\son[a-z]+\s*=", lowered):
         raise InvalidScreenSvg("screen_svg содержит on*-обработчики (AC19)")
+    # PGV-16 SEC-2: внешние ссылки ресурсов. Легальные значения -- только
+    # внутренние якоря (#...) и data:-URI (паритет buildRequestPolicy
+    # контейнера: file/http/https/blob/ftp/javascript/chrome -- deny).
+    for _attr, value in re.findall(
+        r"\b(href|xlink:href|src)\s*=\s*['\"]([^'\"]*)['\"]", lowered
+    ):
+        value = value.strip()
+        if not value or value.startswith(("#", "data:")):
+            continue
+        raise InvalidScreenSvg(
+            "screen_svg содержит внешнюю ссылку ресурса "
+            f"({value[:64]}) -- AC19: remote image/SSRF/file URL "
+            "запрещены; допустимы только #якорь и data:"
+        )
 
 
 def _screen_svg_digest(screen_svg: Optional[str]) -> Optional[str]:
