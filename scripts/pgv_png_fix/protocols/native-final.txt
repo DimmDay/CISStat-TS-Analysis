@@ -1,0 +1,136 @@
+test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry (test_pgv_png_fix.FreshUploadPngTests.test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/date-column "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-0236A146/visuals "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=write subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-0236A146/visuals "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-0236A146 action=read subject=3a5c915a-21c9-495d-b45f-d89ccb652e99 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/jobs/djob-866d063623544c608c18cec6fc5374b9/cancel "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+WARNING:apps.api.identity:Run access: DENY run=RUN-0236A146 action=write subject=b3478cf7-b729-444b-9334-e1dd66f6f4bb via=auth_session reason=account_boundary
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-0236A146/visuals "HTTP/1.1 404 Not Found"
+ok
+test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/date-column "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/timeseries?column=value&date_column=date "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-F1655AC9/visuals "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/jobs/djob-8af75d2cacd944a4a7676d36daa538ad/cancel "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/stats "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-F1655AC9/visuals "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/jobs/djob-e5d3ad35f0e742f2aa3d757aaa9368ee/cancel "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/missing-profile "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=write subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-F1655AC9/visuals "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-F1655AC9 action=read subject=5e8aa757-fe8d-41b9-aef3-c5e9c5f204e4 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/jobs/djob-e8d8fe882654436a86e1ab98313c8e71/cancel "HTTP/1.1 200 OK"
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.017s
+
+OK
+Disposable leftover databases: []

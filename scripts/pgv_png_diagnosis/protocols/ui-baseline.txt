@@ -1,0 +1,5 @@
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        2.505 s
+Ran all test suites matching packages/ui/components/VisualExportButton.test.tsx.

@@ -1038,6 +1038,7 @@ def build_visual_print_snapshot(
 
     from apps.api.artifact_store import canonical_json_bytes
 
+    artifact_data_revision = getattr(result_artifact, "data_revision", None)
     snapshot: dict[str, Any] = {
         "schema_version": PRINT_SNAPSHOT_SCHEMA_VERSION,
         "view_id": site_view_id,
@@ -1054,8 +1055,8 @@ def build_visual_print_snapshot(
         },
         "data_artifact": {
             "artifact_id": getattr(result_artifact, "artifact_id", None),
-            "artifact_version": str(
-                getattr(result_artifact, "data_revision", "") or ""
+            "artifact_version": (
+                str(artifact_data_revision) if artifact_data_revision is not None else ""
             ),
             "source_hash": payload_rec.get("digest"),
             "hash_algorithm": "sha256(canonical_json)",

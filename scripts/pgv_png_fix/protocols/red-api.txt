@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 6 items
+
+tests/api/test_pgv_png_fix.py F..FFF                                     [100%]
+
+=================================== FAILURES ===================================
+____________ test_zero_and_later_data_versions_survive_snapshot[0] _____________
+tests/api/test_pgv_png_fix.py:28: in test_zero_and_later_data_versions_survive_snapshot
+    assert snapshot["data_artifact"]["artifact_version"] == str(revision)
+E   AssertionError: assert '' == '0'
+E     
+E     - 0
+___________ test_common_upload_freezes_final_visible_response[file] ____________
+tests/api/test_pgv_png_fix.py:68: in test_common_upload_freezes_final_visible_response
+    notify.assert_called_once()
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py:928: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'notify_visual_result' to have been called once. Called 0 times.
+_________ test_common_upload_freezes_final_visible_response[database] __________
+tests/api/test_pgv_png_fix.py:68: in test_common_upload_freezes_final_visible_response
+    notify.assert_called_once()
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py:928: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'notify_visual_result' to have been called once. Called 0 times.
+_______ test_freeze_failure_keeps_successful_upload_and_records_receipt ________
+tests/api/test_pgv_png_fix.py:98: in test_freeze_failure_keeps_successful_upload_and_records_receipt
+    assert failure.call_count == 3
+E   AssertionError: assert 0 == 3
+E    +  where 0 = <MagicMock name='_record_failure' id='140381949008144'>.call_count
+=========================== short test summary info ============================
+FAILED tests/api/test_pgv_png_fix.py::test_zero_and_later_data_versions_survive_snapshot[0]
+FAILED tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[file]
+FAILED tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[database]
+FAILED tests/api/test_pgv_png_fix.py::test_freeze_failure_keeps_successful_upload_and_records_receipt
+==================== 4 failed, 2 passed, 1 warning in 2.12s ====================

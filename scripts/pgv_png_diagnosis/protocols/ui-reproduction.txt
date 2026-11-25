@@ -1,0 +1,5 @@
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        2.561 s
+Ran all test suites matching scripts/pgv_png_diagnosis/test_messages.test.tsx.

@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): pgv16 + pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): pgv-png + pgv16 + pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,15 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("pgv-png", "pgv_png_fix.yml contracts", "Fresh upload visual freeze and revision-zero PNG export", [
+        [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv_png_fix/requirements.txt"],
+        [sys.executable, "-m", "pytest", "tests/api/test_pgv_png_fix.py", "-v"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv_png_gates", "-v"],
+    ]),
+    ("pgv-png-postgres", "pgv_png_fix.yml postgres", "Native fresh upload to managed PNG job, retry and foreign denial", [
+        [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/authcert/requirements.txt"],
+        [sys.executable, "scripts/pgv_png_fix/verify_postgres.py"],
+    ]),
     ("pgv16", "pgv16.yml security/retention/ops/coverage", "PGV-16 honest mandatory delivery audit, SSRF preflight, print-rendition retention, print_renderer ops section and registry coverage gate", [
         [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt"],
         [sys.executable, "-m", "pytest", "tests/api/test_pgv16_security_retention_ops.py", "-v"],
@@ -510,6 +519,8 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-pgv-png-postgres", action="store_true",
+                        help="native fresh-upload PNG regression; disposable CISSTAT_AUTH_TEST_DSN required")
     parser.add_argument("--with-personal-demo-postgres", action="store_true", help="personal trial native HTTP/SQL tests; disposable PostgreSQL DSN required")
     parser.add_argument("--with-authcert-postgres", action="store_true",
                         help="native AUTH-CERT end-to-end acceptance requires a disposable PostgreSQL DSN")
@@ -558,6 +569,8 @@ def main() -> int:
     args = parser.parse_args()
 
     excluded = set()
+    if not args.with_pgv_png_postgres:
+        excluded.add("pgv-png-postgres")
     if not args.with_personal_demo_postgres:
         excluded.add("personal-demo-postgres")
     if not args.with_pytest:
@@ -638,7 +651,7 @@ def main() -> int:
               "--with-auth17-postgres/--with-auth18-postgres/--with-auth19-postgres/--with-auth20-postgres/"
               "--with-auth21-postgres/--with-auth22-postgres/--with-auth23-postgres/"
               "--with-auth24-postgres/--with-auth25-postgres/"
-              "--with-authcert-postgres/--with-warmup-postgres/--with-session-postgres")
+              "--with-authcert-postgres/--with-warmup-postgres/--with-session-postgres/--with-pgv-png-postgres")
         return 0
     if not selected:
         parser.error("ничего не выбрано; доступно: " + all_gate_names)

@@ -1,5 +1,29 @@
 # Локальные гейты перед передачей в GitHub
 
+## PGV-PNG-FIX (25.11.2026): первый экспорт загрузки и ревизия 0
+
+Поставка поверх `389b930`, manifest `scripts/pgv_png_fix/files.txt`.
+Новый default-гейт `pgv-png` проверяет сохранение ревизии 0, честный отказ
+для отсутствующей версии и freeze окончательного UploadResponse в общем
+пути file/DB. Отдельный `pgv-png-postgres` исключён из default:
+`--only pgv-png-postgres` или `--with-pgv-png-postgres`; нужен disposable
+`CISSTAT_AUTH_TEST_DSN`. Без DSN runner возвращает 2, skips не дают PASS.
+Native проверяет настоящий fresh-upload → первый managed PNG job без
+GET dataset, идемпотентный повтор, отказ чужому и три научных вида.
+Это admission/queue-проверка, не сертификат PNG-пикселей или final image.
+
+```powershell
+python scripts/local_gates.py --only pgv-png --skip-install
+git add --pathspec-from-file=scripts/pgv_png_fix/files.txt
+python scripts/local_gates.py --only auth00 --skip-install
+# Отдельно, только при настроенном disposable PostgreSQL:
+python scripts/local_gates.py --only pgv-png-postgres --skip-install
+```
+
+CI `.github/workflows/pgv_png_fix.yml`: Ubuntu/Windows contracts и native
+PostgreSQL16/18. VM-выпуск — новый согласованный bundle по
+`docs/pgv13_release.md`; нужны новые API bytes, DDL не меняется.
+
 AUTH-17 применяется поверх 201a3b1f12eac55525fb07301b5e37f8e962d938. AUTH-01…16 и Dockerfile CRLF hotfix уже в базе. Команды из корня checkout. Состав: `python scripts/local_gates.py --list`.
 
 ## До коммита: явно подготовить Git index

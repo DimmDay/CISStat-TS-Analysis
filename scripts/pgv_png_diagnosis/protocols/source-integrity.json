@@ -1,0 +1,18 @@
+{
+  "base": "389b93031f7e84bd626a4c5fd8fd1bfb0f2b11cd",
+  "runtime_changes": [],
+  "sources": {
+    "apps/api/visual_exports.py": "14162bf56e6f2d80d2a25e72cdf36f9081130d830bf744c0d82ce409f5ac3c0e",
+    "apps/api/upload_common.py": "64255490462e78fbc9c94489f3f7bc0d685b9d36808be1be66bdd41bb3d032cd",
+    "apps/api/routers/session.py": "10a0bb771705066be7bbe9b48682a9e9cddb8a714badf3b48508f8c54f265046",
+    "apps/api/routers/documentation.py": "aa2a64e55df8894157806692b019df0c729d7ffd7f23931ea5c55ee9410d5a8a",
+    "apps/api/session_store.py": "309148e5c2fa913fd6a5829d94bfe8a457e1d535b2f868cddd9fc9d7e865ca12",
+    "packages/ui/lib/visualExports.ts": "367a3ec5c75dac60b9a92604f17317122b18dc21348cab72751b0c768dbfdda7",
+    "packages/ui/components/VisualExportButton.tsx": "36fb963f99c05db2fe96366aa75883c4f9acf54a1c9b2efa87b99a8cf8300114",
+    "packages/ui/components/TsAnalysisUpload.tsx": "cbc6b375cf5013cacff84e1be1c461180a2e4ca3462a339af942f0a61e50bd27"
+  },
+  "python": "3.12.14",
+  "postgres": "16.2",
+  "node": "v24.22.3",
+  "production_access": false
+}

@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/495ea0f1cb98/pgvfix-baseline
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 1 item
+
+tests/api/test_doclog_recheck_fix.py F                                   [100%]
+
+=================================== FAILURES ===================================
+_________ TestCancelRaceGate.test_complete_render_finishes_running_job _________
+tests/api/test_doclog_recheck_fix.py:658: in test_complete_render_finishes_running_job
+    updated, rendition = service.complete_render(
+apps/api/document_jobs.py:2593: in complete_render
+    existing = self._find_rendition_for_job(job, actual_format=spec.format)
+                                                               ^^^^^^^^^^^
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'format'
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog_recheck_fix.py::TestCancelRaceGate::test_complete_render_finishes_running_job
+======================== 1 failed, 2 warnings in 0.30s =========================

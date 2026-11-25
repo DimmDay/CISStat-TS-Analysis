@@ -1,0 +1,134 @@
+test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry (test_pgv_png_fix.FreshUploadPngTests.test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=write subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=write subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/date-column "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-69E47523 action=read subject=a12894aa-9035-4ab8-b4b1-1443d3026b76 via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+FAIL
+test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/session/date-column "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/timeseries?column=value&date_column=date "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-35300A1D/visuals "HTTP/1.1 503 Service Unavailable"
+
+  test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='upload.chart.series') ... FAIL
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/stats "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-35300A1D/visuals "HTTP/1.1 503 Service Unavailable"
+  test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='eda.descriptive.stats') ... FAIL
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=read subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/missing-profile "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-35300A1D action=write subject=e94fb93d-eb15-4c86-bd14-2bc79564d02b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-35300A1D/visuals "HTTP/1.1 503 Service Unavailable"
+  test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='preprocessing.missing.overview') ... FAIL
+
+======================================================================
+FAIL: test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry (test_pgv_png_fix.FreshUploadPngTests.test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/tests/integration/test_pgv_png_fix.py", line 62, in test_fresh_upload_first_export_no_dataset_reopen_and_idempotent_retry
+    self.assertEqual({r["refs"]["view_id"] for r in results}, {
+AssertionError: Items in the second set but not the first:
+'upload.overview.tech_table'
+'upload.quality.teaser'
+'upload.overview.preview'
+
+======================================================================
+FAIL: test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='upload.chart.series')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/tests/integration/test_pgv_png_fix.py", line 101, in test_zero_revision_exports_across_three_modules
+    self.assertEqual(queued.status_code, 202, queued.text)
+AssertionError: 503 != 202 : {"code":"visual_export_unavailable","message":"Экспорт временно недоступен","request_id":"req-6af3f90fa3c7"}
+
+======================================================================
+FAIL: test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='eda.descriptive.stats')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/tests/integration/test_pgv_png_fix.py", line 101, in test_zero_revision_exports_across_three_modules
+    self.assertEqual(queued.status_code, 202, queued.text)
+AssertionError: 503 != 202 : {"code":"visual_export_unavailable","message":"Экспорт временно недоступен","request_id":"req-ce889ef9ba28"}
+
+======================================================================
+FAIL: test_zero_revision_exports_across_three_modules (test_pgv_png_fix.FreshUploadPngTests.test_zero_revision_exports_across_three_modules) (view='preprocessing.missing.overview')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/tests/integration/test_pgv_png_fix.py", line 101, in test_zero_revision_exports_across_three_modules
+    self.assertEqual(queued.status_code, 202, queued.text)
+AssertionError: 503 != 202 : {"code":"visual_export_unavailable","message":"Экспорт временно недоступен","request_id":"req-4ba6cf401cc8"}
+
+----------------------------------------------------------------------
+Ran 2 tests in 5.559s
+
+FAILED (failures=4)
+Disposable leftover databases: []

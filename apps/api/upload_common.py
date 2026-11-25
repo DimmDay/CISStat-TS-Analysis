@@ -213,7 +213,7 @@ def register_uploaded_dataframe(
     if extra_parse_warnings:
         parse_warnings = parse_warnings + list(extra_parse_warnings)
 
-    return UploadResponse(
+    payload = UploadResponse(
         dataset_id=dataset_id,
         name=name,
         rows=len(df),
@@ -225,6 +225,21 @@ def register_uploaded_dataframe(
         parse_warnings=parse_warnings,
         error=None,
     )
+    # PGV-PNG-FIX: the upload response is already visible in Overview.
+    # Freeze that exact response here for both file and DB loads; a first
+    # export must not depend on leaving the page and issuing GET /dataset.
+    # The existing producer keeps failures best-effort with durable receipts.
+    _promotion.notify_visual_result(
+        request, session,
+        view_ids=(
+            "upload.overview.preview",
+            "upload.overview.tech_table",
+            "upload.quality.teaser",
+        ),
+        response=payload.model_dump(mode="json"),
+        http_response=response,
+    )
+    return payload
 
 
 async def handle_upload(

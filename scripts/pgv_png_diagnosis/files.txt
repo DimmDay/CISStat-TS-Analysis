@@ -1,0 +1,16 @@
+docs/pgv_png_diagnosis_2026-11-25.md
+worklog/worklog12.md
+scripts/pgv_png_diagnosis/protocols/acceptance-red.txt
+scripts/pgv_png_diagnosis/protocols/auth00-head.txt
+scripts/pgv_png_diagnosis/protocols/auth00-unit.txt
+scripts/pgv_png_diagnosis/protocols/check-routes.txt
+scripts/pgv_png_diagnosis/protocols/native-report.json
+scripts/pgv_png_diagnosis/protocols/pgv10-baseline.txt
+scripts/pgv_png_diagnosis/protocols/renderer-build.txt
+scripts/pgv_png_diagnosis/protocols/source-integrity.json
+scripts/pgv_png_diagnosis/protocols/ui-baseline.txt
+scripts/pgv_png_diagnosis/protocols/ui-reproduction.txt
+scripts/pgv_png_diagnosis/reproduce.py
+scripts/pgv_png_diagnosis/test_messages.test.tsx
+scripts/pgv_png_diagnosis/test_revision_contract.py
+scripts/pgv_png_diagnosis/files.txt

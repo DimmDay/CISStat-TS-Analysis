@@ -1,0 +1,53 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/495ea0f1cb98/pgvfix-baseline
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 677 items
+
+tests/api/test_pgv01_print_schema.py ................................... [  5%]
+                                                                         [  5%]
+tests/api/test_pgv02_durable_inputs.py ................................. [ 10%]
+....................................                                     [ 15%]
+tests/api/test_pgv03_producer_adapters.py .............................. [ 19%]
+.........................................                                [ 25%]
+tests/api/test_pgv04_cert_findings.py ........                           [ 27%]
+tests/api/test_pgv04_cert_oracles.py ......................              [ 30%]
+tests/api/test_pgv04_passport_checkpoints.py ........................... [ 34%]
+...                                                                      [ 34%]
+tests/api/test_pgv05_cert_findings.py ..                                 [ 35%]
+tests/api/test_pgv05_cert_oracles.py .......................             [ 38%]
+tests/api/test_pgv05_passport_history.py ..................              [ 41%]
+tests/api/test_pgv06_cert_findings.py .                                  [ 41%]
+tests/api/test_pgv06_cert_oracles.py ............................        [ 45%]
+tests/api/test_pgv06_passport_comparison.py ............................ [ 49%]
+.............                                                            [ 51%]
+tests/api/test_pgv08_render_container.py .......................         [ 54%]
+tests/api/test_pgv09_jobs_renderer_integration.py ...................... [ 58%]
+................                                                         [ 60%]
+tests/api/test_pgv09fix_write_path.py ....................               [ 63%]
+tests/api/test_pgv10_visual_exports.py ................................. [ 68%]
+.............                                                            [ 70%]
+tests/api/test_pgv11_visual_exports.py ................................. [ 75%]
+                                                                         [ 75%]
+tests/api/test_pgv12_visual_exports.py ................................. [ 79%]
+........                                                                 [ 81%]
+tests/api/test_pgv13_passport_documents.py ............................. [ 85%]
+..........                                                               [ 86%]
+tests/api/test_pgv15_print_documents_ui.py .............                 [ 88%]
+tests/api/test_pgv16_security_retention_ops.py ......................    [ 92%]
+tests/api/test_upload.py .....                                           [ 92%]
+tests/api/test_upload_db.py ...............................              [ 97%]
+tests/api/test_doclog_recheck_fix.py .................F                  [100%]
+
+=================================== FAILURES ===================================
+_________ TestCancelRaceGate.test_complete_render_finishes_running_job _________
+tests/api/test_doclog_recheck_fix.py:658: in test_complete_render_finishes_running_job
+    updated, rendition = service.complete_render(
+apps/api/document_jobs.py:2593: in complete_render
+    existing = self._find_rendition_for_job(job, actual_format=spec.format)
+                                                               ^^^^^^^^^^^
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'format'
+=========================== short test summary info ============================
+FAILED tests/api/test_doclog_recheck_fix.py::TestCancelRaceGate::test_complete_render_finishes_running_job
+================= 1 failed, 676 passed, 547 warnings in 31.34s =================

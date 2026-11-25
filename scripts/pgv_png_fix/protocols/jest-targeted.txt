@@ -1,0 +1,6 @@
+
+Test Suites: 4 passed, 4 total
+Tests:       122 passed, 122 total
+Snapshots:   0 total
+Time:        7.815 s
+Ran all test suites within paths "packages/ui/components/VisualExportButton.test.tsx", "packages/ui/components/TsAnalysisUpload.test.tsx", "packages/ui/print/printSchema.test.ts", "packages/ui/lib/visualExportRegistry.coverage.test.ts".

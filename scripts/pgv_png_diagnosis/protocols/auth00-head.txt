@@ -1,0 +1,1 @@
+auth00 HEAD-parity: ok (603 discovery surfaces; full reviewed inventory/source parity)

@@ -1642,3 +1642,120 @@ AGENTS.md, spec, local_gates*.py/.md, files.txt — HOST_FILES, пересбор
 release-пайплайном при следующем выпуске). VM-команд в этой поставке не требуется —
 runtime-поведение меняется с образом api при штатном выпуске; candidate 922ff70c2381 на VM
 не затрагивался. Секреты с VM не извлекались; commit/push — тимлид после review.
+
+---
+
+## Task ID: PGV-PNG-DIAG (25.11.2026) — два отказа кнопки «Скачать PNG» перед PGV-CERT
+
+База exact389b93031f7e84bd626a4c5fd8fd1bfb0f2b11cd; по сообщению тимлида
+сервер синхронизирован на неё. Запрос исследовательский: воспроизвести первые
+source_unavailable и последующие visual_export_unavailable, дать заключение.
+Изучены AGENTS, spec_passport_graphics_visual (§3/6/10–14), PGV-записи журналов
+11/12, UI/producer/freeze/schema/jobs/AUTH13. План, риски, выводы и следующий
+срез: docs/pgv_png_diagnosis_2026-11-25.md. Product/runtime не исправлялся.
+
+На неизменённом коде воспроизведён настоящий HTTP-путь полного apps.api.main:
+disposable PostgreSQL16.2 TCP/UTF8, required storage/startup warmup, личный
+AuthSession/CSRF/Origin, Account ownership и AUTH13. Fresh CSV120, дата
+подтверждена: первый POST upload.overview.tech_table →409 source_unavailable;
+GET dataset200 (переоткрытие) →повторный POST503 visual_export_unavailable.
+Сбой503 повторён также upload.chart.series, eda.descriptive.stats,
+preprocessing.missing.overview; producer GET200/X-Visual-Result-Ref и durable
+visual_result у всех есть, data_revision=0. До контроля document_jobs=0.
+
+F-PNG-01: register_uploaded_dataframe сохраняет data_frame, но не visual_result
+Обзора, тогда как UI показывает тот же UploadResponse без повторного GET
+dataset. Поэтому видимый результат не имеет печатного источника. Переоткрытие
+GET dataset вызывает notify_visual_result и снимает первый блокер.
+F-PNG-02: build_visual_print_snapshot превращает корректную нулевую версию
+в пустую строку через str(data_revision or ""). Валидация →ArtifactPayloadInvalid
+missing_data_version@data_artifact.artifact_version; общий except маршрута
+маскирует программный дефект под503/«повторите позднее». Это общий V01 builder,
+а не отказ IPC/Chromium. Диагностический контроль только в памяти тестового
+процесса сохраняет ту же0 как"0" →202 queued/1 managed auth_worker_job.
+Production-код и валидатор не менялись; это не поставка исправления/сертификат.
+
+Проверки: новый opt-in acceptance oracle —1 FAIL на0/1 PASS на7 (целевой RED
+сохранён); штатный PGV10 46/46 PASS показывает слепое место seeded revision7;
+PGV11 fixture3, PGV12 fixture7. Новый реальный VisualExportButton/Jest с
+записанными native HTTP-ответами →обе точные пользовательские фразы после
+unmount/remount,1/1 PASS; прежний UI corpus8/8 PASS. Native final replay
+подтверждает те же4 отказа503 и контроль202; leftover disposable DB=[];
+renderer worker отключён, PNG не рисовались. AUTH00 unit61/61 PASS,
+check_committed --target head PASS603, actual check_routes285 API/289
+bindings/669 entries added=[]/missing=[]; renderer tsc build PASS.
+
+Границы: нет browser-click/production E2E, final-image/UDS/Chromium/OCR/native
+PNG и полного регресса платформы; обе Next production сборки не повторялись
+(runtime/UI неизменны). HTTP-поверхность/DDL/deployment/gates и reviewed
+источники не менялись, карту не регенерировали. Дополнительно по коду отмечен
+отсутствующий result_ref в UI-запросе и недоступный без него lazy fallback;
+это отдельный риск §6, не причина missing_data_version. PGV-CERT заблокирован
+до исправления двух доказанных дефектов и fresh-upload приёмки пути A до
+готовых PNG/скачивания/визуального осмотра в обеих оболочках.
+
+Поставка: download/cisstat-pgv-png-diagnosis-389b930.zip — отчёт, opt-in
+reproducer/RED oracle/UI evidence test, протоколы и этот журнал; files.txt
+внутри. Рабочий INDEX/HEAD/ветки не менялись, commit/push/доступа к VM нет.
+Новые образы/миграции для диагностической поставки не нужны; команды rollout
+будут относиться к отдельному будущему исправляющему срезу.
+
+---
+
+## Task ID: PGV-PNG-FIX (25.11.2026) — первый экспорт новой загрузки и корректная ревизия 0
+
+База exact389b93031f7e84bd626a4c5fd8fd1bfb0f2b11cd. По запросу тимлида
+исправлены два доказанных блокера предыдущего диагностического акта.
+AGENTS/spec/журнал и общий file/DB upload, producer, visual snapshot,
+AUTH13 admission, release-контур изучены. Дизайн/риски/границы:
+docs/pgv_png_fix.md; полный VM-порядок с сохранением UDS/pins:
+docs/pgv_png_fix_vm.md. Commit/push/production/секреты VM не затрагивались.
+
+Runtime — только2 файла. upload_common.register_uploaded_dataframe собирает
+окончательный UploadResponse (включая extra parse warnings), фиксирует тот же
+JSON существующим best-effort notify_visual_result для preview/tech_table/
+quality и возвращает тот же body + X-Visual-* headers. Общая точка покрывает
+файл и SQL; первый экспорт не зависит от повторного GET dataset. Сбои freeze
+сохраняют успешную загрузку и прежний receipt-контур. visual_exports builder
+проверяет отсутствие версии через is None:0 →"0", None остаётся отсутствием
+и отвергается прежним валидатором. Нет выдуманной версии1/обхода схемы,
+повторной науки, новых HTTP/DTO/DDL или ослабления доступа/CAS.
+
+TDD: новые API RED4F/2P; native PostgreSQL RED2tests/4 failing assertions
+(пропущенные три upload visual_result,503 на графике/EDA/профиле). GREEN API6/6,
+gate-tooling2/2; default pgv-png PASS. Native PostgreSQL16.2 TCP/UTF8 2/2,
+skips0: fresh file upload→подтверждение даты→первый export202 без GET dataset,
+повтор тот же job/snapshot/одна managed запись, cancel200, чужой404; график,
+EDA stats и missing overview202 при revision0. Product/builders/auth/storage
+не подменялись. Совместный прогон с существующим personal-demo HTTP/science
+корпусом4/4 (включая verified email→upload→forecast/CSV); финальный native2/2
+после уточнения fixture resets; leftover disposable DB=[]. Worker выключен:
+это настоящее managed admission, не проверка PNG-пикселей.
+
+Регресс PGV01…16/upload/DB/doclog-recheck:682P/1F против чистой базы676P/1F.
+Точный прежний FAIL в обоих прогонах — TestCancelRaceGate.
+test_complete_render_finishes_running_job (fixture SimpleNamespace без format
+в PGV14 complete_render). Не исправлялся текущей поставкой; новых отказов нет,
+дельта только6 новых PASS. UI/print/registry Jest122/122,4 suites; полный Jest
+не завершён (остановлен на сборе suites без результата). Renderer tsc PASS.
+Обе Next production builds PASS:embedded20/standalone27, штатный offline
+font-response hook с настоящими локальными Inter5.3.0 вместо ожидания внешней
+загрузки; hook/fonts не поставляются, source/dependency manifests не менялись.
+
+Новый default pgv-png + opt-in pgv-png-postgres (--with-pgv-png-postgres либо
+явный --only), strict runner: без DSN exit2, skips/пустой набор не PASS.
+CI pgv_png_fix.yml: Ubuntu/Windows contracts и PostgreSQL16/18 native;
+remote/Windows/PG18 здесь не исполнялись. Local_gates.py/md обновлены.
+AUTH00:285 API/289 bindings/669 entries, added/removed=[]; все entries
+побайтно прежние. Обновлены только reviewed_sources и fingerprints runtime/
+tooling/docs/tests; inventory.md без изменений. AUTH00 unit61/61 PASS,
+strict INDEX/source parity и clean-base ZIP overlay — итоговый delivery-proof.
+Рабочий INDEX/HEAD не меняются; проверка использует отдельный Git index.
+
+Поставка download/cisstat-pgv-png-fix-389b930.zip: task-only manifest
+scripts/pgv_png_fix/files.txt, код/тесты/гейты/карта/документы/протоколы и этот
+worklog12; предыдущий диагностический ZIP не нужен. Для VM нужен новый API
+образ в новом coherent api/web/renderer bundle штатного release.py, затем
+candidate/recreate/check→drain→apply→live и свежая UI PNG/download проверка.
+Старые bundle/evidence/pins/volumes сохраняются. Docker/VM/UDS/Chromium/
+реальные PNG и полный PGV-CERT текущей локальной поставкой не заявляются.

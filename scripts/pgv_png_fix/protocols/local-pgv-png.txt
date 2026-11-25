@@ -1,0 +1,44 @@
+Локальные гейты (база 389b9303, AUTH-00 target=INDEX): pgv-png
+
+=== ГЕЙТ pgv-png (pgv_png_fix.yml contracts) — Fresh upload visual freeze and revision-zero PNG export
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m pytest tests/api/test_pgv_png_fix.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collecting ... collected 6 items
+
+tests/api/test_pgv_png_fix.py::test_zero_and_later_data_versions_survive_snapshot[0] PASSED [ 16%]
+tests/api/test_pgv_png_fix.py::test_zero_and_later_data_versions_survive_snapshot[7] PASSED [ 33%]
+tests/api/test_pgv_png_fix.py::test_missing_version_is_still_rejected PASSED [ 50%]
+tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[file] PASSED [ 66%]
+tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[database] PASSED [ 83%]
+tests/api/test_pgv_png_fix.py::test_freeze_failure_keeps_successful_upload_and_records_receipt PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 6 passed, 1 warning in 1.52s =========================
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest tests.unit.test_pgv_png_gates -v
+test_missing_native_dsn_is_a_failed_gate (tests.unit.test_pgv_png_gates.PngGateTests.test_missing_native_dsn_is_a_failed_gate) ... ok
+test_native_not_default_but_explicit_flag_selects_it (tests.unit.test_pgv_png_gates.PngGateTests.test_native_not_default_but_explicit_flag_selects_it) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.108s
+
+OK
+--- pgv-png: PASS (2.8 c)
+
+=== СВОДКА ===
+  PASS  pgv-png     2.8 c
+
+ИТОГ: выбранные гейты зелёные

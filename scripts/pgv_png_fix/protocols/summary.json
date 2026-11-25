@@ -1,0 +1,56 @@
+{
+  "base": "389b93031f7e84bd626a4c5fd8fd1bfb0f2b11cd",
+  "entries_unchanged": true,
+  "counts": {
+    "api": 285,
+    "framework": 8,
+    "internal_operation": 39,
+    "legacy_authority": 1,
+    "legacy_widget": 250,
+    "page": 41,
+    "proxy": 2,
+    "renderer": 4,
+    "static_asset": 1,
+    "storage": 18,
+    "task_alias": 4,
+    "transport": 3,
+    "worker": 13
+  },
+  "new_source_fingerprints": [
+    ".github/workflows/pgv_png_fix.yml",
+    "docs/pgv_png_fix.md",
+    "docs/pgv_png_fix_vm.md",
+    "scripts/pgv_png_fix/requirements.txt",
+    "scripts/pgv_png_fix/verify_postgres.py",
+    "tests/api/test_pgv_png_fix.py",
+    "tests/integration/test_pgv_png_fix.py",
+    "tests/unit/test_pgv_png_gates.py"
+  ],
+  "changed_source_fingerprints": [
+    "apps/api/upload_common.py",
+    "apps/api/visual_exports.py",
+    "scripts/local_gates.md",
+    "scripts/local_gates.py"
+  ],
+  "validation": {
+    "red_api": "4 fail, 2 pass",
+    "api": "6 pass",
+    "tooling": "2 pass",
+    "native": "2 pass, 0 skipped",
+    "native_combined": "4 pass, 0 skipped",
+    "pgv_regression": "682 pass, 1 pre-existing fail",
+    "baseline_regression": "676 pass, same 1 fail",
+    "jest_targeted": "122 pass",
+    "auth00_unit": "61 pass",
+    "renderer_build": "pass",
+    "next_builds": "embedded20/standalone27 pass with genuine local Inter through Next test hook"
+  },
+  "production_access": false,
+  "full_pgv_certified": false,
+  "delivery": {
+    "clean_base_overlay": true,
+    "pgv_png_gate": "6 pytest + 2 unittest passed",
+    "strict_index": "603 discovery, complete reviewed parity",
+    "real_index_staged_paths": []
+  }
+}

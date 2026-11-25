@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 2 items
+
+scripts/pgv_png_diagnosis/test_revision_contract.py F.                   [100%]
+
+=================================== FAILURES ===================================
+____________ test_existing_data_revision_survives_print_snapshot[0] ____________
+scripts/pgv_png_diagnosis/test_revision_contract.py:28: in test_existing_data_revision_survives_print_snapshot
+    assert snapshot["data_artifact"]["artifact_version"] == str(revision)
+E   AssertionError: assert '' == '0'
+E     
+E     - 0
+=========================== short test summary info ============================
+FAILED scripts/pgv_png_diagnosis/test_revision_contract.py::test_existing_data_revision_survives_print_snapshot[0]
+==================== 1 failed, 1 passed, 1 warning in 2.13s ====================

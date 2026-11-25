@@ -1,0 +1,3 @@
+auth00 INDEX-parity: ok (603 discovery surfaces; full reviewed inventory/source parity)
+Actual INDEX tree unchanged: True
+Actual INDEX bytes restored/preserved: True

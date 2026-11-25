@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0
+rootdir: /workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collected 46 items
+
+tests/api/test_pgv10_visual_exports.py ................................. [ 71%]
+.............                                                            [100%]
+
+======================== 46 passed, 2 warnings in 2.35s ========================

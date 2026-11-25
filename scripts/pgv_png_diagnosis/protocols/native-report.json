@@ -1,0 +1,125 @@
+{
+  "base": "389b93031f7e84bd626a4c5fd8fd1bfb0f2b11cd",
+  "backend": "native PostgreSQL TCP/UTF8",
+  "steps": [
+    {
+      "label": "fresh upload before GET dataset",
+      "view_id": "upload.overview.tech_table",
+      "status": 409,
+      "body": {
+        "code": "source_unavailable",
+        "message": "Frozen результат view отсутствует в durable слое (view не открывался либо freeze не удался) -- откройте представление и повторите экспорт",
+        "request_id": "req-f1e513e00903"
+      }
+    },
+    {
+      "label": "producer GET succeeded, unmodified export",
+      "view_id": "upload.overview.tech_table",
+      "status": 503,
+      "body": {
+        "code": "visual_export_unavailable",
+        "message": "Экспорт временно недоступен",
+        "request_id": "req-6d35f065bc7b"
+      }
+    },
+    {
+      "label": "producer GET succeeded, unmodified export",
+      "view_id": "upload.chart.series",
+      "status": 503,
+      "body": {
+        "code": "visual_export_unavailable",
+        "message": "Экспорт временно недоступен",
+        "request_id": "req-c019e50ce7fc"
+      }
+    },
+    {
+      "label": "producer GET succeeded, unmodified export",
+      "view_id": "eda.descriptive.stats",
+      "status": 503,
+      "body": {
+        "code": "visual_export_unavailable",
+        "message": "Экспорт временно недоступен",
+        "request_id": "req-e8c0e8553fae"
+      }
+    },
+    {
+      "label": "producer GET succeeded, unmodified export",
+      "view_id": "preprocessing.missing.overview",
+      "status": 503,
+      "body": {
+        "code": "visual_export_unavailable",
+        "message": "Экспорт временно недоступен",
+        "request_id": "req-0826a13917c3"
+      }
+    },
+    {
+      "label": "CONTROL only: preserve revision zero; not a product fix",
+      "view_id": "upload.overview.tech_table",
+      "status": 202,
+      "body": {
+        "run_id": "RUN-82466522",
+        "view_id": "upload.overview.tech_table",
+        "result_artifact_id": "art-2b016ca4ae144e3b9d71d1aa8b2eae8b",
+        "result_ref": "vr-be6b8b241a04d582896a9c2bba9f07e8",
+        "snapshot_artifact_id": "art-f8a3671956394e64941ef42e1d9ddb6a",
+        "document_id": "doc-8bb7677b57064d2d8bd626432c14c68d",
+        "print_revision_id": "dprint-42125f78fc6d41b19d34bedbb3d411e4",
+        "print_kind": "V01",
+        "profile_id": "figure-landscape",
+        "job": {
+          "job_id": "djob-6e4a7a84bcf642e29288d09cc11b58f9",
+          "state": "queued",
+          "format": "png",
+          "attempt": 1,
+          "print_revision_id": "dprint-42125f78fc6d41b19d34bedbb3d411e4",
+          "error_code": null,
+          "created_at": "2026-11-25T13:12:18.101712+00:00"
+        },
+        "status_url": "/v1/documentation/jobs/djob-6e4a7a84bcf642e29288d09cc11b58f9"
+      }
+    }
+  ],
+  "exceptions": [
+    {
+      "type": "VisualSourceUnavailable",
+      "message": "Frozen результат view отсутствует в durable слое (view не открывался либо freeze не удался) -- откройте представление и повторите экспорт",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/scripts/pgv_png_diagnosis/reproduce.py\", line 79, in observe\n    return original_export(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 1388, in request_visual_export\n    result_artifact, result_payload = resolve_frozen_result(\n                                      ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 796, in resolve_frozen_result\n    raise VisualSourceUnavailable(\napps.api.visual_exports.VisualSourceUnavailable: Frozen результат view отсутствует в durable слое (view не открывался либо freeze не удался) -- откройте представление и повторите экспорт\n"
+    },
+    {
+      "type": "ArtifactPayloadInvalid",
+      "message": "visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/scripts/pgv_png_diagnosis/reproduce.py\", line 79, in observe\n    return original_export(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 1425, in request_visual_export\n    snapshot_artifact = freeze_visual_print_snapshot(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_artifacts.py\", line 908, in freeze_visual_print_snapshot\n    artifact = service.persist_visual_artifact(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/artifact_promotion.py\", line 296, in persist_visual_artifact\n    raise ArtifactPayloadInvalid(violations)\napps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна\n"
+    },
+    {
+      "type": "ArtifactPayloadInvalid",
+      "message": "visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/scripts/pgv_png_diagnosis/reproduce.py\", line 79, in observe\n    return original_export(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 1425, in request_visual_export\n    snapshot_artifact = freeze_visual_print_snapshot(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_artifacts.py\", line 908, in freeze_visual_print_snapshot\n    artifact = service.persist_visual_artifact(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/artifact_promotion.py\", line 296, in persist_visual_artifact\n    raise ArtifactPayloadInvalid(violations)\napps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна\n"
+    },
+    {
+      "type": "ArtifactPayloadInvalid",
+      "message": "visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/scripts/pgv_png_diagnosis/reproduce.py\", line 79, in observe\n    return original_export(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 1425, in request_visual_export\n    snapshot_artifact = freeze_visual_print_snapshot(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_artifacts.py\", line 908, in freeze_visual_print_snapshot\n    artifact = service.persist_visual_artifact(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/artifact_promotion.py\", line 296, in persist_visual_artifact\n    raise ArtifactPayloadInvalid(violations)\napps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна\n"
+    },
+    {
+      "type": "ArtifactPayloadInvalid",
+      "message": "visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/scripts/pgv_png_diagnosis/reproduce.py\", line 79, in observe\n    return original_export(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_exports.py\", line 1425, in request_visual_export\n    snapshot_artifact = freeze_visual_print_snapshot(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/visual_artifacts.py\", line 908, in freeze_visual_print_snapshot\n    artifact = service.persist_visual_artifact(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/scratch/495ea0f1cb98/CISStat-TS-Analysis/apps/api/artifact_promotion.py\", line 296, in persist_visual_artifact\n    raise ArtifactPayloadInvalid(violations)\napps.api.visual_artifacts.ArtifactPayloadInvalid: visual artifact payload invalid: missing_data_version@data_artifact.artifact_version: версия данных обязательна\n"
+    }
+  ],
+  "browser_clicks": false,
+  "production_access": false,
+  "renderer_calls": 0,
+  "run_initial_data_revision": 0,
+  "jobs_before_control": 0,
+  "control": {
+    "actual_revision": 0,
+    "original_artifact_version": "",
+    "managed_jobs": 1,
+    "result": "202 queued, without renderer invocation"
+  },
+  "visual_result_revisions": [
+    0
+  ],
+  "reproduced": true,
+  "leftover_diagnostic_databases": []
+}

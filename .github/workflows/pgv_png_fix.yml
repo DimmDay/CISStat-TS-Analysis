@@ -1,0 +1,48 @@
+name: PGV fresh-upload PNG regression
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
+jobs:
+  contracts:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/pgv_png_fix/requirements.txt
+      - run: python scripts/local_gates.py --only pgv-png --skip-install
+  postgres:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['16', '18']
+    services:
+      postgres:
+        image: postgres:${{ matrix.version }}
+        env:
+          POSTGRES_USER: pgvtest
+          POSTGRES_PASSWORD: pgv-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U pgvtest -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      CISSTAT_AUTH_TEST_DSN: postgresql://pgvtest:pgv-ci-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r apps/api/requirements.txt -r scripts/authcert/requirements.txt
+      - run: python scripts/local_gates.py --only pgv-png-postgres --skip-install
