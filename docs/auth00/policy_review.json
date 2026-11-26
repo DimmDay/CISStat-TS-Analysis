@@ -9547,6 +9547,7 @@
   "docs/pgv_png_fix_vm.md",
   "docs/pgv_png_ops.md",
   "docs/pgv_png_ops_vm.md",
+  "docs/pgv_png_pinfix.md",
   "packages/ui/components/AccountScreen.tsx",
   "packages/ui/components/BillingPanel.tsx",
   "packages/ui/components/DatasetPassportPanel.tsx",

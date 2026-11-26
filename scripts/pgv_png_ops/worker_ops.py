@@ -7,6 +7,7 @@ configuration is reused, and revoked/expired/invalid credentials are refused.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,7 @@ import re
 import secrets
 import stat
 import subprocess
+import tempfile
 import time
 
 
@@ -92,9 +94,26 @@ class Docker:
         return self.decode(response)
 
     def verify_image(self, layout):
-        # Select image names only. Never request a resolved config/env dump.
-        result = self.run(self.compose(layout) + ["config", "--images", "api"])
-        if result.returncode or result.stdout.split() != [layout["image"]]:
+        # --images includes dependencies; identify API by a read-only image-only
+        # override, not by list position or membership. No config/env dump.
+        command = self.compose(layout)
+        result = self.run(command + ["config", "--images", "api"])
+        if result.returncode:
+            raise OpsError("compose_image_check_unavailable")
+        actual = Counter(result.stdout.split())
+        marker = "cisstat-pgv-api-pin-probe:" + secrets.token_hex(12)
+        with tempfile.TemporaryDirectory(prefix="cisstat-api-image-") as directory:
+            probe_file = Path(directory) / "image-only.json"
+            probe_file.write_text(json.dumps({"services": {"api": {"image": marker}}}), encoding="utf-8")
+            probe = self.run(command + ["-f", str(probe_file), "config", "--images", "api"])
+        if probe.returncode:
+            raise OpsError("compose_image_check_unavailable")
+        expected = Counter(probe.stdout.split())
+        if actual[marker] or expected[marker] != 1:
+            raise OpsError("compose_image_probe_invalid")
+        del expected[marker]
+        expected[layout["image"]] += 1
+        if actual != expected:
             raise OpsError("active_api_pin_differs_from_compose")
 
     def ensure(self, layout):

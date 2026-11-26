@@ -1,5 +1,17 @@
 # Локальные гейты перед передачей в GitHub
 
+## PGV-PNG-PINFIX (26.11.2026)
+
+Срез поверх7e09e57: `scripts/pgv_png_pinfix/files.txt`. Исправлен host image
+preflight: Compose images включает зависимости. Образы API и зависимостей
+различаются read-only probe, с сохранением fail-closed на mismatch и CLI
+failure; private env/полный config не запрашиваются. Default pgv-png уже
+вызывает tests.unit.test_pgv_png_ops:13 проверок, включая реальный срез VM,
+порядок/дубликаты, API image только у зависимости, cleanup и исходные overlays
+для bootstrap/recreate. Нового gate/Node/requirements не требуется.
+`python scripts/local_gates.py --only pgv-png,auth00 --skip-install` после
+explicit staging task manifest. Для VM images не пересобираются.
+
 ## PGV-PNG-OPS (26.11.2026): worker credential и отказы admission
 
 База `20b835b`, manifest `scripts/pgv_png_ops/files.txt`. Default `pgv-png`

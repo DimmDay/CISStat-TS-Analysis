@@ -1,0 +1,1 @@
+Python compilation PASS: worker_ops.py and test_pgv_png_ops.py. Host-only CLI change; API/UI/renderer source and image builds unchanged. No Docker live run claimed.

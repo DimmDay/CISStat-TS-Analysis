@@ -10,21 +10,20 @@
 
 Новые образы и миграции для этой операции **не нужны**: официальный
 `apps.api.workers.bootstrap ensure` уже находится в текущем API. На VM
-скопировать поставленный `scripts/pgv_png_ops/worker_ops.py` (или отдельно
-скачанный `pgv_png_worker_ops.py`) в корень репозитория. Один оператор;
+после pull обновлённого среза использовать репозиторный путь
+`scripts/pgv_png_ops/worker_ops.py`; отдельно сохранять копию в корне не нужно. Один оператор;
 произойдёт краткий recreate только API. Текущие задания перед рестартом
 операционно завершить; uncertain/финансовые holds ради этого не снимать.
 По диагностике данного инцидента активных PNG jobs нет.
 
 ```bash
 cd /opt/cisstat/CISStat-TS-Analysis
-python3 ./pgv_png_worker_ops.py check
-python3 ./pgv_png_worker_ops.py repair
-python3 ./pgv_png_worker_ops.py check
+python3 scripts/pgv_png_ops/worker_ops.py check
+python3 scripts/pgv_png_ops/worker_ops.py repair
+python3 scripts/pgv_png_ops/worker_ops.py check
 ```
 
-Если файлы уже разложены по manifest, вместо `./pgv_png_worker_ops.py`
-использовать `scripts/pgv_png_ops/worker_ops.py`. У `check` exit2 и ready=false
+У `check` exit2 и ready=false
 при missing ожидаемы; не объединять первый check с repair через `&&` или
 `set -e` (он намеренно сигнализирует неготовность). `repair` exit0 означает
 успешный цикл worker, usable render credential и готовый renderer.
@@ -35,7 +34,12 @@ python3 ./pgv_png_worker_ops.py check
   Docker stderr/stdout не ретранслируются; разрешены только разобранные поля.
 - Берёт project и ordered Compose files из metadata живого API. Проверяет
   `cisstat-stack`, наличие фактических файлов и соответствие image pin текущему
-  API через безопасный `compose config --images api` без config/env dump.
+  API через два безопасных `compose config --images api` без config/env dump.
+  Вывод включает зависимости (например, postgres:16). API определяется
+  read-only probe с временной подстановкой только api.image; multiset разницы
+  должен соответствовать живому API image. Порядок и дубликаты не важны;
+  совпадения image только у зависимости недостаточно. Probe-файл удаляется
+  и никогда не передаётся в bootstrap/recreate. Подробнее docs/pgv_png_pinfix.md.
   Если файлы релиза перемещены или pin изменён, операция останавливается.
 - Сначала вызывает bootstrap ensure из тех же Compose inputs: существующий
   валидный ключ в `.env` повторно использует, без ротации. Только при missing

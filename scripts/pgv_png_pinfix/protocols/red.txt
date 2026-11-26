@@ -1,0 +1,63 @@
+test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) ... 
+  test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) (step=1) ... FAIL
+  test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) (step=2) ... FAIL
+test_api_image_can_be_repeated_by_a_dependency (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_api_image_can_be_repeated_by_a_dependency) ... ERROR
+test_live_image_only_on_dependency_does_not_hide_changed_api (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_live_image_only_on_dependency_does_not_hide_changed_api) ... ok
+test_operator_vm_api_and_postgres_images_are_valid (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_operator_vm_api_and_postgres_images_are_valid) ... ERROR
+test_single_image_is_still_supported (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_single_image_is_still_supported) ... ok
+
+======================================================================
+ERROR: test_api_image_can_be_repeated_by_a_dependency (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_api_image_can_be_repeated_by_a_dependency)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 141, in test_api_image_can_be_repeated_by_a_dependency
+    self.check_images(self.LIVE, [self.LIVE, "postgres:16"])
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 131, in check_images
+    getattr(docker, action)(FakeDocker().inspect())
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/scripts/pgv_png_ops/worker_ops.py", line 98, in verify_image
+    raise OpsError("active_api_pin_differs_from_compose")
+scripts.pgv_png_ops.worker_ops.OpsError: active_api_pin_differs_from_compose
+
+======================================================================
+ERROR: test_operator_vm_api_and_postgres_images_are_valid (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_operator_vm_api_and_postgres_images_are_valid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 137, in test_operator_vm_api_and_postgres_images_are_valid
+    calls = self.check_images(self.LIVE, ["postgres:16"])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 131, in check_images
+    getattr(docker, action)(FakeDocker().inspect())
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/scripts/pgv_png_ops/worker_ops.py", line 98, in verify_image
+    raise OpsError("active_api_pin_differs_from_compose")
+scripts.pgv_png_ops.worker_ops.OpsError: active_api_pin_differs_from_compose
+
+======================================================================
+FAIL: test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) (step=1)
+----------------------------------------------------------------------
+scripts.pgv_png_ops.worker_ops.OpsError: active_api_pin_differs_from_compose
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 149, in test_actual_command_and_probe_failure_are_distinct_from_mismatch
+    with self.subTest(step=step), self.assertRaisesRegex(ops.OpsError, "compose_image_check_unavailable"):
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "compose_image_check_unavailable" does not match "active_api_pin_differs_from_compose"
+
+======================================================================
+FAIL: test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) (step=2)
+----------------------------------------------------------------------
+scripts.pgv_png_ops.worker_ops.OpsError: active_api_pin_differs_from_compose
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-7e09e57/tests/unit/test_pgv_png_ops.py", line 149, in test_actual_command_and_probe_failure_are_distinct_from_mismatch
+    with self.subTest(step=step), self.assertRaisesRegex(ops.OpsError, "compose_image_check_unavailable"):
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "compose_image_check_unavailable" does not match "active_api_pin_differs_from_compose"
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+FAILED (failures=2, errors=2)

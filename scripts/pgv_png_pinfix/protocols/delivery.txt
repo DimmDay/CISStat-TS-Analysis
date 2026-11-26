@@ -1,0 +1,102 @@
+PGV-PNG-PINFIX — base7e09e57e79223a9772ef5fa58e0a59e20f1ab304
+26.11.2026 Europe/Moscow
+
+RED5tests/2F+2E; GREEN13/13 operator tests. Default pgv-png PASS,
+AUTH00 PASS including61 unit tests and strict INDEX/source parity.
+Actual routes285/bindings289/entries669 unchanged; all entries byte-identical.
+Python compilation PASS. Host CLI only: no API/UI/renderer image changes.
+No live Docker/VM/repair/UI result claimed. No commit or push.
+Source HEAD/refs/main INDEX bytes and staged tree preserved.
+
+Clean exact7e09e57 +15-file ZIP: every file byte-identical to source;
+pgv-png + strict INDEX parity + actual routes PASS. After that check only
+this delivery report and the worklog final note were filled. The final ZIP
+is re-read and compared to every manifest file. No reviewed source changed.
+
+Clean overlay output:
+
+$ python scripts/local_gates.py --only pgv-png --skip-install
+Локальные гейты (база 7e09e57e, AUTH-00 target=INDEX): pgv-png
+
+=== ГЕЙТ pgv-png (pgv_png_fix.yml contracts) — Fresh upload, revision zero, typed export failures and private worker repair
+    (установка зависимостей пропущена: --skip-install)
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m pytest tests/api/test_pgv_png_fix.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.2.0, pluggy-1.7.0 -- /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/scratch/495ea0f1cb98/pgv-png-pinfix-clean-overlay
+configfile: pytest.ini
+plugins: typeguard-4.6.1, platformdirs-4.14.8, anyio-4.14.2
+collecting ... collected 16 items
+
+tests/api/test_pgv_png_fix.py::test_zero_and_later_data_versions_survive_snapshot[0] PASSED [  6%]
+tests/api/test_pgv_png_fix.py::test_zero_and_later_data_versions_survive_snapshot[7] PASSED [ 12%]
+tests/api/test_pgv_png_fix.py::test_missing_version_is_still_rejected PASSED [ 18%]
+tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[file] PASSED [ 25%]
+tests/api/test_pgv_png_fix.py::test_common_upload_freezes_final_visible_response[database] PASSED [ 31%]
+tests/api/test_pgv_png_fix.py::test_freeze_failure_keeps_successful_upload_and_records_receipt PASSED [ 37%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[visuals-503-worker_service_unavailable] PASSED [ 43%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[visuals-429-concurrency_exceeded] PASSED [ 50%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[visuals-402-quota_exceeded] PASSED [ 56%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[visuals-401-authentication_required] PASSED [ 62%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[passport-documents-503-worker_service_unavailable] PASSED [ 68%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[passport-documents-429-concurrency_exceeded] PASSED [ 75%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[passport-documents-402-quota_exceeded] PASSED [ 81%]
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[passport-documents-401-authentication_required] PASSED [ 87%]
+tests/api/test_pgv_png_fix.py::test_arbitrary_http_exception_still_has_safe_export_envelope[visuals] PASSED [ 93%]
+tests/api/test_pgv_png_fix.py::test_arbitrary_http_exception_still_has_safe_export_envelope[passport-documents] PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/api/test_pgv_png_fix.py::test_export_preserves_only_trusted_authority_failures[visuals-503-worker_service_unavailable]
+  /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 16 passed, 2 warnings in 2.29s ========================
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest tests.unit.test_pgv_png_gates tests.unit.test_pgv_png_ops -v
+test_missing_native_dsn_is_a_failed_gate (tests.unit.test_pgv_png_gates.PngGateTests.test_missing_native_dsn_is_a_failed_gate) ... ok
+test_native_not_default_but_explicit_flag_selects_it (tests.unit.test_pgv_png_gates.PngGateTests.test_native_not_default_but_explicit_flag_selects_it) ... ok
+test_actual_command_and_probe_failure_are_distinct_from_mismatch (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_actual_command_and_probe_failure_are_distinct_from_mismatch) ... ok
+test_api_image_can_be_repeated_by_a_dependency (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_api_image_can_be_repeated_by_a_dependency) ... ok
+test_bootstrap_does_not_receive_the_probe_overlay (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_bootstrap_does_not_receive_the_probe_overlay) ... ok
+test_live_image_only_on_dependency_does_not_hide_changed_api (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_live_image_only_on_dependency_does_not_hide_changed_api) ... ok
+test_operator_vm_api_and_postgres_images_are_valid (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_operator_vm_api_and_postgres_images_are_valid) ... ok
+test_single_image_is_still_supported (tests.unit.test_pgv_png_ops.ComposeImagePinTests.test_single_image_is_still_supported) ... ok
+test_changed_compose_image_is_refused_before_container_operation (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_changed_compose_image_is_refused_before_container_operation) ... ok
+test_docker_uses_ordered_overlays_and_scrubs_shell_overrides (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_docker_uses_ordered_overlays_and_scrubs_shell_overrides) ... ok
+test_existing_env_credential_is_reused_without_rotation (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_existing_env_credential_is_reused_without_rotation) ... ok
+test_failed_append_rolls_back_without_reading_previous_values (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_failed_append_rolls_back_without_reading_previous_values) ... ok
+test_ready_is_idempotent_and_symlink_env_is_rejected (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_ready_is_idempotent_and_symlink_env_is_rejected) ... ok
+test_repair_appends_secret_privately_preserves_other_settings_and_pins (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_repair_appends_secret_privately_preserves_other_settings_and_pins) ... ok
+test_revoked_invalid_or_expired_credentials_are_not_reactivated (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_revoked_invalid_or_expired_credentials_are_not_reactivated) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.117s
+
+OK
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm exec -- jest --runInBand --runTestsByPath packages/ui/lib/visualExports.errors.test.ts
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        1.58 s
+Ran all test suites within paths "packages/ui/lib/visualExports.errors.test.ts".
+--- pgv-png: PASS (6.0 c)
+
+=== СВОДКА ===
+  PASS  pgv-png     6.0 c
+
+ИТОГ: выбранные гейты зелёные
+$ python scripts/auth00/check_committed.py --target index
+auth00 INDEX-parity: ok (603 discovery surfaces; full reviewed inventory/source parity)
+$ python scripts/auth06/check_routes.py
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using python library for writing JSON byte strings
+{"status": "ok", "actual_api": 285, "inventory_api": 285, "registry_bindings": 289, "inventory_entries": 669, "added": [], "missing": []}

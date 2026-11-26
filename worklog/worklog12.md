@@ -1846,3 +1846,52 @@ Clean exact20b835b + ZIP overlay: все34 файла побайтно совп�
 pgv-png, strict INDEX/source parity и actual check_routes PASS. После проверки
 изменены только этот финальный delivery-note и protocol delivery.txt, код/
 reviewed-source bytes прежние. Итоговый ZIP перечитан и сверен с manifest.
+
+---
+
+## Task ID: PGV-PNG-PINFIX (26.11.2026) — ложный отказ проверки API image
+
+База exact7e09e57e79223a9772ef5fa58e0a59e20f1ab304. Оператор выполнил
+репозиторный scripts/pgv_png_ops/worker_ops.py: check missing/renderer ready,
+repair active_api_pin_differs_from_compose. Новый безопасный срез: Compose
+exit0/stderr empty; images=[sha256:bc38cf4e…1f20, postgres:16], живой API
+именно bc38cf4e…1f20. Итак, это наш дефект host preflight: ожидалась одна
+строка images, но Compose включает dependencies. До отказа ключ/БД/API не
+менялись; credential остаётся missing. AGENTS соблюдены, проект/риски —
+docs/pgv_png_pinfix.md. Commit/push/секреты/VM mutation агент не выполнял.
+
+Исправлен только host worker_ops.py: два read-only config --images api с
+исходными ordered inputs. Второй получает временный JSON overlay только
+с публичной probe-меткой api.image; Counter заменяет ровно одну такую метку
+живым API image и требует равенство original multiset. Порядок, зависимости
+и дубликаты допустимы. Одного наличия старого image у зависимости недостаточно
+для PASS при изменённом API. Probe-файл удаляется и не передаётся bootstrap/
+recreate. Нет resolved config/env dump, build/pull/контейнеров на preflight.
+Compose failure отделён от mismatch; raw stderr не выдаётся. Функции private
+key append/bootstrap и runtime Compose inputs сохраняются без обхода guard.
+
+TDD RED5tests/2F+2E; GREEN13/13, включая replay VM, duplicate/order,
+image только у dependency, config/probe failure, cleanup и исходные overlays
+в bootstrap/recreate. Python compilation host CLI/tests PASS. Дополнительная
+пересборка Next/API/renderer не требуется: их source bytes/контракты прежние.
+Docker/реальный Compose локально не исполнялись, subprocess responses —
+protocol adapter; вывод настоящего Compose взят у оператора. Настоящий repair
+и PNG UI ещё не подтверждены. Инструкция docs/pgv_png_ops_vm.md исправлена:
+после штатного ZIP→локальный push→VM pull вызывать репозиторный путь, отдельно
+сохранять root-копию скрипта не надо. Пересборки образов/миграций нет.
+
+Default pgv-png уже содержит модуль тестов: новый gate/requirements не нужны;
+scripts/local_gates.md дополнен. AUTH00 actual check_routes PASS:285 API/
+289 bindings/669 entries, added/missing=[]. Все669 entries побайтно прежние,
+в карте меняются только reviewed_sources/fingerprints host script/tests/docs.
+Поставка task-only scripts/pgv_png_pinfix/files.txt и ZIP в download/.
+Финальные gates/INDEX и delivery результаты добавляются ниже после проверки.
+
+Финал PGV-PNG-PINFIX: local_gates pgv-png+auth00 PASS, AUTH00 unit61/61,
+strict INDEX/source parity PASS (отдельный GIT_INDEX_FILE). HEAD/refs/основной
+INDEX bytes/staged tree сохранены. Clean exact7e09e57 + task-only ZIP15files:
+побайтная идентичность, pgv-png, strict INDEX parity, actual check_routes PASS.
+После проверки дополнены только protocol delivery.txt и этот финальный note;
+reviewed bytes прежние. ZIP перечитан и сверен со всеми manifest files.
+VM: после применения ZIP локально/push тимлида/pull выполнить репозиторный
+worker_ops.py repair, затем check. Новых образов/DDL не требуется.

@@ -1,6 +1,8 @@
 """Operator remediation must not expose keys or replace pinned Compose inputs."""
 import contextlib
 import io
+import json
+import subprocess
 import os
 from pathlib import Path
 import tempfile
@@ -78,8 +80,10 @@ class WorkerRepairTests(unittest.TestCase):
             docker=ops.Docker("cisstat-stack-api-1",Path(d)/".env")
             layout=FakeDocker().inspect()
             with patch.dict(os.environ,{"CISSTAT_WORKER_KEY":"never-in-argv","CISSTAT_AUTH_MFA_KEYS":"never-printed"}), \
+                 patch.object(ops.secrets,"token_hex",return_value="abcd"), \
                  patch.object(ops.subprocess,"run",side_effect=[
                      subprocess.CompletedProcess([],0,layout["image"]+"\n",""),
+                     subprocess.CompletedProcess([],0,"cisstat-pgv-api-pin-probe:abcd\n",""),
                      subprocess.CompletedProcess([],0,"",""),
                  ]) as run:
                 docker.restart(layout)
@@ -92,8 +96,87 @@ class WorkerRepairTests(unittest.TestCase):
         import subprocess
         with tempfile.TemporaryDirectory() as d:
             docker=ops.Docker("cisstat-stack-api-1",Path(d)/".env")
-            with patch.object(ops.subprocess,"run",return_value=subprocess.CompletedProcess([],0,"sha256:"+"2"*64,"")) as run:
+            with patch.object(ops.secrets,"token_hex",return_value="abcd"), \
+                 patch.object(ops.subprocess,"run",side_effect=[
+                     subprocess.CompletedProcess([],0,"sha256:"+"2"*64,""),
+                     subprocess.CompletedProcess([],0,"cisstat-pgv-api-pin-probe:abcd\n",""),
+                 ]) as run:
                 with self.assertRaisesRegex(ops.OpsError,"active_api_pin_differs"):
                     docker.restart(FakeDocker().inspect())
-            self.assertEqual(run.call_count,1)
+            self.assertEqual(run.call_count,2)
             self.assertEqual(run.call_args.args[0][-3:],["config","--images","api"])
+
+
+class ComposeImagePinTests(unittest.TestCase):
+    LIVE = "sha256:" + "1" * 64
+    OTHER = "sha256:" + "2" * 64
+
+    def check_images(self, api, deps, *, fail_at=None, action="verify_image"):
+        docker = ops.Docker("cisstat-stack-api-1", Path("/base/.env"))
+        calls = []; probes = []
+        def run(args, **kwargs):
+            calls.append(args)
+            if len(calls) == 1:
+                images = [api, *deps]
+            elif len(calls) == 2:
+                last_file = Path(args[max(i for i,a in enumerate(args) if a == "-f") + 1])
+                probes.append(last_file)
+                model = json.loads(last_file.read_text())
+                self.assertEqual(set(model), {"services"})
+                self.assertEqual(set(model["services"]), {"api"})
+                self.assertEqual(set(model["services"]["api"]), {"image"})
+                images = [*reversed(deps), model["services"]["api"]["image"]]
+            else:
+                self.fail("image preflight must not mutate Docker")
+            self.assertEqual(args[-3:], ["config", "--images", "api"])
+            self.assertEqual([args[i+1] for i,a in enumerate(args) if a == "-f"][:2], FakeDocker().inspect()["files"])
+            return subprocess.CompletedProcess([], 1 if fail_at == len(calls) else 0,
+                                               "\n".join(images)+"\n", "private diagnostic withheld")
+        try:
+            with patch.object(docker, "run", side_effect=run):
+                getattr(docker, action)(FakeDocker().inspect())
+        finally:
+            self.assertTrue(all(not p.exists() for p in probes), "temporary probe must be removed")
+        return calls
+
+    def test_operator_vm_api_and_postgres_images_are_valid(self):
+        calls = self.check_images(self.LIVE, ["postgres:16"])
+        self.assertEqual(len(calls), 2)
+
+    def test_api_image_can_be_repeated_by_a_dependency(self):
+        self.check_images(self.LIVE, [self.LIVE, "postgres:16"])
+
+    def test_live_image_only_on_dependency_does_not_hide_changed_api(self):
+        with self.assertRaisesRegex(ops.OpsError, "active_api_pin_differs_from_compose"):
+            self.check_images(self.OTHER, [self.LIVE, "postgres:16"], action="restart")
+
+    def test_actual_command_and_probe_failure_are_distinct_from_mismatch(self):
+        for step in [1, 2]:
+            with self.subTest(step=step), self.assertRaisesRegex(ops.OpsError, "compose_image_check_unavailable"):
+                self.check_images(self.LIVE, ["postgres:16"], fail_at=step)
+
+    def test_single_image_is_still_supported(self):
+        self.check_images(self.LIVE, [])
+
+    def test_bootstrap_does_not_receive_the_probe_overlay(self):
+        docker = ops.Docker("cisstat-stack-api-1", Path("/base/.env"))
+        layout = FakeDocker().inspect()
+        calls = []
+        probe_paths = []
+        def run(args, **kwargs):
+            calls.append(args)
+            if len(calls) == 1:
+                text = self.LIVE + "\npostgres:16\n"
+            elif len(calls) == 2:
+                path = Path(args[max(i for i,a in enumerate(args) if a == "-f") + 1])
+                probe_paths.append(path)
+                text = "postgres:16\n" + json.loads(path.read_text())["services"]["api"]["image"]
+            else:
+                self.assertEqual([args[i+1] for i,a in enumerate(args) if a == "-f"], layout["files"])
+                self.assertTrue(all(not p.exists() for p in probe_paths))
+                self.assertEqual(args[-5:], ["api", "python", "-m", "apps.api.workers.bootstrap", "ensure"])
+                text = json.dumps({"state": "registered", "kinds": ["render"]})
+            return subprocess.CompletedProcess([], 0, text, "")
+        with patch.object(docker, "run", side_effect=run):
+            self.assertEqual(docker.ensure(layout)["state"], "registered")
+        self.assertEqual(len(calls), 3)
