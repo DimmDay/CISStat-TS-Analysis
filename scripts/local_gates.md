@@ -1,5 +1,32 @@
 # Локальные гейты перед передачей в GitHub
 
+## PGV-PNG-OPS (26.11.2026): worker credential и отказы admission
+
+База `20b835b`, manifest `scripts/pgv_png_ops/files.txt`. Default `pgv-png`
+дополнен trusted AuthHTTPException (503/429/402/401), закрытием произвольных
+upstream ошибок, private worker repair и Jest фактических flat/error/detail
+ответов обоих клиентов. Нужны Node22 + `npm ci`; CI contracts выполняет это
+на Ubuntu/Windows (Linux-only операции repair в Windows отмечены skip).
+Native opt-in runner дополнен missing credential → bootstrap → AUTH13 worker
+с isolated child → выдача PNG bytes → освобождение слота; renderer HTTP ответ
+задан protocol double, Chromium/UDS/визуальная сертификация не заявляются.
+Пропущенный native DSN, ноль тестов или skips в native по-прежнему FAIL.
+
+```bash
+python scripts/local_gates.py --only pgv-png --skip-install
+git add --pathspec-from-file=scripts/pgv_png_ops/files.txt
+python scripts/local_gates.py --only auth00 --skip-install
+# Только disposable PostgreSQL:
+python scripts/local_gates.py --only pgv-png-postgres --skip-install
+```
+
+На VM перед/после rollout обязательно отдельно проверить
+`python3 scripts/pgv_png_ops/worker_ops.py check`. Readiness renderer и
+transport live PASS не проверяют авторизацию очереди. Для установленного
+`state=missing` — инструкция `docs/pgv_png_ops_vm.md`: существующий образ
+можно исправить без rebuild, сохранив ordered overlays/immutable pin.
+Обновление API/UI кода поставки требует обычного coherent release.
+
 ## PGV-PNG-FIX (25.11.2026): первый экспорт загрузки и ревизия 0
 
 Поставка поверх `389b930`, manifest `scripts/pgv_png_fix/files.txt`.

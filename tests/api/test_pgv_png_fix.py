@@ -102,3 +102,41 @@ def test_freeze_failure_keeps_successful_upload_and_records_receipt():
     }
     from apps.api.session_store import get_session_store
     assert not list_visual_results(get_session_store().get(SESSION_ID).run_id)
+
+
+@pytest.mark.parametrize("status,code", [(503, "worker_service_unavailable"), (429, "concurrency_exceeded"),
+                                         (402, "quota_exceeded"), (401, "authentication_required")])
+@pytest.mark.parametrize("kind", ["visuals", "passport-documents"])
+def test_export_preserves_only_trusted_authority_failures(status, code, kind):
+    from apps.api.authentication.context import AuthHTTPException
+    from tests.api.test_pgv10_visual_exports import _client_post_json
+    _seed_run()
+    module = "visual_exports" if kind == "visuals" else "passport_documents"
+    func = "request_visual_export" if kind == "visuals" else "request_passport_document"
+    with patch(f"apps.api.{module}.{func}", side_effect=AuthHTTPException(
+        status_code=status, headers={"Cache-Control": "no-store"},
+        detail={"code": code, "message": "safe domain message"},
+    )):
+        response = _client_post_json(f"/v1/documentation/runs/{RUN_ID}/{kind}",
+                                     {"view_id": "upload.overview.tech_table", "mode": "single"})
+    assert response["status"] == status
+    assert response["data"]["detail"]["code"] == code
+
+
+@pytest.mark.parametrize("kind", ["visuals", "passport-documents"])
+def test_arbitrary_http_exception_still_has_safe_export_envelope(kind):
+    from fastapi import HTTPException
+    from tests.api.test_pgv10_visual_exports import _client_post_json
+    _seed_run()
+    module = "visual_exports" if kind == "visuals" else "passport_documents"
+    func = "request_visual_export" if kind == "visuals" else "request_passport_document"
+    with patch(f"apps.api.{module}.{func}", side_effect=HTTPException(
+        status_code=502, detail="private upstream response must stay private",
+    )):
+        response = _client_post_json(f"/v1/documentation/runs/{RUN_ID}/{kind}",
+                                     {"view_id": "upload.overview.tech_table", "mode": "single"})
+    assert response["status"] == 503
+    assert "private upstream" not in str(response["data"])
+    assert response["data"]["code"] == (
+        "visual_export_unavailable" if kind == "visuals" else "passport_document_unavailable"
+    )

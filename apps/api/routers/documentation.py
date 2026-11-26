@@ -80,6 +80,7 @@ from apps.api.security_audit import (
 )
 from apps.api.session_store import SESSION_COOKIE_NAME
 
+from apps.api.authentication.context import AuthHTTPException
 from apps.api.workers.bridge import WorkerRequestRoute
 router = APIRouter(route_class=WorkerRequestRoute)
 
@@ -1354,6 +1355,9 @@ def request_visual_export_route(
         return _export_flat_error(429, "retry_limit_exceeded", str(exc))
     except UnsupportedFormatError as exc:
         return _export_flat_error(400, "unsupported_format", str(exc))
+    except AuthHTTPException:
+        # Trusted domain refusal: retain its status/code/headers; no upstream text.
+        raise
     except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
         from apps.api.telemetry import emit
 
@@ -1477,6 +1481,9 @@ def request_passport_document_route(
         return _export_flat_error(429, "retry_limit_exceeded", str(exc))
     except UnsupportedFormatError as exc:
         return _export_flat_error(400, "unsupported_format", str(exc))
+    except AuthHTTPException:
+        # Trusted domain refusal: retain its status/code/headers; no upstream text.
+        raise
     except Exception as exc:  # noqa: BLE001 -- безопасная ошибка §17
         from apps.api.telemetry import emit
 

@@ -1767,3 +1767,82 @@ candidate/recreate/check→drain→apply→live и свежая UI PNG/download 
 Источник результатов — консольные выводы оператора в этом диалоге; агент не подключался к VM, bash-команды выдавались пошагово (17 шагов) по docs/pgv_png_fix_vm.md. Сервер на 3517969 (поставка cisstat-pgv-png-fix-389b930, исправление блокеров F-PNG-01/F-PNG-02). Шаги 1–11 по инструкции: pull/export/build --bundle (coherent три образа одной ревизии + новые immutable pins), проверка production renderer project = `deployment`, capture production (baseline — образы релиза e2da22c, live с 24.11: api a6e81bda/web b749c5f1/renderer 992efeda), prepare-ipc rid d68e70a827fa (два dedicated volumes с меткой релиза), A/B probe нового renderer image с pids-limit 512 (assert CHROOT_RULE_CANDIDATE пройден — пайплайн дошёл до шага 12), candidate compose up + wait healthy. Далее: candidate-first PASS (шаг 12: mode candidate-api-image, api bc38cf4e/renderer 66d2f341, readiness/RO/uid 0/groups [0,10001]/client_source_sha256 2793ae6c, отрицательные cancel-deadline-request_cap, lifetime lock, контейнер fad9357c, candidate volume cisstat_renderer_ipc_d68e70a827fa_candidate, socket 0660/0750, inode 1181313, pids 19/512 peak 150, memory 2GiB, все pids/memory events 0, 3 PNG 300ppi), SIGKILL + force-recreate PASS (шаги 13–15: recreate_verified true, новый контейнер 0649bf0d при том же image/volume/inode, pids_peak 148), preflight check PASS (шаг 16: пины api bc38cf4e/web f307d6c4/renderer 66d2f341, coherence compose+seccomp, метка IPC volume), операционный drain без снятия uncertain/financial holds, apply --quiesced (шаг 17: mutation_started true, phase started, три пина совпали, readiness_checked false), live PASS (mode live-api, контейнер 87c16d96, volume cisstat_renderer_ipc_d68e70a827fa, inode 1181315, lifetime lock, негативы, те же 3 PNG), health {"status":"ok"}.
 
 Развёрнутые образы: api bc38cf4e, web f307d6c4, renderer 66d2f341 — coherent 3517969 (rid d68e70a827fa), поставка PGV-PNG-FIX: первый экспорт новой загрузки не зависит от повторного GET dataset (best-effort notify_visual_result в общей точке register_uploaded_dataframe, тот же body + X-Visual-* headers), builder visual_exports различает отсутствие версии и ревизию «0» (is None) — график/EDA/профиль строятся при revision 0. PNG-хеши байт-в-байт совпали candidate-first/recreated/live и с релизом 24.11 (f465b1e3/c74acbcc/680d5e5b; client_source_sha256 2793ae6c одинаков в candidate и live). Live recreate_verified false — честно (deliberate recreate проверен на candidate); отдельного api_image_id в live JSON нет (IDs из apply output, клиент в живом API). Rollback не исполнялся; bundle/pins/baseline/старые образы/volumes сохраняются; прежний bundle 922ff70c2381 и его evidence — история; candidate cisstat-pgv13-d68e70a827fa-candidate останавливается позже down без -v. Остаток по инструкции: UI-приёмка (новый датасет, дата/цель, первый экспорт Обзора/графика/EDA, ready в «Документах исследования», реальные скачанные PNG); полная PGV-CERT — отдельная приёмка обеих оболочек. Секреты с VM не извлекались (правило); отчёты без env-дампов; DDL/ключи/квоты/holds/volumes не менялись; HTTP-роуты этой VM-активностью не менялись. Изменения рабочей документации: только эта запись; commit/push — тимлид.
+
+---
+
+## Task ID: PGV-PNG-OPS (26.11.2026) — служебная авторизация worker и искажение отказов экспорта
+
+Синхронизация exact20b835b8bd3a8f57f8a454bbcba8752cb689e6d7 в отдельном
+checkout; прежние незакоммиченные файлы сохранены. AGENTS/spec/журнал/
+producer→snapshot→AUTH13→worker→renderer→delivery/release-контур изучены.
+Дизайн/риски/причины: docs/pgv_png_ops.md; VM: docs/pgv_png_ops_vm.md.
+Commit/push/подключения к VM агент не выполнял. Секреты VM не извлекались.
+
+Подтверждение оператора, не предположение по run_access_allowed: telemetry
+для req-11523642d736/636afc081169/88abf5c340f9/1fe8f314c30c показывает
+visual_export_unexpected_error с AuthHTTPException; PNG document_jobs нет,
+managed render только1 ранее completed. Safe health: worker_credential missing,
+worker running/last_run_at=null/consecutive_errors289/worker_service_unavailable;
+print_renderer UDS/browser/fonts/bundle/smoke ready. Причина текущего общего
+отказа всех модулей — отсутствующий process-wide worker credential. Предыдущие
+freeze/revision0 исправления действуют. Transport live PASS прошлой поставки
+не проверял admission; старый native fixture заранее выдавал ключ и выключал
+worker. Поэтому эта конфигурационная неисправность осталась вне его покрытия.
+Локально дополнительно доказано: реальный429 concurrency_exceeded маскировался
+общим503. Это отдельный дефект, не установленная причина данного VM-инцидента.
+
+Исправление: documentation.py пропускает только trusted AuthHTTPException
+через оба orchestration POST (visuals/passport-documents), сохраняя доменные
+status/code/headers. Произвольные HTTPException upstream остаются safe503
+без сырого текста. Shared exportErrors.ts + оба клиента разбирают flat/error/
+detail, различают настройку worker, concurrency, квоту и authentication.
+Наука/ACL/квоты/holds/TTL/admission не обходятся; новых HTTP/DDL нет.
+
+Host scripts/pgv_png_ops/worker_ops.py: check/явный repair только missing.
+Повторно использует existing valid private config либо генерирует cwk прямо
+в .env без чтения старого содержимого/печати/argv. Regular file/no-symlink,
+0600, exclusive lock, fsync/rollback partial write. Bootstrap ensure официально
+регистрирует hash; expired/revoked/invalid не ротирует автоматически. Из
+живого контейнера читаются только project/ordered Compose inputs/image,
+health выводит safe поля. Compose config --images api сверяет immutable pin;
+дочерние shell worker/MFA overrides убираются. Recreate только API, те же
+ordered overlays/project/env/pin, --no-build/--pull never/--no-deps; volumes и
+renderer не меняются. Финал repair проверяет успешный цикл worker и ready
+renderer. На текущем образе это исправление конфигурации, rebuild не нужен.
+Для runtime API/UI bytes поставки нужен обычный новый coherent release.
+
+TDD RED API8F/6P; native4tests/1F+1E (missing detail/503 вместо429); UI parser
+и host CLI отсутствовали. GREEN API16/16; UI30/30 в3 suites (оба реальных
+клиента, nested detail); host CLI7/7; native PostgreSQL16.2 TCP/UTF8 4/4,
+skips0, leftover DB=[]. Нативный сценарий: отказ без ключа без jobs/reservation
+→ bootstrap → настоящий managed admission → AUTH13 isolated child/PNG client
+→ publication/download bytes → concurrency reserved0 → следующий экспорт202.
+HTTP renderer — protocol double с PNG1x1: не Chromium/UDS/visual certification.
+Старые PGV09/09fix/10/11/12/13/15/16 API:252/252. Renderer tsc и обе Next
+production builds PASS (embedded20/standalone27, штатный offline font hook,
+настоящие Inter5.3.0; hook/fonts/dependencies не поставляются). Полный Jest,
+Windows/PG18 и remote CI здесь не исполнялись.
+
+Гейты pgv-png/local_gates.md и CI contracts обновлены: typed-errors/private
+repair/UI envelopes, Node22/npm ci на Ubuntu/Windows. Native strict runner
+по-прежнему opt-in и не принимает skips/отсутствующий DSN. Host repair tests
+в Windows явно Linux-only skip; локально все7 выполнены. AUTH00/check_routes
+PASS:285 API/289 bindings/669 entries, added/missing=[]. Изменены обработчики
+двух существующих POST; методы/пути/dependencies/policies/admission прежние.
+Карта обновлена: reviewed_sources/fingerprints и24 evidence line shifts,
+все семантические entries совпадают с20b835b.
+
+Поставка download/cisstat-pgv-png-ops-20b835b.zip — только новая задача,
+manifest scripts/pgv_png_ops/files.txt. Отдельно выданы pgv_png_worker_ops.py,
+pgv_png_ops_vm.md и этот worklog12. Результат ремонта VM/UI ещё не получен;
+реальные PNG/полная PGV-CERT не заявляются по локальным тестам. Команды check/
+repair/check выданы оператору без вывода секретов. Git commit/push — тимлид.
+
+Финальные local_gates pgv-png+auth00 PASS; AUTH00 unit61/61, strict INDEX/source
+parity PASS через отдельный GIT_INDEX_FILE. HEAD/refs/основной INDEX (bytes и
+staged tree) сохранены. Протокол scripts/pgv_png_ops/protocols/local-gates.txt.
+
+Clean exact20b835b + ZIP overlay: все34 файла побайтно совпали с исходниками;
+pgv-png, strict INDEX/source parity и actual check_routes PASS. После проверки
+изменены только этот финальный delivery-note и protocol delivery.txt, код/
+reviewed-source bytes прежние. Итоговый ZIP перечитан и сверен с manifest.

@@ -17,6 +17,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
       - run: python -m pip install -r scripts/pgv_png_fix/requirements.txt
       - run: python scripts/local_gates.py --only pgv-png --skip-install
   postgres:

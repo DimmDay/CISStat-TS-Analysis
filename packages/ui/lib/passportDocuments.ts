@@ -1,3 +1,4 @@
+import { parseExportErrorBody, exportAuthorityErrorText } from "./exportErrors";
 import { apiFetch } from "./browserTransport";
 // packages/ui/lib/passportDocuments.ts
 //
@@ -166,15 +167,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResul
         message: null,
       };
       try {
-        const body = (await resp.json()) as {
-          code?: string;
-          message?: string;
-          error?: { code?: string; message?: string };
-        };
-        error = {
-          code: body.code ?? body.error?.code ?? null,
-          message: body.message ?? body.error?.message ?? null,
-        };
+        error = parseExportErrorBody(await resp.json());
       } catch {
         // тело не JSON -- честные null-коды (статус остаётся).
       }
@@ -257,6 +250,8 @@ export function passportDocumentErrorText(
   code: string | null,
 ): string {
   if (status === null) return "Сеть недоступна — действие не выполнено.";
+  const authorityError = exportAuthorityErrorText(code);
+  if (authorityError) return authorityError;
   switch (code) {
     case "source_unavailable":
       return "Сохранённый источник недоступен из durable-слоя — пересчёт науки запрещён; выберите другую версию.";
@@ -265,7 +260,8 @@ export function passportDocumentErrorText(
     case "invalid_selection":
       return "Выбор неполный или некорректный — выберите версию и повторите.";
     case "quota_exceeded":
-      return "Очередь печати переполнена — повторите позднее.";
+      return status === 402 ? "Лимит ресурсов для экспорта исчерпан — обратитесь к администратору."
+        : "Очередь печати переполнена — повторите позднее.";
     case "retry_limit_exceeded":
       return "Исчерпаны попытки рендера — обратитесь в поддержку.";
     case "not_found":

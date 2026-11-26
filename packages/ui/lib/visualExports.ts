@@ -1,3 +1,4 @@
+import { parseExportErrorBody, exportAuthorityErrorText } from "./exportErrors";
 import { apiFetch } from "./browserTransport";
 // packages/ui/lib/visualExports.ts
 //
@@ -93,11 +94,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResul
         message: null,
       };
       try {
-        const body = (await resp.json()) as { code?: string; message?: string; error?: { code?: string; message?: string } };
-        error = {
-          code: body.code ?? body.error?.code ?? null,
-          message: body.message ?? body.error?.message ?? null,
-        };
+        error = parseExportErrorBody(await resp.json());
       } catch {
         // тело не JSON -- честные null-коды (статус остаётся).
       }
@@ -172,6 +169,8 @@ export function listVisualSources(
  */
 export function visualExportErrorText(status: number | null, code: string | null): string {
   if (status === null) return "Сеть недоступна — экспорт не выполнен.";
+  const authorityError = exportAuthorityErrorText(code);
+  if (authorityError) return authorityError;
   switch (code) {
     case "context_changed":
       return "Данные изменились после показа — обновите представление и повторите экспорт.";
@@ -187,7 +186,8 @@ export function visualExportErrorText(status: number | null, code: string | null
     case "invalid_profile":
       return "Профиль печати вне каталога.";
     case "quota_exceeded":
-      return "Очередь печати переполнена — повторите позднее.";
+      return status === 402 ? "Лимит ресурсов для экспорта исчерпан — обратитесь к администратору."
+        : "Очередь печати переполнена — повторите позднее.";
     case "retry_limit_exceeded":
       return "Исчерпаны попытки рендера — обратитесь в поддержку.";
     case "not_found":

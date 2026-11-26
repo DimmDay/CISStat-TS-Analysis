@@ -1,0 +1,12 @@
+test_changed_compose_image_is_refused_before_container_operation (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_changed_compose_image_is_refused_before_container_operation) ... ok
+test_docker_uses_ordered_overlays_and_scrubs_shell_overrides (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_docker_uses_ordered_overlays_and_scrubs_shell_overrides) ... ok
+test_existing_env_credential_is_reused_without_rotation (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_existing_env_credential_is_reused_without_rotation) ... ok
+test_failed_append_rolls_back_without_reading_previous_values (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_failed_append_rolls_back_without_reading_previous_values) ... ok
+test_ready_is_idempotent_and_symlink_env_is_rejected (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_ready_is_idempotent_and_symlink_env_is_rejected) ... ok
+test_repair_appends_secret_privately_preserves_other_settings_and_pins (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_repair_appends_secret_privately_preserves_other_settings_and_pins) ... ok
+test_revoked_invalid_or_expired_credentials_are_not_reactivated (tests.unit.test_pgv_png_ops.WorkerRepairTests.test_revoked_invalid_or_expired_credentials_are_not_reactivated) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.007s
+
+OK

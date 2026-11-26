@@ -1,10 +1,13 @@
 """Fresh-upload Path A on real required-mode PostgreSQL/AuthSession/AUTH-13.
 
-The worker is disabled: these tests prove real managed admission, not PNG pixels.
-No export builder/registry/auth/renderer response is mocked.
+The background loop is disabled. One case explicitly runs the real AUTH-13
+worker/isolated child with a renderer HTTP protocol double and verifies byte
+delivery/slot release. This does not certify Chromium pixels or production UDS.
+Export builders, registries and authorization/storage are not mocked.
 """
 import os
 import unittest
+from unittest.mock import patch
 
 from tests.integration import test_personal_demo_http as fixture
 
@@ -109,3 +112,76 @@ class FreshUploadPngTests(unittest.TestCase):
                     self.cancel(client, queued.json()["job"]["job_id"])
             runs = self.dep.rows("research_runs")
             self.assertEqual(next(r["data_revision"] for r in runs if r["run_id"] == trace["run_id"]), 0)
+
+    def test_missing_service_then_provisioned_render_download_and_slot_release(self):
+        """Only the renderer HTTP bytes are a protocol double; managed lifecycle is real."""
+        import base64
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        from apps.api.workers.bootstrap import ensure_service_credential, generate_key
+        from apps.api.workers.authority import WorkerAuthority
+        from apps.api.document_render_worker import DocumentRenderWorker
+        from apps.api.document_jobs import DocumentDeliveryService
+        from apps.api.png_renderer_client import PngRendererClient
+
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5N0AAAAASUVORK5CYII=")
+
+        class Renderer(BaseHTTPRequestHandler):
+            def do_POST(inner):
+                inner.rfile.read(int(inner.headers["Content-Length"]))
+                inner.send_response(200)
+                inner.send_header("Content-Type", "image/png")
+                inner.send_header("Content-Length", str(len(png)))
+                inner.end_headers()
+                inner.wfile.write(png)
+            def log_message(inner, *args):
+                pass
+
+        with self.dep.http() as client:
+            _, trace = self.prepare(client)
+            with patch.dict(os.environ, {"CISSTAT_WORKER_KEY": ""}):
+                refused = self.export(client, trace, "upload.overview.tech_table")
+                self.assertEqual(refused.status_code, 503, refused.text)
+                self.assertEqual(refused.json()["detail"]["code"], "worker_service_unavailable")
+            self.assertEqual(self.dep.rows("document_jobs"), [])
+            self.assertEqual(self.dep.rows("auth_reservations"), [])
+            key = generate_key()  # synthetic test credential, never logged
+            provision = ensure_service_credential(self.dep.store, key)
+            self.assertEqual(provision["state"], "registered")
+            with patch.dict(os.environ, {"CISSTAT_WORKER_KEY": key}):
+                queued = self.export(client, trace, "upload.overview.tech_table")
+                self.assertEqual(queued.status_code, 202, queued.text)
+                server = ThreadingHTTPServer(("127.0.0.1", 0), Renderer)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    worker = DocumentRenderWorker(
+                        service=DocumentDeliveryService.create_default(),
+                        worker_authority=WorkerAuthority(self.dep.store, key),
+                        png_renderer=PngRendererClient(base_url=f"http://127.0.0.1:{server.server_port}", enabled=True),
+                    )
+                    report = worker.run_once()
+                    self.assertEqual(report["ready"], 1, (report, worker.status()))
+                finally:
+                    server.shutdown(); server.server_close(); thread.join(5)
+                self.assertEqual(self.dep.rows("auth_worker_jobs")[0]["state"], "completed")
+                self.assertTrue(all(r["reserved"] == 0 for r in self.dep.rows("auth_resource_budgets") if r["metric"] == "concurrency"))
+                rendition = self.dep.rows("document_renditions")[0]
+                download = client.get(f'/v1/documentation/renditions/{rendition["rendition_id"]}/content')
+                self.assertEqual(download.status_code, 200, download.text)
+                self.assertEqual(download.content, png)
+                second = self.export(client, trace, "upload.quality.teaser")
+                self.assertEqual(second.status_code, 202, second.text)
+                self.cancel(client, second.json()["job"]["job_id"])
+
+    def test_full_slot_is_explicit_429_and_no_second_job(self):
+        with self.dep.http() as client:
+            _, trace = self.prepare(client)
+            first = self.export(client, trace, "upload.overview.tech_table")
+            self.assertEqual(first.status_code, 202, first.text)
+            second = self.export(client, trace, "upload.quality.teaser")
+            self.assertEqual(second.status_code, 429, second.text)
+            self.assertEqual(second.json()["detail"]["code"], "concurrency_exceeded")
+            self.assertEqual(len(self.dep.rows("document_jobs")), 1)
+            self.assertEqual(len(self.dep.rows("auth_reservations")), 1)
+            self.cancel(client, first.json()["job"]["job_id"])

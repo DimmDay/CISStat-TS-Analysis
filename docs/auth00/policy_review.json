@@ -9545,6 +9545,8 @@
   "docs/pgv15_documents_picker_ui.md",
   "docs/pgv_png_fix.md",
   "docs/pgv_png_fix_vm.md",
+  "docs/pgv_png_ops.md",
+  "docs/pgv_png_ops_vm.md",
   "packages/ui/components/AccountScreen.tsx",
   "packages/ui/components/BillingPanel.tsx",
   "packages/ui/components/DatasetPassportPanel.tsx",
@@ -9627,6 +9629,7 @@
   "packages/ui/lib/demo-cert.test.ts",
   "packages/ui/lib/demo.ts",
   "packages/ui/lib/documentation.ts",
+  "packages/ui/lib/exportErrors.ts",
   "packages/ui/lib/forecasting.ts",
   "packages/ui/lib/mentor.ts",
   "packages/ui/lib/monitoring.ts",
@@ -9635,6 +9638,7 @@
   "packages/ui/lib/researchOwnership.ts",
   "packages/ui/lib/tasks.ts",
   "packages/ui/lib/team.ts",
+  "packages/ui/lib/visualExports.errors.test.ts",
   "packages/ui/lib/visualExports.ts",
   "packages/ui/print/printPassport.tsx",
   "packages/ui/server/firstPartyProxy.ts",
@@ -9733,6 +9737,7 @@
   "scripts/pgv15/package_delivery.py",
   "scripts/pgv_png_fix/requirements.txt",
   "scripts/pgv_png_fix/verify_postgres.py",
+  "scripts/pgv_png_ops/worker_ops.py",
   "spec_auth.md",
   "spec_auth_architecture.md",
   "spec_billing_accounts.md",
@@ -9780,6 +9785,7 @@
   "tests/unit/test_pgv13_release.py",
   "tests/unit/test_pgv14_accept.py",
   "tests/unit/test_pgv_png_gates.py",
+  "tests/unit/test_pgv_png_ops.py",
   "validation/engine.py"
  ]
 }

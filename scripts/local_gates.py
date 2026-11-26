@@ -82,12 +82,13 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
-    ("pgv-png", "pgv_png_fix.yml contracts", "Fresh upload visual freeze and revision-zero PNG export", [
+    ("pgv-png", "pgv_png_fix.yml contracts", "Fresh upload, revision zero, typed export failures and private worker repair", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv_png_fix/requirements.txt"],
         [sys.executable, "-m", "pytest", "tests/api/test_pgv_png_fix.py", "-v"],
-        [sys.executable, "-m", "unittest", "tests.unit.test_pgv_png_gates", "-v"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv_png_gates", "tests.unit.test_pgv_png_ops", "-v"],
+        ["npm", "exec", "--", "jest", "--runInBand", "--runTestsByPath", "packages/ui/lib/visualExports.errors.test.ts"],
     ]),
-    ("pgv-png-postgres", "pgv_png_fix.yml postgres", "Native fresh upload to managed PNG job, retry and foreign denial", [
+    ("pgv-png-postgres", "pgv_png_fix.yml postgres", "Native missing credential, bootstrap, PNG delivery, slot release, retry and foreign denial", [
         [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/authcert/requirements.txt"],
         [sys.executable, "scripts/pgv_png_fix/verify_postgres.py"],
     ]),

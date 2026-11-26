@@ -1,0 +1,19 @@
+test_pgv_png_ops (unittest.loader._FailedTest.test_pgv_png_ops) ... ERROR
+
+======================================================================
+ERROR: test_pgv_png_ops (unittest.loader._FailedTest.test_pgv_png_ops)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_pgv_png_ops
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/495ea0f1cb98/CISStat-PNG2-20b835b/tests/unit/test_pgv_png_ops.py", line 10, in <module>
+    from scripts.pgv_png_ops import worker_ops as ops
+ImportError: cannot import name 'worker_ops' from 'scripts.pgv_png_ops' (unknown location)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
