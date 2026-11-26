@@ -185,3 +185,48 @@ class FreshUploadPngTests(unittest.TestCase):
             self.assertEqual(len(self.dep.rows("document_jobs")), 1)
             self.assertEqual(len(self.dep.rows("auth_reservations")), 1)
             self.cancel(client, first.json()["job"]["job_id"])
+
+
+    def test_upload_chart_and_distributions_export_before_date_confirmation(self):
+        """The displayed date is export metadata; export must not confirm Structure."""
+        import json
+        from apps.api.artifact_store import get_artifact_object_store
+        with self.dep.http() as client:
+            Deployment.login(client, "pgv-png-owner")
+            Deployment.upload(client)
+            for endpoint in ["/v1/session/dataset/structure-detection",
+                             "/v1/session/dataset/timeseries?column=value&date_column=date",
+                             "/v1/session/dataset/distribution?column=value"]:
+                shown = client.get(endpoint)
+                self.assertEqual(shown.status_code, 200, shown.text)
+            trace = client.get("/v1/progress/trace").json()
+            def session_date():
+                return next(r["payload"] for r in self.dep.rows("analysis_sessions")
+                            if r["payload"].get("run_id") == trace["run_id"]).get("date_column")
+            self.assertIsNone(session_date())
+            views = ["upload.chart.series", "upload.distribution.scatter",
+                     "upload.distribution.histogram", "upload.distribution.kde"]
+            frozen = {r["refs"].get("view_id") for r in self.dep.rows("research_artifacts") if r["kind"] == "visual_result"}
+            self.assertTrue(set(views) <= frozen)
+            svg = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path d="M0 200 L600 0"/></svg>'
+            # Exact observed old UI payload: artifacts exist, but metadata is absent.
+            refused = self.export(client, trace, views[0], svg)
+            self.assertEqual(refused.status_code, 409, refused.text)
+            self.assertEqual(refused.json()["code"], "source_unavailable")
+            self.assertIn("date_column", refused.json()["message"])
+            self.assertEqual(self.dep.rows("document_jobs"), [])
+            self.assertEqual(self.dep.rows("auth_reservations"), [])
+            with patch("apps.api.routers.session.build_timeseries_points", side_effect=AssertionError("export recomputed science")), \
+                 patch("apps.api.routers.session.build_histogram", side_effect=AssertionError("export recomputed science")):
+                for view in views:
+                    queued = Deployment.post(client, f'/v1/documentation/runs/{trace["run_id"]}/visuals', json={
+                        "view_id": view, "screen_svg": svg, "expected_context_id": trace["context_id"], "date_column": "date",
+                    })
+                    self.assertEqual(queued.status_code, 202, queued.text)
+                    snapshot = next(r for r in self.dep.rows("research_artifacts")
+                                    if r["artifact_id"] == queued.json()["snapshot_artifact_id"])
+                    payload = json.loads(get_artifact_object_store().read_bytes(snapshot["storage_key"]))
+                    self.assertEqual(payload["refs"]["date_column"], "date")
+                    self.assertIsNone(session_date())
+                    self.cancel(client, queued.json()["job"]["job_id"])
+            self.assertEqual(len(self.dep.rows("document_jobs")), 4)

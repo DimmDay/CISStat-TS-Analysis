@@ -176,3 +176,12 @@ describe("VisualExportChartScope (PGV-10)", () => {
     expect(call.screenSvg).not.toContain("document-first-svg");
   });
 });
+
+
+test("explicit displayed date reaches the existing export client", async () => {
+  resolveCurrentRunMock.mockResolvedValue({ok: true, status: 200, data: {run_id: "RUN-DATE", context_id: "ctx-date"}});
+  requestVisualExportMock.mockResolvedValue({ok: true, status: 202, data: {job: {job_id: "job-date"}}});
+  render(<VisualExportButton {...{viewId: "upload.chart.series", dateColumn: "month"}} getScreenSvg={() => '<svg xmlns="http://www.w3.org/2000/svg" />'} />);
+  fireEvent.click(screen.getByTestId("visual-export-upload.chart.series"));
+  await waitFor(() => expect(requestVisualExportMock).toHaveBeenCalledWith(expect.objectContaining({dateColumn: "month"})));
+});

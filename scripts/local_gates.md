@@ -1,5 +1,19 @@
 # Локальные гейты перед передачей в GitHub
 
+## PGV-PNG-DATE (26.11.2026)
+
+База804d411; manifest `scripts/pgv_png_date/files.txt`. Default pgv-png теперь
+проверяет реальный UI Upload→ChartScope→Button→POST: fresh/restored, дата из
+показанного представления без подтверждения «Структуры», все4 graph/distribution
+views и честный disabled при неизвестной дате. Новый native case остаётся в
+strict opt-in pgv-png-postgres: frozen артефакт существует, старый payload409
+из-за date_column; существующий контракт с явной датой202, refs правильные,
+session.date_column=None и science GET при экспорте не запускается.
+Только2 UI runtime файла; HTTP/DTO/DDL не меняются. После staging manifest:
+`python scripts/local_gates.py --only pgv-png,auth00 --skip-install`.
+Выпуск требует нового web image через штатный coherent release:
+`docs/pgv_png_date_context_vm.md`. Worker repair повторять не требуется.
+
 ## PGV-PNG-PINFIX (26.11.2026)
 
 Срез поверх7e09e57: `scripts/pgv_png_pinfix/files.txt`. Исправлен host image

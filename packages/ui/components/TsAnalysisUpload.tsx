@@ -1970,10 +1970,10 @@ export function TsAnalysisUpload() {
 
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     {overviewTab === "preview" && (
-                      <VisualExportButton viewId="upload.overview.preview" label="Скачать PNG: превью датасета" compact />
+                      <VisualExportButton viewId="upload.overview.preview" dateColumn={confidentDateCol} label="Скачать PNG: превью датасета" compact />
                     )}
                     {overviewTab === "columns" && (
-                      <VisualExportButton viewId="upload.overview.tech_table" label="Скачать PNG: типы колонок" compact />
+                      <VisualExportButton viewId="upload.overview.tech_table" dateColumn={confidentDateCol} label="Скачать PNG: типы колонок" compact />
                     )}
                   </div>
 
@@ -2178,13 +2178,13 @@ export function TsAnalysisUpload() {
                     </p>
                   ) : (
                     <>
-                      <VisualExportChartScope viewId="upload.chart.series" label="линейный график признака">
+                      <VisualExportChartScope viewId="upload.chart.series" dateColumn={timeseries?.date_column ?? confidentDateCol} label="линейный график признака">
                         <TimeSeriesLineChart data={timeseries} loading={timeseriesLoading} />
                       </VisualExportChartScope>
                       <div className="mt-4">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <h4 className="text-xs font-semibold text-neutral-600">Декомпозиция</h4>
-                          <VisualExportButton viewId="upload.chart.decomposition_shares" label="Скачать PNG: доли компонент" compact />
+                          <VisualExportButton viewId="upload.chart.decomposition_shares" dateColumn={confidentDateCol} label="Скачать PNG: доли компонент" compact />
                         </div>
                         <p className="text-[11px] text-neutral-500 mb-2">
                           Доля дисперсии ряда, объяснимая каждой компонентой (Тренд/Сезонность/Цикличность/Остаток) — не абсолютные величины, а вклад в % от общей изменчивости.
@@ -2197,7 +2197,7 @@ export function TsAnalysisUpload() {
                         />
                         {decompositionRequested && (
                           <div className="mt-3">
-                            <VisualExportChartScope viewId="upload.chart.decomposition_series" label="компоненты декомпозиции">
+                            <VisualExportChartScope viewId="upload.chart.decomposition_series" dateColumn={confidentDateCol} label="компоненты декомпозиции">
                               <DecompositionSeriesChart data={decompositionSeries} loading={decompositionLoading} />
                             </VisualExportChartScope>
                           </div>
@@ -2226,7 +2226,7 @@ export function TsAnalysisUpload() {
                             </div>
                           ) : (
                             <>
-                              <VisualExportChartScope viewId="upload.distribution.scatter" label="точечный график">
+                              <VisualExportChartScope viewId="upload.distribution.scatter" dateColumn={confidentDateCol} label="точечный график">
                                 <ScatterDistributionChart data={distribution} />
                               </VisualExportChartScope>
                               <SamplingBadge data={distribution} />
@@ -2242,7 +2242,7 @@ export function TsAnalysisUpload() {
                               <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                             </div>
                           ) : (
-                            <VisualExportChartScope viewId="upload.distribution.histogram" label="гистограмма">
+                            <VisualExportChartScope viewId="upload.distribution.histogram" dateColumn={confidentDateCol} label="гистограмма">
                               <HistogramDistributionChart data={distribution} />
                             </VisualExportChartScope>
                           )}
@@ -2256,7 +2256,7 @@ export function TsAnalysisUpload() {
                               <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                             </div>
                           ) : (
-                            <VisualExportChartScope viewId="upload.distribution.kde" label="KDE">
+                            <VisualExportChartScope viewId="upload.distribution.kde" dateColumn={confidentDateCol} label="KDE">
                               <KdeDistributionChart data={distribution} />
                             </VisualExportChartScope>
                           )}
@@ -2532,7 +2532,7 @@ export function TsAnalysisUpload() {
                     <Metric label="Всего строк" value={formatNum(uploadData!.quality.rows_total)} />
                     <Metric label="Дубликатов" value={String(uploadData!.quality.duplicates)} />
                     <div className="col-span-2 md:col-span-4">
-                      <VisualExportButton viewId="upload.quality.teaser" label="Скачать PNG: показатели качества" compact />
+                      <VisualExportButton viewId="upload.quality.teaser" dateColumn={confidentDateCol} label="Скачать PNG: показатели качества" compact />
                     </div>
                   </div>
                   {(uploadData!.quality.cols_with_missing > 0 || uploadData!.quality.cols_with_outliers > 0 || uploadData!.quality.duplicates > 0) && (

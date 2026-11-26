@@ -1,0 +1,100 @@
+test_ui_order_before_date_confirmation (probe_visual_sources.Probe.test_ui_order_before_date_confirmation) ... INFO:apps.api.session_store:SessionStore: PostgresSessionStore initialized (durable)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.artifact_store:ArtifactRegistry: Postgres backend selected
+INFO:apps.api.report_snapshot:SnapshotRegistry: Postgres backend selected
+INFO:apps.api.document_jobs:DocumentRegistry: Postgres backend selected
+INFO:apps.api.main:Startup: required-режим хранения -- фабрики проверены
+INFO:uvicorn.error:Storage warmup: primed (mode=required)
+INFO:apps.api.main:Startup: durable-слои прогреты (F-CERT-H1)
+INFO:apps.api.workers.bootstrap:Worker credential bootstrap: present
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+INFO:apps.api.document_render_worker:Document render worker: отключён CISSTAT_DOCUMENT_RENDER_WORKER_ENABLED
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/internal/upload "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/current "HTTP/1.1 200 OK"
+PROBE GET /v1/session/current 200 has_ref False
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/target-column "HTTP/1.1 200 OK"
+PROBE GET /v1/session/target-column 200 has_ref False
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset "HTTP/1.1 200 OK"
+PROBE GET /v1/session/dataset 200 has_ref True
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/stats "HTTP/1.1 200 OK"
+PROBE GET /v1/session/dataset/stats 200 has_ref True
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/structure-detection "HTTP/1.1 200 OK"
+PROBE GET /v1/session/dataset/structure-detection 200 has_ref True
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/timeseries?column=value&date_column=date "HTTP/1.1 200 OK"
+PROBE GET /v1/session/dataset/timeseries?column=value&date_column=date 200 has_ref True
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/session/dataset/distribution?column=value "HTTP/1.1 200 OK"
+PROBE GET /v1/session/dataset/distribution?column=value 200 has_ref True
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=read subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/progress/trace "HTTP/1.1 200 OK"
+PROBE frozen [('upload.overview.preview', 0), ('upload.overview.tech_table', 0), ('upload.quality.teaser', 0), ('upload.overview.preview', 0), ('upload.overview.tech_table', 0), ('upload.quality.teaser', 0), ('eda.descriptive.stats', 0), ('upload.structure.schema', 0), ('upload.chart.series', 0), ('upload.distribution.scatter', 0), ('upload.distribution.histogram', 0), ('upload.distribution.kde', 0), ('eda.descriptive.distribution.scatter', 0), ('eda.descriptive.distribution.histogram', 0), ('eda.descriptive.distribution.kde', 0)]
+INFO:httpx:HTTP Request: GET https://datasetup.ru/v1/auth/csrf "HTTP/1.1 200 OK"
+INFO:apps.api.identity:Run access: ALLOW run=RUN-41B21D65 action=write subject=92f3dcee-97ac-4ec9-ad78-92b1602dc77b via=auth_session reason=account_member
+INFO:httpx:HTTP Request: POST https://datasetup.ru/v1/documentation/runs/RUN-41B21D65/visuals "HTTP/1.1 409 Conflict"
+PROBE EXPORT upload.chart.series 409 source_unavailable
+FAIL
+
+======================================================================
+FAIL: test_ui_order_before_date_confirmation (probe_visual_sources.Probe.test_ui_order_before_date_confirmation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/png2-investigation/probe_visual_sources.py", line 17, in test_ui_order_before_date_confirmation
+    self.assertEqual(r.status_code,202,r.text);self.f.cancel(c,r.json()['job']['job_id'])
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 409 != 202 : {"code":"source_unavailable","message":"обязательный ref снапшота недоступен: date_column (честный отказ -- refs не фабрикуются)","request_id":"req-7ba466003fcf"}
+
+----------------------------------------------------------------------
+Ran 1 test in 3.753s
+
+FAILED (failures=1)
+Disposable leftover databases: []

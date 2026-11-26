@@ -86,7 +86,8 @@ GATES: list[tuple[str, str, str, list[list[str]]]] = [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv_png_fix/requirements.txt"],
         [sys.executable, "-m", "pytest", "tests/api/test_pgv_png_fix.py", "-v"],
         [sys.executable, "-m", "unittest", "tests.unit.test_pgv_png_gates", "tests.unit.test_pgv_png_ops", "-v"],
-        ["npm", "exec", "--", "jest", "--runInBand", "--runTestsByPath", "packages/ui/lib/visualExports.errors.test.ts"],
+        ["npm", "exec", "--", "jest", "--runInBand", "--runTestsByPath", "packages/ui/lib/visualExports.errors.test.ts",
+         "packages/ui/components/VisualExportButton.test.tsx", "packages/ui/components/upload-png-date-context.test.tsx"],
     ]),
     ("pgv-png-postgres", "pgv_png_fix.yml postgres", "Native missing credential, bootstrap, PNG delivery, slot release, retry and foreign denial", [
         [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/authcert/requirements.txt"],

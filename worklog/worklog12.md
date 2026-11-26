@@ -1895,3 +1895,78 @@ INDEX bytes/staged tree сохранены. Clean exact7e09e57 + task-only ZIP15
 reviewed bytes прежние. ZIP перечитан и сверен со всеми manifest files.
 VM: после применения ZIP локально/push тимлида/pull выполнить репозиторный
 worker_ops.py repair, затем check. Новых образов/DDL не требуется.
+
+---
+
+## Task ID: PGV-PNG-DATE (26.11.2026) — date_column отображаемого вида не передавалась в PNG
+
+База exact804d41138a8688cda5958d691bf1b4bfac6a91aa получена от оператора,
+проверена GitHub-read, создан отдельный checkout; прежняя работа сохранена.
+AGENTS/spec/журнал изучены. Дизайн/риски: docs/pgv_png_date_context.md;
+VM: docs/pgv_png_date_context_vm.md. Commit/push/VM mutation агент не делал.
+
+Сначала подтверждён результат оператора после PINFIX: repair changed=true,
+ready=true, api_image_preserved/ordered_overlays_preserved=true; отдельный
+check credential present, kinds delivery/modeling/render, worker_ok и
+renderer_ok=true. Значит процессная авторизация восстановлена. Затем новый
+UI-отказ: новое исследование, hard reload, Загрузка/График и Распределение
+дают «Зафиксированный результат недоступен». Безопасный SQL на VM: freeze
+failures0, upload.chart.series и3 distribution visual_result имеются по1.
+Ошибку нельзя объяснять отсутствием frozen result по одному тексту toast.
+
+Локально native PostgreSQL воспроизведён фактический UI-порядок БЕЗ прежнего
+fixture prepare() с предварительным POST /date-column: upload→GET current/
+target/dataset/stats/structure-detection/timeseries/distribution→артефакты
+есть→POST /visuals409 source_unavailable. Точное тело: «обязательный ref
+снапшота недоступен: date_column». Старые тесты заранее подтверждали дату,
+поэтому пропустили проблему ранних остановок до «Структуры». API уже имеет
+optional date_column, клиент visualExports.ts сериализует dateColumn, но
+Button/ChartScope и TsAnalysisUpload не передавали выбранную для показа дату.
+
+Runtime только2 UI файла: TsAnalysisUpload.tsx передаёт dateColumn во все9
+Upload export sites; у линейного ряда берётся date_column фактического ответа
+timeseries (fallback к показанному detection выбору). VisualExportButton.tsx
+(включая ChartScope) передаёт её существующему клиенту. Null означает ещё
+не выбранную дату: disabled с точным текстом про временную колонку на
+«Структуре». Undefined у прежних consumers сохраняет server/session fallback.
+Фикс не подтверждает структуру за аналитика, не меняет session/target/ledger,
+не вызывает научные GET на export и не ослабляет required_refs/CAS/ACL/квоты.
+Имена колонок, timestamps и SVG не фабрикуются. API/renderer runtime bytes,
+HTTP/DTO/DDL не менялись. Код автоматически не выкладывается на VM от pull.
+
+TDD: UI RED4F/8P → GREEN12/12 (2 suites). Полный Upload с настоящими Button/
+ChartScope/client и HTTP mock: новая загрузка/restore, raw POST для ряда и3
+распределений включает дату, собственный SVG/context; POST /date-column нет.
+Научные SVG presentation в этом тесте — stubs, не pixel certification.
+Существующие Upload UI regression72/72 (5 suites). Native PostgreSQL16.2
+TCP/UTF8 5/5, skips0, leftover disposable DB=[]. Новый case: старый payload
+409 при имеющихся артефактах, с явной датой все4 views202, snapshot refs.date
+правильна, session.date_column остаётся None, science functions при POST
+tripwire-ом запрещены. Старый AUTH13 worker/lifecycle/download scenario
+использует HTTP protocol double PNG1x1 — не Chromium/VM/UDS certification.
+Обе Next production builds PASS (embedded20/standalone27), renderer tsc PASS;
+настоящие Inter5.3.0 через штатный offline font hook; hook/fonts/requirements
+не поставляются. Full Jest/remote CI/Windows/PG18 не заявляются.
+
+Default pgv-png расширен двумя UI suites; CI contracts уже устанавливает
+Node22/npm dependencies. Strict native остаётся opt-in. Local_gates.md,
+reviewed sources/fingerprints карты обновлены. Actual check_routes PASS:
+285 API/289 bindings/669 entries, added/missing=[]. Все669 entries побайтно
+прежние, маршруты и authority bindings не изменились. Зависимости Node
+установлены именно в этом checkout для корректных workspace imports.
+
+Task-only manifest scripts/pgv_png_date/files.txt; ZIP и отдельные инструкция/
+worklog12 в download/. Нужен новый web image через штатный coherent api/web/
+renderer bundle с сохранением worker private .env и UDS. Старые bundle/pins/
+volumes сохраняются, repair ключа повторять не требуется. После apply/live:
+hard reload, новая загрузка и restore → до подтверждения «Структуры» экспорт
+ряда/scatter/histogram/KDE → ready → фактически скачать/открыть PNG.
+Такой VM/UI результат пока не получен, окончательная PGV-CERT не заявляется.
+
+Финал PGV-PNG-DATE: pgv-png PASS (API16/tools15/UI19), auth00 PASS (unit61,
+strict INDEX/source parity). Таким образом UI suites текущей проверки91
+уникальный тест: default19 + старые Upload regression72. Основной INDEX
+bytes/staged tree, HEAD и refs сохранены. Clean exact804d411+ZIP24files:
+побайтное соответствие, pgv-png, strict INDEX parity, actual routes PASS.
+После overlay proof дополнены только этот note и protocol delivery.txt;
+reviewed bytes прежние. Итоговый ZIP перечитан/сверен со всем manifest.

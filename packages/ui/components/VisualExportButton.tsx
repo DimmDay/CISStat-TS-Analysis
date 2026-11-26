@@ -34,6 +34,8 @@ export interface VisualExportButtonProps {
    * передаётся -- контент печатается из frozen data.
    */
   getScreenSvg?: () => string | null;
+  /** Дата отображаемого вида; null — ещё не выбрана, undefined — server fallback. */
+  dateColumn?: string | null;
   /** view без frozen результата (visual-sources export_ready=false). */
   disabled?: boolean;
   /** Честная причина disabled (показывается в title/рядом). */
@@ -51,14 +53,19 @@ export function VisualExportButton({
   viewId,
   label = "Скачать PNG",
   getScreenSvg,
+  dateColumn,
   disabled = false,
   disabledReason = null,
   compact = false,
 }: VisualExportButtonProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  const blocked = disabled || dateColumn === null;
+  const blockedReason = disabledReason ?? (dateColumn === null
+    ? "Для экспорта PNG выберите временную колонку на остановке «Структура»."
+    : "Экспорт недоступен");
 
   const onClick = useCallback(async () => {
-    if (phase.kind === "queued") return;
+    if (blocked || phase.kind === "queued") return;
     setPhase({ kind: "idle" });
     // 1) run_id -- единый источник слоя 1 (паритет resolveCurrentRun).
     const run = await resolveCurrentRunForExport();
@@ -87,6 +94,7 @@ export function VisualExportButton({
       runId: run.data.run_id,
       viewId,
       screenSvg,
+      dateColumn,
       expectedContextId: run.data.context_id ?? null,
     });
     if (!outcome.ok || !outcome.data) {
@@ -97,7 +105,7 @@ export function VisualExportButton({
       return;
     }
     setPhase({ kind: "queued", jobId: outcome.data.job.job_id });
-  }, [phase.kind, getScreenSvg, viewId]);
+  }, [phase.kind, getScreenSvg, viewId, dateColumn, blocked]);
 
   const isQueued = phase.kind === "queued";
   return (
@@ -105,17 +113,17 @@ export function VisualExportButton({
       <button
         type="button"
         onClick={onClick}
-        disabled={disabled || isQueued}
+        disabled={blocked || isQueued}
         data-testid={`visual-export-${viewId}`}
         data-export-state={isQueued ? "queued" : phase.kind === "error" ? "error" : "idle"}
         title={
-          disabled
-            ? (disabledReason ?? "Экспорт недоступен")
+          blocked
+            ? blockedReason
             : `Экспорт печатного PNG: ${label}`
         }
         aria-label={`Скачать PNG: ${label}`}
         className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors ${
-          disabled
+          blocked
             ? "cursor-not-allowed border-neutral-200 bg-neutral-50 text-neutral-400"
             : isQueued
               ? "border-green-300 bg-green-50 text-green-800"
@@ -134,9 +142,9 @@ export function VisualExportButton({
           Задание {phase.jobId}: готовый PNG появится в «Документах исследования → Визуализации».
         </span>
       )}
-      {disabled && disabledReason && (
+      {blocked && (
         <span data-testid={`visual-export-disabled-reason-${viewId}`} className="text-[11px] text-neutral-400">
-          {disabledReason}
+          {blockedReason}
         </span>
       )}
     </span>
@@ -151,11 +159,13 @@ export function VisualExportButton({
 export function VisualExportChartScope({
   viewId,
   label,
+  dateColumn,
   children,
   className = "",
 }: {
   viewId: string;
   label: string;
+  dateColumn?: string | null;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -168,6 +178,7 @@ export function VisualExportChartScope({
       <VisualExportButton
         viewId={viewId}
         label={`Скачать PNG: ${label}`}
+        dateColumn={dateColumn}
         compact
         getScreenSvg={() => serializeChartSvgSafe(() => ref.current)}
       />

@@ -1,0 +1,12 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Test Suites: 5 passed, 5 total
+Tests:       72 passed, 72 total
+Snapshots:   0 total
+Time:        8.554 s
+Ran all test suites within paths "packages/ui/components/TsAnalysisUpload.test.tsx", "packages/ui/components/upload-panel-chart-refresh.test.tsx", "packages/ui/components/upload-panel-decomposition-after-transform.test.tsx", "packages/ui/components/upload-full-dataset-tab.test.tsx", "packages/ui/components/upload-panel-paths-categorical-dates.test.tsx".
+npm notice
+npm notice New major version of npm available! 11.19.1 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
