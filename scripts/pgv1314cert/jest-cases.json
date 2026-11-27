@@ -1,5 +1,45 @@
 [
   [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "backend chart snapshot renders without optional warnings"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "backend histogram snapshot renders without optional warnings"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "backend table snapshot renders without optional warnings"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "explicit warning is preserved and escaped"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: \"warning\""
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: 42"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: [1]"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: [null]"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: null"
+  ],
+  [
+    "apps/print-renderer/src/backendPayload.test.tsx",
+    "malformed warnings rejected before SSR: {}"
+  ],
+  [
     "apps/print-renderer/src/launchGuard.test.ts",
     "PGV-08 launch ownership before handshake Windows shell paths use forward slashes; Unix backslashes stay literal"
   ],

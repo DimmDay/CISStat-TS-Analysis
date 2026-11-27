@@ -124,6 +124,31 @@ class CertificationTests(unittest.TestCase):
             if kind=='success':bad['success']=False
             with self.subTest(kind=kind),self.assertRaises(ValueError):C.validate_jest(bad,expected)
 
+    def test_jest_mismatch_names_the_case_delta_and_counts(self):
+        data={'success':True,'numTotalTests':2,'numPassedTests':2,
+              'testResults':[{'name':'one.test.ts','status':'passed','assertionResults':[
+                  {'fullName':'original','status':'passed'}, {'fullName':'new SSR case','status':'passed'}]}]}
+        with self.assertRaises(ValueError) as error:C.validate_jest(data,[['one.test.ts','original']])
+        message=str(error.exception)
+        for value in ('expected=1','total=2','passed=2','observed=2','missing=0','unexpected=1','new SSR case'):
+            self.assertIn(value,message)
+
+    def test_jest_exact_multiset_remains_required_with_duplicate_parameter_titles(self):
+        expected=[['one.test.ts','same'],['one.test.ts','same'],['one.test.ts','different']]
+        data={'success':True,'numTotalTests':3,'numPassedTests':3,
+              'testResults':[{'name':'one.test.ts','status':'passed','assertionResults':[
+                  {'fullName':name,'status':'passed'} for name in ('different','same','same')]}]}
+        self.assertEqual(C.validate_jest(data,expected),3)
+        for kind in ('removed','substituted','extra','count_lie','skip'):
+            bad=copy.deepcopy(data)
+            rows=bad['testResults'][0]['assertionResults']
+            if kind=='removed':rows.pop();bad.update(numTotalTests=2,numPassedTests=2)
+            if kind=='substituted':rows[-1]['fullName']='different'
+            if kind=='extra':rows.append({'fullName':'extra','status':'passed'});bad.update(numTotalTests=4,numPassedTests=4)
+            if kind=='count_lie':bad['numTotalTests']=4
+            if kind=='skip':rows[-1]['status']='pending'
+            with self.subTest(kind=kind),self.assertRaises(ValueError):C.validate_jest(bad,expected)
+
     def test_evidence_paths_are_confined_and_hashes_required(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'data').write_bytes(b'one');good={'data':hashlib.sha256(b'one').hexdigest()}

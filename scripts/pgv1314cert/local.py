@@ -112,6 +112,14 @@ def run_local(out):
         report['failed_check']=report.get('active_check','preflight')
         if isinstance(error,subprocess.TimeoutExpired):report['detail']='Local '+report['failed_check']+' timed out'
         log=out/(report['failed_check']+'.log');report['failed_log']=str(log)
+        if report['failed_check']=='evidence_validation':
+            # This stage is Python validation, not a subprocess. Keep an actual
+            # diagnostic artifact instead of pointing at a nonexistent log.
+            if not log.exists():
+                log.write_text(json.dumps({'check':'evidence_validation',
+                    'error_type':report['error_type'],'detail':report.get('detail',type(error).__name__)},
+                    ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            report.setdefault('files',{})[log.name]=sha(log.read_bytes())
         stderr_log=out/(report['failed_check']+'.stderr.log')
         if stderr_log.is_file():report['failed_stderr_log']=str(stderr_log)
         save()

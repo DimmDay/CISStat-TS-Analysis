@@ -2034,3 +2034,65 @@ Clean exact64a6604 + ZIP32files проверен: bytes, SSR gate, strict INDEX,
 routes. После overlay обновлены только unreviewed protocols и этот note;
 reviewed source bytes прежние. HEAD/refs/primary INDEX сохранены. Архив
 перечитан/сверен с manifest. VM/UI/live PNG остаются отдельной приёмкой.
+
+---
+
+## Task ID: PGV1314-CASEFIX (27.11.2026) — CI Jest inventory357→367 после SSR
+
+По указанию тимлида создан отдельный checkout exact5ce19a0d59b15a00716bf1aa2b0e8faea22de58c;
+GitHub connector подтвердил commit PGV-PNG-SSR. Прежние рабочие деревья сохранены.
+AGENTS изучен, commit/push/VM mutation агент не выполняет.
+
+Тимлид: local_gates и GitHubActions pgv1314cert падают на evidence_validation:
+Jest total coverage changed, остальные гейты зелёные. Приложен auth00(8).log:
+он содержит PASS INDEX parity,61/61 и669 entries — проблема не в AUTH00/Git
+transport/переходе на другую машину. Push5ce19a0 состоялся.
+
+На чистой базе воспроизведены реальные выбранные20 Jest suites367/367 PASS;
+старый scripts/pgv1314cert/jest-cases.json содержит357 cases. Missing0,
+unexpected10 — исключительно apps/print-renderer/src/backendPayload.test.tsx.
+Упущение предыдущей SSR-поставки: новый suite вошёл в folder selection, но
+отдельный сертификационный каталог не был дополнен. Coverage в сообщении —
+состав случаев, не процент line/branch coverage.
+
+Сначала TDD: старый каталог отвергает реальный367-case JSON; новые controls
+на подробный delta и настоящий evidence_validation.log дают RED2F.
+После исправления: Jest каталог367 сохраняет все357 прежних, добавлены только
+10 просмотренных SSR fullName/file pairs. Strict exact Counter/числа/statuses/
+path confinement сохранены; не введены superset/минимальный порог/исключение
+нового suite. Pytest каталог165→168: только3 новых контрольных теста этой задачи.
+
+verify.validate_jest теперь сообщает expected/total/passed/observed,
+missing/unexpected и bounded samples точных имён; при ошибке по-прежнему FAIL.
+local.run_local создаёт реальный evidence_validation.log и включает егоSHA256
+в FAIL report, вместо ссылки на отсутствующий файл. Существующие raw evidence
+не переписываются. Новые controls проверяют multiplicity/removed/substituted/
+extra/count-lie/skipped и сохранение отрицательных task flags. Всего controls32
+PASS. Реальный367-case JSON с новым каталогом PASS. Дизайн/риски/порядок:
+docs/pgv1314_case_inventory_fix.md.
+
+Полная процедура проверяется наNode22.23.5 через тот же CI/local entry point:
+workspace dependency/checkout parity, renderer build, pytest168, Jest367,
+typography18, CP1252 filesystem parity, actual routes/inventory, typecheck,
+обе Next production builds и конечная evidence validation. Первый полный
+проход PASS; итоговый local_gates прогон и протоколы — casefix/protocols.
+Local evidence не является native/VM certification, PGV-13/14 flags false.
+
+Runtime/HTTP/квоты/worker/DDL не меняются.285API/289bindings/669entries прежние;
+AUTH00 source fingerprints обновлены, отдельный INDEX проверяется без изменения
+основного индекса. Сам local_gates.py и workflow уже вызывают нужные модули;
+их менять/ослаблять не требуется. Новые images для этой host-only правки не
+нужны. Развёртывание самих SSR runtime fixes — по прежней инструкции отдельно.
+Task-only ZIP поверх5ce19a0, список casefix/files.txt, журнал в download/.
+
+Финал PGV1314-CASEFIX: полный local_gates --only pgv1314cert наNode22.23.5
+PASS (158.3s),168 pytest/367 Jest/typography18/CP1252/routes/inventory/typecheck/
+renderer build/обе production web builds и evidence_validation PASS. AUTH00
+unit61 и strict separate INDEX/source parity PASS; основной INDEX/HEAD/refs
+сохранены. Все669 route entries JSON равны5ce19a0, actual285API/289bindings.
+Clean exact5ce19a0 + ZIP21files: bytes, controls32, hash-bound полный local
+report, host-only scope, INDEX и actual routes PASS. Raw evidence с SHA256
+упакован бинарным local-evidence.zip без Git CRLF/ignored-log повреждений.
+После overlay дополнены только delivery.json и этот note; reviewed source
+bytes прежние. Итоговый ZIP перечитан/сверен со всеми manifest files. Никаких
+новых VM images/DDL/commit/push; native task certification не заявляется.

@@ -1,0 +1,23 @@
+test_jest_mismatch_names_the_case_delta_and_counts (tests.unit.test_pgv1314_certification.CertificationTests.test_jest_mismatch_names_the_case_delta_and_counts) ... FAIL
+test_evidence_validation_failure_has_a_real_hashed_diagnostic_log (tests.unit.test_pgv1314_ci.CIParityTests.test_evidence_validation_failure_has_a_real_hashed_diagnostic_log) ... FAIL
+
+======================================================================
+FAIL: test_jest_mismatch_names_the_case_delta_and_counts (tests.unit.test_pgv1314_certification.CertificationTests.test_jest_mismatch_names_the_case_delta_and_counts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-CI-COVERAGE-5ce19a0/tests/unit/test_pgv1314_certification.py", line 134, in test_jest_mismatch_names_the_case_delta_and_counts
+    self.assertIn(value,message)
+AssertionError: 'expected=1' not found in 'Jest total coverage changed'
+
+======================================================================
+FAIL: test_evidence_validation_failure_has_a_real_hashed_diagnostic_log (tests.unit.test_pgv1314_ci.CIParityTests.test_evidence_validation_failure_has_a_real_hashed_diagnostic_log)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/495ea0f1cb98/CISStat-CI-COVERAGE-5ce19a0/tests/unit/test_pgv1314_ci.py", line 75, in test_evidence_validation_failure_has_a_real_hashed_diagnostic_log
+    self.assertIn('evidence_validation.log',files)
+AssertionError: 'evidence_validation.log' not found in {'inventory.log': b'controlled command\n', 'web_builds.log': b'controlled command\n', 'workspace_dependencies.log': b'controlled command\n', 'routes.stderr.log': b'DEBUG:tzlocal:Looking up time zone info from registry\n', 'windows_parity.log': b'controlled command\n', 'print_jest.log': b'controlled command\n', 'pytest.log': b'controlled command\n', 'routes.log': b'{"status": "ok", "added": [], "missing": []}\n', 'renderer_build.log': b'controlled command\n', 'summary.json': b'{\n  "schema_version": "pgv1314.local/1",\n  "state": "FAIL",\n  "passed": false,\n  "task_certification": {\n    "PGV-13": false,\n    "PGV-14": false\n  },\n  "checks": {\n    "workspace_dependencies": {\n      "exit": 0\n    },\n    "renderer_build": {\n      "exit": 0\n    },\n    "pytest": {\n      "exit": 0\n    },\n    "print_jest": {\n      "exit": 0\n    },\n    "typography": {\n      "exit": 0\n    },\n    "windows_parity": {\n      "exit": 0\n    },\n    "routes": {\n      "exit": 0\n    },\n    "inventory": {\n      "exit": 0\n    },\n    "typecheck": {\n      "exit": 0\n    },\n    "web_builds": {\n      "exit": 0\n    }\n  },\n  "source_fingerprints": {},\n  "active_check": "evidence_validation",\n  "files": {\n    "inventory.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "jest.json": "a5b1f38c60d182e476f91a175e91d1e6b09317135f2d42dca4737533f5f72c3c",\n    "print_jest.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "pytest.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "renderer_build.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "routes.log": "58ccdf0df54366866ba6493c5949cf1228c6617d431ce93ac418add9ed2d61ea",\n    "routes.stderr.log": "a205d40e82f9ea52d2af2574f9061f47416d33131d24d8ad17a9e1d7214a1660",\n    "typecheck.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "typography.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "web_builds.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "windows_parity.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e",\n    "workspace_dependencies.log": "cb3ad16750edc9f54ac25f819f34ba66e0b5fcd41ec7e070f73a5ebd5d9af29e"\n  },\n  "error_type": "ValueError",\n  "detail": "Jest case inventory mismatch: expected=357 total=367 passed=367 observed=367 missing=0 unexpected=10",\n  "failed_check": "evidence_validation",\n  "failed_log": "/workspace/scratch/495ea0f1cb98/CISStat-CI-COVERAGE-5ce19a0/tmp7fw_3z71/evidence/evidence_validation.log"\n}\n', 'typecheck.log': b'controlled command\n', 'typography.log': b'controlled command\n', 'jest.json': b'{\n  "testResults": []\n}\n'}
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+FAILED (failures=2)

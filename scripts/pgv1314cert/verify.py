@@ -76,7 +76,6 @@ def validate_junit(path,expected):
 
 def validate_jest(data,expected):
     require(data.get('success') is True,'Jest must succeed')
-    require(data.get('numTotalTests')==data.get('numPassedTests')==len(expected),'Jest total coverage changed')
     require(all(data.get(k,0)==0 for k in ('numFailedTests','numPendingTests','numTodoTests')),'Jest incomplete')
     actual=[]
     for suite in data.get('testResults',[]):
@@ -88,7 +87,20 @@ def validate_jest(data,expected):
         for case in suite.get('assertionResults',[]):
             require(case.get('status')=='passed','Jest skipped/failed assertion')
             actual.append([path.relative_to(ROOT).as_posix(),case['fullName']])
-    require(actual and Counter(map(tuple,actual))==Counter(map(tuple,expected)),'Jest exact names required')
+    observed=Counter(map(tuple,actual));planned=Counter(map(tuple,expected))
+    counts_match=data.get('numTotalTests')==data.get('numPassedTests')==len(expected)
+    if not (actual and counts_match and observed==planned):
+        missing=planned-observed;unexpected=observed-planned
+        def sample(delta):
+            return json.dumps([{'file':name[:240],'case':title[:240],'count':count}
+                for (name,title),count in sorted(delta.items())[:3]],ensure_ascii=False)
+        raise ValueError(
+            f"Jest case inventory mismatch: expected={len(expected)} "
+            f"total={data.get('numTotalTests')} passed={data.get('numPassedTests')} "
+            f"observed={len(actual)} missing={sum(missing.values())} "
+            f"unexpected={sum(unexpected.values())}; "
+            f"missing sample={sample(missing)}; unexpected sample={sample(unexpected)}; "
+            "review scripts/pgv1314cert/jest-cases.json")
     return len(actual)
 
 

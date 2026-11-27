@@ -15,7 +15,7 @@ from scripts.pgv1314cert.cifix import verify_ci_local as D
 ROOT=Path(__file__).resolve().parents[2]
 
 
-def route_stream_probe(route_exit=0, dirty_stdout=False):
+def route_stream_probe(route_exit=0, dirty_stdout=False, validation_error=None):
     """Exercise runner I/O with controlled commands and the real strict JSON reader."""
     with tempfile.TemporaryDirectory() as tmp:
         project=Path(tmp)/'repo';project.mkdir();out=Path(tmp)/'evidence'
@@ -34,6 +34,7 @@ def route_stream_probe(route_exit=0, dirty_stdout=False):
         def validate(path):
             actual=L.read(Path(path).parent/'routes.log')
             L.require(actual==route,'Wrong controlled route result')
+            if validation_error: raise ValueError(validation_error)
         capture=io.StringIO()
         with patch.object(L,'ROOT',project),patch.object(L,'source_fingerprints',return_value={}),patch.object(L.shutil,'which',return_value='/mock/npm'),patch.object(L.subprocess,'run',side_effect=command),patch.object(L,'validate_local',side_effect=validate),contextlib.redirect_stdout(capture):
             code=L.run_local(out)
@@ -64,6 +65,18 @@ class CIParityTests(unittest.TestCase):
         self.assertEqual(code,1);self.assertFalse(report['passed'])
         self.assertEqual(report['failed_check'],'evidence_validation')
         self.assertEqual(report['error_type'],'JSONDecodeError')
+        self.assertFalse(any(report['task_certification'].values()))
+
+    def test_evidence_validation_failure_has_a_real_hashed_diagnostic_log(self):
+        message='Jest case inventory mismatch: expected=357 total=367 passed=367 observed=367 missing=0 unexpected=10'
+        code,report,files,console=route_stream_probe(validation_error=message)
+        self.assertEqual(code,1);self.assertFalse(report['passed'])
+        self.assertEqual(report['failed_check'],'evidence_validation')
+        self.assertIn('evidence_validation.log',files)
+        self.assertIn(message,files['evidence_validation.log'].decode('utf-8'))
+        self.assertEqual(report['files']['evidence_validation.log'],L.sha(files['evidence_validation.log']))
+        self.assertIn(message,console)
+        self.assertEqual(report['checks']['print_jest']['exit'],0)
         self.assertFalse(any(report['task_certification'].values()))
 
     def test_workflow_uses_one_absolute_runner_temp_path_for_run_and_upload(self):

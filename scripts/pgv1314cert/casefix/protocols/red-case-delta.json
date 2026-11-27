@@ -1,0 +1,49 @@
+{
+  "expected": 357,
+  "actual": 367,
+  "passed": 367,
+  "error": "Jest total coverage changed",
+  "missing": [],
+  "unexpected": [
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "backend chart snapshot renders without optional warnings"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "backend histogram snapshot renders without optional warnings"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "backend table snapshot renders without optional warnings"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "explicit warning is preserved and escaped"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: null"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: \"warning\""
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: 42"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: {}"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: [null]"
+    ],
+    [
+      "apps/print-renderer/src/backendPayload.test.tsx",
+      "malformed warnings rejected before SSR: [1]"
+    ]
+  ]
+}
