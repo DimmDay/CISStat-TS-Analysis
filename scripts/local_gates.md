@@ -881,3 +881,13 @@ document_jobs.py (registry), document_lifecycle.py (sweep/env), main.py (+сек
 print_renderer_ops.py (новый), visualExportRegistry.ts (+версия), config/visual_registry.json
 (перегенерирован штатным export_registry.ts), local_gates.py (+гейт). Роуты
 HTTP не менялись (added=[]/missing=[] — auth06-паритет проверен).
+
+
+### PGV-PNG-SSR (27.11.2026)
+
+Default `pgv-png-ssr`:10 payload/SSR tests, renderer tsc и настоящий compiled
+htmlWorker на backend fixtures; отсутствующий warnings не ведёт к HTTP500.
+`pgv-png-ssr-postgres` opt-in через `--with-pgv-png-ssr-postgres`, требует
+disposable `CISSTAT_AUTH_TEST_DSN`, zero/skip/absent DSN означают FAIL.
+CI PG16/18 генерирует payload реальным Python upload/freeze/export и вызывает
+compiled Node worker. Нужны npm ci и API/native dependencies.

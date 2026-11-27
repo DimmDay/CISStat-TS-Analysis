@@ -1,0 +1,12 @@
+PGV-PNG-SSR delivery27.11.2026, base64a6604b84c9d258a784adf13f7feec2f4fdeaba.
+32 task-only files. Runtime only printLayout/printSchema/rendererCore; no quotas/jobs/DDL changed.
+RED9F/1P; new10/10 GREEN; print-layer regression234/234 in13 suites PASS.
+Native PG16 fresh Python payload -> compiled Node worker plus retained PNG integration6/6, skips0, leftoverDB=[]; strict native gate PASS.
+Both production Next builds and compiled worker3 fixtures verified inside Node22.23.5 (explicit runtime assertion, see next-builds.txt).
+Renderer tsc PASS. Genuine Inter font offline hook; no dummy font substitution.
+pgv-png-ssr/pgv-png/auth00 gates PASS; AUTH00 unit61 and separate INDEX/source parity.
+All669 inventory entry JSON values identical to HEAD; actual API285/bindings289, added/missing=[].
+Clean exact64a6604 + real ZIP: byte identity, pgv-png-ssr, strict INDEX parity and actual routes PASS.
+Primary INDEX bytes/tree, HEAD and refs preserved; no commit/push/VM mutation.
+After overlay only unreviewed protocols and worklog final note updated; reviewed source bytes unchanged.
+VM image builds/Chromium/UDS/UI download remain pending. Existing uncertain hold not refunded or completed.

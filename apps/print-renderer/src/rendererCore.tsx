@@ -151,6 +151,12 @@ export function validateRenderPayload(raw: unknown): {
     out.push(violation("missing_field", "snapshot", "frozen snapshot (PGV-01) обязателен"));
     return { violations: out, payload: null };
   }
+  // Python's durable snapshot may omit optional notes. If supplied, they
+  // must be strings before the payload reaches SSR; never coerce or mutate it.
+  if (snapshot.warnings !== undefined &&
+      (!Array.isArray(snapshot.warnings) || snapshot.warnings.some(item => typeof item !== "string"))) {
+    out.push(violation("missing_field", "snapshot.warnings", "warnings обязан быть массивом строк"));
+  }
   const profile = (snapshot as VisualPrintSnapshotV1).print?.profile_id;
   if (typeof profile !== "string" || resolvePrintProfile(profile) === undefined) {
     out.push(

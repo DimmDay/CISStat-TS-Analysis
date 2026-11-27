@@ -1,0 +1,33 @@
+Локальные гейты (база 64a6604b, AUTH-00 target=INDEX): pgv-png-ssr
+
+=== ГЕЙТ pgv-png-ssr (pgv_png_ssr.yml contracts) — Canonical backend snapshots through print layout and compiled SSR worker
+    $ node node_modules/jest/bin/jest.js --runInBand --runTestsByPath apps/print-renderer/src/backendPayload.test.tsx
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        2.8 s
+Ran all test suites within paths "apps/print-renderer/src/backendPayload.test.tsx".
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/npm run build --workspace=@cisstat/print-renderer
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @cisstat/print-renderer@0.1.0 build
+> tsc -p tsconfig.build.json
+
+    $ node scripts/pgv_png_ssr/verify_ssr.cjs tests/fixtures/pgv_png_ssr/upload.chart.series.json tests/fixtures/pgv_png_ssr/upload.distribution.histogram.json tests/fixtures/pgv_png_ssr/upload.overview.tech_table.json
+{"view":"upload.chart.series","ssr":"ok","html_bytes":7179}
+{"view":"upload.distribution.histogram","ssr":"ok","html_bytes":6944}
+{"view":"upload.overview.tech_table","ssr":"ok","html_bytes":9416}
+    $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest tests.unit.test_pgv_png_ssr_gates -v
+test_missing_native_dsn_is_a_failed_gate (tests.unit.test_pgv_png_ssr_gates.SsrGateTests.test_missing_native_dsn_is_a_failed_gate) ... ok
+test_native_not_default_but_explicit_flag_selects_it (tests.unit.test_pgv_png_ssr_gates.SsrGateTests.test_native_not_default_but_explicit_flag_selects_it) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.893s
+
+OK
+--- pgv-png-ssr: PASS (7.3 c)
+
+=== СВОДКА ===
+  PASS  pgv-png-ssr     7.3 c
+
+ИТОГ: выбранные гейты зелёные

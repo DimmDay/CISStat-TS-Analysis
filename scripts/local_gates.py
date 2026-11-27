@@ -54,7 +54,7 @@
   jest    (jest.yml,     push/PR)   npm ci + test:ci + renderer build + typecheck:all
   pytest  (test.yml,     ТОЛЬКО develop/refactor/*) полный python -m pytest tests/
 
-По умолчанию (пуш в main): pgv-png + pgv16 + pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
+По умолчанию (пуш в main): pgv-png-ssr + pgv-png + pgv16 + pgv1314cert + pgv14 + personal-demo + kabinet-demo-cert + warmup + authcert + auth25 + auth24 + auth23 + auth22 + auth21 + auth20 + auth19 + auth18 + auth17 + auth16 + auth15 + auth14 + auth13 + auth12 + auth11 + auth10 + auth09 + auth08 + auth06 + auth07 + auth05 + auth04 + auth03 + auth02 + auth01 + auth00 + rules + jest. Для пуша в
 develop/refactor добавьте --with-pytest. Гейты идут от быстрых к
 тяжёлым; по умолчанию все выбранные выполняются, итог — сводка и
 exit code. Использование в VS Code: интегрированный терминал (Ctrl+`),
@@ -82,6 +82,17 @@ RULES_CHECK = (
 
 # (имя, происхождение в CI, описание, команды)
 GATES: list[tuple[str, str, str, list[list[str]]]] = [
+    ("pgv-png-ssr", "pgv_png_ssr.yml contracts", "Canonical backend snapshots through print layout and compiled SSR worker", [
+        ["node", "node_modules/jest/bin/jest.js", "--runInBand", "--runTestsByPath", "apps/print-renderer/src/backendPayload.test.tsx"],
+        ["npm", "run", "build", "--workspace=@cisstat/print-renderer"],
+        ["node", "scripts/pgv_png_ssr/verify_ssr.js", "tests/fixtures/pgv_png_ssr/upload.chart.series.json", "tests/fixtures/pgv_png_ssr/upload.distribution.histogram.json", "tests/fixtures/pgv_png_ssr/upload.overview.tech_table.json"],
+        [sys.executable, "-m", "unittest", "tests.unit.test_pgv_png_ssr_gates", "-v"],
+    ]),
+    ("pgv-png-ssr-postgres", "pgv_png_ssr.yml postgres", "Native Python freeze payload to real Node worker; disposable DSN required", [
+        [sys.executable, "-m", "pip", "install", "-r", "apps/api/requirements.txt", "-r", "scripts/authcert/requirements.txt"],
+        ["npm", "run", "build", "--workspace=@cisstat/print-renderer"],
+        [sys.executable, "scripts/pgv_png_ssr/verify_postgres.py"],
+    ]),
     ("pgv-png", "pgv_png_fix.yml contracts", "Fresh upload, revision zero, typed export failures and private worker repair", [
         [sys.executable, "-m", "pip", "install", "-r", "scripts/pgv_png_fix/requirements.txt"],
         [sys.executable, "-m", "pytest", "tests/api/test_pgv_png_fix.py", "-v"],
@@ -521,6 +532,7 @@ def main() -> int:
                         help="добавить PostgreSQL MFA/bootstrap/recovery проверки")
     parser.add_argument("--with-auth04-postgres", action="store_true",
                         help="добавить PostgreSQL session/HTTP/fault проверки; нужен disposable CISSTAT_AUTH_TEST_DSN")
+    parser.add_argument("--with-pgv-png-ssr-postgres", action="store_true", help="native Python to Node SSR boundary; disposable CISSTAT_AUTH_TEST_DSN")
     parser.add_argument("--with-pgv-png-postgres", action="store_true",
                         help="native fresh-upload PNG regression; disposable CISSTAT_AUTH_TEST_DSN required")
     parser.add_argument("--with-personal-demo-postgres", action="store_true", help="personal trial native HTTP/SQL tests; disposable PostgreSQL DSN required")
@@ -571,6 +583,8 @@ def main() -> int:
     args = parser.parse_args()
 
     excluded = set()
+    if not args.with_pgv_png_ssr_postgres:
+        excluded.add("pgv-png-ssr-postgres")
     if not args.with_pgv_png_postgres:
         excluded.add("pgv-png-postgres")
     if not args.with_personal_demo_postgres:

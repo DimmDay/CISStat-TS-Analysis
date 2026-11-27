@@ -1970,3 +1970,67 @@ bytes/staged tree, HEAD и refs сохранены. Clean exact804d411+ZIP24file
 побайтное соответствие, pgv-png, strict INDEX parity, actual routes PASS.
 После overlay proof дополнены только этот note и protocol delivery.txt;
 reviewed bytes прежние. Итоговый ZIP перечитан/сверен со всем manifest.
+
+---
+
+## Task ID: PGV-PNG-SSR (27.11.2026) — HTTP500 print SSR failed и зависший слот
+
+База по повторному подтверждению оператора64a6604b84c9d258a784adf13f7feec2f4fdeaba.
+Отдельный checkout; прежние рабочие деревья не изменены. AGENTS соблюдён;
+commit/push/VM mutation агент не выполняет. Отдельная ранее описанная в чате
+ADMIN-RESOURCES поставка в эту базу не входит; объединение — review тимлида.
+
+Последовательные безопасные VM срезы: render uncertain/phase0/worker_uncertain,
+lease2026-11-27T10:36:30Z; db stop proof отсутствует, spool1: attempt matches,
+local stopped=true/remote_unknown=true/outcome=completed. Это локальное join,
+не успешный PNG/не подтверждённая остановка renderer. Worker здоров и idle,
+поскольку выбирает queued, а uncertain сохраняет. Лог API10:35:02UTC
+(13:35:02Москва) renderer_unavailable; уточнение HTTP500 + renderer render_failed,
+категория print SSR failed. Переполнение concurrency1/reserved1 вторично.
+
+Native PG16 на точной базе: реальные upload/producers/visual export/basis,
+Python build_print_render_payload_from_basis создаёт3 wire payload (ряд,
+гистограмма, техническая таблица) без необязательного snapshot.warnings.
+validateRenderPayload принимает, compiled buildPrintHtml падает TypeError
+в PrintNotes: undefined.length. Настоящий htmlWorker возвращает ровно print
+SSR failed. TS convenience fixtures/readiness добавляют warnings:[], маскируя
+разрыв контракта. Исходная причина установлена без чтения научных данных VM.
+
+Runtime3 файла: printSchema.ts отражает optional warnings; PrintNotes default
+items=[] только при отсутствии; rendererCore.tsx отклоняет supplied malformed
+warnings доSSR. Переданные предупреждения/escaping сохранены; payload/frozen
+artifacts не мутируются, наука не пересчитывается. Refs/schema versions/ACL/
+quota/AUTH13 stop proof/состояния jobs не ослаблены и не переписаны.
+
+TDD RED9F/1P → new GREEN10/10; layout/core вместе96/96. Default gate вызывает
+также настоящий compiled htmlWorker на3 неизменённых backend fixtures.
+Native boundary case создаёт fresh payload черезPython/Postgres и передаёт
+compiled worker без API secrets в env. Вместе с5 сохранёнными PNG integration
+cases6/6 PASS, skips0, leftoverDB=[]. Strict native local gate PASS.
+Renderer tsc и обе Next production builds Node22.23.5 PASS, genuine Inter
+fonts offline hook; прежнее Tailwind content warning. Новый CI contracts
+Ubuntu/Windows + nativePG16/18, default pgv-png-ssr и strict opt-in
+pgv-png-ssr-postgres (absent DSN/zero/skips FAIL). Windows/PG18 не исполнялись
+локально. Документы/fixtures — synthetic, не данные пользователей VM.
+
+Роуты не меняются: entry semantics669/API285/bindings289 прежние. AUTH00
+reviewed sources/fingerprints обновлены; final gates/ZIP протоколы отдельны.
+Новых DDL/миграций нет. Нужны новые renderer/web и согласованный API provenance
+через coherent release. VM-команды docs/pgv_png_ssr_vm.md: реальные остановленные
+publishers/renderer (Docker running=false,pid=0) дают quiescence для apply;
+DB holds ради этого не освобождаются. Для проверки новой операции при прежнем
+reserved1 предусмотрена явная выдача concurrency1→2 через штатный AUTH12 CLI
+с CAS/аудитом либо отдельную панель. Старый uncertain остаётся held; последующее
+положительное восстановление/учёт этой истории — отдельная AUTH13 операция.
+Финальная VM/UI/Chromium PNG сертификация по локальному SSR не заявляется.
+
+Финал PGV-PNG-SSR:13 print suites234/234 PASS;6 native integration cases PASS,
+strict native gate PASS; pgv-png-ssr/pgv-png/auth00 PASS (AUTH00 unit61,
+separate INDEX/source parity). Версия runtime перепроверена: ранний build
+фактически выполнялся наNode24; обе Next production builds и3 compiled SSR
+fixtures повторены внутриNode22.23.5 с явным assert версии (next-builds.txt).
+Все669 entries JSON равны HEAD; actual check_routes285API/289bindings PASS.
+Clean exact64a6604 + ZIP32files проверен: bytes, SSR gate, strict INDEX, actual
+routes. После overlay обновлены только unreviewed protocols и этот note;
+reviewed source bytes прежние. HEAD/refs/primary INDEX сохранены. Архив
+перечитан/сверен с manifest. VM/UI/live PNG остаются отдельной приёмкой.

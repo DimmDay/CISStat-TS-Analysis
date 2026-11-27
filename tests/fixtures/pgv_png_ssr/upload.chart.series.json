@@ -1,0 +1,142 @@
+{
+  "schema_version": "pgv.render_payload/1",
+  "request_id": "pgv:djob-87b193f2712f485788c53ad7b05469ba",
+  "snapshot": {
+    "annotations": {
+      "revision": 0
+    },
+    "checkpoint": {
+      "reused": false
+    },
+    "data_artifact": {
+      "artifact_id": "art-7698db35622d4bd78b194606f16fab09",
+      "artifact_version": "0",
+      "hash_algorithm": "sha256(canonical_json)",
+      "hash_reason": null,
+      "source_hash": "5f265cd07122294921c50f20eb5a7744ade63d4fb63fd85b90406bb65c471d72"
+    },
+    "dimensions": {
+      "entity_column": null,
+      "entity_id": null,
+      "mode": "univariate"
+    },
+    "display": {
+      "detail_level": "expanded",
+      "sections": [
+        {
+          "axes": [
+            {
+              "limits": null,
+              "name": "Время ряда",
+              "scale": "linear",
+              "units": {
+                "reason": "legacy_unknown",
+                "value": null
+              }
+            },
+            {
+              "limits": null,
+              "name": "Значение",
+              "scale": "linear",
+              "units": {
+                "reason": "legacy_unknown",
+                "value": null
+              }
+            }
+          ],
+          "heatmap_scale": null,
+          "legend_ordering": [],
+          "renderer_kind": "recharts_svg",
+          "screen_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"600\" height=\"300\"><path d=\"M0 200 L600 0\"/></svg>",
+          "screen_svg_sha256": "58dc204c4d6d2fce222a3f69f1b3b701535e04fb1c7ae9fd15975ad0a8396194",
+          "section_id": "main",
+          "table_headings": null,
+          "title": null,
+          "units": [
+            {
+              "reason": "legacy_unknown",
+              "value": null
+            }
+          ]
+        }
+      ],
+      "subtitle": "Линейный график исследуемого признака по реальной временной оси; требует confident date column.",
+      "title": "Исследуемый признак по временной оси"
+    },
+    "expected_context": {
+      "context_id": "ctx-2ec70ec063cb5fb0",
+      "data_revision": "0"
+    },
+    "method": {
+      "method": "timeseries_points",
+      "origin": "producer_freeze",
+      "parameters": {
+        "selected_column": "value"
+      }
+    },
+    "print": {
+      "page_count": 1,
+      "profile_id": "figure-landscape",
+      "theme": "light-print"
+    },
+    "refs": {
+      "context_id": "ctx-2ec70ec063cb5fb0",
+      "data_revision": "0",
+      "date_column": "date",
+      "target_column": "value"
+    },
+    "renderer_env": {
+      "dependency_status": "unknown",
+      "font_profile": "print-fonts-dejavu/1",
+      "renderer_version": "print-renderer/1",
+      "unavailable_reason": null
+    },
+    "result": {
+      "result_artifact_id": "art-7698db35622d4bd78b194606f16fab09",
+      "result_digest": "5f265cd07122294921c50f20eb5a7744ade63d4fb63fd85b90406bb65c471d72",
+      "result_digest_reason": null,
+      "result_ref": "vr-4416d322232d7c06f2273190fd0abb03",
+      "result_schema_version": "pgv.visual_result/1",
+      "screen_svg_sha256": "58dc204c4d6d2fce222a3f69f1b3b701535e04fb1c7ae9fd15975ad0a8396194"
+    },
+    "sampling": {
+      "applicable": true,
+      "mode": "full",
+      "point_cap": null,
+      "reason": null
+    },
+    "schema_version": "pgv.visual_print_snapshot/1",
+    "scope": "research",
+    "selection": {
+      "allowlist": [
+        "selected_column",
+        "window",
+        "zoom"
+      ],
+      "values": {
+        "selected_column": "value"
+      }
+    },
+    "sensitive": {
+      "raw_data_included": false,
+      "sensitive_fields_policy": "metadata-only; raw данные не вкладываются (spec §11)"
+    },
+    "times": {
+      "captured_at": "2026-11-27T16:21:14.911571+03:00",
+      "captured_at_reason": null,
+      "computed_at": null,
+      "computed_at_reason": "producer_not_reported",
+      "locale": "ru-RU",
+      "render_requested_at": "2026-11-27T13:21:15.179206+00:00",
+      "timezone": "UTC"
+    },
+    "view_id": "upload.chart.series"
+  },
+  "sections": [
+    {
+      "section_id": "main",
+      "kind": "recharts_svg",
+      "svg_xml": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"600\" height=\"300\"><path d=\"M0 200 L600 0\"/></svg>"
+    }
+  ]
+}

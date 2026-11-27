@@ -1,0 +1,161 @@
+{
+  "schema_version": "pgv.render_payload/1",
+  "request_id": "pgv:djob-a97df7dc35cd4472b19cb53f145a741e",
+  "snapshot": {
+    "annotations": {
+      "revision": 0
+    },
+    "checkpoint": {
+      "reused": false
+    },
+    "data_artifact": {
+      "artifact_id": "art-8bc97c57450d4dac8da66ce4ad907774",
+      "artifact_version": "0",
+      "hash_algorithm": "sha256(canonical_json)",
+      "hash_reason": null,
+      "source_hash": "30133095f1b82d4fff4e806fe7b8cb2883b121d026ea05377131d81ac0559edb"
+    },
+    "dimensions": {
+      "entity_column": null,
+      "entity_id": null,
+      "mode": "univariate"
+    },
+    "display": {
+      "detail_level": "expanded",
+      "sections": [
+        {
+          "axes": [],
+          "heatmap_scale": null,
+          "legend_ordering": [],
+          "renderer_kind": "html_table",
+          "section_id": "main",
+          "table_headings": {
+            "column": [
+              "Значение"
+            ],
+            "row": [
+              "Колонка",
+              "Тип",
+              "Иконка",
+              "Непустых",
+              "Пропусков",
+              "Уникальных"
+            ]
+          },
+          "title": null,
+          "units": [
+            {
+              "reason": "legacy_unknown",
+              "value": null
+            },
+            {
+              "reason": null,
+              "value": "dimensionless"
+            }
+          ]
+        }
+      ],
+      "subtitle": "Техническая информация: dtype/non-null/уникальные значения по колонкам.",
+      "title": "Техническая информация по колонкам"
+    },
+    "expected_context": {
+      "context_id": "ctx-2ec70ec063cb5fb0",
+      "data_revision": "0"
+    },
+    "method": {
+      "method": "dataset_columns_info",
+      "origin": "producer_freeze",
+      "parameters": {}
+    },
+    "print": {
+      "page_count": 1,
+      "profile_id": "figure-landscape",
+      "theme": "light-print"
+    },
+    "refs": {
+      "context_id": "ctx-2ec70ec063cb5fb0",
+      "data_revision": "0",
+      "date_column": "date",
+      "target_column": "value"
+    },
+    "renderer_env": {
+      "dependency_status": "unknown",
+      "font_profile": "print-fonts-dejavu/1",
+      "renderer_version": "print-renderer/1",
+      "unavailable_reason": null
+    },
+    "result": {
+      "result_artifact_id": "art-8bc97c57450d4dac8da66ce4ad907774",
+      "result_digest": "30133095f1b82d4fff4e806fe7b8cb2883b121d026ea05377131d81ac0559edb",
+      "result_digest_reason": null,
+      "result_ref": "vr-93620852e608cbed955493ce99a13a25",
+      "result_schema_version": "pgv.visual_result/1",
+      "screen_svg_sha256": "58dc204c4d6d2fce222a3f69f1b3b701535e04fb1c7ae9fd15975ad0a8396194"
+    },
+    "sampling": {
+      "applicable": true,
+      "mode": "full",
+      "point_cap": null,
+      "reason": null
+    },
+    "schema_version": "pgv.visual_print_snapshot/1",
+    "scope": "research",
+    "selection": {
+      "allowlist": [
+        "selected_column"
+      ],
+      "values": {}
+    },
+    "sensitive": {
+      "raw_data_included": false,
+      "sensitive_fields_policy": "metadata-only; raw данные не вкладываются (spec §11)"
+    },
+    "times": {
+      "captured_at": "2026-11-27T16:21:15.134356+03:00",
+      "captured_at_reason": null,
+      "computed_at": null,
+      "computed_at_reason": "producer_not_reported",
+      "locale": "ru-RU",
+      "render_requested_at": "2026-11-27T13:21:15.506441+00:00",
+      "timezone": "UTC"
+    },
+    "view_id": "upload.overview.tech_table"
+  },
+  "sections": [
+    {
+      "section_id": "main",
+      "kind": "html_table",
+      "headings": {
+        "row": [
+          "Колонка",
+          "Тип",
+          "Иконка",
+          "Непустых",
+          "Пропусков",
+          "Уникальных"
+        ],
+        "column": [
+          "Значение"
+        ]
+      },
+      "rows": [
+        [
+          "date",
+          "datetime64[ns]",
+          "datetime",
+          "120",
+          "0",
+          "120"
+        ],
+        [
+          "value",
+          "int64",
+          "numeric",
+          "120",
+          "0",
+          "48"
+        ]
+      ]
+    }
+  ]
+}

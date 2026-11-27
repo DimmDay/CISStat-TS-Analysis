@@ -253,7 +253,7 @@ export function PrintSectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 /** Пояснения/ограничения в подвале (§7: низ страницы). */
-export function PrintNotes({ items }: { items: readonly string[] }) {
+export function PrintNotes({ items = [] }: { items?: readonly string[] }) {
   if (!items.length) return null;
   return (
     <ul

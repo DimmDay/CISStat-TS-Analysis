@@ -1,0 +1,7 @@
+{"ts_level":"info","event":"render_cancelled","renderer_version":"print-renderer/1","request_id":"smoke-cyrillic"}
+
+Test Suites: 13 passed, 13 total
+Tests:       234 passed, 234 total
+Snapshots:   0 total
+Time:        6.77 s
+Ran all test suites matching apps/print-renderer/src|packages/ui/print.

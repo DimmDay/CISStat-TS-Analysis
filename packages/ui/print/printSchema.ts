@@ -368,7 +368,8 @@ export interface VisualPrintSnapshotV1 {
   data_flow: { before_revision: string | null; after_revision: string | null };
   /** Metadata без raw данных; политика чувствительных полей (AC19/AC21). */
   sensitive: { raw_data_included: boolean; sensitive_fields_policy: string };
-  warnings: string[];
+  /** Optional notes: durable Python snapshots may omit this enrichment. */
+  warnings?: string[];
 }
 
 // ── VisualResult/1 (spec §6: immutable artifact) ─────────────────
